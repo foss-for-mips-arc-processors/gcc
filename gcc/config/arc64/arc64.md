@@ -187,3 +187,134 @@
    sth%U0%V0\\t%1,%0"
   [(set_attr "type"      "move,move, move,      move,      move, move,load, load,store,store")
    (set_attr "iscompact" "true,true,false,maybe_limm,maybe_limm,false,true,false,false,false")])
+
+
+;; -------------------------------------------------------------------
+;; Subroutine calls and sibcalls
+;; -------------------------------------------------------------------
+
+(define_expand "call"
+  [(parallel [(call (match_operand 0 "memory_operand")
+		    (match_operand 1 "general_operand"))
+	     (clobber (reg:DI BLINK_REGNUM))])]
+  ""
+  {
+   arc64_expand_call (NULL_RTX, operands[0], false);
+   DONE;
+  }
+)
+
+(define_insn "*call_insn"
+  [(call (mem:DI (match_operand:DI 0 "arc64_call_address_operand" "q,r,Cbp,Cbr,L,I,Cal"))
+	 (match_operand 1 "" ""))
+   (clobber (reg:DI BLINK_REGNUM))]
+  ""
+  "@
+   jl%!%*\\t[%0]
+   jl%!%*\\t[%0]
+   bl%!%*\\t%P0
+   bl%!%*\\t%P0
+   jl%!%*\\t%0
+   jl%*\\t%0
+   jl%!\\t%0"
+  [(set_attr "type" "call,call,call,call,call,call,call_no_delay_slot")
+   (set_attr "length" "*,4,2,4,4,4,8")])
+
+(define_expand "call_value"
+  [(parallel [(set (match_operand 0 "" "")
+		   (call (match_operand 1 "memory_operand")
+			 (match_operand 2 "general_operand")))
+	      (clobber (reg:DI BLINK_REGNUM))])]
+  ""
+  "
+  {
+    arc64_expand_call (operands[0], operands[1], false);
+    DONE;
+  }"
+)
+
+(define_insn "*call_value_insn"
+  [(set (match_operand 0 "" "")
+	(call (mem:DI (match_operand:DI 1 "arc64_call_address_operand" "q,c,Cbp,Cbr,L,I,Cal"))
+	      (match_operand 2 "" "")))
+   (clobber (reg:DI BLINK_REGNUM))]
+  ""
+  "@
+   jl%!%*\\t[%1]
+   jl%!%*\\t[%1]
+   bl%!%*\\t%P1
+   bl%!%*\\t%P1
+   jl%!%*\\t%1
+   jl%*\\t%1
+   jl%!\\t%1"
+  [(set_attr "type" "call,call,call,call,call,call,call_no_delay_slot")
+   (set_attr "length" "*,4,2,4,4,4,8")])
+
+(define_expand "sibcall"
+  [(parallel [(call (match_operand 0 "memory_operand")
+		    (match_operand 1 "general_operand"))
+	      (return)
+	      (use (match_operand 2 "" ""))])]
+  ""
+  {
+    arc64_expand_call (NULL_RTX, operands[0], true);
+    DONE;
+  }
+
+(define_expand "sibcall_value"
+  [(parallel [(set (match_operand 0 "" "")
+		   (call (match_operand 1 "memory_operand")
+			 (match_operand 2 "general_operand")))
+	      (return)
+	      (use (match_operand 3 "" ""))])]
+  ""
+  {
+    arc64_expand_call (operands[0], operands[1], true);
+    DONE;
+  }
+)
+
+(define_insn "*sibcall_insn"
+ [(call (mem:DI (match_operand:DI 0 "arc64_call_address_operand"
+				  "Cbp,Cbr,!Rcd,Rsc,Cal"))
+	(match_operand 1 "" ""))
+  (return)
+  (use (match_operand 2 "" ""))]
+  "SIBLIG_CALL_P (insn)"
+  "@
+   b%!%*\\t%P0
+   b%!%*\\t%P0
+   j%!%*\\t[%0]
+   j%!%*\\t[%0]
+   j%!\\t%P0"
+  [(set_attr "type" "call,call,call,call,call_no_delay_slot")
+   (set_attr "predicable" "yes,no,no,yes,yes")
+   (set_attr "iscompact" "false,false,maybe,false,false")]
+)
+
+(define_insn "*sibcall_value_insn"
+ [(set (match_operand 0 "" "")
+       (call (mem:DI (match_operand:DI 1 "call_address_operand"
+				       "Cbp,Cbr,!Rcd,Rsc,Cal"))
+	     (match_operand 2 "" "")))
+  (return)
+  (use (match_operand 3 "" ""))]
+  "SIBLING_CALL_P (insn)"
+  "@
+   b%!%*\\t%P1
+   b%!%*\\t%P1
+   j%!%*\\t[%1]
+   j%!%*\\t[%1]
+   j%!\\t%P1"
+  [(set_attr "type" "call,call,call,call,call_no_delay_slot")
+   (set_attr "predicable" "yes,no,no,yes,yes")
+   (set_attr "iscompact" "false,false,maybe,false,false")]
+)
+
+;; Call subroutine returning any type.
+
+;FIXME!;(define_expand "untyped_call"
+;FIXME!;  [(parallel [(call (match_operand 0 "")
+;FIXME!;		    (const_int 0))
+;FIXME!;	      (match_operand 1 "")
+;FIXME!;	      (match_operand 2 "")])]
