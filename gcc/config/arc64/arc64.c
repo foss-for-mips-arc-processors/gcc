@@ -43,14 +43,14 @@
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
   {
-   AC16_REGS, AC16_REGS, AC16_REGS, AC16_REGS,
-   HI_REGS, HI_REGS, HI_REGS, HI_REGS,
-   HI_REGS, HI_REGS, HI_REGS, HI_REGS,
-   AC16_REGS, AC16_REGS, AC16_REGS, AC16_REGS,
-   HI_REGS, HI_REGS, HI_REGS, HI_REGS,
-   HI_REGS, HI_REGS, HI_REGS, HI_REGS,
-   HI_REGS, HI_REGS, HI_REGS, HI_REGS,
-   NO_REGS, NO_REGS, HI_REGS, NO_REGS,
+   AC16_REGS,    AC16_REGS,    AC16_REGS,    AC16_REGS,
+   GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+   GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+   AC16_REGS,    AC16_REGS,    AC16_REGS,    AC16_REGS,
+   GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+   GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+   GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+   NO_REGS,      NO_REGS,      GENERAL_REGS, NO_REGS,
 
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
@@ -153,6 +153,131 @@ arc64_legitimate_constant_p (machine_mode mode, rtx x)
 {
   if (CONST_INT_P (x))
     return true;
+  return false;
+}
+
+
+/* Prepare operands for move in MODE.  Return true iff the move has
+   been emitted.  */
+
+bool
+arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
+{
+  return false; /* FIXME: Place holder for move expand ops.  */
+}
+
+/* Split a mov with long immediate instruction into smaller, size
+   friendly instructions.  */
+
+bool
+arc64_split_mov_const (rtx *operands)
+{
+  unsigned HOST_WIDE_INT ival;
+  HOST_WIDE_INT shimm;
+  machine_mode mode = GET_MODE (operands[0]);
+
+  /* Manage a constant.  */
+  gcc_assert (CONST_INT_P (operands[1]));
+  ival = INTVAL (operands[1]) & 0xffffffff;
+
+  if (SIGNED_INT12 (ival))
+    return false;
+
+  /* 1. Check if we can just rotate limm by 8 but using ROR8.  */
+  if (TARGET_BARREL_SHIFTER && ((ival & ~0x3f000000) == 0))
+    {
+      shimm = (ival >> 24) & 0x3f;
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_ROTATERT (mode, GEN_INT (shimm),
+						GEN_INT (8))));
+      return true;
+    }
+  /* 2. Check if we can just shift by 8 to fit into the u6 of LSL8.  */
+  if (TARGET_BARREL_SHIFTER && ((ival & ~0x3f00) == 0))
+    {
+      shimm = (ival >> 8) & 0x3f;
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_ASHIFT (mode, GEN_INT (shimm),
+					      GEN_INT (8))));
+      return true;
+    }
+
+  /* 3. Check if we can just shift by 16 to fit into the u6 of LSL16.  */
+  if (TARGET_BARREL_SHIFTER && ((ival & ~0x3f0000) == 0))
+    {
+      shimm = (ival >> 16) & 0x3f;
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_ASHIFT (mode, GEN_INT (shimm),
+					      GEN_INT (16))));
+      return true;
+    }
+
+  /* 4. Check if we can do something like mov_s h,u8 / asl_s ra,h,#nb.  */
+  if (((ival >> (__builtin_ffs (ival) - 1)) & 0xffffff00) == 0
+      && TARGET_BARREL_SHIFTER)
+    {
+      HOST_WIDE_INT shift = __builtin_ffs (ival);
+      shimm = (ival >> (shift - 1)) & 0xff;
+      emit_insn (gen_rtx_SET (operands[0], GEN_INT (shimm)));
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_ASHIFT (mode, operands[0],
+					      GEN_INT (shift - 1))));
+      return true;
+    }
+
+  /* 5. Check if we can just rotate the limm, useful when no barrel
+     shifter is present.  */
+  if ((ival & ~0x8000001f) == 0)
+    {
+      shimm = (ival * 2 + 1) & 0x3f;
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_ROTATERT (mode, GEN_INT (shimm),
+						const1_rtx)));
+      return true;
+    }
+
+  /* 6. Check if we can do something with bmask.  */
+  if (IS_POWEROF2_P (ival + 1))
+    {
+      emit_insn (gen_rtx_SET (operands[0], constm1_rtx));
+      emit_insn (gen_rtx_SET (operands[0],
+			      gen_rtx_AND (mode, operands[0],
+					   GEN_INT (ival))));
+      return true;
+    }
+
+  return false;
+}
+
+/* Helper to check Cax constraint.  */
+
+bool
+arc64_check_mov_const (HOST_WIDE_INT ival)
+{
+  ival = ival & 0xffffffff;
+
+  if ((ival & ~0x8000001f) == 0)
+    return true;
+
+  if (IS_POWEROF2_P (ival + 1))
+    return true;
+
+  /* The next rules requires a barrel shifter.  */
+  if (!TARGET_BARREL_SHIFTER)
+    return false;
+
+  if (((ival >> (__builtin_ffs (ival) - 1)) & 0xffffff00) == 0)
+    return true;
+
+  if ((ival & ~0x3f00) == 0)
+    return true;
+
+  if ((ival & ~0x3f0000) == 0)
+    return true;
+
+  if ((ival & ~0x3f000000) == 0)
+    return true;
+
   return false;
 }
 
