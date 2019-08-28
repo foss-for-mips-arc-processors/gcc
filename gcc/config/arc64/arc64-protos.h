@@ -1,11 +1,18 @@
 #ifndef GCC_ARC64_PROTOS_H
 #define GCC_ARC64_PROTOS_H
 
-int arc64_epilogue_uses (int);
-poly_int64 arc64_initial_elimination_offset (unsigned, unsigned);
-void arc64_init_expanders (void);
-machine_mode arc64_select_cc_mode (RTX_CODE, rtx, rtx);
-rtx arc64_return_addr (int, rtx);
-poly_uint64 arc64_regmode_natural_size (machine_mode);
+extern int arc64_epilogue_uses (int);
+extern HOST_WIDE_INT arc64_initial_elimination_offset (unsigned, unsigned);
+extern void arc64_init_expanders (void);
+extern machine_mode arc64_select_cc_mode (RTX_CODE, rtx, rtx);
+extern rtx arc64_return_addr (int, rtx);
+extern HOST_WIDE_INT arc64_regmode_natural_size (machine_mode);
+
+#ifdef RTX_CODE
+
+extern bool arc64_check_mov_const (HOST_WIDE_INT );
+extern bool arc64_split_mov_const (rtx *);
+
+#endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */
