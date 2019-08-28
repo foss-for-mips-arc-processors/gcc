@@ -366,12 +366,15 @@ amdgcn*)
 am33_2.0-*-linux*)
 	cpu_type=mn10300
 	;;
-arc*-*-*)
+arc-*-* | arc[eb]*-*-*)
 	cpu_type=arc
 	c_target_objs="arc-c.o"
 	cxx_target_objs="arc-c.o"
 	extra_options="${extra_options} arc/arc-tables.opt g.opt"
 	extra_headers="arc-simd.h"
+	;;
+arc64-*-*)
+	cpu_type=arc64
 	;;
 arm*-*-*)
 	cpu_type=arm
@@ -1301,7 +1304,7 @@ alpha*-dec-*vms*)
 	tm_file="${tm_file} vms/vms.h alpha/vms.h"
 	tmake_file="${tmake_file} alpha/t-vms alpha/t-alpha"
 	;;
-arc*-*-elf*)
+arc-*-elf* | arc[eb]*-*-*)
 	tm_file="arc/arc-arch.h elfos.h newlib-stdint.h arc/elf.h ${tm_file}"
 	tmake_file="arc/t-multilib arc/t-arc"
 	extra_gcc_objs="driver-arc.o"
@@ -1322,7 +1325,7 @@ arc*-*-elf*)
 	big*)	tm_file="arc/big.h ${tm_file}"
 	esac
 	;;
-arc*-*-linux*)
+arc-*-linux* | arc[eb]*-*linux*)
 	tm_file="arc/arc-arch.h elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h arc/linux.h ${tm_file}"
 	tmake_file="${tmake_file} arc/t-multilib-linux arc/t-arc"
 	extra_gcc_objs="driver-arc.o"
@@ -1345,6 +1348,9 @@ arc*-*-linux*)
 	# Force .init_array support.  The configure script cannot always
 	# automatically detect that GAS supports it, yet we require it.
 	gcc_cv_initfini_array=yes
+	;;
+arc64-*-elf*)
+	tm_file="arc64/elf.h ${tm_file}"
 	;;
 arm-wrs-vxworks7*)
 	# We only support VxWorks 7 now on ARM, post SR600.  Pre SR600
