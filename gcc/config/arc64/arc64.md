@@ -76,8 +76,19 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
-;; Iterator for all integer modes.
+;; Iterator for QI and HI modes
+(define_mode_iterator SHORT [QI HI])
+
+;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
+
+;; -------------------------------------------------------------------
+;; Instruction types and attributes
+;; -------------------------------------------------------------------
+
+;; -------------------------------------------------------------------
+;; Pipeline descriptions and scheduling
+;; -------------------------------------------------------------------
 
 ;; -------------------------------------------------------------------
 ;; Moves
@@ -318,3 +329,231 @@
 ;FIXME!;		    (const_int 0))
 ;FIXME!;	      (match_operand 1 "")
 ;FIXME!;	      (match_operand 2 "")])]
+
+;; -------------------------------------------------------------------
+;; Jumps and other miscellaneous insns
+;; -------------------------------------------------------------------
+
+(define_insn "indirect_jump"
+  [(set (pc) (match_operand:DI 0 "nonmemory_operand" "L,I,Cal,q,r"))]
+  ""
+  "@
+   j%!%*\\t%0
+   j%!%*\\t%0
+   j%!%*\\t%0
+   j%!%*\\t[%0]
+   j%!%*\\t[%0]"
+  [(set_attr "type" "jump")]
+)
+
+(define_insn "jump"
+  [(set (pc) (label_ref (match_operand 0 "" "")))]
+  ""
+  "b%!%*\\t%^%l0"
+  [(set_attr "type" "branch")]
+)
+
+(define_expand "cbranch<mode>4"
+  [(set (pc) (if_then_else (match_operator 0 "arc64_comparison_operator"
+			    [(match_operand:GPI 1 "register_operand")
+			     (match_operand:GPI 2 "arc64_plus_operand")])
+			   (label_ref (match_operand 3 "" ""))
+			   (pc)))]
+  ""
+  "
+  operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
+					 operands[2]);
+  operands[2] = const0_rtx;
+  "
+)
+
+(define_expand "prologue"
+  [(clobber (const_int 0))]
+  ""
+  "
+  arc64_expand_prologue ();
+  DONE;
+  "
+)
+
+(define_expand "epilogue"
+  [(clobber (const_int 0))]
+  ""
+  "
+  arc64_expand_epilogue (false);
+  DONE;
+  "
+)
+
+(define_expand "sibcall_epilogue"
+  [(clobber (const_int 0))]
+  ""
+  "
+  arc64_expand_epilogue (true);
+  DONE;
+  "
+)
+
+(define_expand "return"
+  [(return)]
+  "arc64_can_use_return_insn ()"
+  "")
+
+(define_insn "simple_return"
+  [(simple_return)]
+  "arc64_use_simple_return_insn_p ()"
+  "j%!%*\\t[blink]"
+  [(set_attr "type" "return")
+   (set_attr "cond" "canuse")
+   (set_attr "iscompact" "maybe")
+   (set_attr "length" "*")])
+
+;; -------------------------------------------------------------------
+;; Sign/Zero extension
+;; -------------------------------------------------------------------
+
+(define_expand "<optab>sidi2"
+  [(set (match_operand:DI 0 "register_operand")
+	(ANY_EXTEND:DI (match_operand:SI 1 "nonimmediate_operand")))]
+  ""
+)
+
+(define_expand "<ANY_EXTEND:optab><SHORT:mode><GPI:mode>2"
+  [(set (match_operand:GPI 0 "register_operand")
+        (ANY_EXTEND:GPI (match_operand:SHORT 1 "nonimmediate_operand")))]
+  ""
+)
+
+(define_expand "<optab>qihi2"
+  [(set (match_operand:HI 0 "register_operand")
+        (ANY_EXTEND:HI (match_operand:QI 1 "nonimmediate_operand")))]
+  ""
+)
+
+;; -------------------------------------------------------------------
+;; Simple arithmetic
+;; -------------------------------------------------------------------
+
+(define_expand "add<mode>3"
+  [(set
+    (match_operand:GPI 0 "register_operand")
+    (plus:GPI (match_operand:GPI 1 "register_operand")
+	      (match_operand:GPI 2 "arc64_pluslong_or_int_operand")))]
+  ""
+  )
+
+(define_expand "addv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "arc64_plus_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  )
+
+(define_expand "uaddv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "register_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+)
+
+(define_expand "subv<GPI:mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "arc64_plus_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  )
+
+(define_expand "negv<GPI:mode>3"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (label_ref (match_operand 2 "" ""))]
+  ""
+  )
+
+(define_expand "usubv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "arc64_reg_or_zero")
+   (match_operand:GPI 2 "arc64_reg_or_zero")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  )
+
+(define_expand "abs<mode>2"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")]
+  ""
+  )
+
+;; -------------------------------------------------------------------
+;; Comparison insns
+;; -------------------------------------------------------------------
+
+
+;; -------------------------------------------------------------------
+;; Store-flag and conditional select insns
+;; -------------------------------------------------------------------
+
+(define_expand "cstore<mode>4"
+  [(set (match_operand:SI 0 "register_operand")
+	(match_operator:SI 1 "arc64_comparison_operator"
+	 [(match_operand:GPI 2 "register_operand")
+	  (match_operand:GPI 3 "arc64_plus_operand")]))]
+  ""
+  )
+
+(define_expand "mov<mode>cc"
+  [(set (match_operand:ALLI 0 "register_operand")
+	(if_then_else:ALLI (match_operand 1 "arc64_comparison_operator")
+			   (match_operand:ALLI 2 "register_operand")
+			   (match_operand:ALLI 3 "register_operand")))]
+  ""
+  )
+
+;; -------------------------------------------------------------------
+;; Logical operations
+;; -------------------------------------------------------------------
+
+
+;; -------------------------------------------------------------------
+;; Shifts
+;; -------------------------------------------------------------------
+
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
+		    (match_operand:QI 2 "arc64_reg_or_imm")))]
+  ""
+)
+
+(define_expand "ashl<mode>3"
+  [(set (match_operand:SHORT 0 "register_operand")
+	(ashift:SHORT (match_operand:SHORT 1 "register_operand")
+		      (match_operand:QI 2 "const_int_operand")))]
+  ""
+)
+
+(define_expand "rotr<mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(rotatert:GPI (match_operand:GPI 1 "register_operand")
+		      (match_operand:QI 2 "arc64_reg_or_imm")))]
+  ""
+)
+
+;; -------------------------------------------------------------------
+;; Bitfields
+;; -------------------------------------------------------------------
+
+;; -------------------------------------------------------------------
+;; Floating-point intrinsics
+;; -------------------------------------------------------------------
+
+;; -------------------------------------------------------------------
+;; Floating-point conversions
+;; -------------------------------------------------------------------
+
+;; -------------------------------------------------------------------
+;; Floating-point arithmetic
+;; -------------------------------------------------------------------
