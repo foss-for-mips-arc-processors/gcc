@@ -281,6 +281,46 @@ arc64_check_mov_const (HOST_WIDE_INT ival)
   return false;
 }
 
+/* This function is used by the call expanders of the machine description.
+   RESULT is the register in which the result is returned.  It's NULL for
+   "call" and "sibcall".
+   MEM is the location of the function call.
+   SIBCALL indicates whether this function call is normal call or sibling call.
+   It will generate different pattern accordingly.  */
+
+void
+arc64_expand_call (rtx result, rtx mem, bool sibcall)
+{
+  rtx call, callee, tmp;
+  machine_mode mode;
+
+  gcc_assert (MEM_P (mem));
+  callee = XEXP (mem, 0);
+  mode = GET_MODE (callee);
+  gcc_assert (mode == Pmode);
+
+  /* Decide if we should generate indirect calls by loading the
+     address of the callee into a register before performing the
+     branch-and-link.  */
+  if (arc64_is_long_call_p (callee) && !REG_P (callee))
+    XEXP (mem, 0) = force_reg (mode, callee);
+
+  call = gen_rtx_call (VOIDmode, mem, cont0_rtx);
+
+  if (result != NULL_RTX)
+    call = gen_rtx_SET (result, call);
+
+  if (sibcall)
+    tmp = ret_rtx;
+  else
+    tmp = gen_rtx_CLOBBER (VOIDmode, gen_rtx_REG (Pmode, BLINK_REGNUM));
+
+  vec = gen_rtvec (2, call, tmp);
+  call = gen_rtx_PARALLEL (VOIDmode, vec);
+
+  emit_call_insn (call);
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
