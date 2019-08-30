@@ -76,11 +76,14 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
+(define_code_attr GPIsuffix [(SI "") (DI "l")])
+
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
+
 
 ;; -------------------------------------------------------------------
 ;; Instruction types and attributes
@@ -314,37 +317,67 @@
 ;; -------------------------------------------------------------------
 
 (define_insn "indirect_jump"
-  [(set (pc) (match_operand:DI 0 "nonmemory_operand" "L,I,Cal,q,r"))]
+  [(set (pc) (match_operand:DI 0 "register_operand" "q,r"))]
   ""
   "@
-   j%!%*\\t%0
-   j%!%*\\t%0
-   j%!%*\\t%0
-   j%!%*\\t[%0]
-   j%!%*\\t[%0]"
-  [(set_attr "type" "jump")]
+   j%!\\t[%0]
+   j%!\\t[%0]"
+  [(set_attr "type" "jump")
+   (set_attr "predicable" "no,yes")
+   (set_attr "iscompact" "yes,no")]
 )
 
 (define_insn "jump"
   [(set (pc) (label_ref (match_operand 0 "" "")))]
   ""
-  "b%!%*\\t%^%l0"
-  [(set_attr "type" "branch")]
+  "b%!\\t%l0"
+  [(set_attr "type" "branch")
+   (set (attr "length")
+	(if_then_else
+	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
+	      (le (minus (match_dup 0) (pc)) (const_int 506)))
+	 (const_int 4)
+	 (const_int 2)))]
 )
 
 (define_expand "cbranch<mode>4"
-  [(set (pc) (if_then_else (match_operator 0 "arc64_comparison_operator"
-			    [(match_operand:GPI 1 "register_operand")
-			     (match_operand:GPI 2 "arc64_plus_operand")])
-			   (label_ref (match_operand 3 "" ""))
-			   (pc)))]
+  [(set (pc) (if_then_else
+	      (match_operator 0 "ordered_comparison_operator"
+			      [(match_operand:GPI 1 "nonmemory_operand")
+			       (match_operand:GPI 2 "nonmemory_operand")])
+	      (label_ref (match_operand 3 "" ""))
+	      (pc)))]
   ""
   "
   operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
 					 operands[2]);
   operands[2] = const0_rtx;
   "
-)
+  )
+
+(define_insn "condjump"
+  [(set (pc) (if_then_else
+	      (match_operator 0 "ordered_comparison_operator"
+			      [(match_operand 1 "cc_register" "")
+			       (const_int 0)])
+	      (label_ref (match_operand 2 "" ""))
+	      (pc)))]
+  ""
+  "b%m0%!\\t%l2"
+  [(set_attr "type" "branchcc")
+   (set_attr "compact" "maybe")
+   (set (attr "length")
+	[(cond
+	  [(and (match_operand 1 "equality_comparison_operator" "")
+		(and (ge (minus (match_dup 2) (pc)) (const_int -512))
+		     (le (minus (match_dup 2) (pc)) (const_int 506))))
+	   (const_int 2)
+
+	   (and (ge (minus (match_dup 2) (pc)) (const_int -62))
+		(le (minus (match_dup 2) (pc)) (const_int 60)))
+	   (const_int 2)]
+	  (const_int 4))])]
+  )
 
 (define_expand "prologue"
   [(clobber (const_int 0))]
@@ -469,6 +502,25 @@
 ;; -------------------------------------------------------------------
 ;; Comparison insns
 ;; -------------------------------------------------------------------
+
+(define_insn "cmp<mode>"
+  [(set (reg:CC CC_REGNUM)
+	(compare:CC (match_operand:GPI 0 "nonmemory_operand" "r,    r,    r,U06S0,S12S0,i,r")
+		    (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,S12S0,    r,    r,r,i")))]
+  "register_operand (operands[0])
+   || reister_operand (operands[1])"
+  "@
+   cmp<GPIsuffix>%?\\t%0,%1
+   cmp<GPIsuffix>%?\\t%0,%1
+   cmp<GPIsuffix>%?\\t%0,%1
+   rcmp<GPIsuffix>%?\\t%1,%0
+   rcmp<GPIsuffix>%?\\t%1,%0
+   rcmp<GPIsuffix>%?\\t%1,%0
+   cmp<GPIsuffix>%?\\t%0,%1"
+  [(set_attr "type" "compare")
+   (set_attr "iscompact" "false")
+   (set_attr "predicable" "yes,yes,no,yes,no,no,no")
+   (set_attr "length" "*,*,*,*,*,8,8")])
 
 
 ;; -------------------------------------------------------------------
