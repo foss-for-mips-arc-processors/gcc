@@ -79,12 +79,15 @@
   "@internal
   is a symbol reference allowed by the BL instruction"
   (and (match_code "synmol_ref")
-       (match_test "!arc64_is_long_call_p"
+       (match_test "!arc64_is_long_call_p")))
+
+;---------------------------------------------------------
+
 
 (define_constraint "U06S0" "@internal
-  A 6-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 6-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT6 (ival)")))
 
 (define_constraint "U06S1" "@internal
@@ -106,9 +109,9 @@
     (match_test "UNSIGNED_INT9_SHIFTED (ival,3)")))
 
 (define_constraint "S12S0" "@internal
-  A 12-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 12-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT12 (ival)")))
 
 (define_constraint "S12S1" "@internal
@@ -130,91 +133,91 @@
     (match_test "SIGNED_INT15_SHIFTED (ival,3)")))
 
 (define_constraint "S03S0" "@internal
-  A 3-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 3-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT3 (ival)")))
 
 (define_constraint "U07S0" "@internal
-  A 7-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 7-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT7 (ival)")))
 
 (define_constraint "U03S0" "@internal
-  A 3-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 3-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT3 (ival)")))
 
 (define_constraint "S11S0" "@internal
-  A 11-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 11-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT11 (ival)")))
 
 (define_constraint "U05S0" "@internal
-  A 5-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 5-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT5 (ival)")))
 
 (define_constraint "S09S0" "@internal
-  A 9-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 9-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT9 (ival)")))
 
 (define_constraint "S21S0" "@internal
-  A 21-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 21-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT21 (ival)")))
 
 (define_constraint "S25S0" "@internal
-  A 25-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 25-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT25 (ival)")))
 
 (define_constraint "S10S0" "@internal
-  A 10-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 10-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT10 (ival)")))
 
 (define_constraint "S07S0" "@internal
-  A 7-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 7-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT7 (ival)")))
 
 (define_constraint "S13S0" "@internal
-  A 13-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 13-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT13 (ival)")))
 
 (define_constraint "S08S0" "@internal
-  A 8-bit signed integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 8-bit signed integer constant"
+  (and
+    (match_code "const_int")
     (match_test "SIGNED_INT8 (ival)")))
 
 (define_constraint "U10S0" "@internal
-  A 10-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 10-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT10 (ival)")))
 
 (define_constraint "U08S0" "@internal
-  A 8-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 8-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT8 (ival)")))
 
 (define_constraint "U09S0" "@internal
-  A 9-bit unsigned integer constant" 
-  (and 
-    (match_code "const_int") 
+  A 9-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
     (match_test "UNSIGNED_INT9 (ival)")))
