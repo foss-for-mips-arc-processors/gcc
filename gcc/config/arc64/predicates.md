@@ -32,3 +32,19 @@
 ; to be used for br{eq/ne}_s instructions.
 (define_predicate "equality_comparison_operator"
   (match_code "eq, ne"))
+
+(define_special_predicate "cc_register"
+  (match_code "reg")
+{
+  if (mode == VOIDmode)
+    {
+      mode = GET_MODE (op);
+      if (GET_MODE_CLASS (mode) != MODE_CC)
+	return FALSE;
+    }
+
+  if (mode == GET_MODE (op) && GET_CODE (op) == REG && REGNO (op) == CC_REGNUM)
+    return TRUE;
+
+  return FALSE;
+})

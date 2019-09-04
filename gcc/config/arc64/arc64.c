@@ -98,7 +98,7 @@ void arc64_init_expanders (void)
    COMPARE, return the mode to be used for the comparison.  */
 
 machine_mode
-arc64_select_cc_mode (RTX_CODE op, rtx x, rtx y)
+arc64_select_cc_mode (enum rtx_code op, rtx x, rtx y)
 {
   return CC_Cmode;
 }
@@ -331,6 +331,14 @@ arc64_can_use_return_insn_p (void)
   return (reload_completed); //FIXME!: && cfun->machine->frame.frame_size == 0);
 }
 
+/* This is how to output a definition of an internal numbered label where
+   PREFIX is the class of label and NUM is the number within the class.  */
+
+static void arc_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
+{
+  default_internal_label (stream, prefix, labelno);
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
@@ -354,6 +362,9 @@ arc64_can_use_return_insn_p (void)
 
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P arc64_legitimate_constant_p
+
+#undef TARGET_ASM_INTERNAL_LABEL
+#define TARGET_ASM_INTERNAL_LABEL arc64_internal_label
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
