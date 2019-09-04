@@ -12,6 +12,7 @@ extern HOST_WIDE_INT arc64_regmode_natural_size (machine_mode);
 
 extern bool arc64_check_mov_const (HOST_WIDE_INT );
 extern bool arc64_split_mov_const (rtx *);
+extern bool arc64_can_use_return_insn_p (void);
 
 #endif /* RTX_CODE */
 
