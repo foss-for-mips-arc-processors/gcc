@@ -35,51 +35,50 @@
   "@internal
    Register usable in short move instructions: @code{r0}-@code{r31}"
   (and (match_code "reg")
-       (match_test "REGNO (op) < R32_REGNO")))
+       (match_test "REGNO (op) < R32_REGNUM")))
 
 ; Usc constant is only used for storing long constants, hence we can
 ; have only [b,s9], and [b] types of addresses.
-(define_memory_constraint "Usc"
+(define_memory_constraint "Ucnst"
   "@internal
    A valid memory operand for storing constants"
   (and (match_code "mem")
        (match_test "!CONSTANT_P (XEXP (op,0))")))
 
-(define_constraint "Us<"
-  "@internal
-   Stack pre-decrement"
-  (and (match_code "mem")
-       (match_test "GET_CODE (XEXP (op, 0)) == PRE_DEC")
-       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
-       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
-
-(define_constraint "Us>"
-  "@internal
-   Stack post-increment"
-  (and (match_code "mem")
-       (match_test "GET_CODE (XEXP (op, 0)) == POST_INC")
-       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
-       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
-
-(define_constraint "Ucm"
-  "@internal
-  cmem access"
-  (and (match_code "mem")
-       (match_test "TARGET_NPS_CMEM && cmem_address (XEXP (op, 0), VOIDmode)")))
-
-;; Internal immediate constraint used to split move instructions.
-(define_constraint "Cax"
-  "@internal
-  special const_int pattern used to split move insns"
-  (and (match_code "const_int")
-       (match_test "optimize_size")
-       (match_test "arc_check_mov_const (ival)")))
+;(define_constraint "Us<"
+;  "@internal
+;   Stack pre-decrement"
+;  (and (match_code "mem")
+;       (match_test "GET_CODE (XEXP (op, 0)) == PRE_DEC")
+;       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
+;       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
+;
+;(define_constraint "Us>"
+;  "@internal
+;   Stack post-increment"
+;  (and (match_code "mem")
+;       (match_test "GET_CODE (XEXP (op, 0)) == POST_INC")
+;       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
+;       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
+;
+;(define_constraint "Ucm"
+;  "@internal
+;  cmem access"
+;  (and (match_code "mem")
+;       (match_test "TARGET_NPS_CMEM && cmem_address (XEXP (op, 0), VOIDmode)")))
+;
+;;; Internal immediate constraint used to split move instructions.
+;(define_constraint "Cax"
+;  "@internal
+;  special const_int pattern used to split move insns"
+;  (and (match_code "const_int")
+;       (match_test "optimize_size")
+;       (match_test "arc_check_mov_const (ival)")))
 
 (define_constraint "BLsym"
   "@internal
   is a symbol reference allowed by the BL instruction"
-  (and (match_code "synmol_ref")
-       (match_test "!arc64_is_long_call_p")))
+  (match_code "symbol_ref"))
 
 ;---------------------------------------------------------
 
