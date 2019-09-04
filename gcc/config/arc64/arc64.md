@@ -147,7 +147,7 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "move, jl, bl, jump, branch, branchcc,
-return, compare"
+return, compare, nop"
   (const_string "move"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -169,8 +169,8 @@ return, compare"
 	(match_operand:ALLI 1 "general_operand"))]
   ""
   "
-  if (arc64_prepare_move_operands (opernads[0], operands[1], <MODE>mode))
-    DONE;
+//  if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+//    DONE;
   "
   )
 
@@ -281,8 +281,8 @@ return, compare"
 	     (clobber (reg:DI BLINK_REGNUM))])]
   ""
   {
-   arc64_expand_call (NULL_RTX, operands[0], false);
-   DONE;
+//   arc64_expand_call (NULL_RTX, operands[0], false);
+//   DONE;
   }
 )
 
@@ -308,8 +308,8 @@ return, compare"
   ""
   "
   {
-    arc64_expand_call (operands[0], operands[1], false);
-    DONE;
+//    arc64_expand_call (operands[0], operands[1], false);
+//    DONE;
   }"
 )
 
@@ -335,8 +335,8 @@ return, compare"
 	      (use (match_operand 2 "" ""))])]
   ""
   {
-    arc64_expand_call (NULL_RTX, operands[0], true);
-    DONE;
+//    arc64_expand_call (NULL_RTX, operands[0], true);
+//    DONE;
   }
   )
 
@@ -348,8 +348,8 @@ return, compare"
 	      (use (match_operand 3 "" ""))])]
   ""
   {
-    arc64_expand_call (operands[0], operands[1], true);
-    DONE;
+//    arc64_expand_call (operands[0], operands[1], true);
+//    DONE;
   }
 )
 
@@ -368,7 +368,7 @@ return, compare"
 
 (define_insn "*sibcall_value_insn"
  [(set (match_operand 0 "" "")
-       (call (mem:DI (match_operand:DI 1 "call_insn_operand" "Sbreg,BLsym"))
+       (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
 	     (match_operand 2 "" "")))
   (return)]
   "SIBLING_CALL_P (insn)"
@@ -417,9 +417,9 @@ return, compare"
 	      (pc)))]
   ""
   "
-  operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
-					 operands[2]);
-  operands[2] = const0_rtx;
+//  operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
+//					 operands[2]);
+//  operands[2] = const0_rtx;
   "
   )
 
@@ -487,6 +487,13 @@ return, compare"
   [(set_attr "type" "return")
    (set_attr "iscompact" "maybe")
    (set_attr "length" "*")])
+
+(define_insn "nop"
+  [(const_int 0)]
+  ""
+  "nop_s"
+  [(set_attr "type" "nop")
+   (set_attr "length" "2")])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
