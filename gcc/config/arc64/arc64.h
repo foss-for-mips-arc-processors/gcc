@@ -4,7 +4,26 @@
 /* Bits are always numbered from the LSBit.  */
 #define BITS_BIG_ENDIAN 0
 
+/* Define this if most significant byte of a word is the lowest numbered.  */
+#define BYTES_BIG_ENDIAN 0
+
+/* Define this if most significant word of a multiword number is the lowest
+   numbered.  */
+#define WORDS_BIG_ENDIAN 0
+
 #define UNITS_PER_WORD  8
+
+
+/* Maximum number of registers that can appear in a valid memory address.  */
+/* The `ld' insn allows 2, but the `st' insn only allows 1.  */
+#define MAX_REGS_PER_ADDRESS 1
+
+/* The number of registers used for parameter passing.  Local to this file.  */
+#define MAX_ARC_PARM_REGS 8
+
+/* 1 if N is a possible register number for function argument passing.  */
+#define FUNCTION_ARG_REGNO_P(N) \
+((unsigned) (N) < MAX_ARC_PARM_REGS)
 
 /* Boundaries.  */
 #define PARM_BOUNDARY		64
@@ -34,7 +53,7 @@
 /* Similarly, make sure that objects on the stack are sensibly aligned.  */
 #define LOCAL_ALIGNMENT(EXP, ALIGN)				\
   ARC_EXPAND_ALIGNMENT (!flag_conserve_stack, EXP, ALIGN)
-#define STRICT_ALIGNMENT	TARGET_STRICT_ALIGN
+#define STRICT_ALIGNMENT	1
 
 /* Layout of Source Language Data Types */
 #define SHORT_TYPE_SIZE         16
@@ -279,6 +298,12 @@ enum reg_class
    determine where the next arg should go.  */
 #define CUMULATIVE_ARGS int
 
+/* Initialize a variable CUM of type CUMULATIVE_ARGS
+   for a call to a function whose data type is FNTYPE.
+   For a library call, FNTYPE is 0.  */
+#define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,INDIRECT,N_NAMED_ARGS) \
+  ((CUM) = 0)
+
 /* Maximum bytes moved by a single instruction (load/store pair).  */
 #define MOVE_MAX (UNITS_PER_WORD * 2)
 
@@ -288,7 +313,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #define SIGNED(X,V) ((unsigned) ((X) + (1 << V)) < (1 << (V + 1)))
 #define UNSIGNED(X,V) ((unsigned) (X) < (1 << V))
-#define VERIFY_SHIFT(X,S) (X & ((1 << S) - 1) == 0)
+#define VERIFY_SHIFT(X,S) ((X & ((1 << S) - 1)) == 0)
 
 #define UNSIGNED_INT3(X) (UNSIGNED(X,3))
 #define UNSIGNED_INT5(X) (UNSIGNED(X,5))
@@ -300,22 +325,108 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define UNSIGNED_INT12(X) (UNSIGNED(X,12))
 #define UNSIGNED_INT16(X) (UNSIGNED(X,16))
 
-#define SIGNED_INT8(X) (SIGNED(X,8)
-#define SIGNED_INT9(X) (SIGNED(X,9)
-#define SIGNED_INT10(X) (SIGNED(X,10)
-#define SIGNED_INT11(X) (SIGNED(X,11)
-#define SIGNED_INT12(X) (SIGNED(X,12)
-#define SIGNED_INT13(X) (SIGNED(X,13)
-#define SIGNED_INT16(X) (SIGNED(X,16)
-#define SIGNED_INT21(X) (SIGNED(X,21)
-#define SIGNED_INT25(X) (SIGNED(X,25)
+#define SIGNED_INT3(X) (SIGNED(X,3))
+#define SIGNED_INT7(X) (SIGNED(X,7))
+#define SIGNED_INT8(X) (SIGNED(X,8))
+#define SIGNED_INT9(X) (SIGNED(X,9))
+#define SIGNED_INT10(X) (SIGNED(X,10))
+#define SIGNED_INT11(X) (SIGNED(X,11))
+#define SIGNED_INT12(X) (SIGNED(X,12))
+#define SIGNED_INT13(X) (SIGNED(X,13))
+#define SIGNED_INT16(X) (SIGNED(X,16))
+#define SIGNED_INT21(X) (SIGNED(X,21))
+#define SIGNED_INT25(X) (SIGNED(X,25))
 
-#define UNSIGNED_INT7_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
-#define UNSIGNED_INT8_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
-#define UNSIGNED_INT9_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
+#define UNSIGNED_INT7_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S))
+#define UNSIGNED_INT8_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S))
+#define UNSIGNED_INT9_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S))
 
-#define SIGNED_INT13_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
-#define SIGNED_INT14_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
-#define SIGNED_INT15_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
+#define SIGNED_INT13_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S))
+#define SIGNED_INT14_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S))
+#define SIGNED_INT15_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S))
+
+
+/* These assume that REGNO is a hard or pseudo reg number.
+   They give nonzero only if REGNO is a hard reg of the suitable class
+   or a pseudo reg currently allocated to a suitable hard reg.
+   Since they use reg_renumber, they are safe only once reg_renumber
+   has been allocated, which happens in local-alloc.c.  */
+#define REGNO_OK_FOR_BASE_P(REGNO)					\
+  ((REGNO) < SP_REGNUM							\
+   || ((REGNO) == AP_REGNUM)						\
+   || ((REGNO) == SFP_REGNUM))
+
+#define REGNO_OK_FOR_INDEX_P(REGNO) REGNO_OK_FOR_BASE_P(REGNO)
+
+
+  /* Length in units of the trampoline for entering a nested function.  */
+#define TRAMPOLINE_SIZE 16
+
+/* Alignment required for a trampoline in bits .  */
+/* For actual data alignment we just need 32, no more than the stack;
+   however, to reduce cache coherency issues, we want to make sure that
+   trampoline instructions always appear the same in any given cache line.  */
+#define TRAMPOLINE_ALIGNMENT 256
+
+/* Names to predefine in the preprocessor for this target machine.  */
+#define TARGET_CPU_CPP_BUILTINS() 
+
+/* This is how to output a reference to a user-level label named NAME.
+   `assemble_name' uses this.  */
+/* We work around a dwarfout.c deficiency by watching for labels from it and
+   not adding the '_' prefix.  There is a comment in
+   dwarfout.c that says it should be using ASM_OUTPUT_INTERNAL_LABEL.  */
+#define ASM_OUTPUT_LABELREF(FILE, NAME1) \
+do {							\
+  const char *NAME;					\
+  NAME = (*targetm.strip_name_encoding)(NAME1);		\
+  if ((NAME)[0] == '.' && (NAME)[1] == 'L')		\
+    fprintf (FILE, "%s", NAME);				\
+  else							\
+    {							\
+      if (!ASM_NAME_P (NAME1))				\
+	fprintf (FILE, "%s", user_label_prefix);	\
+      fprintf (FILE, "%s", NAME);			\
+    }							\
+} while (0)
+
+/* This is how to output the definition of a user-level label named NAME,
+   such as the label on a static function or variable NAME.  */
+#define ASM_OUTPUT_LABEL(FILE, NAME) \
+do { assemble_name (FILE, NAME); fputs (":\n", FILE); } while (0)
+
+#define ASM_NAME_P(NAME) ( NAME[0]=='*')
+
+/* This is how to output a reference to a user-level label named NAME.
+   `assemble_name' uses this.  */
+/* We work around a dwarfout.c deficiency by watching for labels from it and
+   not adding the '_' prefix.  There is a comment in
+   dwarfout.c that says it should be using ASM_OUTPUT_INTERNAL_LABEL.  */
+#define ASM_OUTPUT_LABELREF(FILE, NAME1) \
+do {							\
+  const char *NAME;					\
+  NAME = (*targetm.strip_name_encoding)(NAME1);		\
+  if ((NAME)[0] == '.' && (NAME)[1] == 'L')		\
+    fprintf (FILE, "%s", NAME);				\
+  else							\
+    {							\
+      if (!ASM_NAME_P (NAME1))				\
+	fprintf (FILE, "%s", user_label_prefix);	\
+      fprintf (FILE, "%s", NAME);			\
+    }							\
+} while (0)
+
+/* This is how to output a reference to a symbol_ref / label_ref as
+   (part of) an operand.  To disambiguate from register names like
+   a1 / a2 / status etc, symbols are preceded by '@'.  */
+#define ASM_OUTPUT_SYMBOL_REF(FILE,SYM) \
+  ASM_OUTPUT_LABEL_REF ((FILE), XSTR ((SYM), 0))
+#define ASM_OUTPUT_LABEL_REF(FILE,STR)			\
+  do							\
+    {							\
+      fputc ('@', file);				\
+      assemble_name ((FILE), (STR));			\
+    }							\
+  while (0)
 
 #endif /* GCC_ARC64_H */
