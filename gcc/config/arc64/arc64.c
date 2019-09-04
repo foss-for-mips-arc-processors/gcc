@@ -321,6 +321,16 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
   emit_call_insn (call);
 }
 
+/* Return nonzero if this function is known to have a null epilogue.
+   This allows the optimizer to omit jumps to jumps if no stack
+   was created.  */
+
+bool
+arc64_can_use_return_insn_p (void)
+{
+  return (reload_completed); //FIXME!: && cfun->machine->frame.frame_size == 0);
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP

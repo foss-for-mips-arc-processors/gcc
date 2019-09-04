@@ -286,4 +286,16 @@ enum reg_class
 extern const enum reg_class arc64_regno_to_regclass[];
 #endif
 
+#define UNSIGNED_INT3(X) ((unsigned) (X) < 0x8)
+#define UNSIGNED_INT5(X) ((unsigned) (X) < 0x20)
+#define UNSIGNED_INT6(X) ((unsigned) (X) < 0x40)
+#define UNSIGNED_INT7(X) ((unsigned) (X) < 0x80)
+#define UNSIGNED_INT8(X) ((unsigned) (X) < 0x100)
+#define UNSIGNED_INT12(X) ((unsigned) (X) < 0x800)
+#define UNSIGNED_INT16(X) ((unsigned) (X) < 0x10000)
+
+#define SIGNED_INT12(X) ((unsigned) ((X) + 0x800) < 0x1000)
+#define SIGNED_INT16(X) ((unsigned) ((X) + 0x8000) < 0x10000)
+
+
 #endif /* GCC_ARC64_H */
