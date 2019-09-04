@@ -28,3 +28,7 @@
 (define_predicate "arc64_call_insn_operand"
   (ior (match_code "symbol_ref")
        (match_operand 0 "register_operand")))
+
+; to be used for br{eq/ne}_s instructions.
+(define_predicate "equality_comparison_operator"
+  (match_code "eq, ne"))
