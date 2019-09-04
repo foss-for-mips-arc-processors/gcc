@@ -286,16 +286,36 @@ enum reg_class
 extern const enum reg_class arc64_regno_to_regclass[];
 #endif
 
-#define UNSIGNED_INT3(X) ((unsigned) (X) < 0x8)
-#define UNSIGNED_INT5(X) ((unsigned) (X) < 0x20)
-#define UNSIGNED_INT6(X) ((unsigned) (X) < 0x40)
-#define UNSIGNED_INT7(X) ((unsigned) (X) < 0x80)
-#define UNSIGNED_INT8(X) ((unsigned) (X) < 0x100)
-#define UNSIGNED_INT12(X) ((unsigned) (X) < 0x800)
-#define UNSIGNED_INT16(X) ((unsigned) (X) < 0x10000)
+#define SIGNED(X,V) ((unsigned) ((X) + (1 << V)) < (1 << (V + 1)))
+#define UNSIGNED(X,V) ((unsigned) (X) < (1 << V))
+#define VERIFY_SHIFT(X,S) (X & ((1 << S) - 1) == 0)
 
-#define SIGNED_INT12(X) ((unsigned) ((X) + 0x800) < 0x1000)
-#define SIGNED_INT16(X) ((unsigned) ((X) + 0x8000) < 0x10000)
+#define UNSIGNED_INT3(X) (UNSIGNED(X,3))
+#define UNSIGNED_INT5(X) (UNSIGNED(X,5))
+#define UNSIGNED_INT6(X) (UNSIGNED(X,6))
+#define UNSIGNED_INT7(X) (UNSIGNED(X,7))
+#define UNSIGNED_INT8(X) (UNSIGNED(X,8))
+#define UNSIGNED_INT9(X) (UNSIGNED(X,9))
+#define UNSIGNED_INT10(X) (UNSIGNED(X,10))
+#define UNSIGNED_INT12(X) (UNSIGNED(X,12))
+#define UNSIGNED_INT16(X) (UNSIGNED(X,16))
 
+#define SIGNED_INT8(X) (SIGNED(X,8)
+#define SIGNED_INT9(X) (SIGNED(X,9)
+#define SIGNED_INT10(X) (SIGNED(X,10)
+#define SIGNED_INT11(X) (SIGNED(X,11)
+#define SIGNED_INT12(X) (SIGNED(X,12)
+#define SIGNED_INT13(X) (SIGNED(X,13)
+#define SIGNED_INT16(X) (SIGNED(X,16)
+#define SIGNED_INT21(X) (SIGNED(X,21)
+#define SIGNED_INT25(X) (SIGNED(X,25)
+
+#define UNSIGNED_INT7_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
+#define UNSIGNED_INT8_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
+#define UNSIGNED_INT9_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S)
+
+#define SIGNED_INT13_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
+#define SIGNED_INT14_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
+#define SIGNED_INT15_SHIFTED (X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S)
 
 #endif /* GCC_ARC64_H */
