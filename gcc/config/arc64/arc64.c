@@ -168,7 +168,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 
 /* Split a mov with long immediate instruction into smaller, size
    friendly instructions.  */
-
+#if 0
 bool
 arc64_split_mov_const (rtx *operands)
 {
@@ -320,6 +320,7 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
 
   emit_call_insn (call);
 }
+#endif
 
 /* Return nonzero if this function is known to have a null epilogue.
    This allows the optimizer to omit jumps to jumps if no stack
@@ -334,7 +335,7 @@ arc64_can_use_return_insn_p (void)
 /* This is how to output a definition of an internal numbered label where
    PREFIX is the class of label and NUM is the number within the class.  */
 
-static void arc_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
+static void arc64_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
 {
   default_internal_label (stream, prefix, labelno);
 }
@@ -357,8 +358,8 @@ static void arc_internal_label (FILE *stream, const char *prefix, unsigned long 
 #undef TARGET_CAN_ELIMINATE
 #define TARGET_CAN_ELIMINATE arc64_can_eliminate
 
-#undef TARGET_LEGITIMATE_ADDRESS_P
-#define TARGET_LEGITIMATE_ADDRESS_P arc64_legitimate_address_p
+//#undef TARGET_LEGITIMATE_ADDRESS_P
+//#define TARGET_LEGITIMATE_ADDRESS_P arc64_legitimate_address_p
 
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P arc64_legitimate_constant_p
@@ -368,4 +369,4 @@ static void arc_internal_label (FILE *stream, const char *prefix, unsigned long 
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
-#include "gt-arc64.h"
+//#include "gt-arc64.h"

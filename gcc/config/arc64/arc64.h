@@ -429,4 +429,41 @@ do {							\
     }							\
   while (0)
 
+#define ASM_OUTPUT_ALIGN(FILE,LOG) \
+do { \
+  if ((LOG) != 0) fprintf (FILE, "\t.align %d\n", 1 << (LOG)); \
+} while (0)
+
+#define CASE_VECTOR_MODE Pmode
+
+/* Output to assembler file text saying following lines
+   may contain character constants, extra white space, comments, etc.  */
+#undef ASM_APP_ON
+#define ASM_APP_ON ""
+
+/* Output to assembler file text saying following lines
+   no longer contain unusual constructs.  */
+#undef ASM_APP_OFF
+#define ASM_APP_OFF ""
+
+/* All the work done in PROFILE_HOOK, but still required.  */
+#undef FUNCTION_PROFILER
+#define FUNCTION_PROFILER(STREAM, LABELNO) do { } while (0)
+
+#define NO_PROFILE_COUNTERS  1
+
+/*  ASM_OUTPUT_ALIGNED_DECL_LOCAL (STREAM, DECL, NAME, SIZE, ALIGNMENT)
+    Define this macro when you need to see the variable's decl in order to
+    chose what to output.  */
+#define ASM_OUTPUT_ALIGNED_DECL_LOCAL(STREAM, DECL, NAME, SIZE, ALIGN) \
+  do {									\
+    ASM_OUTPUT_ALIGN (STREAM, floor_log2 ((ALIGN) / BITS_PER_UNIT));	\
+    ASM_OUTPUT_TYPE_DIRECTIVE (STREAM, NAME, "object");			\
+    ASM_OUTPUT_SIZE_DIRECTIVE (STREAM, NAME, SIZE);			\
+    ASM_OUTPUT_LABEL (STREAM, NAME);					\
+  } while (0);
+
+/* Globalizing directive for a label.  */
+#define GLOBAL_ASM_OP "\t.global\t"
+
 #endif /* GCC_ARC64_H */
