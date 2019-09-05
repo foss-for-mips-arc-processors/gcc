@@ -1350,7 +1350,7 @@ arc-*-linux* | arc[eb]*-*linux*)
 	gcc_cv_initfini_array=yes
 	;;
 arc64-*-elf*)
-	tm_file="arc64/elf.h ${tm_file}"
+	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h ${tm_file}"
 	;;
 arm-wrs-vxworks7*)
 	# We only support VxWorks 7 now on ARM, post SR600.  Pre SR600
