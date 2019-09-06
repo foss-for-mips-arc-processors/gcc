@@ -92,6 +92,19 @@
 ;; This code iterator allows the shifts supported in arithmetic instructions
 (define_code_iterator ASHIFT [ashift ashiftrt lshiftrt])
 
+;; Iterates over the SETcc instructions.
+(define_code_iterator SETCC [eq ne gt lt ge le ltu geu])
+(define_code_attr cctab [(eq "eq")
+			 (ne "ne")
+			 (lt "lt")
+			 (ge "ge")
+			 (le "le")
+			 (gt "gt")
+			 (ltu "lo")
+			 (leu "NA")
+			 (geu "hs")
+			 (gtu "NA")])
+
 ;; -------------------------------------------------------------------
 ;; Code Attributes
 ;; -------------------------------------------------------------------
@@ -147,7 +160,7 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "move, jl, bl, jump, branch, branchcc,
-return, compare, nop"
+return, compare, nop, setcc"
   (const_string "move"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -169,8 +182,8 @@ return, compare, nop"
 	(match_operand:ALLI 1 "general_operand"))]
   ""
   "
-//  if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
-//    DONE;
+  if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
   "
   )
 
@@ -281,8 +294,8 @@ return, compare, nop"
 	     (clobber (reg:DI BLINK_REGNUM))])]
   ""
   {
-//   arc64_expand_call (NULL_RTX, operands[0], false);
-//   DONE;
+   arc64_expand_call (NULL_RTX, operands[0], false);
+   DONE;
   }
 )
 
@@ -308,8 +321,8 @@ return, compare, nop"
   ""
   "
   {
-//    arc64_expand_call (operands[0], operands[1], false);
-//    DONE;
+    arc64_expand_call (operands[0], operands[1], false);
+    DONE;
   }"
 )
 
@@ -335,8 +348,8 @@ return, compare, nop"
 	      (use (match_operand 2 "" ""))])]
   ""
   {
-//    arc64_expand_call (NULL_RTX, operands[0], true);
-//    DONE;
+    arc64_expand_call (NULL_RTX, operands[0], true);
+    DONE;
   }
   )
 
@@ -348,8 +361,8 @@ return, compare, nop"
 	      (use (match_operand 3 "" ""))])]
   ""
   {
-//    arc64_expand_call (operands[0], operands[1], true);
-//    DONE;
+    arc64_expand_call (operands[0], operands[1], true);
+    DONE;
   }
 )
 
@@ -417,9 +430,9 @@ return, compare, nop"
 	      (pc)))]
   ""
   "
-//  operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
-//					 operands[2]);
-//  operands[2] = const0_rtx;
+  operands[1] = arc64_gen_compare_reg (GET_CODE (operands[0]), operands[1],
+					 operands[2]);
+  operands[2] = const0_rtx;
   "
   )
 
@@ -434,19 +447,17 @@ return, compare, nop"
   "b%m0%!\\t%l2"
   [(set_attr "type" "branchcc")
    (set_attr "iscompact" "maybe")
-;   (set (attr "length")
-;	[(cond
-;	  [(and (match_operand 1 "equality_comparison_operator" "")
-;		(and (ge (minus (match_dup 2) (pc)) (const_int -512))
-;		     (le (minus (match_dup 2) (pc)) (const_int 506))))
-;	   (const_int 2)
-;
-;	   (and (ge (minus (match_dup 2) (pc)) (const_int -62))
-;		(le (minus (match_dup 2) (pc)) (const_int 60)))
-;	   (const_int 2)]
-					;	  (const_int 4))])]
-   ]
-  )
+   (set (attr "length")
+	(cond
+	  [(and (match_operand 1 "equality_comparison_operator" "")
+		(and (ge (minus (match_dup 2) (pc)) (const_int -512))
+		     (le (minus (match_dup 2) (pc)) (const_int 506))))
+	   (const_int 2)
+
+	   (and (ge (minus (match_dup 2) (pc)) (const_int -62))
+		(le (minus (match_dup 2) (pc)) (const_int 60)))
+	   (const_int 2)]
+	  (const_int 4)))])
 
 (define_expand "prologue"
   [(clobber (const_int 0))]
@@ -602,21 +613,76 @@ return, compare, nop"
 ;; Store-flag and conditional select insns
 ;; -------------------------------------------------------------------
 
-;(define_expand "cstore<mode>4"
-;  [(set (match_operand:SI 0 "register_operand")
-;	(match_operator:SI 1 "arc64_comparison_operator"
-;	 [(match_operand:GPI 2 "register_operand")
-;	  (match_operand:GPI 3 "arc64_plus_operand")]))]
-;  ""
-;  )
+(define_expand "cstore<mode>4"
+  [(set (match_operand:SI 0 "register_operand")
+	(match_operator:SI 1 "comparison_operator"
+	 [(match_operand:GPI 2 "nonmemory_operand")
+	  (match_operand:GPI 3 "nonmemory_operand")]))]
+  ""
+  {
+   if (!register_operand (operands[2], <MODE>mode))
+      operands[2] = force_reg (<MODE>mode, operands[2]);
+   })
 
-;(define_expand "mov<mode>cc"
-;  [(set (match_operand:ALLI 0 "register_operand")
-;	(if_then_else:ALLI (match_operand 1 "arc64_comparison_operator")
-;			   (match_operand:ALLI 2 "register_operand")
-;			   (match_operand:ALLI 3 "register_operand")))]
-;  ""
-;  )
+;; SETcc instructions
+(define_insn "set<cctab><mode>"
+  [(set (match_operand:SI 0 "register_operand"            "=r,r,    r,    r,    r,r,r")
+	(SETCC:SI (match_operand:GPI 1 "register_operand"  "0,r,    0,    r,    0,0,r")
+		  (match_operand:GPI 2 "nonmemory_operand" "r,r,U06S0,U06S0,S12S0,n,n")))]
+  ""
+  "set<cctab><GPIsuffix>%?\\t%0,%1,%2"
+  [(set_attr "length" "4,4,4,4,4,8,8")
+   (set_attr "type" "setcc")
+   (set_attr "predicable" "yes,no,yes,no,no,yes,no")])
+
+;; Special cases of SETCC
+(define_insn_and_split "*sethi<mode>"
+  [(set (match_operand:SI 0 "register_operand"          "=r,r,    r,r")
+	(gtu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
+		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
+  ""
+  "setlo<GPIsuffix>%?\\t%0,%2,%1"
+  "reload_completed
+   && CONST_INT_P (operands[2])
+   && satisfies_constraint_U06M1 (operands[2])"
+  [(const_int 0)]
+  "{
+    /* sethi a,b,u6 => seths a,b,u6 + 1.  */
+    operands[2] = GEN_INT (INTVAL (operands[2]) + 1);
+    emit_insn (gen_seths<mode> (operands[0], operands[1], operands[2]));
+    DONE;
+   }"
+ [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "setcc")
+   (set_attr "predicable" "yes,no,no,no")])
+
+(define_insn_and_split "*setls<mode>"
+  [(set (match_operand:SI 0 "register_operand"          "=r,r,    r,r")
+	(leu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
+		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
+  ""
+  "seths<GPIsuffix>%?\\t%0,%2,%1"
+  "reload_completed
+   && satisfies_constraint_U06M1 (operands[2])"
+  [(const_int 0)]
+  "{
+    /* setls a,b,u6 => setlo a,b,u6 + 1.  */
+    operands[2] = GEN_INT (INTVAL (operands[2]) + 1);
+    emit_insn (gen_setlo<mode> (operands[0], operands[1], operands[2]));
+    DONE;
+   }"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "setcc")
+   (set_attr "predicable" "yes,no,no,no")])
+
+
+;;(define_expand "mov<mode>cc"
+;;  [(set (match_operand:ALLI 0 "register_operand")
+;;	(if_then_else:ALLI (match_operand 1 "comparison_operator")
+;;			   (match_operand:ALLI 2 "register_operand")
+;;			   (match_operand:ALLI 3 "register_operand")))]
+;;  ""
+;;  )
 
 ;; -------------------------------------------------------------------
 ;; Logical operations

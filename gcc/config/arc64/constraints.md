@@ -80,6 +80,12 @@
   is a symbol reference allowed by the BL instruction"
   (match_code "symbol_ref"))
 
+(define_constraint "U06M1"
+  "@internal
+   An unsigned 6-bit integer constant, up to 62."
+  (and (match_code "const_int")
+       (match_test "UNSIGNED_INT6 (ival - 1)")))
+
 ;---------------------------------------------------------
 
 
