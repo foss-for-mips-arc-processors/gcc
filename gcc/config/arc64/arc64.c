@@ -64,62 +64,12 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
    NO_REGS, NO_REGS, NO_REGS,
   };
 
-/* Return 1 if the register is used by the epilogue.  We need to say the
-   return register is used, but only after epilogue generation is complete.
-   Note that in the case of sibcalls, the values "used by the epilogue" are
-   considered live at the start of the called function.  */
-
-int
-arc64_epilogue_uses (int regno)
+/* Emit an insn that's a simple single-set.  Both the operands must be
+   known to be valid.  */
+inline static rtx_insn *
+emit_set_insn (rtx x, rtx y)
 {
-  if (epilogue_completed)
-    if (regno == BLINK_REGNUM)
-      return 1;
-
-  return 0;
-}
-
-/* Implement INITIAL_ELIMINATION_OFFSET.  FROM is either the frame pointer
-   or argument pointer.  TO is either the stack pointer or hard frame
-   pointer.  */
-
-HOST_WIDE_INT
-arc64_initial_elimination_offset (unsigned from, unsigned to)
-{
-  return 0;
-}
-
-void arc64_init_expanders (void)
-{
-  /* FIXME! Not sure if I need it.  */
-}
-
-/* Given a comparison code (EQ, NE, etc.) and the first operand of a
-   COMPARE, return the mode to be used for the comparison.  */
-
-machine_mode
-arc64_select_cc_mode (enum rtx_code op, rtx x, rtx y)
-{
-  return CC_Cmode;
-}
-
-/* Implement RETURN_ADDR_RTX.  We do not support moving back to a
-   previous frame.  */
-
-rtx
-arc64_return_addr (int count , rtx frame ATTRIBUTE_UNUSED)
-{
-  if (count != 0)
-    return const0_rtx;
-  return get_hard_reg_initial_val (Pmode, BLINK_REGNUM);
-}
-
-/* Implement REGMODE_NATURAL_SIZE.  */
-
-HOST_WIDE_INT
-arc64_regmode_natural_size (machine_mode mode)
-{
-  return UNITS_PER_WORD; /*FIXME! do I need it? */
+  return emit_insn (gen_rtx_SET (x, y));
 }
 
 /* Given FROM and TO register numbers, say whether this elimination is allowed.
@@ -140,7 +90,7 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
    mode MODE.  */
 
 static bool
-arc_legitimate_address_p (machine_mode mode, rtx x, bool strict)
+arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
 {
   return true;
 }
@@ -156,6 +106,26 @@ arc64_legitimate_constant_p (machine_mode mode, rtx x)
   return false;
 }
 
+/* This is how to output a definition of an internal numbered label where
+   PREFIX is the class of label and NUM is the number within the class.  */
+
+static void arc64_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
+{
+  default_internal_label (stream, prefix, labelno);
+}
+
+/* X and Y are two things to compare using CODE.  Emit the compare insn and
+   return the rtx for the cc reg in the proper mode.  */
+
+rtx
+arc64_gen_compare_reg (enum rtx_code code, rtx x, rtx y)
+{
+  machine_mode mode = SELECT_CC_MODE (code, x, y);
+  rtx cc_reg = gen_rtx_REG (mode, CC_REGNUM);
+
+  emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
+  return cc_reg;
+}
 
 /* Prepare operands for move in MODE.  Return true iff the move has
    been emitted.  */
@@ -280,6 +250,7 @@ arc64_check_mov_const (HOST_WIDE_INT ival)
 
   return false;
 }
+#endif
 
 /* This function is used by the call expanders of the machine description.
    RESULT is the register in which the result is returned.  It's NULL for
@@ -292,6 +263,7 @@ void
 arc64_expand_call (rtx result, rtx mem, bool sibcall)
 {
   rtx call, callee, tmp;
+  rtvec vec;
   machine_mode mode;
 
   gcc_assert (MEM_P (mem));
@@ -302,10 +274,10 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
   /* Decide if we should generate indirect calls by loading the
      address of the callee into a register before performing the
      branch-and-link.  */
-  if (arc64_is_long_call_p (callee) && !REG_P (callee))
-    XEXP (mem, 0) = force_reg (mode, callee);
+// FIXME!  if (arc64_is_long_call_p (callee) && !REG_P (callee))
+// FIXME!    XEXP (mem, 0) = force_reg (mode, callee);
 
-  call = gen_rtx_call (VOIDmode, mem, cont0_rtx);
+  call = gen_rtx_CALL (VOIDmode, mem, const0_rtx);
 
   if (result != NULL_RTX)
     call = gen_rtx_SET (result, call);
@@ -320,7 +292,6 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
 
   emit_call_insn (call);
 }
-#endif
 
 /* Return nonzero if this function is known to have a null epilogue.
    This allows the optimizer to omit jumps to jumps if no stack
@@ -332,12 +303,63 @@ arc64_can_use_return_insn_p (void)
   return (reload_completed); //FIXME!: && cfun->machine->frame.frame_size == 0);
 }
 
-/* This is how to output a definition of an internal numbered label where
-   PREFIX is the class of label and NUM is the number within the class.  */
 
-static void arc64_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
+/* Return 1 if the register is used by the epilogue.  We need to say the
+   return register is used, but only after epilogue generation is complete.
+   Note that in the case of sibcalls, the values "used by the epilogue" are
+   considered live at the start of the called function.  */
+
+int
+arc64_epilogue_uses (int regno)
 {
-  default_internal_label (stream, prefix, labelno);
+  if (epilogue_completed)
+    if (regno == BLINK_REGNUM)
+      return 1;
+
+  return 0;
+}
+
+/* Implement INITIAL_ELIMINATION_OFFSET.  FROM is either the frame pointer
+   or argument pointer.  TO is either the stack pointer or hard frame
+   pointer.  */
+
+HOST_WIDE_INT
+arc64_initial_elimination_offset (unsigned from, unsigned to)
+{
+  return 0;
+}
+
+void arc64_init_expanders (void)
+{
+  /* FIXME! Not sure if I need it.  */
+}
+
+/* Given a comparison code (EQ, NE, etc.) and the first operand of a
+   COMPARE, return the mode to be used for the comparison.  */
+
+machine_mode
+arc64_select_cc_mode (enum rtx_code op, rtx x, rtx y)
+{
+  return CC_Cmode;
+}
+
+/* Implement RETURN_ADDR_RTX.  We do not support moving back to a
+   previous frame.  */
+
+rtx
+arc64_return_addr (int count , rtx frame ATTRIBUTE_UNUSED)
+{
+  if (count != 0)
+    return const0_rtx;
+  return get_hard_reg_initial_val (Pmode, BLINK_REGNUM);
+}
+
+/* Helper for TARGET_CPU_CPP_BUILTINS hook.  */
+
+void
+arc64_cpu_cpp_builtins (cpp_reader * pfile)
+{
+  //FIXME! builtin_define ("__arc64__");
 }
 
 /* Target hooks.  */
@@ -358,8 +380,8 @@ static void arc64_internal_label (FILE *stream, const char *prefix, unsigned lon
 #undef TARGET_CAN_ELIMINATE
 #define TARGET_CAN_ELIMINATE arc64_can_eliminate
 
-//#undef TARGET_LEGITIMATE_ADDRESS_P
-//#define TARGET_LEGITIMATE_ADDRESS_P arc64_legitimate_address_p
+#undef TARGET_LEGITIMATE_ADDRESS_P
+#define TARGET_LEGITIMATE_ADDRESS_P arc64_legitimate_address_p
 
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P arc64_legitimate_constant_p
