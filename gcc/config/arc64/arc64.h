@@ -1,3 +1,22 @@
+/* Machine description for ARC64 architecture.
+   Copyright (C) 2019 Free Software Foundation, Inc.
+
+   This file is part of GCC.
+
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3, or (at your option)
+   any later version.
+
+   GCC is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with GCC; see the file COPYING3.  If not see
+   <http://www.gnu.org/licenses/>.  */
+
 #ifndef GCC_ARC64_H
 #define GCC_ARC64_H
 
@@ -11,12 +30,13 @@
    numbered.  */
 #define WORDS_BIG_ENDIAN 0
 
+/* Width of a word, in units (bytes).  */
 #define UNITS_PER_WORD  8
 
-
-/* Maximum number of registers that can appear in a valid memory address.  */
-/* The `ld' insn allows 2, but the `st' insn only allows 1.  */
-#define MAX_REGS_PER_ADDRESS 1
+/* Maximum number of registers that can appear in a valid memory
+   address.  N.B. The ld insn allows 2, but the st insn only allows
+   1.  */
+#define MAX_REGS_PER_ADDRESS 2
 
 /* The number of registers used for parameter passing.  Local to this file.  */
 #define MAX_ARC_PARM_REGS 8
@@ -33,8 +53,8 @@
 #define STRUCTURE_SIZE_BOUNDARY 8
 
 /* Look at the fundamental type that is used for a bit-field and use
-   that to impose alignment on the enclosing structure.
-   struct s {int a:8}; should have same alignment as "int", not "char".  */
+   that to impose alignment on the enclosing structure.  struct s {int
+   a:8}; should have same alignment as "int", not "char".  */
 #define	PCC_BITFIELD_TYPE_MATTERS	1
 
 /* Alignments.  */
@@ -50,12 +70,13 @@
 #define DATA_ALIGNMENT(EXP, ALIGN)			\
   ARC_EXPAND_ALIGNMENT (!optimize_size, EXP, ALIGN)
 
-/* Similarly, make sure that objects on the stack are sensibly aligned.  */
+/* Similarly, make sure that objects on the stack are sensibly
+   aligned.  */
 #define LOCAL_ALIGNMENT(EXP, ALIGN)				\
   ARC_EXPAND_ALIGNMENT (!flag_conserve_stack, EXP, ALIGN)
 #define STRICT_ALIGNMENT	1
 
-/* Layout of Source Language Data Types */
+/* Layout of Source Language Data Types.  */
 #define SHORT_TYPE_SIZE         16
 #define INT_TYPE_SIZE           32
 #define LONG_TYPE_SIZE          64
@@ -287,8 +308,6 @@ enum reg_class
    low-order few bits.  */
 #define SHIFT_COUNT_TRUNCATED 1
 
-#define REGMODE_NATURAL_SIZE(MODE) arc64_regmode_natural_size (MODE)
-
 /* Function argument passing.  */
 
 /* Define a data type for recording info about an argument list during
@@ -358,7 +377,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #define REGNO_OK_FOR_INDEX_P(REGNO) REGNO_OK_FOR_BASE_P(REGNO)
 
-
   /* Length in units of the trampoline for entering a nested function.  */
 #define TRAMPOLINE_SIZE 16
 
@@ -369,72 +387,21 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TRAMPOLINE_ALIGNMENT 256
 
 /* Names to predefine in the preprocessor for this target machine.  */
-#define TARGET_CPU_CPP_BUILTINS() 
-
-/* This is how to output a reference to a user-level label named NAME.
-   `assemble_name' uses this.  */
-/* We work around a dwarfout.c deficiency by watching for labels from it and
-   not adding the '_' prefix.  There is a comment in
-   dwarfout.c that says it should be using ASM_OUTPUT_INTERNAL_LABEL.  */
-#define ASM_OUTPUT_LABELREF(FILE, NAME1) \
-do {							\
-  const char *NAME;					\
-  NAME = (*targetm.strip_name_encoding)(NAME1);		\
-  if ((NAME)[0] == '.' && (NAME)[1] == 'L')		\
-    fprintf (FILE, "%s", NAME);				\
-  else							\
-    {							\
-      if (!ASM_NAME_P (NAME1))				\
-	fprintf (FILE, "%s", user_label_prefix);	\
-      fprintf (FILE, "%s", NAME);			\
-    }							\
-} while (0)
-
-/* This is how to output the definition of a user-level label named NAME,
-   such as the label on a static function or variable NAME.  */
-#define ASM_OUTPUT_LABEL(FILE, NAME) \
-do { assemble_name (FILE, NAME); fputs (":\n", FILE); } while (0)
-
-#define ASM_NAME_P(NAME) ( NAME[0]=='*')
-
-/* This is how to output a reference to a user-level label named NAME.
-   `assemble_name' uses this.  */
-/* We work around a dwarfout.c deficiency by watching for labels from it and
-   not adding the '_' prefix.  There is a comment in
-   dwarfout.c that says it should be using ASM_OUTPUT_INTERNAL_LABEL.  */
-#define ASM_OUTPUT_LABELREF(FILE, NAME1) \
-do {							\
-  const char *NAME;					\
-  NAME = (*targetm.strip_name_encoding)(NAME1);		\
-  if ((NAME)[0] == '.' && (NAME)[1] == 'L')		\
-    fprintf (FILE, "%s", NAME);				\
-  else							\
-    {							\
-      if (!ASM_NAME_P (NAME1))				\
-	fprintf (FILE, "%s", user_label_prefix);	\
-      fprintf (FILE, "%s", NAME);			\
-    }							\
-} while (0)
-
-/* This is how to output a reference to a symbol_ref / label_ref as
-   (part of) an operand.  To disambiguate from register names like
-   a1 / a2 / status etc, symbols are preceded by '@'.  */
-#define ASM_OUTPUT_SYMBOL_REF(FILE,SYM) \
-  ASM_OUTPUT_LABEL_REF ((FILE), XSTR ((SYM), 0))
-#define ASM_OUTPUT_LABEL_REF(FILE,STR)			\
-  do							\
-    {							\
-      fputc ('@', file);				\
-      assemble_name ((FILE), (STR));			\
-    }							\
-  while (0)
-
-#define ASM_OUTPUT_ALIGN(FILE,LOG) \
-do { \
-  if ((LOG) != 0) fprintf (FILE, "\t.align %d\n", 1 << (LOG)); \
-} while (0)
+#define TARGET_CPU_CPP_BUILTINS() arc64_cpu_cpp_builtins (pfile)
 
 #define CASE_VECTOR_MODE Pmode
+
+/* A C string constant describing how to begin a comment in the target
+   assembler language.  The compiler assumes that the comment will
+   end at the end of the line.  */
+#define ASM_COMMENT_START "#"
+
+/* To be used fot "U" options of asm_fprintf.  */
+#undef USER_LABEL_PREFIX
+#define USER_LABEL_PREFIX "@"
+
+#define ASM_OUTPUT_ALIGN(FILE,LOG) \
+  fprintf(FILE, "\t.align\t%d\n", (int)LOG)
 
 /* Output to assembler file text saying following lines
    may contain character constants, extra white space, comments, etc.  */
@@ -446,24 +413,41 @@ do { \
 #undef ASM_APP_OFF
 #define ASM_APP_OFF ""
 
+/* Section selection.  */
+
+/* Globalizing directive for a label.  */
+#define GLOBAL_ASM_OP "\t.global\t"
+
+#define TEXT_SECTION_ASM_OP	"\t.section\t.text"
+#define DATA_SECTION_ASM_OP	"\t.section\t.data"
+
+#define BSS_SECTION_ASM_OP	"\t.section\t.bss"
+#define SDATA_SECTION_ASM_OP	"\t.section\t.sdata"
+#define SBSS_SECTION_ASM_OP	"\t.section\t.sbss"
+
+/* Expression whose value is a string, including spacing, containing
+   the assembler operation to identify the following data as
+   initialization/termination code.  If not defined, GCC will assume
+   such a section does not exist. */
+#define INIT_SECTION_ASM_OP "\t.section\t.init"
+#define FINI_SECTION_ASM_OP "\t.section\t.fini"
+
 /* All the work done in PROFILE_HOOK, but still required.  */
 #undef FUNCTION_PROFILER
 #define FUNCTION_PROFILER(STREAM, LABELNO) do { } while (0)
 
 #define NO_PROFILE_COUNTERS  1
 
-/*  ASM_OUTPUT_ALIGNED_DECL_LOCAL (STREAM, DECL, NAME, SIZE, ALIGNMENT)
-    Define this macro when you need to see the variable's decl in order to
-    chose what to output.  */
-#define ASM_OUTPUT_ALIGNED_DECL_LOCAL(STREAM, DECL, NAME, SIZE, ALIGN) \
-  do {									\
-    ASM_OUTPUT_ALIGN (STREAM, floor_log2 ((ALIGN) / BITS_PER_UNIT));	\
-    ASM_OUTPUT_TYPE_DIRECTIVE (STREAM, NAME, "object");			\
-    ASM_OUTPUT_SIZE_DIRECTIVE (STREAM, NAME, SIZE);			\
-    ASM_OUTPUT_LABEL (STREAM, NAME);					\
-  } while (0);
+/* Tell crtstuff.c we're using ELF.  */
+#define OBJECT_FORMAT_ELF
 
-/* Globalizing directive for a label.  */
-#define GLOBAL_ASM_OP "\t.global\t"
+/* Called by crtstuff.c to make calls to function FUNCTION that are defined in
+   SECTION_OP, and then to switch back to text section.  */
+#undef CRT_CALL_STATIC_FUNCTION
+#define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)		\
+  asm (SECTION_OP "\n\t"					\
+       "add r12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t"	\
+       "jl  [r12]\n"						\
+       TEXT_SECTION_ASM_OP);
 
 #endif /* GCC_ARC64_H */
