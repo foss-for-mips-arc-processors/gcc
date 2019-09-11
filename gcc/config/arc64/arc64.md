@@ -61,12 +61,17 @@
     (R57_REGNUM		57)
     (R58_REGNUM		58)
     (R59_REGNUM		59)
-    (R60_REGNUM		60)
+
     (AP_REGNUM		64)
     (SFP_REGNUM		65)
     (CC_REGNUM		66)
   ]
   )
+
+(define_c_enum "unspec"
+  [
+   VUNSPEC_ARC_BLOCKAGE
+   ])
 
 (include "constraints.md")
 (include "predicates.md")
@@ -160,7 +165,7 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "move, jl, bl, jump, branch, branchcc,
-return, compare, nop, setcc"
+return, compare, nop, setcc, block"
   (const_string "move"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -463,7 +468,7 @@ return, compare, nop, setcc"
   [(clobber (const_int 0))]
   ""
   "
-  //arc64_expand_prologue ();
+  arc64_expand_prologue ();
   DONE;
   "
 )
@@ -506,6 +511,13 @@ return, compare, nop, setcc"
   [(set_attr "type" "nop")
    (set_attr "length" "2")])
 
+(define_insn "blockage"
+  [(unspec_volatile [(const_int 0)] VUNSPEC_ARC_BLOCKAGE)]
+  ""
+  ""
+  [(set_attr "length" "0")
+   (set_attr "type" "block")]
+)
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
 ;; -------------------------------------------------------------------
