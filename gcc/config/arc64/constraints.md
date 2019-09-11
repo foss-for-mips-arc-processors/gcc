@@ -226,3 +226,45 @@
   (and
     (match_code "const_int")
     (match_test "UNSIGNED_INT9 (ival)")))
+
+(define_constraint "ULIMM" "@internal
+  A 32-bit unsigned integer constant"
+  (match_code "const_int"))
+
+(define_constraint "UXIMM" "@internal
+  A 32-bit signed extended integer constant"
+  (match_code "const_int"))
+
+
+; TODO: Below this line definition should be corrected
+(define_constraint "SR_R0"
+  "@internal
+   @code{R0} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == R0_REGNUM")))
+
+(define_constraint "SR_R1"
+  "@internal
+   @code{R1} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == R1_REGNUM")))
+
+(define_constraint "SR_SP"
+  "@internal
+   @code{SP} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == SP_REGNUM")))
+
+; TODO: FIX THIS
+(define_constraint "SR_GP"
+  "@internal
+   @code{GP} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == R0_REGNUM")))
+
+; TODO: FIX THIS
+(define_constraint "SRPCL"
+  "@internal
+   @code{PCL} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == R0_REGNUM")))
