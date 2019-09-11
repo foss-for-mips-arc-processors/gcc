@@ -367,6 +367,25 @@ static void arc64_internal_label (FILE *stream, const char *prefix, unsigned lon
   default_internal_label (stream, prefix, labelno);
 }
 
+/* Define how to find the value returned by a function.
+   VALTYPE is the data type of the value (as a tree).
+   If the precise function being called is known, FN_DECL_OR_TYPE is its
+   FUNCTION_DECL; otherwise, FN_DECL_OR_TYPE is its type.  */
+
+static rtx
+arc64_function_value (const_tree valtype,
+		      const_tree fn_decl_or_type ATTRIBUTE_UNUSED,
+		      bool outgoing ATTRIBUTE_UNUSED)
+{
+  machine_mode mode = TYPE_MODE (valtype);
+  int unsignedp ATTRIBUTE_UNUSED;
+
+  unsignedp = TYPE_UNSIGNED (valtype);
+  if (INTEGRAL_TYPE_P (valtype) || TREE_CODE (valtype) == OFFSET_TYPE)
+    PROMOTE_MODE (mode, unsignedp, valtype);
+  return gen_rtx_REG (mode, R0_REGNUM);
+}
+
 /* X and Y are two things to compare using CODE.  Emit the compare insn and
    return the rtx for the cc reg in the proper mode.  */
 
@@ -685,6 +704,9 @@ arc64_expand_prologue (void)
 
 #undef TARGET_ASM_INTERNAL_LABEL
 #define TARGET_ASM_INTERNAL_LABEL arc64_internal_label
+
+#undef TARGET_FUNCTION_VALUE
+#define TARGET_FUNCTION_VALUE arc64_function_value
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
