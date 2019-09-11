@@ -73,6 +73,8 @@
    VUNSPEC_ARC_BLOCKAGE
    ])
 
+(include "generate/arith.md")
+
 (include "constraints.md")
 (include "predicates.md")
 
@@ -165,7 +167,8 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "move, jl, bl, jump, branch, branchcc,
-return, compare, nop, setcc, block"
+return, compare, nop, setcc, block, sub, subl, add, addl, abs, div, neg,
+udiv, udivl, max, maxl, min, minl, rem, reml"
   (const_string "move"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -544,13 +547,13 @@ return, compare, nop, setcc, block"
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
 
-(define_expand "add<mode>3"
-  [(set
-    (match_operand:GPI 0 "register_operand")
-    (plus:GPI (match_operand:GPI 1 "register_operand")
-	      (match_operand:GPI 2 "nonmemory_operand")))]
-  ""
-  )
+;(define_expand "add<mode>3"
+;  [(set
+;    (match_operand:GPI 0 "register_operand")
+;    (plus:GPI (match_operand:GPI 1 "register_operand")
+;	      (match_operand:GPI 2 "nonmemory_operand")))]
+;  ""
+;  )
 
 (define_expand "addv<mode>4"
   [(match_operand:GPI 0 "register_operand")
@@ -591,11 +594,11 @@ return, compare, nop, setcc, block"
   ""
   )
 
-(define_expand "abs<mode>2"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "register_operand")]
-  ""
-  )
+;(define_expand "abs<mode>2"
+;  [(match_operand:GPI 0 "register_operand")
+;   (match_operand:GPI 1 "register_operand")]
+;  ""
+;  )
 
 ;; -------------------------------------------------------------------
 ;; Comparison insns
