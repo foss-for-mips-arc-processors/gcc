@@ -359,6 +359,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define UNSIGNED_INT10(X) (UNSIGNED(X,10))
 #define UNSIGNED_INT12(X) (UNSIGNED(X,12))
 #define UNSIGNED_INT16(X) (UNSIGNED(X,16))
+// TODO: Fix for 32 bit compiler host architecture.
+#define UNSIGNED_INT32(X) (UNSIGNED(X,32))
 
 #define SIGNED_INT3(X) (SIGNED(X,3))
 #define SIGNED_INT7(X) (SIGNED(X,7))
@@ -371,6 +373,9 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define SIGNED_INT16(X) (SIGNED(X,16))
 #define SIGNED_INT21(X) (SIGNED(X,21))
 #define SIGNED_INT25(X) (SIGNED(X,25))
+
+// TODO: Fix for 32 bit compiler host architecture.
+#define SIGNED_INT32(X) (SIGNED(X,32))
 
 #define UNSIGNED_INT7_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S))
 #define UNSIGNED_INT8_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && UNSIGNED_INT6(X >> S))
