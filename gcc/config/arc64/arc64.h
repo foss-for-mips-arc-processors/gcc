@@ -38,12 +38,19 @@
    1.  */
 #define MAX_REGS_PER_ADDRESS 2
 
-/* The number of registers used for parameter passing.  Local to this file.  */
+/* Recognize any constant value that is a valid address.  */
+#define CONSTANT_ADDRESS_P(X)					\
+  ((GET_CODE (X) == LABEL_REF || GET_CODE (X) == SYMBOL_REF	\
+    || GET_CODE (X) == CONST_INT || GET_CODE (X) == CONST))
+
+/* The number of registers used for parameter passing.  Local to this
+   file.  */
 #define MAX_ARC_PARM_REGS 8
 
-/* 1 if N is a possible register number for function argument passing.  */
-#define FUNCTION_ARG_REGNO_P(N) \
-((unsigned) (N) < MAX_ARC_PARM_REGS)
+/* 1 if N is a possible register number for function argument
+   passing.  */
+#define FUNCTION_ARG_REGNO_P(N)			\
+  ((unsigned) (N) < MAX_ARC_PARM_REGS)
 
 /* Boundaries.  */
 #define PARM_BOUNDARY		64
@@ -60,7 +67,7 @@
 /* Alignments.  */
 #define FASTEST_ALIGNMENT       BITS_PER_WORD
 #define BIGGEST_ALIGNMENT	128
-#define ARC_EXPAND_ALIGNMENT(COND, EXP, ALIGN)				\
+#define ARC64_EXPAND_ALIGNMENT(COND, EXP, ALIGN)			\
   (((COND) && ((ALIGN) < FASTEST_ALIGNMENT)				\
     && (TREE_CODE (EXP) == ARRAY_TYPE					\
 	|| TREE_CODE (EXP) == UNION_TYPE				\
@@ -68,12 +75,12 @@
 
 /* Align global data.  */
 #define DATA_ALIGNMENT(EXP, ALIGN)			\
-  ARC_EXPAND_ALIGNMENT (!optimize_size, EXP, ALIGN)
+  ARC64_EXPAND_ALIGNMENT (!optimize_size, EXP, ALIGN)
 
 /* Similarly, make sure that objects on the stack are sensibly
    aligned.  */
 #define LOCAL_ALIGNMENT(EXP, ALIGN)				\
-  ARC_EXPAND_ALIGNMENT (!flag_conserve_stack, EXP, ALIGN)
+  ARC64_EXPAND_ALIGNMENT (!flag_conserve_stack, EXP, ALIGN)
 #define STRICT_ALIGNMENT	1
 
 /* Layout of Source Language Data Types.  */
@@ -85,7 +92,7 @@
 
 #define FLOAT_TYPE_SIZE		32
 #define DOUBLE_TYPE_SIZE	64
-#define LONG_DOUBLE_TYPE_SIZE	128
+#define LONG_DOUBLE_TYPE_SIZE	64
 
 /* Defined by ABI.  */
 #define WCHAR_TYPE "unsigned int"
@@ -116,8 +123,8 @@
 	    otherwise can be used  as a temporary register.
    R31      BLINK (return register)
    R32-R57  Extension registers
-   R58      ACCL (accumulator low)
-   R59      ACCH (accumulator high)
+   R58      ACC (accumulator)
+   R59      Reserved
    --- Special registers ---
    R60      sign-extended 32-bit indicator
    R61      Reserved
@@ -268,8 +275,15 @@ enum reg_class
 
 #define FRAME_GROWS_DOWNWARD	1
 
+/* If defined, the maximum amount of space required for outgoing
+   arguments will be computed and placed into the variable
+   `crtl->outgoing_args_size'.  No space will be pushed onto the stack
+   for each call; instead, the function prologue should increase the
+   stack frame size by this amount.  */
 #define ACCUMULATE_OUTGOING_ARGS	1
 
+/* Offset of first parameter from the argument pointer register
+   value.  */
 #define FIRST_PARM_OFFSET(FNDECL) 0
 
 /* Define how to find the value returned by a library function
@@ -281,9 +295,7 @@ enum reg_class
 
 /* WORD_REGISTER_OPERATIONS does not hold for arc64.  The assigned
    word_mode is DImode but operations narrower than SImode behave as
-   32-bit operations if using the W-form of the registers rather than
-   as word_mode (64-bit) operations as WORD_REGISTER_OPERATIONS
-   expects.  */
+   32-bit operations.  */
 #define WORD_REGISTER_OPERATIONS 0
 
 /* Define if loading from memory in MODE, an integral mode narrower than
@@ -293,6 +305,8 @@ enum reg_class
 #define LOAD_EXTEND_OP(MODE) ZERO_EXTEND
 
 #define SLOW_BYTE_ACCESS 0
+
+#define NO_FUNCTION_CSE	1
 
 /* Conditional info.  */
 #define SELECT_CC_MODE(OP, X, Y) arc64_select_cc_mode (OP, X, Y)
@@ -325,6 +339,8 @@ enum reg_class
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
 #define MOVE_MAX (UNITS_PER_WORD * 2)
+
+#define MOVE_RATIO(SPEED) 2
 
 #ifndef USED_FOR_TARGET
 extern const enum reg_class arc64_regno_to_regclass[];
@@ -391,6 +407,19 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #define CASE_VECTOR_MODE Pmode
 
+/* Define this macro if it is advisable to hold scalars in registers
+   in a wider mode than that declared by the program.  In such cases,
+   the value is constrained to be within the bounds of the declared
+   type, but kept valid in the wider mode.  The signedness of the
+   extension may differ from that of the type.  */
+#define PROMOTE_MODE(MODE,UNSIGNEDP,TYPE)	\
+  if (GET_MODE_CLASS (MODE) == MODE_INT		\
+      && GET_MODE_SIZE (MODE) < 4)		\
+    {						\
+      (MODE) = SImode;				\
+    }
+
+
 /* A C string constant describing how to begin a comment in the target
    assembler language.  The compiler assumes that the comment will
    end at the end of the line.  */
@@ -449,5 +478,9 @@ extern const enum reg_class arc64_regno_to_regclass[];
        "add r12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t"	\
        "jl  [r12]\n"						\
        TEXT_SECTION_ASM_OP);
+
+#ifndef TARGET_LRA
+#define TARGET_LRA 1
+#endif
 
 #endif /* GCC_ARC64_H */
