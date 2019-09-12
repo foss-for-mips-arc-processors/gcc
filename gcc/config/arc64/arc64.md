@@ -166,10 +166,10 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-(define_attr "type" "move, jl, bl, jump, branch, branchcc,
+(define_attr "type" "unknown, move, jl, bl, jump, branch, branchcc,
 return, compare, nop, setcc, block, sub, subl, add, addl, abs, div, neg,
 udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
-  (const_string "move"))
+  (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
 
@@ -480,7 +480,7 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
   [(clobber (const_int 0))]
   ""
   "
-  //arc64_expand_epilogue (false);
+  arc64_expand_epilogue (false);
   DONE;
   "
 )
@@ -489,7 +489,7 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
   [(clobber (const_int 0))]
   ""
   "
-  //arc64_expand_epilogue (true);
+  arc64_expand_epilogue (true);
   DONE;
   "
 )
