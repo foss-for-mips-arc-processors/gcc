@@ -73,8 +73,6 @@
    VUNSPEC_ARC_BLOCKAGE
    ])
 
-(include "generate/arith.md")
-
 (include "constraints.md")
 (include "predicates.md")
 
@@ -249,9 +247,83 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 ;   (set_attr "length" "2,4,8,8,8")])
 
 
-;(define_insn "*movqi_arc64"
+;; mov<.f>        b, c
+;; mov<.f>        b, s12
+;; mov_s          b, u8
+;; mov_s          g, h
+;;
+;; ld             a, [b, s9]
+;; ld             a, [b,  c]
+;; ld             a, [limm ]
+;;
+;; st<zz>         c   , [b , s9]
+;; st<zz>         limm, [b , s9]
+;; stb_s          b   , [sp, u7]
+;; stb_s          c   , [b , u5]
+(define_insn "*arc64_movqi"
+  [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r, r, m")
+        (match_operand:QI 1 "general_operand"      " r, i, m, r"))
+  ]
+  ""
+  "@
+   mov\\t%0,%1
+   mov\\t%0,%1
+   ld\\t%0,%1
+   st\\t%1,%0"
+)
+
+(define_insn "*arc64_movhi"
+   [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r, r, m")
+         (match_operand:HI 1 "general_operand"      " r, i, m, r"))
+   ]
+   ""
+   "@
+    mov\\t%0,%1
+    mov\\t%0,%1
+    ld\\t%0,%1
+    st\\t%1,%0"
+)
+
+(define_insn "*arc64_movsi"
+   [(set (match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
+         (match_operand:SI 1 "general_operand"      " r, i, m, r"))
+   ]
+   ""
+   "@
+    mov\\t%0,%1
+    mov\\t%0,%1
+    ld\\t%0,%1
+    st\\t%1,%0"
+)
+
+(define_insn "*arc64_zero_extend_qi_to_si"
+   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
+         (zero_extend:SI (match_operand:QI 1 "general_operand"      " r, i, m, r")))
+   ]
+   ""
+   "@
+   extb\\t%0,%1
+   extb\\t%0,%1
+   ldb\\t%0,%1
+   stb\\t%1,%0"
+)
+
+(define_insn "*arc64_zero_extend_hi_to_si"
+   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
+         (zero_extend:SI (match_operand:HI 1 "general_operand"      " r, i, m, r")))
+   ]
+   ""
+   "@
+   exth\\t%0,%1
+   exth\\t%0,%1
+   ldh\\t%0,%1
+   sth\\t%1,%0"
+)
+
+
+;(define_insn "*arc64_movqi"
 ;  [(set (match_operand:QI 0 "nonimmediate_operand" "=q,   qh,  r,h,w,q,  r,r,   m,Usc")
-;	(match_operand:QI 1 "arc64_mov_operand"    " P,qhCm1,rLI,i,i,T,Ucm,m,rCm3,i"))]
+;	(match_operand:QI 1 "arc64_mov_operand"     " P,qhCm1,rLI,i,i,T,Ucm,m,rCm3,i"))]
 ;  "register_operand (operands[0], QImode)
 ;   || register_operand (operands[1], QImode)
 ;   || (satisfies_constraint_Cm3 (operands[1])
@@ -269,6 +341,7 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 ;  [(set_attr "type"       "move,move, move, move,      move,load, load,store,store")
 ;   (set_attr "iscompact"  "true,true,false,false,maybe_limm,true,false,false,false")])
 ;
+
 ;(define_insn "*movhi_arc64"
 ;  [(set (match_operand:HI 0 "move_dest_operand" "=q,   qh,  r,q,h, r,  q,r,   m,VUsc")
 ;	(match_operand:HI 1 "move_src_operand" "  P,qhCm1,rLI,i,i, i,  T,m,rCm3,i"))]
@@ -693,7 +766,7 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 
 ;;(define_expand "mov<mode>cc"
 ;;  [(set (match_operand:ALLI 0 "register_operand")
-;;	(if_then_else:ALLI (match_operand 1 "comparison_operator")
+;;	(if_then_else:ALLI (match_operator 1 "comparison_operator")
 ;;			   (match_operand:ALLI 2 "register_operand")
 ;;			   (match_operand:ALLI 3 "register_operand")))]
 ;;  ""
@@ -744,3 +817,5 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 ;; -------------------------------------------------------------------
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
+
+(include "generate/arith.md")
