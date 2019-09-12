@@ -17,6 +17,7 @@ extern void arc64_expand_call (rtx, rtx, bool);
 extern rtx arc64_gen_compare_reg (enum rtx_code, rtx, rtx);
 extern bool arc64_prepare_move_operands (rtx, rtx, machine_mode);
 extern void arc64_expand_prologue (void);
+extern void arc64_expand_epilogue (bool);
 #endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */
