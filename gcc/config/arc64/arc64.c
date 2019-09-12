@@ -269,7 +269,7 @@ arc64_save_callee_saves (void)
   HOST_WIDE_INT frame_allocated = 0;
   rtx reg;
 
-  for (regno = R59_REGNUM; regno >= R0_REGNUM; regno--)
+  for (regno = R58_REGNUM; regno >= R0_REGNUM; regno--)
     {
       if (frame->reg_offset[regno] == -1)
 	continue;
@@ -302,6 +302,93 @@ arc64_save_callee_saves (void)
     }
 
   return frame_allocated;
+}
+
+/* Helper for epilogue: emit frame load with post_modify or post_inc
+   to restore register REG from stack.  The initial offset is passed
+   via OFFSET.  */
+
+static HOST_WIDE_INT
+frame_restore_reg (rtx reg, HOST_WIDE_INT offset)
+{
+  rtx addr, insn;
+
+  if (offset)
+    {
+      rtx tmp = plus_constant (Pmode, stack_pointer_rtx,
+			       offset + GET_MODE_SIZE (GET_MODE (reg)));
+      addr = gen_frame_mem (GET_MODE (reg),
+			    gen_rtx_POST_MODIFY (Pmode,
+						 stack_pointer_rtx,
+						 tmp));
+    }
+  else
+    addr = gen_frame_mem (GET_MODE (reg), gen_rtx_POST_INC (Pmode,
+							    stack_pointer_rtx));
+  insn = emit_move_insn (reg, addr);
+  RTX_FRAME_RELATED_P (insn) = 1;
+  add_reg_note (insn, REG_CFA_RESTORE, reg);
+
+  if (reg == hard_frame_pointer_rtx)
+    add_reg_note (insn, REG_CFA_DEF_CFA,
+		  plus_constant (Pmode, stack_pointer_rtx,
+				 GET_MODE_SIZE (GET_MODE (reg)) + offset));
+  else
+    add_reg_note (insn, REG_CFA_ADJUST_CFA,
+		  gen_rtx_SET (stack_pointer_rtx,
+			       plus_constant (Pmode, stack_pointer_rtx,
+					      GET_MODE_SIZE (GET_MODE (reg))
+					      + offset)));
+
+  return GET_MODE_SIZE (GET_MODE (reg)) + offset;
+}
+
+/* ARC' epilogue restore regs routine.  */
+
+static HOST_WIDE_INT
+arc64_restore_callee_saves (bool sibcall_p)
+{
+  struct arc64_frame *frame = &cfun->machine->frame;
+  HOST_WIDE_INT offset, frame_deallocated = 0;
+  rtx reg;
+  int regno;
+  machine_mode restore_mode = DImode;
+
+  /* Recover the frame_pointer location for the current frame.  */
+  offset = frame->frame_size - (frame->saved_regs_size
+				+ frame->saved_varargs_size);
+
+  /* Emit mov sp,fp if need.  Thus, we get rid of the offset without
+     using a possible expensive add3 instruction.  */
+  if (frame_pointer_needed && offset)
+    {
+      rtx tmp = emit_move_insn (stack_pointer_rtx, hard_frame_pointer_rtx);
+      RTX_FRAME_RELATED_P (tmp) = 1;
+      frame_deallocated += offset;
+      offset = 0;
+    }
+
+  if (frame_pointer_needed)
+    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
+
+  if (frame->reg_offset[BLINK_REGNUM] != -1)
+    {
+      reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
+      frame_deallocated += frame_restore_reg (reg, offset);
+      offset = 0;
+    }
+
+  for (regno = R0_REGNUM; regno >= R58_REGNUM; regno++)
+    {
+      if (frame->reg_offset[regno] == -1)
+	continue;
+
+      reg = gen_rtx_REG (restore_mode, regno);
+      frame_deallocated += frame_restore_reg (reg, offset);
+      offset = 0;
+    }
+
+  return frame_deallocated;
 }
 
 /* Emit a frame insn which adjusts stack pointer by OFFSET.  */
@@ -653,6 +740,7 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
 }
 
 /* Expand the "prologue" pattern.  */
+
 void
 arc64_expand_prologue (void)
 {
@@ -677,6 +765,26 @@ arc64_expand_prologue (void)
   emit_insn (gen_blockage ());
 }
 
+/* Expand "epilogue" pattern.  */
+
+void
+arc64_expand_epilogue (bool sibcall_p)
+{
+  HOST_WIDE_INT frame_deallocated;
+  struct arc64_frame *frame = &cfun->machine->frame;
+
+  if (!frame->layout_p)
+    arc64_compute_frame_info ();
+
+  frame_deallocated = frame->frame_size;
+  frame_deallocated -= arc64_restore_callee_saves (sibcall_p);
+
+  if (frame_deallocated != 0)
+    frame_stack_add (frame_deallocated);
+
+  if (!sibcall_p)
+    emit_jump_insn (gen_simple_return ());
+}
 
 /* Target hooks.  */
 
