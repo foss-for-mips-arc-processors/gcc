@@ -73,7 +73,6 @@
    VUNSPEC_ARC_BLOCKAGE
    ])
 
-(include "generate/arith.md")
 (include "generate/logic.md")
 
 (include "constraints.md")
