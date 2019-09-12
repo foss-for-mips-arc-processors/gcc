@@ -480,7 +480,7 @@ arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
 {
   HOST_WIDE_INT size;
 
-  if (!AGGRECATE_TYPE_P (type)
+  if (!AGGREGATE_TYPE_P (type)
       && TREE_CODE (type) != COMPLEX_TYPE)
     /* Simple scalar types always returned in registers.  */
     return false;
@@ -507,7 +507,7 @@ arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
   else
     /* No frontends can create types with variable-sized modes, so we
        shouldn't be asked to pass or return them.  */
-    size = GET_MODE_SIZE (mode).to_constant ();
+    size = GET_MODE_SIZE (mode);
 
   /* Aggregates are passed by reference based on their size.  */
   if (type && AGGREGATE_TYPE_P (type))
@@ -532,7 +532,7 @@ arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
 //{
 //  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 //
-//  
+//
 //}
 
 /*
