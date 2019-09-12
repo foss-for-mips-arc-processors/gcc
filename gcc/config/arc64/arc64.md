@@ -168,7 +168,7 @@
 
 (define_attr "type" "move, jl, bl, jump, branch, branchcc,
 return, compare, nop, setcc, block, sub, subl, add, addl, abs, div, neg,
-udiv, udivl, max, maxl, min, minl, rem, reml"
+udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
   (const_string "move"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
