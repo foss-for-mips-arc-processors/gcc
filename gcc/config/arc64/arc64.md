@@ -73,6 +73,9 @@
    VUNSPEC_ARC_BLOCKAGE
    ])
 
+(include "generate/arith.md")
+(include "generate/logic.md")
+
 (include "constraints.md")
 (include "predicates.md")
 
@@ -166,7 +169,9 @@
 
 (define_attr "type" "unknown, move, jl, bl, jump, branch, branchcc,
 return, compare, nop, setcc, block, sub, subl, add, addl, abs, div, neg,
-udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
+udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl,
+bmsk, bxorl, bxor, bsetl, bset, swapel, swape, orl, or, normh, norml,
+norm, ror, notl, not, lsrl, lsr, asrl, asr, asl, asll, andl, and"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -781,26 +786,26 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 ;; Shifts
 ;; -------------------------------------------------------------------
 
-(define_expand "<optab><mode>3"
-  [(set (match_operand:GPI 0 "register_operand")
-	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
-		    (match_operand:QI 2 "nonmemory_operand")))]
-  ""
-)
+;(define_expand "<optab><mode>3"
+;  [(set (match_operand:GPI 0 "register_operand")
+;	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
+;		    (match_operand:QI 2 "nonmemory_operand")))]
+;  ""
+;)
 
-(define_expand "ashl<mode>3"
-  [(set (match_operand:SHORT 0 "register_operand")
-	(ashift:SHORT (match_operand:SHORT 1 "register_operand")
-		      (match_operand:QI 2 "const_int_operand")))]
-  ""
-)
+;(define_expand "ashl<mode>3"
+;  [(set (match_operand:SHORT 0 "register_operand")
+;	(ashift:SHORT (match_operand:SHORT 1 "register_operand")
+;		      (match_operand:QI 2 "const_int_operand")))]
+;  ""
+;)
 
-(define_expand "rotr<mode>3"
-  [(set (match_operand:GPI 0 "register_operand")
-	(rotatert:GPI (match_operand:GPI 1 "register_operand")
-		      (match_operand:QI 2 "nonmemory_operand")))]
-  ""
-)
+;(define_expand "rotr<mode>3"
+;  [(set (match_operand:GPI 0 "register_operand")
+;	(rotatert:GPI (match_operand:GPI 1 "register_operand")
+;		      (match_operand:QI 2 "nonmemory_operand")))]
+;  ""
+;)
 
 ;; -------------------------------------------------------------------
 ;; Bitfields
