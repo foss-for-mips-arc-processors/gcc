@@ -473,6 +473,72 @@ arc64_function_value (const_tree valtype,
   return gen_rtx_REG (mode, R0_REGNUM);
 }
 
+/* Worker for return_in_memory.  */
+
+static bool
+arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
+{
+  HOST_WIDE_INT size;
+
+  if (!AGGRECATE_TYPE_P (type)
+      && TREE_CODE (type) != COMPLEX_TYPE)
+    /* Simple scalar types always returned in registers.  */
+    return false;
+
+  /* Types larger than 2 registers returned in memory.  */
+  size = int_size_in_bytes (type);
+  return ((size < 0) || (size > 2 * UNITS_PER_WORD));
+}
+
+/* Worker for pass_by_reference.  */
+static bool
+arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
+			 machine_mode mode,
+			 const_tree type,
+			 bool named ATTRIBUTE_UNUSED)
+{
+  HOST_WIDE_INT size;
+  machine_mode dummymode;
+  int nregs;
+
+  /* GET_MODE_SIZE (BLKmode) is useless since it is 0.  */
+  if (mode == BLKmode && type)
+    size = int_size_in_bytes (type);
+  else
+    /* No frontends can create types with variable-sized modes, so we
+       shouldn't be asked to pass or return them.  */
+    size = GET_MODE_SIZE (mode).to_constant ();
+
+  /* Aggregates are passed by reference based on their size.  */
+  if (type && AGGREGATE_TYPE_P (type))
+    {
+      size = int_size_in_bytes (type);
+    }
+
+  /* Variable sized arguments are always returned by reference.  */
+  if (size < 0)
+    return true;
+
+  /* Arguments which are variable sized or larger than 2 registers are
+     passed by reference.  */
+  return size > 2 * UNITS_PER_WORD;
+}
+
+/* Implement TARGET_SETUP_INCOMING_VARARGS.  */
+
+//static void
+//arc64_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
+//			      tree type, int *pretend_size, int no_rtl)
+//{
+//  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+//
+//  
+//}
+
+/*
+  Global functions.
+*/
+
 /* X and Y are two things to compare using CODE.  Emit the compare insn and
    return the rtx for the cc reg in the proper mode.  */
 
@@ -706,9 +772,17 @@ arc64_initial_elimination_offset (unsigned from, unsigned to)
   gcc_unreachable ();
 }
 
+static struct machine_function *
+arc64_init_machine_status (void)
+{
+  struct machine_function *machine;
+  machine = ggc_cleared_alloc<machine_function> ();
+  return machine;
+}
+
 void arc64_init_expanders (void)
 {
-  /* FIXME! Not sure if I need it.  */
+  init_machine_status = arc64_init_machine_status;
 }
 
 /* Given a comparison code (EQ, NE, etc.) and the first operand of a
@@ -810,11 +884,17 @@ arc64_expand_epilogue (bool sibcall_p)
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P arc64_legitimate_constant_p
 
-#undef TARGET_ASM_INTERNAL_LABEL
-#define TARGET_ASM_INTERNAL_LABEL arc64_internal_label
-
 #undef TARGET_FUNCTION_VALUE
 #define TARGET_FUNCTION_VALUE arc64_function_value
+
+#undef TARGET_RETURN_IN_MEMORY
+#define TARGET_RETURN_IN_MEMORY arc64_return_in_memory
+
+#undef TARGET_PASS_BY_REFERENCE
+#define TARGET_PASS_BY_REFERENCE arc64_pass_by_reference
+
+//#undef TARGET_SETUP_INCOMING_VARARGS
+//#define TARGET_SETUP_INCOMING_VARARGS arc64_setup_incoming_varargs
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
