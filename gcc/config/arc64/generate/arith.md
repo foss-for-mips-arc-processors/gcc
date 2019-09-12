@@ -52,19 +52,19 @@
 ;     }
 ;   }
 ; OUTPUT:addsi3
-(define_insn "addsi3" [
+(define_insn "*addsi3" [
     (set 
-      (match_operand:SI 0 "register_operand" "=q,q,q,q,r,r,r,r,r,r,r,r,r,r") 
+      (match_operand:SI 0 "register_operand" "=q,q,q,q,r,r,r,r,r,r,r,r") 
       (plus:SI 
-        (match_operand:SI 1 "nonmemory_operand" "q,q,q,q,r,r,r,r,r,r,ULIMM,ULIMM,ULIMM,r") 
-        (match_operand:SI 2 "nonmemory_operand" "U03S0,U07S0,q,ULIMM,r,ULIMM,U06S0,U06S0,S12S0,r,r,ULIMM,U06S0,ULIMM")))]
- "true" "@
+        (match_operand:SI 1 "nonmemory_operand" "q    ,q    ,q,q    ,0,    0,    0,    r,    r,r,ULIMM,    r") 
+        (match_operand:SI 2 "nonmemory_operand" "U03S0,U07S0,q,ULIMM,r,ULIMM,U06S0,U06S0,S12S0,r,    r,ULIMM")))]
+ "register_operand (operands[1], SImode)
+  || register_operand (operands[2], SImode)"
+ "@
   add_s %0,%1,%2
   add_s %0,%1,%2
   add_s %0,%1,%2
   add_s %0,%1,%2
-  add %0,%1,%2
-  add %0,%1,%2
   add %0,%1,%2
   add %0,%1,%2
   add %0,%1,%2
@@ -73,9 +73,9 @@
   add %0,%1,%2
   add %0,%1,%2
   add %0,%1,%2" [
-    (set_attr "predicable" "no,no,no,no,yes,yes,yes,no,no,no,no,no,no,no")
-    (set_attr "length" "2,2,2,6,4,8,4,4,4,4,8,8,8,8")
-    (set_attr "type" "add,add,add,add,add,add,add,add,add,add,add,add,add,add")]
+    (set_attr "predicable" "no,no,no,no,yes,yes,yes,no,no,no,no,no")
+    (set_attr "length"     "2,2,2,6,4,8,4,4,4,4,8,8")
+    (set_attr "type"       "add,add,add,add,add,add,add,add,add,add,add,add")]
 )
 ; END:addsi3
 
