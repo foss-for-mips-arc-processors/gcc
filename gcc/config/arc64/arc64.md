@@ -818,4 +818,4 @@ udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl"
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
 
-(include "generate/arith.md")
+(include "hand_fixed/arith.md")
