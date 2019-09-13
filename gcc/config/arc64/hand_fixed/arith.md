@@ -56,8 +56,8 @@
     (set 
       (match_operand:SI 0 "register_operand" "=q,q,q,q,r,r,r,r,r,r,r,r") 
       (plus:SI 
-        (match_operand:SI 1 "nonmemory_operand" "q    ,q    ,q,q    ,0,    0,    0,    r,    r,r,ULIMM,    r") 
-        (match_operand:SI 2 "nonmemory_operand" "U03S0,U07S0,q,ULIMM,r,ULIMM,U06S0,U06S0,S12S0,r,    r,ULIMM")))]
+        (match_operand:SI 1 "nonmemory_operand" "%    q,    0,q,    0,0,    0,    0,    r,    r,r,ULIMM,    r") 
+        (match_operand:SI 2 "nonmemory_operand" " U03S0,U07S0,q,ULIMM,r,ULIMM,U06S0,U06S0,S12S0,r,    r,ULIMM")))]
  "register_operand (operands[1], SImode)
   || register_operand (operands[2], SImode)"
  "@
