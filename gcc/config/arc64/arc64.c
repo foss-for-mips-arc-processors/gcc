@@ -535,6 +535,107 @@ arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
 //
 //}
 
+/* Print operand X (an rtx) in assembler syntax to file FILE.
+   CODE is a letter or dot (`z' in `%z0') or 0 if no letter was specified.
+   For `%' followed by punctuation, CODE is the punctuation and X is null.  */
+
+static void
+arc64_print_operand (FILE *file, rtx x, int code)
+{
+  switch (GET_CODE (x))
+    {
+    case REG :
+      fputs (reg_names[REGNO (x)], file);
+      break;
+    case MEM :
+      {
+	rtx addr = XEXP (x, 0);
+	int size = GET_MODE_SIZE (GET_MODE (x));
+
+	fputc ('[', file);
+
+	switch (GET_CODE (addr))
+	  {
+	  case PRE_INC: case POST_INC:
+	    output_address (VOIDmode,
+			    plus_constant (Pmode, XEXP (addr, 0), size)); break;
+	  case PRE_DEC: case POST_DEC:
+	    output_address (VOIDmode,
+			    plus_constant (Pmode, XEXP (addr, 0), -size));
+	    break;
+	  case PRE_MODIFY: case POST_MODIFY:
+	    output_address (VOIDmode, XEXP (addr, 1)); break;
+	  case PLUS:
+	    output_address (VOIDmode, addr);
+	    break;
+	  default:
+	    output_address (VOIDmode, addr);
+	    break;
+	  }
+	fputc (']', file);
+	break;
+      }
+      /* Let output_addr_const deal with it.  */
+    default :
+      output_addr_const (file, x);
+      break;
+    }
+}
+
+static void
+arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
+{
+  register rtx base, index = 0;
+
+  switch (GET_CODE (addr))
+    {
+    case REG :
+      fputs (reg_names[REGNO (addr)], file);
+      break;
+    case SYMBOL_REF:
+      output_addr_const (file, addr);
+      break;
+    case PLUS :
+      if (GET_CODE (XEXP (addr, 0)) == MULT)
+	index = XEXP (XEXP (addr, 0), 0), base = XEXP (addr, 1);
+      else if (CONST_INT_P (XEXP (addr, 0)))
+	index = XEXP (addr, 0), base = XEXP (addr, 1);
+      else
+	base = XEXP (addr, 0), index = XEXP (addr, 1);
+
+      gcc_assert (OBJECT_P (base));
+      arc64_print_operand_address (file, mode, base);
+      if (CONSTANT_P (base) && CONST_INT_P (index))
+	fputc ('+', file);
+      else
+	fputc (',', file);
+      gcc_assert (OBJECT_P (index));
+      arc64_print_operand_address (file, mode, index);
+      break;
+    case CONST:
+      {
+	rtx c = XEXP (addr, 0);
+
+	gcc_assert (GET_CODE (c) == PLUS);
+	gcc_assert (GET_CODE (XEXP (c, 0)) == SYMBOL_REF);
+	gcc_assert (GET_CODE (XEXP (c, 1)) == CONST_INT);
+
+	output_address (VOIDmode, XEXP (addr, 0));
+
+	break;
+      }
+    case PRE_INC :
+    case PRE_DEC :
+      /* We shouldn't get here as we've lost the mode of the memory object
+	 (which says how much to inc/dec by.  */
+      gcc_unreachable ();
+      break;
+    default :
+      output_addr_const (file, addr);
+      break;
+    }
+}
+
 /*
   Global functions.
 */
@@ -895,6 +996,12 @@ arc64_expand_epilogue (bool sibcall_p)
 
 //#undef TARGET_SETUP_INCOMING_VARARGS
 //#define TARGET_SETUP_INCOMING_VARARGS arc64_setup_incoming_varargs
+
+#undef  TARGET_PRINT_OPERAND
+#define TARGET_PRINT_OPERAND arc64_print_operand
+
+#undef  TARGET_PRINT_OPERAND_ADDRESS
+#define TARGET_PRINT_OPERAND_ADDRESS arc64_print_operand_address
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
