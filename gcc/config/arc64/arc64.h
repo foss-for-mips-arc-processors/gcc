@@ -226,7 +226,7 @@ enum reg_class
     { 0x00000000, 0x00000000, 0x00000000 }, /* NO_REGS */	\
     { 0x0000f00f, 0x00000000, 0x00000000 }, /* AC16_REGS */	\
     { 0x00001fff, 0x00000000, 0x00000000 }, /* SIBCALL_REGS */	\
-    { 0x4fffffff, 0x0fffffff, 0x00000000 }, /* GENERAL_REGS */	\
+    { 0x5fffffff, 0x0fffffff, 0x00000000 }, /* GENERAL_REGS */	\
     { 0xffffffff, 0xffffffff, 0x00000007 }, /* ALL_REGS */	\
    }
 
