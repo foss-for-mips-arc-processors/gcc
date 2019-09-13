@@ -837,4 +837,4 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
 
-;(include "arith.md")
+(include "arith.md")
