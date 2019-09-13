@@ -45,12 +45,12 @@
 
 /* The number of registers used for parameter passing.  Local to this
    file.  */
-#define MAX_ARC_PARM_REGS 8
+#define MAX_ARC64_PARM_REGS 8
 
 /* 1 if N is a possible register number for function argument
    passing.  */
 #define FUNCTION_ARG_REGNO_P(N)			\
-  ((unsigned) (N) < MAX_ARC_PARM_REGS)
+  ((unsigned) (N) < MAX_ARC64_PARM_REGS)
 
 /* Boundaries.  */
 #define PARM_BOUNDARY		64
