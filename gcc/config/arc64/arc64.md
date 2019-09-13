@@ -166,11 +166,11 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-(define_attr "type" "unknown, move, jl, bl, jump, branch, branchcc,
-return, compare, nop, setcc, block, sub, subl, add, addl, abs, div, neg,
-udiv, udivl, max, maxl, min, minl, rem, reml, remu, remul, xor, xorl,
-bmsk, bxorl, bxor, bsetl, bset, swapel, swape, orl, or, normh, norml,
-norm, ror, notl, not, lsrl, lsr, asrl, asr, asl, asll, andl, and"
+(define_attr "type" "abs, add, addl, and, andl, asl, asll, asr, asrl,
+bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl, compare,
+div, jl, jump, lsr, lsrl, max, maxl, min, minl, move, neg, nop, norm,
+normh, norml, not, notl, or, orl, rem, reml, remu, remul, return, ror,
+setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -300,30 +300,20 @@ norm, ror, notl, not, lsrl, lsr, asrl, asr, asl, asll, andl, and"
     st\\t%1,%0"
 )
 
-(define_insn "*arc64_zero_extend_qi_to_si"
-   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
-         (zero_extend:SI (match_operand:QI 1 "general_operand"      " r, i, m, r")))
-   ]
+(define_insn "*arc64_push"
+   [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
+         (                 match_operand:DI 0 "register_operand" "r"))]
    ""
-   "@
-   extb\\t%0,%1
-   extb\\t%0,%1
-   ldb\\t%0,%1
-   stb\\t%1,%0"
+   "push\\t%0"
 )
 
-(define_insn "*arc64_zero_extend_hi_to_si"
-   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
-         (zero_extend:SI (match_operand:HI 1 "general_operand"      " r, i, m, r")))
+(define_insn "*arc64_pop"
+   [(set (                  match_operand:DI 0 "register_operand" "=r")
+         (mem:DI (post_inc (reg:DI SP_REGNUM))))
    ]
    ""
-   "@
-   exth\\t%0,%1
-   exth\\t%0,%1
-   ldh\\t%0,%1
-   sth\\t%1,%0"
+   "pop\\t%0"
 )
-
 
 ;(define_insn "*arc64_movqi"
 ;  [(set (match_operand:QI 0 "nonimmediate_operand" "=q,   qh,  r,h,w,q,  r,r,   m,Usc")
@@ -620,6 +610,31 @@ norm, ror, notl, not, lsrl, lsr, asrl, asr, asl, asll, andl, and"
   ""
 )
 
+(define_insn "*arc64_zero_extend_qi_to_si"
+   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
+         (zero_extend:SI (match_operand:QI 1 "general_operand"      " r, i, m, r")))
+   ]
+   ""
+   "@
+   extb\\t%0,%1
+   extb\\t%0,%1
+   ldb\\t%0,%1
+   stb\\t%1,%0"
+)
+
+(define_insn "*arc64_zero_extend_hi_to_si"
+   [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
+         (zero_extend:SI (match_operand:HI 1 "general_operand"      " r, i, m, r")))
+   ]
+   ""
+   "@
+   exth\\t%0,%1
+   exth\\t%0,%1
+   ldh\\t%0,%1
+   sth\\t%1,%0"
+)
+
+
 ;; -------------------------------------------------------------------
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
@@ -822,4 +837,4 @@ norm, ror, notl, not, lsrl, lsr, asrl, asr, asl, asll, andl, and"
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
 
-(include "hand_fixed/arith.md")
+;(include "arith.md")
