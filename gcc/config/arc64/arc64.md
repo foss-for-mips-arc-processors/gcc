@@ -272,8 +272,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   "@
    mov\\t%0,%1
    mov\\t%0,%1
-   ld\\t%0,%1
-   st\\t%1,%0"
+   ldb\\t%0,%1
+   stb\\t%1,%0"
 )
 
 (define_insn "*arc64_movhi"
@@ -284,8 +284,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
-    ld\\t%0,%1
-    st\\t%1,%0"
+    ldh\\t%0,%1
+    sth\\t%1,%0"
 )
 
 (define_insn "*arc64_movsi"
@@ -569,7 +569,7 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 (define_insn "simple_return"
   [(simple_return)]
   ""
-  "j%!%*\\t[blink]"
+  "j_s\\t[blink]"
   [(set_attr "type" "return")
    (set_attr "iscompact" "maybe")
    (set_attr "length" "*")])
