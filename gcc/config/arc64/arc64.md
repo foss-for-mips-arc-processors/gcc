@@ -265,22 +265,22 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-  [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r, r, m")
-        (match_operand:QI 1 "general_operand"      " r, i, m, r"))
-  ]
-  ""
-  "@
-   mov\\t%0,%1
-   mov\\t%0,%1
-   ldb\\t%0,%1
-   stb\\t%1,%0"
+   [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r, r, m")
+         (match_operand:QI 1 "general_operand"      " r, i, m, r"))
+   ]
+   "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
+   "@
+    mov\\t%0,%1
+    mov\\t%0,%1
+    ldb\\t%0,%1
+    stb\\t%1,%0"
 )
 
 (define_insn "*arc64_movhi"
    [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r, r, m")
          (match_operand:HI 1 "general_operand"      " r, i, m, r"))
    ]
-   ""
+   "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
@@ -292,7 +292,7 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
    [(set (match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
          (match_operand:SI 1 "general_operand"      " r, i, m, r"))
    ]
-   ""
+   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
@@ -304,10 +304,10 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
    [(set (match_operand:DI 0 "nonimmediate_operand" "=r, r, r, m")
          (match_operand:DI 1 "general_operand"      " r, i, m, r"))
    ]
-   ""
+   "register_operand (operands[0], DImode) || register_operand (operands[1], DImode)"
    "@
-    mov\\t%0,%1
-    mov\\t%0,%1
+    movl\\t%0,%1
+    movl\\t%0,%1
     ldl\\t%0,%1
     stl\\t%1,%0"
 )
