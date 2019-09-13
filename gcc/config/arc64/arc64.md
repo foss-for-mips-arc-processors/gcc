@@ -300,6 +300,18 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
     st\\t%1,%0"
 )
 
+(define_insn "*arc64_movdi"
+   [(set (match_operand:DI 0 "nonimmediate_operand" "=r, r, r, m")
+         (match_operand:DI 1 "general_operand"      " r, i, m, r"))
+   ]
+   ""
+   "@
+    mov\\t%0,%1
+    mov\\t%0,%1
+    ldl\\t%0,%1
+    stl\\t%1,%0"
+)
+
 (define_insn "*arc64_push"
    [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
          (                 match_operand:DI 0 "register_operand" "r"))]
