@@ -36,9 +36,6 @@ static const struct default_options arc_option_optimization_table[] =
   {
     { OPT_LEVELS_SIZE, OPT_ftree_loop_optimize, NULL, 0},
     { OPT_LEVELS_SIZE, OPT_fmove_loop_invariants, NULL, 0},
-    { OPT_LEVELS_SIZE, OPT_fbranch_count_reg, NULL, 0},
-    { OPT_LEVELS_SIZE, OPT_fdelayed_branch, NULL, 0 },
-    { OPT_LEVELS_SIZE, OPT_fsection_anchors, NULL, 1 },
     { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
   };
