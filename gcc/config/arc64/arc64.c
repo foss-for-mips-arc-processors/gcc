@@ -278,7 +278,8 @@ arc64_save_callee_saves (void)
 
   for (regno = R58_REGNUM; regno >= R0_REGNUM; regno--)
     {
-      if (frame->reg_offset[regno] == -1)
+      if (frame->reg_offset[regno] == -1
+	  || (frame_pointer_needed && regno == R27_REGNUM))
 	continue;
 
       reg = gen_rtx_REG (save_mode, regno);
@@ -688,52 +689,108 @@ arc64_modes_tieable_p (machine_mode mode1, machine_mode mode2)
   return false;
 }
 
-/* Print operand X (an rtx) in assembler syntax to file FILE.
-   CODE is a letter or dot (`z' in `%z0') or 0 if no letter was specified.
-   For `%' followed by punctuation, CODE is the punctuation and X is null.  */
+static inline bool
+arc64_short_insn_p (rtx_insn *insn)
+{
+  enum attr_iscompact iscompact;
+
+  iscompact = get_attr_iscompact (insn);
+  if (iscompact == ISCOMPACT_YES)
+    return true;
+
+  if (iscompact == ISCOMPACT_MAYBE)
+    return (get_attr_length (insn) == 2)
+      || (get_attr_length (insn) == 6);
+
+  return false;
+}
+
+/* Print operand X (an rtx) in assembler syntax to file FILE.  CODE is
+   a letter or dot (`z' in `%z0') or 0 if no letter was specified.
+   For `%' followed by punctuation, CODE is the punctuation and X is
+   null.  Letters `acln' are reserved.  The acceptable formatting
+   commands given by CODE are:
+     '0': Print a normal operand, if it's a general register,
+	  then we assume DImode.
+     'U': Load/store update or scaling indicator.
+     '?': Short instruction suffix.
+*/
 
 static void
 arc64_print_operand (FILE *file, rtx x, int code)
 {
-  switch (GET_CODE (x))
+  switch (code)
     {
-    case REG :
-      fputs (reg_names[REGNO (x)], file);
+    case '?':
+      if (arc64_short_insn_p (current_output_insn))
+	fputs ("_s", file);
       break;
-    case MEM :
-      {
-	rtx addr = XEXP (x, 0);
-	int size = GET_MODE_SIZE (GET_MODE (x));
 
-	fputc ('[', file);
+    case 'U' :
+      /* Output a load/store with update indicator if appropriate.  */
+      if (!MEM_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%U code");
+	  return;
+	}
 
-	switch (GET_CODE (addr))
-	  {
-	  case PRE_INC: case POST_INC:
-	    output_address (VOIDmode,
-			    plus_constant (Pmode, XEXP (addr, 0), size)); break;
-	  case PRE_DEC: case POST_DEC:
-	    output_address (VOIDmode,
-			    plus_constant (Pmode, XEXP (addr, 0), -size));
-	    break;
-	  case PRE_MODIFY: case POST_MODIFY:
-	    output_address (VOIDmode, XEXP (addr, 1)); break;
-	  case PLUS:
-	    output_address (VOIDmode, addr);
-	    break;
-	  default:
-	    output_address (VOIDmode, addr);
-	    break;
-	  }
-	fputc (']', file);
-	break;
-      }
-      /* Let output_addr_const deal with it.  */
-    default :
-      output_addr_const (file, x);
+      switch (GET_CODE (XEXP (x, 0)))
+	{
+	case PRE_INC:
+	case PRE_DEC:
+	case PRE_MODIFY:
+	  fputs (".a", file);
+	  break;
+
+	case POST_INC:
+	case POST_DEC:
+	case POST_MODIFY:
+	  fputs (".ab", file);
+	  break;
+
+	default:
+	  break;
+	}
       break;
+
+    case 0:
+      if (x == NULL)
+	{
+	  output_operand_lossage ("missing operand");
+	  return;
+	}
+
+      switch (GET_CODE (x))
+	{
+	case REG :
+	  asm_fprintf (file, "%s", reg_names [REGNO (x)]);
+	  break;
+
+	case MEM :
+	  output_address (GET_MODE (x), XEXP (x, 0));
+	  break;
+
+	case LABEL_REF:
+	case SYMBOL_REF:
+	  output_addr_const (asm_out_file, x);
+	  break;
+
+	case CONST_INT:
+	  asm_fprintf (file, "%wd", INTVAL (x));
+	  break;
+
+	default:
+	  output_operand_lossage ("invalid operand");
+	  return;
+	}
+      break;
+
+    default:
+      output_operand_lossage ("invalid operand prefix '%%%c'", code);
     }
 }
+
+/* Print address 'addr' of a memory access with mode 'mode'.  */
 
 static void
 arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
@@ -744,9 +801,6 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
     {
     case REG :
       fputs (reg_names[REGNO (addr)], file);
-      break;
-    case SYMBOL_REF:
-      output_addr_const (file, addr);
       break;
     case PLUS :
       if (GET_CODE (XEXP (addr, 0)) == MULT)
@@ -777,16 +831,32 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 
 	break;
       }
-    case PRE_INC :
-    case PRE_DEC :
-      /* We shouldn't get here as we've lost the mode of the memory object
-	 (which says how much to inc/dec by.  */
-      gcc_unreachable ();
+    case PRE_INC:
+    case POST_INC:
+      output_address (VOIDmode,
+		      plus_constant (Pmode, XEXP (addr, 0),
+				     GET_MODE_SIZE (mode)));
       break;
+    case PRE_DEC:
+    case POST_DEC:
+      output_address (VOIDmode,
+		      plus_constant (Pmode, XEXP (addr, 0),
+				     -GET_MODE_SIZE (mode)));
+      break;
+    case SYMBOL_REF:
     default :
       output_addr_const (file, addr);
       break;
     }
+}
+
+/* Target hook for indicating whether a punctuation character for
+   TARGET_PRINT_OPERAND is valid.  */
+
+static bool
+arc64_print_operand_punct_valid_p (unsigned char code)
+{
+  return (code == '?');
 }
 
 /*
@@ -1176,6 +1246,9 @@ arc64_expand_epilogue (bool sibcall_p)
 
 #undef  TARGET_PRINT_OPERAND_ADDRESS
 #define TARGET_PRINT_OPERAND_ADDRESS arc64_print_operand_address
+
+#undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
+#define TARGET_PRINT_OPERAND_PUNCT_VALID_P arc64_print_operand_punct_valid_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
