@@ -168,9 +168,10 @@
 
 (define_attr "type" "abs, add, addl, and, andl, asl, asll, asr, asrl,
 bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl, compare,
-div, jl, jump, lsr, lsrl, max, maxl, min, minl, move, neg, nop, norm,
-normh, norml, not, notl, or, orl, rem, reml, remu, remul, return, ror,
-setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
+div, jl, jump, ld, lsr, lsrl, max, maxl, min, minl, move, neg, nop,
+norm, normh, norml, not, notl, or, orl, rem, reml, remu, remul,
+return, ror, setcc, st, sub, subl, swape, swapel, udiv, udivl,
+unknown, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -266,65 +267,73 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
    [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r, r, m")
-         (match_operand:QI 1 "general_operand"      " r, i, m, r"))
+	 (match_operand:QI 1 "general_operand"      " r, i, m, r"))
    ]
-   "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
+   "register_operand (operands[0], QImode)
+   || register_operand (operands[1], QImode)"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
-    ldb\\t%0,%1
-    stb\\t%1,%0"
+    ldb\\t%0,[%1]
+    stb\\t%1,[%0]"
 )
 
 (define_insn "*arc64_movhi"
    [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r, r, m")
-         (match_operand:HI 1 "general_operand"      " r, i, m, r"))
+	 (match_operand:HI 1 "general_operand"      " r, i, m, r"))
    ]
-   "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
+   "register_operand (operands[0], HImode)
+    || register_operand (operands[1], HImode)"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
-    ldh\\t%0,%1
-    sth\\t%1,%0"
+    ldh%U1\\t%0,[%1]
+    sth%U0\\t%1,[%0]"
 )
 
 (define_insn "*arc64_movsi"
    [(set (match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
-         (match_operand:SI 1 "general_operand"      " r, i, m, r"))
+	 (match_operand:SI 1 "general_operand"      " r, i, m, r"))
    ]
-   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
+   "register_operand (operands[0], SImode)
+   || register_operand (operands[1], SImode)"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
-    ld\\t%0,%1
-    st\\t%1,%0"
-)
-
-(define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "nonimmediate_operand" "=r, r, r, m")
-         (match_operand:DI 1 "general_operand"      " r, i, m, r"))
-   ]
-   "register_operand (operands[0], DImode) || register_operand (operands[1], DImode)"
-   "@
-    movl\\t%0,%1
-    movl\\t%0,%1
-    ldl\\t%0,%1
-    stl\\t%1,%0"
+    ld%U1\\t%0,[%1]
+    st%U0\\t%1,[%0]"
 )
 
 (define_insn "*arc64_push"
-   [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
-         (                 match_operand:DI 0 "register_operand" "r"))]
+  [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
+	(                 match_operand:DI 0 "register_operand" "q,r"))]
    ""
-   "push\\t%0"
-)
+   "@
+    push_s\\t%0
+    stl.a\\t%0,[sp,-8]"
+   [(set_attr "type" "st")
+    (set_attr "length" "2,4")])
 
 (define_insn "*arc64_pop"
-   [(set (                  match_operand:DI 0 "register_operand" "=r")
-         (mem:DI (post_inc (reg:DI SP_REGNUM))))
-   ]
-   ""
-   "pop\\t%0"
+  [(set (                  match_operand:DI 0 "register_operand" "=q,r")
+	(mem:DI (post_inc (reg:DI SP_REGNUM))))]
+  ""
+  "@
+   pop_s\\t%0
+   ldl.ab\\t%0,[sp,8]"
+  [(set_attr "type" "ld")
+   (set_attr "length" "2,4")])
+
+(define_insn "*arc64_movdi"
+   [(set (match_operand:DI 0 "nonimmediate_operand" "=r, r, r, m")
+	 (match_operand:DI 1 "general_operand"      " r, i, m, r"))]
+   "register_operand (operands[0], DImode)
+   || register_operand (operands[1], DImode)"
+   "@
+    movl\\t%0,%1
+    movl\\t%0,%1
+    ldl%U1\\t%0,[%1]
+    stl%U0\\t%1,[%0]"
 )
 
 ;(define_insn "*arc64_movqi"
@@ -393,8 +402,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   ""
   "@
    jl_s\\t[%0]
-   jl%!%*\\t[%0]
-   bl%!%*\\t%c0"
+   jl\\t[%0]
+   bl\\t%c0"
   [(set_attr "type" "jl,jl,bl")
    (set_attr "predicable" "no,yes,yes")
    (set_attr "length" "2,4,4")])
@@ -422,8 +431,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   ""
   "@
    jl_s\\t[%1]
-   jl%!\\t[%1]
-   bl%!\\t%c1"
+   jl\\t[%1]
+   bl\\t%c1"
   [(set_attr "type" "jl,jl,bl")
    (set_attr "predicable" "no,yes,yes")
    (set_attr "length" "2,4,4")])
@@ -459,8 +468,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
-   j%!\\t[%0]
-   b%!\\t%c0"
+   j\\t[%0]
+   b\\t%c0"
   [(set_attr "type" "jump,branch")
    (set_attr "predicable" "yes,yes")
    (set_attr "iscompact" "maybe,no")]
@@ -473,8 +482,8 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
-   j%!\\t[%1]
-   b%!\\t%c1"
+   j\\t[%1]
+   b\\t%c1"
   [(set_attr "type" "jump,branch")
    (set_attr "predicable" "yes,yes")
    (set_attr "iscompact" "maybe,no")]
@@ -487,25 +496,22 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:DI 0 "register_operand" "q,r"))]
   ""
-  "@
-   j%!\\t[%0]
-   j%!\\t[%0]"
+  "j%?\\t[%0]"
   [(set_attr "type" "jump")
-   (set_attr "predicable" "no,yes")
-   (set_attr "iscompact" "yes,no")]
+   (set_attr "length" "2,4")]
 )
 
 (define_insn "jump"
   [(set (pc) (label_ref (match_operand 0 "" "")))]
   ""
-  "b%!\\t%l0"
+  "b%?\\t%l0"
   [(set_attr "type" "branch")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
 	      (le (minus (match_dup 0) (pc)) (const_int 506)))
-	 (const_int 4)
-	 (const_int 2)))]
+	 (const_int 2)
+	 (const_int 4)))]
 )
 
 (define_expand "cbranch<mode>4"
@@ -612,19 +618,19 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 
 (define_expand "<ANY_EXTEND:optab><SHORT:mode><GPI:mode>2"
   [(set (match_operand:GPI 0 "register_operand")
-        (ANY_EXTEND:GPI (match_operand:SHORT 1 "nonimmediate_operand")))]
+	(ANY_EXTEND:GPI (match_operand:SHORT 1 "nonimmediate_operand")))]
   ""
 )
 
 (define_expand "<optab>qihi2"
   [(set (match_operand:HI 0 "register_operand")
-        (ANY_EXTEND:HI (match_operand:QI 1 "nonimmediate_operand")))]
+	(ANY_EXTEND:HI (match_operand:QI 1 "nonimmediate_operand")))]
   ""
 )
 
 (define_insn "*arc64_zero_extend_qi_to_si"
    [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
-         (zero_extend:SI (match_operand:QI 1 "general_operand"      " r, i, m, r")))
+	 (zero_extend:SI (match_operand:QI 1 "general_operand"      " r, i, m, r")))
    ]
    ""
    "@
@@ -636,7 +642,7 @@ setcc, sub, subl, swape, swapel, udiv, udivl, unknown, xor, xorl"
 
 (define_insn "*arc64_zero_extend_hi_to_si"
    [(set (                match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m")
-         (zero_extend:SI (match_operand:HI 1 "general_operand"      " r, i, m, r")))
+	 (zero_extend:SI (match_operand:HI 1 "general_operand"      " r, i, m, r")))
    ]
    ""
    "@
