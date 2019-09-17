@@ -81,6 +81,9 @@
    aligned.  */
 #define LOCAL_ALIGNMENT(EXP, ALIGN)				\
   ARC64_EXPAND_ALIGNMENT (!flag_conserve_stack, EXP, ALIGN)
+
+/* Set this nonzero if move instructions will actually fail to work
+   when given unaligned data.  */
 #define STRICT_ALIGNMENT	1
 
 /* Layout of Source Language Data Types.  */
@@ -430,10 +433,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
    end at the end of the line.  */
 #define ASM_COMMENT_START "#"
 
-/* To be used fot "U" options of asm_fprintf.  */
-#undef USER_LABEL_PREFIX
-#define USER_LABEL_PREFIX "@"
-
 #define ASM_OUTPUT_ALIGN(FILE,LOG) \
   fprintf(FILE, "\t.align\t%d\n", (int)LOG)
 
@@ -446,6 +445,13 @@ extern const enum reg_class arc64_regno_to_regclass[];
    no longer contain unusual constructs.  */
 #undef ASM_APP_OFF
 #define ASM_APP_OFF ""
+
+#undef ASM_OUTPUT_LABELREF
+#define ASM_OUTPUT_LABELREF(FILE,NAME)			\
+  do {							\
+    fputs ("@", (FILE));				\
+    fputs ((NAME), (FILE));				\
+  } while (0)
 
 /* Section selection.  */
 
