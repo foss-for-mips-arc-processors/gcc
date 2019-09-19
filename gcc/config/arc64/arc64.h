@@ -434,7 +434,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define ASM_COMMENT_START "#"
 
 #define ASM_OUTPUT_ALIGN(FILE,LOG) \
-  fprintf(FILE, "\t.align\t%d\n", (int)LOG)
+  fprintf(FILE, "\t.align\t%d\n", 1 << (int)LOG)
 
 /* Output to assembler file text saying following lines
    may contain character constants, extra white space, comments, etc.  */
@@ -446,12 +446,18 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #undef ASM_APP_OFF
 #define ASM_APP_OFF ""
 
-#undef ASM_OUTPUT_LABELREF
-#define ASM_OUTPUT_LABELREF(FILE,NAME)			\
-  do {							\
-    fputs ("@", (FILE));				\
-    fputs ((NAME), (FILE));				\
-  } while (0)
+/* This is how to output a reference to a symbol_ref / label_ref as
+   (part of) an operand.  To disambiguate from register names like a1
+   / a2 / status etc, symbols are preceded by '@'.  */
+#define ASM_OUTPUT_SYMBOL_REF(FILE,SYM) \
+  ASM_OUTPUT_LABEL_REF ((FILE), XSTR ((SYM), 0))
+#define ASM_OUTPUT_LABEL_REF(FILE,STR)			\
+  do							\
+    {							\
+      fputs ("@", (FILE));				\
+      assemble_name ((FILE), (STR));			\
+    }							\
+  while (0)
 
 /* Section selection.  */
 
