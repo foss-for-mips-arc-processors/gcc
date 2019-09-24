@@ -90,6 +90,11 @@
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
+;; Iterator for QI HI and SI modes
+(define_mode_iterator EXT [QI HI SI])
+
+(define_mode_attr EXTsfx [(QI "b") (HI "h") (SI "w")])
+
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
 
@@ -658,6 +663,14 @@ unknown, xor, xorl"
 )
 
 
+(define_insn "*arc64_sign_extend_<mode>_to_di"
+  [(set (                match_operand:DI 0 "register_operand" "=r,r")
+	(sign_extend:DI (match_operand:EXT 1 "nonmemory_operand" "r,i")))
+   ]
+   ""
+   "sex<EXRsfx>l\\t%1,%0"
+)
+
 ;; -------------------------------------------------------------------
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
@@ -723,8 +736,8 @@ unknown, xor, xorl"
   [(set (reg:CC CC_REGNUM)
 	(compare:CC (match_operand:GPI 0 "nonmemory_operand" "r,    r,    r,U06S0,S12S0,i,r")
 		    (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,S12S0,    r,    r,r,i")))]
-  "register_operand (operands[0], SImode)
-   || register_operand (operands[1], SImode)"
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
   "@
    cmp<GPIsuffix>%?\\t%0,%1
    cmp<GPIsuffix>%?\\t%0,%1
