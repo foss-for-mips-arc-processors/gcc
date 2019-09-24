@@ -366,6 +366,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define UNSIGNED_INT32(X) (UNSIGNED(X,32))
 
 #define SIGNED_INT3(X) (SIGNED(X,3))
+#define SIGNED_INT6(X) (SIGNED(X,6))
 #define SIGNED_INT7(X) (SIGNED(X,7))
 #define SIGNED_INT8(X) (SIGNED(X,8))
 #define SIGNED_INT9(X) (SIGNED(X,9))
