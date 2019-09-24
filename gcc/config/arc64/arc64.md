@@ -266,14 +266,19 @@ unknown, xor, xorl"
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-   [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r, r, m")
-	 (match_operand:QI 1 "general_operand"      " r, i, m, r"))
+   [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r,     m, r, m")
+	 (match_operand:QI 1 "general_operand"      " r, i, S06S0, m, r"))
    ]
+   ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
-   || register_operand (operands[1], QImode)"
+   || register_operand (operands[1], QImode)
+   /* this is to match 'stb w6, [limm]' (S06S0 is the w6) */
+   || (satisfies_constraint_S06S0 (operands[1])
+       && memory_operand (operands[0], QImode))"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
+    stb\\t%1,[%0]
     ldb\\t%0,[%1]
     stb\\t%1,[%0]"
 )
