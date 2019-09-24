@@ -34,7 +34,9 @@ POTFILES
 
 TAGS
 TAGS.sub
-cscope.out
+GPATH
+GRTAGS
+GTAGS
 
 .local.vimrc
 .lvimrc
