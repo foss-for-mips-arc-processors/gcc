@@ -412,7 +412,12 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TRAMPOLINE_ALIGNMENT 256
 
 /* Names to predefine in the preprocessor for this target machine.  */
-#define TARGET_CPU_CPP_BUILTINS() arc64_cpu_cpp_builtins (pfile)
+#define TARGET_CPU_CPP_BUILTINS()		\
+  do						\
+    {						\
+      builtin_define_std ("__ARC64__");		\
+    }						\
+  while (0)
 
 #define CASE_VECTOR_MODE Pmode
 
