@@ -86,8 +86,14 @@
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT6 (ival - 1)")))
 
-;---------------------------------------------------------
 
+(define_constraint "S06S0" "@internal
+  A 6-bit signed integer constant"
+  (and
+    (match_code "const_int")
+    (match_test "SIGNED_INT6 (ival)")))
+
+;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal
   A 6-bit unsigned integer constant"
