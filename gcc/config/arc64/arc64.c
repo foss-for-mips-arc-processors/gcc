@@ -1115,7 +1115,7 @@ void arc64_init_expanders (void)
 machine_mode
 arc64_select_cc_mode (enum rtx_code op, rtx x, rtx y)
 {
-  return CC_Cmode;
+  return CCmode;
 }
 
 /* Implement RETURN_ADDR_RTX.  We do not support moving back to a
