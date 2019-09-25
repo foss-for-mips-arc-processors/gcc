@@ -668,7 +668,7 @@ unknown, xor, xorl"
 	(sign_extend:DI (match_operand:EXT 1 "nonmemory_operand" "r,i")))
    ]
    ""
-   "sex<EXRsfx>l\\t%1,%0"
+   "sex<EXTsfx>l\\t%1,%0"
 )
 
 ;; -------------------------------------------------------------------
