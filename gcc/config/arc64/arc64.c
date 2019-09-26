@@ -50,7 +50,7 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
-   GENERAL_REGS, NO_REGS,      GENERAL_REGS, NO_REGS,
+   GENERAL_REGS, NO_REGS,      GENERAL_REGS, GENERAL_REGS,
 
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
@@ -61,8 +61,16 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
 
-   NO_REGS, NO_REGS, NO_REGS,
+   GENERAL_REGS, GENERAL_REGS, NO_REGS,
   };
+
+enum arc_cc_code_index
+{
+  ARC_CC_AL, ARC_CC_EQ = ARC_CC_AL+2, ARC_CC_NE, ARC_CC_P, ARC_CC_N,
+  ARC_CC_C,  ARC_CC_NC, ARC_CC_V, ARC_CC_NV,
+  ARC_CC_GT, ARC_CC_LE, ARC_CC_GE, ARC_CC_LT, ARC_CC_HI, ARC_CC_LS, ARC_CC_PNZ,
+  ARC_CC_LO = ARC_CC_C, ARC_CC_HS = ARC_CC_NC
+};
 
 /* Frame and machine specific info.  */
 
@@ -279,7 +287,10 @@ arc64_save_callee_saves (void)
   for (regno = R58_REGNUM; regno >= R0_REGNUM; regno--)
     {
       if (frame->reg_offset[regno] == -1
-	  || (frame_pointer_needed && regno == R27_REGNUM))
+	  /* Hard frame pointer is saved in a different place.  */
+	  || (frame_pointer_needed && regno == R27_REGNUM)
+	  /* blink register is saved in a different place.  */
+	  || (regno == BLINK_REGNUM))
 	continue;
 
       reg = gen_rtx_REG (save_mode, regno);
@@ -376,9 +387,6 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
       offset = 0;
     }
 
-  if (frame_pointer_needed)
-    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
-
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
@@ -386,9 +394,16 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
       offset = 0;
     }
 
+  if (frame_pointer_needed)
+    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
+
   for (regno = R0_REGNUM; regno >= R58_REGNUM; regno++)
     {
-      if (frame->reg_offset[regno] == -1)
+      if (frame->reg_offset[regno] == -1
+	  /* Hard frame pointer has been restored.  */
+	  || (frame_pointer_needed && regno == R27_REGNUM)
+	  /* blink register has been restored.  */
+	  || (regno == BLINK_REGNUM))
 	continue;
 
       reg = gen_rtx_REG (restore_mode, regno);
@@ -440,7 +455,27 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
 static bool
 arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
 {
-  return true;
+  if (REG_P (x))
+    return true;
+
+  /* ST instruction can only accept a single register in address.  */
+  if (GET_CODE (x) == PLUS
+      && REG_P (XEXP (x, 0))
+      && CONST_INT_P (XEXP (x, 1)))
+      return true;
+
+  if (CONSTANT_P (x))
+    return true;
+
+  if ((GET_CODE (x) == PRE_DEC || GET_CODE (x) == PRE_INC
+       || GET_CODE (x) == POST_DEC || GET_CODE (x) == POST_INC)
+      && REG_P (XEXP (x, 0)))
+    return true;
+
+  if ((GET_CODE (x) == PRE_MODIFY || GET_CODE (x) == POST_MODIFY))
+    return true;
+
+  return false;
 }
 
 /* Implement TARGET_LEGITIMATE_CONSTANT_P hook.  Return true for constants
@@ -705,6 +740,60 @@ arc64_short_insn_p (rtx_insn *insn)
   return false;
 }
 
+/* Returns the index of the ARC condition code string in
+   `arc_condition_codes'.  COMPARISON should be an rtx like `(eq (...)
+   (...))'.  */
+
+static int
+get_arc64_condition_code (rtx comparison)
+{
+  switch (GET_MODE (XEXP (comparison, 0)))
+    {
+    case E_CCmode:
+    case E_SImode:
+      switch (GET_CODE (comparison))
+	{
+	case EQ : return ARC_CC_EQ;
+	case NE : return ARC_CC_NE;
+	case GT : return ARC_CC_GT;
+	case LE : return ARC_CC_LE;
+	case GE : return ARC_CC_GE;
+	case LT : return ARC_CC_LT;
+	case GTU : return ARC_CC_HI;
+	case LEU : return ARC_CC_LS;
+	case LTU : return ARC_CC_LO;
+	case GEU : return ARC_CC_HS;
+	default : gcc_unreachable ();
+	}
+    case E_CC_ZNmode:
+      switch (GET_CODE (comparison))
+	{
+	case EQ : return ARC_CC_EQ;
+	case NE : return ARC_CC_NE;
+	case GE: return ARC_CC_P;
+	case LT: return ARC_CC_N;
+	case GT : return ARC_CC_PNZ;
+	default : gcc_unreachable ();
+	}
+    case E_CC_Zmode:
+      switch (GET_CODE (comparison))
+	{
+	case EQ : return ARC_CC_EQ;
+	case NE : return ARC_CC_NE;
+	default : gcc_unreachable ();
+	}
+    case E_CC_Cmode:
+      switch (GET_CODE (comparison))
+	{
+	case LTU : return ARC_CC_C;
+	case GEU : return ARC_CC_NC;
+	default : gcc_unreachable ();
+	}
+    default : gcc_unreachable ();
+    }
+  gcc_unreachable ();
+}
+
 /* Print operand X (an rtx) in assembler syntax to file FILE.  CODE is
    a letter or dot (`z' in `%z0') or 0 if no letter was specified.
    For `%' followed by punctuation, CODE is the punctuation and X is
@@ -713,12 +802,19 @@ arc64_short_insn_p (rtx_insn *insn)
      '0': Print a normal operand, if it's a general register,
 	  then we assume DImode.
      'U': Load/store update or scaling indicator.
+     'm': output condition code without 'dot'.
      '?': Short instruction suffix.
 */
 
 static void
 arc64_print_operand (FILE *file, rtx x, int code)
 {
+  const char *arc_condition_codes[] =
+    {
+     "al", 0, "eq", "ne", "p", "n", "lo", "hs", "v", "nv",
+     "gt", "le", "ge", "lt", "hi", "ls", "pnz", 0
+    };
+
   switch (code)
     {
     case '?':
@@ -751,6 +847,10 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	default:
 	  break;
 	}
+      break;
+
+    case 'm':
+      fputs (arc_condition_codes[get_arc64_condition_code (x)], file);
       break;
 
     case 0:
@@ -843,6 +943,11 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 		      plus_constant (Pmode, XEXP (addr, 0),
 				     -GET_MODE_SIZE (mode)));
       break;
+    case PRE_MODIFY:
+    case POST_MODIFY:
+      output_address (VOIDmode, XEXP (addr, 1));
+      break;
+
     case SYMBOL_REF:
     default :
       output_addr_const (file, addr);
@@ -882,6 +987,15 @@ arc64_gen_compare_reg (enum rtx_code code, rtx x, rtx y)
 bool
 arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 {
+  /* The 64 bit moves are special as they need more care with what
+     they can move, load or save.  */
+  if (mode == E_DImode)
+    {
+      if (MEM_P (op0))
+	op1 = force_reg (mode, op1);
+      emit_set_insn (op0, op1);
+      return true;
+    }
   return false; /* FIXME: Place holder for move expand ops.  */
 }
 

@@ -36,7 +36,7 @@
 /* Maximum number of registers that can appear in a valid memory
    address.  N.B. The ld insn allows 2, but the st insn only allows
    1.  */
-#define MAX_REGS_PER_ADDRESS 2
+#define MAX_REGS_PER_ADDRESS 1
 
 /* Recognize any constant value that is a valid address.  */
 #define CONSTANT_ADDRESS_P(X)					\
@@ -150,11 +150,11 @@
    1, 1, 1, 1,   1, 1, 1, 1,  /* R32 - R39 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R48 - R55 */				\
-   1, 1, 0, 0,   1, 1, 1, 1,  /* R56, R57, ACCL, ACCH, Specials */	\
+   1, 1, 0, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, R59, Specials */	\
    1, 1, 1,                   /* AP, SFP, CC */				\
   }
 
-#define CALL_USED_REGISTERS							\
+#define CALL_USED_REGISTERS						\
   {									\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R0 - R7 */				\
    1, 1, 1, 1,   1, 1, 0, 0,  /* R8 - R15 */				\
@@ -164,7 +164,7 @@
    1, 1, 1, 1,   1, 1, 1, 1,  /* R32 - R39 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R48 - R55 */				\
-   1, 1, 1, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, ACCH, Specials */	\
+   1, 1, 1, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, R59, Specials */	\
    1, 1, 1,                   /* AP, SFP, CC */				\
   }
 
@@ -185,8 +185,7 @@
   {						\
    { "fp", 27 },				\
    { "gp", 30 },				\
-   { "accl", 58 },				\
-   { "acch", 59 },				\
+   { "acc", 58 },				\
   }
 
 #define EPILOGUE_USES(REGNO) (arc64_epilogue_uses (REGNO))
@@ -229,7 +228,7 @@ enum reg_class
     { 0x00000000, 0x00000000, 0x00000000 }, /* NO_REGS */	\
     { 0x0000f00f, 0x00000000, 0x00000000 }, /* AC16_REGS */	\
     { 0x00001fff, 0x00000000, 0x00000000 }, /* SIBCALL_REGS */	\
-    { 0x5fffffff, 0x0fffffff, 0x00000000 }, /* GENERAL_REGS */	\
+    { 0xdfffffff, 0x0fffffff, 0x00000003 }, /* GENERAL_REGS */	\
     { 0xffffffff, 0xffffffff, 0x00000007 }, /* ALL_REGS */	\
    }
 
