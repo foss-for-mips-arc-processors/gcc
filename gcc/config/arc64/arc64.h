@@ -348,8 +348,9 @@ enum reg_class
 extern const enum reg_class arc64_regno_to_regclass[];
 #endif
 
-#define SIGNED(X,V) ((unsigned) ((X) + (1 << V)) < (1 << (V + 1)))
-#define UNSIGNED(X,V) ((unsigned) (X) < (1 << V))
+#define SIGNED(X,V)							\
+  ((unsigned long long) ((X) + (1ULL << (V - 1))) < (1ULL << V))
+#define UNSIGNED(X,V) ((unsigned long long) (X) < (1ULL << V))
 #define VERIFY_SHIFT(X,S) ((X & ((1 << S) - 1)) == 0)
 
 #define UNSIGNED_INT3(X) (UNSIGNED(X,3))

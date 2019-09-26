@@ -461,7 +461,8 @@ arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
   /* ST instruction can only accept a single register in address.  */
   if (GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
-      && CONST_INT_P (XEXP (x, 1)))
+      && CONST_INT_P (XEXP (x, 1))
+      && SIGNED_INT9 (INTVAL (XEXP (x, 1))))
       return true;
 
   if (CONSTANT_P (x))
@@ -804,12 +805,15 @@ get_arc64_condition_code (rtx comparison)
      'U': Load/store update or scaling indicator.
      'm': output condition code without 'dot'.
      '?': Short instruction suffix.
+     'L': Lower 32bit of immediate or symbol.
+     'h': Higher 32bit of an immediate or symbol.
 */
 
 static void
 arc64_print_operand (FILE *file, rtx x, int code)
 {
-  const char *arc_condition_codes[] =
+  HOST_WIDE_INT ival;
+  static const char * const arc_condition_codes[] =
     {
      "al", 0, "eq", "ne", "p", "n", "lo", "hs", "v", "nv",
      "gt", "le", "ge", "lt", "hi", "ls", "pnz", 0
@@ -847,6 +851,28 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	default:
 	  break;
 	}
+      break;
+
+    case 'L':
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%L code");
+	  return;
+	}
+      ival = INTVAL (x);
+      ival &= 0xffffffffULL;
+      fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
+      break;
+
+    case 'h':
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%h code");
+	  return;
+	}
+      ival = INTVAL (x);
+      ival >>= 32;
+      fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
       break;
 
     case 'm':
@@ -991,11 +1017,35 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
      they can move, load or save.  */
   if (mode == E_DImode)
     {
+      /* FIXME! check for the case when we have std limm,[b,s9].  */
       if (MEM_P (op0))
+	op1 = force_reg (mode, op1);
+
+      /* Check for large constants.  Normally the strategy is to split
+	 the constant in two moves: one "regular" movl and the second
+	 one a "high" operation via movhl.  For PIC code, we need to
+	 use addhl instruction.  */
+      if (CONST_INT_P (op1))
+	if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
+	  {
+	    /* We have a large immediate.  FIXME! add strategies to
+	       minimize the size.  */
+	    emit_insn (gen_rtx_SET (op0, gen_rtx_HIGH (mode, op1)));
+	    op1 = gen_rtx_LO_SUM (mode, op0, op1);
+	  }
+      /* FIXME! we need to split also label_ref and symbol_ref.  */
+      emit_set_insn (op0, op1);
+      return true;
+    }
+
+  if (MEM_P (op0))
+    {
+      if (!satisfies_constraint_S06S0 (op1))
 	op1 = force_reg (mode, op1);
       emit_set_insn (op0, op1);
       return true;
     }
+
   return false; /* FIXME: Place holder for move expand ops.  */
 }
 
