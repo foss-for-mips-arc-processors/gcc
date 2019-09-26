@@ -19,11 +19,14 @@
 ;; <http://www.gnu.org/licenses/>.
 
 ;; Place holder for mov operand predicate
-(define_predicate "arc64_mov_operand"
+(define_predicate "arc64_movl_operand"
   (and (match_code "reg, subreg, mem, const, const_int, symbol_ref, label_ref")
        (ior (match_operand 0 "register_operand")
-	    (ior (match_operand 0 "memory_operand")
-		 (match_operand 0 "immediate_operand")))))
+	    (match_operand 0 "memory_operand")
+	    (match_code "label_ref, symbol_ref")
+	    (and (match_code "const_int")
+		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
+		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
 
 ;; Acceptable arguments for the call insn.
 (define_predicate "arc64_call_insn_operand"
