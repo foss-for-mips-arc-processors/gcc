@@ -176,7 +176,7 @@
 bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl, compare,
 div, jl, jump, ld, lsr, lsrl, max, maxl, min, minl, move, neg, nop,
 norm, normh, norml, not, notl, or, orl, rem, reml, remu, remul,
-return, ror, setcc, st, sub, subl, swape, swapel, udiv, udivl,
+return, ror, setcc, sex, st, sub, subl, swape, swapel, udiv, udivl,
 unknown, xor, xorl"
   (const_string "unknown"))
 
@@ -664,27 +664,17 @@ unknown, xor, xorl"
   ""
 )
 
-(define_insn "*arc64_zero_extend_qi_to_si"
-   [(set (match_operand:SI 0 "register_operand"      "=r,r")
+(define_insn "*arc64_zero_extend_<mode>_to_si"
+   [(set (match_operand:SI 0 "register_operand"      "=q,r,r")
 	 (zero_extend:SI
-	  (match_operand:QI 1 "nonimmediate_operand"  "r,m")))
-   ]
+	  (match_operand:SHORT 1 "nonimmediate_operand"  "q,r,m")))]
    ""
    "@
-   extb\\t%0,%1
-   ldb%U1\\t%0,[%1]"
-)
-
-(define_insn "*arc64_zero_extend_hi_to_si"
-   [(set (match_operand:SI 0 "register_operand"       "=r,r")
-	 (zero_extend:SI
-	  (match_operand:HI 1 "nonimmediate_operand"   "r,m")))
-   ]
-   ""
-   "@
-   exth\\t%0,%1
-   ldh%U1\\t%0,[%1]"
-)
+   ext<EXTsex>_s\\t%0,%1
+   ext<EXTsex>\\t%0,%1
+   ld<EXTld>%U1\\t%0,[%1]"
+  [(set_attr "type" "sex,sex,ld")
+   (set_attr "length" "2,4,8")])
 
 (define_insn "*arc64_zero_extend_si_to_di"
    [(set (match_operand:DI 0 "register_operand"       "=r,r")
@@ -711,14 +701,13 @@ unknown, xor, xorl"
 (define_insn "*arc64_zero_extend_hi_to_di"
    [(set (match_operand:DI 0 "register_operand"       "=r,r")
 	 (zero_extend:DI
-	  (match_operand:QI 1 "nonimmediate_operand"   "r,m")))
+	  (match_operand:HI 1 "nonimmediate_operand"   "r,m")))
    ]
    ""
    "@
    bmskl\\t%0,%1,15
    ldh%U1\\t%0,[%1]"
 )
-
 
 (define_insn "*arc64_sign_extend_<mode>_to_di"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
@@ -730,6 +719,18 @@ unknown, xor, xorl"
    sex<EXTsex>l\\t%1,%0
    ld<EXTld>.x%U1\\t%0,[%1]"
 )
+
+(define_insn "*sign_extend<mode>si2"
+  [(set (match_operand:SI 0 "register_operand" "=q,r,r")
+	(sign_extend:SI
+	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,m")))]
+  ""
+  "@
+  sex<EXTsex>_s\\t%0,%1
+  sex<EXTsex>\\t%0,%1
+  ld<EXTld>.x%U1\\t%0,[%1]"
+  [(set_attr "type" "sex,sex,ld")
+   (set_attr "length" "2,4,8")])
 
 ;; -------------------------------------------------------------------
 ;; Simple arithmetic
@@ -932,5 +933,13 @@ unknown, xor, xorl"
 ;; -------------------------------------------------------------------
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
+
+(define_expand "movsf"
+  [(set (match_operand:SF 0 "nonimmediate_operand" "")
+	(match_operand:SF 1 "general_operand"))]
+  ""
+  {
+   FAIL;
+   })
 
 (include "arith.md")
