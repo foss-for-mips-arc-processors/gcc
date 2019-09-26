@@ -20,19 +20,18 @@
  * | movq-7 | m <- m   |          | memory          | *
  * `--------^----------^----------^-----------------' */
 
-///* assign immediate to a memory: this immediate cannot be   *
-// * represented by 6-bit, hence stb w6, mem is not an option */
-//char test06_mem;
-//void test06(void)
-//{
-//  test06_mem = 0x40;    /* smallest 7-bit number */
-//  test06_mem = 0x7F;    /* largest  7-bit number */
-//  test06_mem = 0x80;    /* smallest 8-bit number */
-//  test06_mem = 0xFF;    /* largest  8-bit number */
-//}
-/* FIXME: reverse gd so dejagnu would be triggered */
-/* { gd-final { scan-assembler "mov_s\\s+r2,64" } } */
-/* { gd-final { scan-assembler "mov_s\\s+r2,127" } } */
-/* { gd-final { scan-assembler "mov\\s+r2,-128" } } */
-/* { gd-final { scan-assembler "mov_s\\s+r2,-1" } } */
-/* { gd-final { scan-assembler-times "stb\\s+r2,\\\[@test06_mem\\\]" 3 } } */
+/* assign immediate to a memory: this immediate cannot be   *
+ * represented by 6-bit, hence stb w6, mem is not an option */
+char test06_mem;
+void test06(void)
+{
+  test06_mem = 0x40;    /* smallest 7-bit number */
+  test06_mem = 0x7F;    /* largest  7-bit number */
+  test06_mem = 0x80;    /* smallest 8-bit number */
+  test06_mem = 0xFF;    /* largest  8-bit number */
+}
+/* { dg-final { scan-assembler "mov_s\\s+r2,64" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r2,127" } } */
+/* { dg-final { scan-assembler "mov\\s+r2,-128" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r2,-1" } } */
+/* { dg-final { scan-assembler-times "stb\\s+r2,\\\[@test06_mem\\\]" 3 } } */
