@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0 -fomit-frame-pointer" } */
+/* { dg-options "-O2" } */
 
 /* "movqi" is about assigning 8-bit of data (byte).   *
  *                                                    *
@@ -25,5 +25,4 @@ char foo(char a, char b)
 {
   return b;
 }
-/* FIXME: figure out how to produce mov r,r */
 /* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,r\[0-9\]+" } } */
