@@ -325,7 +325,7 @@ unknown, xor, xorl"
 ;;
 (define_insn "*arc64_movdi"
    [(set (match_operand:DI 0 "nonimmediate_operand" "=qh,    q,r,    r,    r,r, m")
-	 (match_operand:DI 1 "general_operand"       "qh,U08S0,r,S12S0,S32S0,m, r"))]
+	 (match_operand:DI 1 "arc64_movl_operand"    "qh,U08S0,r,S12S0,S32S0,m, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)"
    "@
@@ -339,6 +339,33 @@ unknown, xor, xorl"
    [(set_attr "type" "move,move,move,move,move,ld,st")
     (set_attr "length" "2,2,4,4,8,8,8")]
 )
+
+;; Hi/Low moves for constant and symbol loading.
+
+(define_insn "*movdi_high"
+  [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r")
+	(high:DI
+	 (match_operand:DI 1 "immediate_operand" "S12S0,S32S0,S32S0")))]
+  ""
+  "@
+   movhl\\t%0,%h1
+   movhl_s\\t%0,%h1
+   movhl\\t%0,%h1"
+  [(set_attr "type" "move")
+   (set_attr "length" "4,6,8")])
+
+(define_insn "*movdi_lo_sum_iori"
+  [(set (match_operand:DI 0 "register_operand"                "=q,    r,   qh,    r")
+	(lo_sum:DI (match_operand:DI 1 "register_operand"      "0,    r,    0,    r")
+		   (match_operand:DI 2 "immediate_operand" "U08S0,S12S0,S32S0,S32S0")))]
+  ""
+  "@
+   movl_s\\t%0,%L2
+   orl\\t%0,%1,%L2
+   movl_s\\t%0,%L2
+   orl\\t%0,%1,%L2"
+  [(set_attr "type" "move,or,move,or")
+   (set_attr "length" "2,4,6,8")])
 
 ;(define_insn "*arc64_movqi"
 ;  [(set (match_operand:QI 0 "nonimmediate_operand" "=q,   qh,  r,h,w,q,  r,r,   m,Usc")
@@ -663,6 +690,28 @@ unknown, xor, xorl"
    "@
    bmskl\\t%0,%1,31
    ld%U1\\t%0,[%1]"
+)
+
+(define_insn "*arc64_zero_extend_qi_to_di"
+   [(set (match_operand:DI 0 "register_operand"       "=r,r")
+	 (zero_extend:DI
+	  (match_operand:QI 1 "nonimmediate_operand"   "r,m")))
+   ]
+   ""
+   "@
+   bmskl\\t%0,%1,7
+   ldb%U1\\t%0,[%1]"
+)
+
+(define_insn "*arc64_zero_extend_hi_to_di"
+   [(set (match_operand:DI 0 "register_operand"       "=r,r")
+	 (zero_extend:DI
+	  (match_operand:QI 1 "nonimmediate_operand"   "r,m")))
+   ]
+   ""
+   "@
+   bmskl\\t%0,%1,15
+   ldh%U1\\t%0,[%1]"
 )
 
 
