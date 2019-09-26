@@ -21,10 +21,10 @@
  * `--------^----------^----------^-----------------' */
 
 /* assign memory to register */
-volatile char test03_mem;
-void test03(void)
+volatile char mem;
+void foo(void)
 {
-  register char dst = test03_mem;
+  register char dst = mem;
 }
-/* { dg-final { scan-assembler "ldb\\s+r0,\\\[@test03_mem\\\]" } } */
+/* { dg-final { scan-assembler "ldb\\s+r0,\\\[@mem\\\]" } } */
 
