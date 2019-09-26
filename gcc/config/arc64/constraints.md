@@ -61,12 +61,6 @@
 ;       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
 ;       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
 ;
-;(define_constraint "Ucm"
-;  "@internal
-;  cmem access"
-;  (and (match_code "mem")
-;       (match_test "TARGET_NPS_CMEM && cmem_address (XEXP (op, 0), VOIDmode)")))
-;
 ;;; Internal immediate constraint used to split move instructions.
 ;(define_constraint "Cax"
 ;  "@internal
@@ -86,6 +80,10 @@
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT6 (ival - 1)")))
 
+(define_constraint "S32S0"
+  "@internal
+   Special constant/symbol which fits in limm field."
+  (match_code "const_int, symbol_ref, label_ref"))
 
 (define_constraint "S06S0" "@internal
   A 6-bit signed integer constant"

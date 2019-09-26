@@ -17,6 +17,6 @@
    along with GCC; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
-CC_MODE (CC_NZ);    /* Only N and Z bits of condition flags are valid.  */
+CC_MODE (CC_ZN);    /* Only N and Z bits of condition flags are valid.  */
 CC_MODE (CC_Z);     /* Only Z bit of condition flags is valid.  */
 CC_MODE (CC_C);     /* C represents unsigned overflow of a simple addition.  */
