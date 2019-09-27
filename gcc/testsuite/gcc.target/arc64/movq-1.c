@@ -33,7 +33,7 @@ void foo(void)
   dst = 0xFF;
   dummy = dst;
 }
-/* FIXME: why not mov_s? */
+/* FIXME: expect mov_s! movsi pattern is used instead, buty why? */
 /* { dg-final { scan-assembler "mov\\s+r14,0" } } */
 /* { dg-final { scan-assembler "mov\\s+r14,34" } } */
 /* { dg-final { scan-assembler "mov\\s+r14,64" } } */
