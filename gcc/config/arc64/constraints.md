@@ -35,7 +35,7 @@
   "@internal
    Register usable in short move instructions: @code{r0}-@code{r31}"
   (and (match_code "reg")
-       (match_test "REGNO (op) < R32_REGNUM")))
+       (match_test "REGNO (op) < ILINK_REGNUM")))
 
 ; Usc constant is only used for storing long constants, hence we can
 ; have only [b,s9], and [b] types of addresses.
