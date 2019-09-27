@@ -9,9 +9,11 @@ char mem;
 void foo(void)
 {
   mem = 0x00;    /* the usual suspect: 0 */
-  mem = 0x1F;    /* largest positive number in w6 */
-  mem = 0x3F;    /* smallest negative number in w6 */
+  mem =  31;     /* largest positive number in w6 */
+  mem = -32;     /* smallest negative number in w6 */
+  mem = -1;      /* just a -1 (all bits 1) */
 }
 /* { dg-final { scan-assembler "stb\\s+0,\\\[@mem\\\]" } } */
 /* { dg-final { scan-assembler "stb\\s+31,\\\[@mem\\\]" } } */
-/* { dg-final { scan-assembler "stb\\s+63,\\\[@mem\\\]" } } */
+/* { dg-final { scan-assembler "stb\\s+-32,\\\[@mem\\\]" } } */
+/* { dg-final { scan-assembler "stb\\s+-1,\\\[@mem\\\]" } } */

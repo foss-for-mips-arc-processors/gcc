@@ -291,8 +291,8 @@ unknown, xor, xorl"
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-   [(set (match_operand:QI 0 "nonimmediate_operand" "=r, r,     m, m, r, m")
-	 (match_operand:QI 1 "general_operand"      " r, i, S06S0, i, m, r"))
+   [(set (match_operand:QI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, m, r, m")
+	 (match_operand:QI 1 "general_operand"      " qh, r, U08S0, i, S06S0, i, m, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
@@ -304,14 +304,16 @@ unknown, xor, xorl"
    || (immediate_operand (operands[1], QImode)
        && memory_operand (operands[0], QImode))"
    "@
+    mov_s\\t%0,%1
     mov\\t%0,%1
+    mov_s\\t%0,%1
     mov\\t%0,%1
-    stb\\t%1,[%0]
-    stb\\t%1,[%0]
-    ldb\\t%0,[%1]
-    stb\\t%1,[%0]"
-   [(set_attr "type" "move,move,st,st,ld,st")
-    (set_attr "length" "4,4,*,8,*,*")]
+    stb%U0\\t%1,[%0]
+    stb%U0\\t%1,[%0]
+    ldb%U1\\t%0,[%1]
+    stb%U0\\t%1,[%0]"
+   [(set_attr "type" "move,move,move,move,st,st,ld,st")
+    (set_attr "length" "2,4,2,4,*,8,*,*")]
 )
 
 (define_insn "*arc64_movhi"
