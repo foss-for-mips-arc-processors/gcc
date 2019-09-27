@@ -340,7 +340,7 @@ enum reg_class
   ((CUM) = 0)
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
-#define MOVE_MAX (UNITS_PER_WORD * 2)
+#define MOVE_MAX (UNITS_PER_WORD)
 
 #define MOVE_RATIO(SPEED) 2
 
