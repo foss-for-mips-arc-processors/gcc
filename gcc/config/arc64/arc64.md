@@ -73,8 +73,6 @@
    VUNSPEC_ARC_BLOCKAGE
    ])
 
-(include "generate/logic.md")
-
 (include "constraints.md")
 (include "predicates.md")
 
@@ -85,19 +83,18 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
-(define_mode_attr GPIsuffix [(SI "") (DI "l")])
-
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
 ;; Iterator for QI HI and SI modes
 (define_mode_iterator EXT [QI HI SI])
 
-(define_mode_attr EXTsex [(QI "b") (HI "h") (SI "w")])
-(define_mode_attr EXTld [(QI "b") (HI "h") (SI "")])
-
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
+
+;; -------------------------------------------------------------------
+;; Code Iterators
+;; -------------------------------------------------------------------
 
 ;; Code iterator for sign/zero extension
 (define_code_iterator ANY_EXTEND [sign_extend zero_extend])
@@ -105,18 +102,27 @@
 ;; This code iterator allows the shifts supported in arithmetic instructions
 (define_code_iterator ASHIFT [ashift ashiftrt lshiftrt])
 
-;; Iterates over the SETcc instructions.
+;; Iterates over the SETcc instructions
 (define_code_iterator SETCC [eq ne gt lt ge le ltu geu])
-(define_code_attr cctab [(eq "eq")
-			 (ne "ne")
-			 (lt "lt")
-			 (ge "ge")
-			 (le "le")
-			 (gt "gt")
-			 (ltu "lo")
-			 (leu "NA")
-			 (geu "hs")
-			 (gtu "NA")])
+
+;; Three operand arithmetic operations
+(define_code_iterator ARITH [plus minus])
+
+;; Three operand logic operations
+(define_code_iterator LOGIC [and ior xor smin smax])
+
+;; Two operand logic operations
+(define_code_iterator LOGIC2 [not abs])
+;; -------------------------------------------------------------------
+;; Mode Attributes
+;; -------------------------------------------------------------------
+
+;; Map rtl mode to ARC mnemonic suffixes used in sign extend
+;; instructions.
+(define_mode_attr exttab [(QI "b") (HI "h") (SI "w")])
+
+;; Map rtl mode to ARC mnemonic suffixes
+(define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")])
 
 ;; -------------------------------------------------------------------
 ;; Code Attributes
@@ -168,6 +174,19 @@
 			 (abs "abs")
 			 (sqrt "sqrt")])
 
+;; map rtl to ARC mnemonic names, slightly different than above.
+(define_code_attr cctab [(abs "abs")
+			 (not "not")
+			 (eq "eq")
+			 (ne "ne")
+			 (lt "lt")
+			 (ge "ge")
+			 (le "le")
+			 (gt "gt")
+			 (ltu "lo")
+			 (leu "NA")
+			 (geu "hs")
+			 (gtu "NA")])
 ;; -------------------------------------------------------------------
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
@@ -691,9 +710,9 @@ unknown, xor, xorl"
 	  (match_operand:SHORT 1 "nonimmediate_operand"  "q,r,m")))]
    ""
    "@
-   ext<EXTsex>_s\\t%0,%1
-   ext<EXTsex>\\t%0,%1
-   ld<EXTld>%U1\\t%0,[%1]"
+   ext<exttab>_s\\t%0,%1
+   ext<exttab>\\t%0,%1
+   ld<sfxtab>%U1\\t%0,[%1]"
   [(set_attr "type" "sex,sex,ld")
    (set_attr "length" "2,4,*")])
 
@@ -743,8 +762,8 @@ unknown, xor, xorl"
    ]
    ""
    "@
-   sex<EXTsex>l\\t%1,%0
-   ld<EXTld>.x%U1\\t%0,[%1]"
+   sex<exttab>l\\t%1,%0
+   ld<sfxtab>.x%U1\\t%0,[%1]"
   [(set_attr "type" "sex,ld")
    (set_attr "length" "4,*")]
 )
@@ -755,9 +774,9 @@ unknown, xor, xorl"
 	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,m")))]
   ""
   "@
-  sex<EXTsex>_s\\t%0,%1
-  sex<EXTsex>\\t%0,%1
-  ld<EXTld>.x%U1\\t%0,[%1]"
+  sex<exttab>_s\\t%0,%1
+  sex<exttab>\\t%0,%1
+  ld<sfxtab>.x%U1\\t%0,[%1]"
   [(set_attr "type" "sex,sex,ld")
    (set_attr "length" "2,4,8")])
 
@@ -765,13 +784,12 @@ unknown, xor, xorl"
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
 
-;(define_expand "add<mode>3"
-;  [(set
-;    (match_operand:GPI 0 "register_operand")
-;    (plus:GPI (match_operand:GPI 1 "register_operand")
-;	      (match_operand:GPI 2 "nonmemory_operand")))]
-;  ""
-;  )
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(ARITH:GPI (match_operand:GPI 1 "register_operand")
+		   (match_operand:GPI 2 "nonmemory_operand")))]
+  ""
+  )
 
 (define_expand "addv<mode>4"
   [(match_operand:GPI 0 "register_operand")
@@ -829,13 +847,13 @@ unknown, xor, xorl"
   "register_operand (operands[0], <MODE>mode)
    || register_operand (operands[1], <MODE>mode)"
   "@
-   cmp<GPIsuffix>%?\\t%0,%1
-   cmp<GPIsuffix>%?\\t%0,%1
-   cmp<GPIsuffix>%?\\t%0,%1
-   rcmp<GPIsuffix>%?\\t%1,%0
-   rcmp<GPIsuffix>%?\\t%1,%0
-   rcmp<GPIsuffix>%?\\t%1,%0
-   cmp<GPIsuffix>%?\\t%0,%1"
+   cmp<sfxtab>%?\\t%0,%1
+   cmp<sfxtab>%?\\t%0,%1
+   cmp<sfxtab>%?\\t%0,%1
+   rcmp<sfxtab>%?\\t%1,%0
+   rcmp<sfxtab>%?\\t%1,%0
+   rcmp<sfxtab>%?\\t%1,%0
+   cmp<sfxtab>%?\\t%0,%1"
   [(set_attr "type" "compare")
    (set_attr "iscompact" "no")
    (set_attr "predicable" "yes,yes,no,yes,no,no,no")
@@ -863,7 +881,7 @@ unknown, xor, xorl"
 	(SETCC:SI (match_operand:GPI 1 "register_operand"  "0,r,    0,    r,    0,0,r")
 		  (match_operand:GPI 2 "nonmemory_operand" "r,r,U06S0,U06S0,S12S0,n,n")))]
   ""
-  "set<cctab><GPIsuffix>%?\\t%0,%1,%2"
+  "set<cctab><sfxtab>%?\\t%0,%1,%2"
   [(set_attr "length" "4,4,4,4,4,8,8")
    (set_attr "type" "setcc")
    (set_attr "predicable" "yes,no,yes,no,no,yes,no")])
@@ -874,7 +892,7 @@ unknown, xor, xorl"
 	(gtu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
 		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
   ""
-  "setlo<GPIsuffix>%?\\t%0,%2,%1"
+  "setlo<sfxtab>%?\\t%0,%2,%1"
   "reload_completed
    && CONST_INT_P (operands[2])
    && satisfies_constraint_U06M1 (operands[2])"
@@ -894,7 +912,7 @@ unknown, xor, xorl"
 	(leu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
 		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
   ""
-  "seths<GPIsuffix>%?\\t%0,%2,%1"
+  "seths<sfxtab>%?\\t%0,%2,%1"
   "reload_completed
    && satisfies_constraint_U06M1 (operands[2])"
   [(const_int 0)]
@@ -921,17 +939,77 @@ unknown, xor, xorl"
 ;; Logical operations
 ;; -------------------------------------------------------------------
 
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(LOGIC:GPI (match_operand:GPI 1 "register_operand")
+		   (match_operand:GPI 2 "nonmemory_operand")))]
+  ""
+  )
+
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(LOGIC2:GPI (match_operand:GPI 1 "register_operand")))]
+  ""
+  )
+
+(define_insn "negsi2"
+  [(set (match_operand:SI 0 "register_operand"        "=q,q,r,r")
+	(neg:SI (match_operand:SI 1 "register_operand" "0,q,0,r")))]
+  ""
+  "neg%?\\t%0,%1"
+  [(set_attr "type" "neg")
+   (set_attr "iscompact" "maybe,yes,no,no")
+   (set_attr "predicable" "no,no,yes,no")])
+
+;FIXME;(define_insn "*<optab>2_short"
+;FIXME;  [(set (match_operand:SI 0 "compact_register_operand" "=q")
+;FIXME;	(LOGIC2:SI (match_operand:SI 1 "compact_register_operand" "q")))]
+;FIXME;  ""
+;FIXME;  "<cctab>_s\\t%0,%1"
+;FIXME;  [(set_attr "type" "<cctab>")
+;FIXME;   (set_attr "length" "2")])
+
+(define_insn "*<optab><mode>2"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+	(LOGIC2:GPI (match_operand:GPI 1 "register_operand" "r")))]
+  ""
+  "<cctab><sfxtab>%?\\t%0,%1"
+  [(set_attr "type" "<cctab>")
+   (set_attr "length" "4")])
+
+(define_insn "*smax<mode>3"
+   [(set (match_operand:GPI 0 "register_operand"                "=r,     r,r")
+	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,     r,r")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,rU06S0,i")))]
+  ""
+  "max<sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "type" "max")
+   (set_attr "length" "4,4,8")
+   (set_attr "predicable" "yes,no,no")]
+)
+
+(define_insn "*smin<mode>3"
+   [(set (match_operand:GPI 0 "register_operand"                "=r,     r,r")
+	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,     r,r")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,rU06S0,i")))]
+  ""
+  "min<sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "type" "min")
+   (set_attr "length" "4,4,8")
+   (set_attr "predicable" "yes,no,no")]
+)
 
 ;; -------------------------------------------------------------------
 ;; Shifts
 ;; -------------------------------------------------------------------
 
-;(define_expand "<optab><mode>3"
-;  [(set (match_operand:GPI 0 "register_operand")
-;	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
-;		    (match_operand:QI 2 "nonmemory_operand")))]
-;  ""
-;)
+;; FIXME! check if we get better code if we use QI for op 2.
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
+		    (match_operand:GPI 2 "nonmemory_operand")))]
+  ""
+)
 
 ;(define_expand "ashl<mode>3"
 ;  [(set (match_operand:SHORT 0 "register_operand")
@@ -940,12 +1018,12 @@ unknown, xor, xorl"
 ;  ""
 ;)
 
-;(define_expand "rotr<mode>3"
-;  [(set (match_operand:GPI 0 "register_operand")
-;	(rotatert:GPI (match_operand:GPI 1 "register_operand")
-;		      (match_operand:QI 2 "nonmemory_operand")))]
-;  ""
-;)
+(define_expand "rotr<mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(rotatert:GPI (match_operand:GPI 1 "register_operand")
+		      (match_operand:GPI 2 "nonmemory_operand")))]
+  ""
+)
 
 ;; -------------------------------------------------------------------
 ;; Bitfields
@@ -972,3 +1050,4 @@ unknown, xor, xorl"
    })
 
 (include "arith.md")
+;;(include "generate/logic.md")
