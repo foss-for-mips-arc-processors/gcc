@@ -1012,12 +1012,24 @@ unknown, xor, xorl"
 ;  ""
 ;)
 
-(define_expand "rotr<mode>3"
-  [(set (match_operand:GPI 0 "register_operand")
-	(rotatert:GPI (match_operand:GPI 1 "register_operand")
-		      (match_operand:GPI 2 "nonmemory_operand")))]
+(define_expand "rotrsi3"
+  [(set (match_operand:SI 0 "register_operand")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand")
+		     (match_operand:SI 2 "nonmemory_operand")))]
   ""
 )
+
+(define_insn "*rotrsi3"
+  [(set (match_operand:SI 0 "register_operand"                   "=r,     r,r")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand"      "0,     r,i")
+		     (match_operand:SI 2 "nonmemory_operand" "rU06S0,rU06S0,r")))]
+  ;; FIXME! this needs BARREL_SHIFTER option
+  "register_operand (operands[0], SImode)
+   || register_operand (operands[1], SImode)"
+  "ror%?\\t%0,%1,%2"
+  [(set_attr "type" "ror")
+   (set_attr "predicable" "yes,no,no")
+   (set_attr "length" "4,4,8")])
 
 ;; -------------------------------------------------------------------
 ;; Bitfields
