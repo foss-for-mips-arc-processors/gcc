@@ -448,7 +448,6 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
   return ((to == HARD_FRAME_POINTER_REGNUM) || (to == STACK_POINTER_REGNUM));
 }
 
-
 /* Return TRUE if X is a legitimate address for accessing memory in
    mode MODE.  */
 
@@ -1346,6 +1345,36 @@ arc64_expand_epilogue (bool sibcall_p)
 
   if (!sibcall_p)
     emit_jump_insn (gen_simple_return ());
+}
+
+/* Helper used to determine if an address requires a long immediate.
+   To be used in computing the length of an load/store
+   instruction.  */
+
+bool
+arc64_limm_addr_p (rtx op)
+{
+  int size = GET_MODE_SIZE (GET_MODE (op));
+
+  if (!MEM_P (op))
+    return false;
+
+  switch (GET_CODE (XEXP (op, 0)))
+    {
+    case SYMBOL_REF:
+    case LABEL_REF:
+    case CONST_INT:
+    case CONST:
+      return true;
+    case PLUS:
+      /* legitimate address doesn't recognize [b,limm] variant of ld.
+	 Hence, use it to determine if we have limm or not in
+	 address.  */
+      return ~arc64_legitimate_address_p (GET_MODE (op), op, true);
+    default:
+      break;
+    }
+  return false;
 }
 
 /* Target hooks.  */
