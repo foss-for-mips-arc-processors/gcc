@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0" } */
+/* { dg-options "-O0 -fomit-frame-pointer" } */
 
 /* "movqi" is about assigning 8-bit of data (byte).   *
  *                                                    *
@@ -18,6 +18,7 @@
  * | movq-5 | m <- i   | memroy   | immediate small | *
  * | movq-6 | m <- I   |          | immediate big   | *
  * | movq-7 | m <- m   |          | memory          | *
+ * | movq-8 | m <- m   | volatile causes ext, why?  | *
  * `--------^----------^----------^-----------------' */
 
 /* assign immediate to register */
