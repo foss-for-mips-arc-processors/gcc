@@ -830,12 +830,6 @@ unknown, xor, xorl"
   ""
   )
 
-;(define_expand "abs<mode>2"
-;  [(match_operand:GPI 0 "register_operand")
-;   (match_operand:GPI 1 "register_operand")]
-;  ""
-;  )
-
 ;; -------------------------------------------------------------------
 ;; Comparison insns
 ;; -------------------------------------------------------------------
@@ -946,7 +940,7 @@ unknown, xor, xorl"
   ""
   )
 
-(define_expand "<optab><mode>3"
+(define_expand "<optab><mode>2"
   [(set (match_operand:GPI 0 "register_operand")
 	(LOGIC2:GPI (match_operand:GPI 1 "register_operand")))]
   ""
