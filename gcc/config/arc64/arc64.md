@@ -263,12 +263,11 @@ unknown, xor, xorl"
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
    || register_operand (operands[1], QImode)
-   /* this is to match 'stb w6, [limm]' (S06S0 is the w6) */
+   /* this is to match 'stb w6, [limm]' (S06S0 is the w6).  */
    || (satisfies_constraint_S06S0 (operands[1])
        && memory_operand (operands[0], QImode))
-   /* writing a byte into memory */
-   || ((satisfies_constraint_S08S0 (operands[1])
-        || satisfies_constraint_U08S0 (operands[1]))
+   /* writing a byte into memory using limm variant.  */
+   || (immediate_operand (operands[1], QImode)
        && memory_operand (operands[0], QImode))"
    "@
     mov\\t%0,%1
@@ -277,19 +276,26 @@ unknown, xor, xorl"
     stb\\t%1,[%0]
     ldb\\t%0,[%1]
     stb\\t%1,[%0]"
+   [(set_attr "type" "move,move,st,st,ld,st")
+    (set_attr "length" "4,4,*,8,*,*")]
 )
 
 (define_insn "*arc64_movhi"
-   [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r, r, m")
-	 (match_operand:HI 1 "general_operand"      " r, i, m, r"))
+  [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r,    m, r, m")
+	(match_operand:HI 1 "general_operand"      " r, i,S06S0, m, r"))
    ]
-   "register_operand (operands[0], HImode)
-    || register_operand (operands[1], HImode)"
+  "register_operand (operands[0], HImode)
+   || register_operand (operands[1], HImode)
+   || (satisfies_constraint_S06S0 (operands[1])
+       && memory_operand (operands[0], HImode))"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
+    sth%U0\\t%1,[%0]
     ldh%U1\\t%0,[%1]
     sth%U0\\t%1,[%0]"
+   [(set_attr "type" "move,move,st,ld,st")
+    (set_attr "length" "4,8,*,*,*")]
 )
 
 (define_insn "*arc64_movsi"
