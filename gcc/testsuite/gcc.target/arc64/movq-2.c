@@ -8,4 +8,4 @@ char foo(char a, char b)
 {
   return b;
 }
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,r\[0-9\]+" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r\[0-9\]+,r\[0-9\]+" } } */
