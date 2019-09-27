@@ -515,6 +515,10 @@ arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
 {
   HOST_WIDE_INT size;
 
+  /* Floats are passed by reference.  */
+  if (FLOAT_MODE_P (mode))
+    return true;
+
   /* GET_MODE_SIZE (BLKmode) is useless since it is 0.  */
   if (mode == BLKmode && type)
     size = int_size_in_bytes (type);
