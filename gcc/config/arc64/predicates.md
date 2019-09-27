@@ -52,3 +52,18 @@
 
   return FALSE;
 })
+
+;; Return TRUE if OP is a shimm 6bit value
+(define_predicate "S06S0_immediate_operand"
+  (and (match_code "const_int")
+       (match_test "SIGNED_INT6 (INTVAL (op))"))
+)
+
+;; Return true if OP is a MEM that when used as a load or store address will
+;; require an 8 byte insn.
+;; Load and store instructions don't allow the same possibilities but they're
+;; similar enough that this one function will do.
+;; This is currently only used when calculating length attributes.  */
+(define_predicate "limm_ldst_operand"
+  (and (match_code "mem")
+       (match_test "arc64_limm_addr_p (op)")))
