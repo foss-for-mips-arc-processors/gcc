@@ -184,7 +184,22 @@ unknown, xor, xorl"
 
 (define_attr "predicable" "yes,no" (const_string "no"))
 
-(define_attr "length" "" (const_int 8))
+(define_attr "length" ""
+  (cond
+   [
+    (eq_attr "type" "ld")
+    (if_then_else
+     (match_operand 1 "limm_ldst_operand" "")
+     (const_int 8) (const_int 4))
+
+    (eq_attr "type" "st")
+    (if_then_else
+     (ior (match_operand 0 "limm_ldst_operand" "")
+	  (and (not (match_operand 1 "S06S0_immediate_operand" ""))
+	       (match_operand 1 "immediate_operand" "")))
+     (const_int 8) (const_int 4))
+    ]
+   (const_int 8)))
 
 ;; -------------------------------------------------------------------
 ;; Pipeline descriptions and scheduling
@@ -348,7 +363,7 @@ unknown, xor, xorl"
     ldl%U1\\t%0,[%1]
     stl%U0\\t%1,[%0]"
    [(set_attr "type" "move,move,move,move,move,ld,st")
-    (set_attr "length" "2,2,4,4,8,8,8")]
+    (set_attr "length" "2,2,4,4,8,*,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
@@ -680,7 +695,7 @@ unknown, xor, xorl"
    ext<EXTsex>\\t%0,%1
    ld<EXTld>%U1\\t%0,[%1]"
   [(set_attr "type" "sex,sex,ld")
-   (set_attr "length" "2,4,8")])
+   (set_attr "length" "2,4,*")])
 
 (define_insn "*arc64_zero_extend_si_to_di"
    [(set (match_operand:DI 0 "register_operand"       "=r,r")
@@ -691,6 +706,8 @@ unknown, xor, xorl"
    "@
    bmskl\\t%0,%1,31
    ld%U1\\t%0,[%1]"
+  [(set_attr "type" "and,ld")
+   (set_attr "length" "4,*")]
 )
 
 (define_insn "*arc64_zero_extend_qi_to_di"
@@ -702,6 +719,8 @@ unknown, xor, xorl"
    "@
    bmskl\\t%0,%1,7
    ldb%U1\\t%0,[%1]"
+  [(set_attr "type" "and,ld")
+   (set_attr "length" "4,*")]
 )
 
 (define_insn "*arc64_zero_extend_hi_to_di"
@@ -713,6 +732,8 @@ unknown, xor, xorl"
    "@
    bmskl\\t%0,%1,15
    ldh%U1\\t%0,[%1]"
+  [(set_attr "type" "and,ld")
+   (set_attr "length" "4,*")]
 )
 
 (define_insn "*arc64_sign_extend_<mode>_to_di"
@@ -724,6 +745,8 @@ unknown, xor, xorl"
    "@
    sex<EXTsex>l\\t%1,%0
    ld<EXTld>.x%U1\\t%0,[%1]"
+  [(set_attr "type" "sex,ld")
+   (set_attr "length" "4,*")]
 )
 
 (define_insn "*sign_extend<mode>si2"
