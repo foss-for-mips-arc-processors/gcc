@@ -820,44 +820,44 @@ unknown, xor, xorl"
   ""
   )
 
-(define_expand "addv<mode>4"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "register_operand")
-   (match_operand:GPI 2 "nonmemory_operand")
-   (label_ref (match_operand 3 "" ""))]
-  ""
-  )
-
-(define_expand "uaddv<mode>4"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "register_operand")
-   (match_operand:GPI 2 "register_operand")
-   (label_ref (match_operand 3 "" ""))]
-  ""
-)
-
-(define_expand "subv<GPI:mode>4"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "register_operand")
-   (match_operand:GPI 2 "nonmemory_operand")
-   (label_ref (match_operand 3 "" ""))]
-  ""
-  )
-
-(define_expand "negv<GPI:mode>3"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "register_operand")
-   (label_ref (match_operand 2 "" ""))]
-  ""
-  )
-
-(define_expand "usubv<mode>4"
-  [(match_operand:GPI 0 "register_operand")
-   (match_operand:GPI 1 "nonmemory_operand")
-   (match_operand:GPI 2 "nonmemory_operand")
-   (label_ref (match_operand 3 "" ""))]
-  ""
-  )
+;;(define_expand "addv<mode>4"
+;;  [(match_operand:GPI 0 "register_operand")
+;;   (match_operand:GPI 1 "register_operand")
+;;   (match_operand:GPI 2 "nonmemory_operand")
+;;   (label_ref (match_operand 3 "" ""))]
+;;  ""
+;;  )
+;;
+;;(define_expand "uaddv<mode>4"
+;;  [(match_operand:GPI 0 "register_operand")
+;;   (match_operand:GPI 1 "register_operand")
+;;   (match_operand:GPI 2 "register_operand")
+;;   (label_ref (match_operand 3 "" ""))]
+;;  ""
+;;)
+;;
+;;(define_expand "subv<GPI:mode>4"
+;;  [(match_operand:GPI 0 "register_operand")
+;;   (match_operand:GPI 1 "register_operand")
+;;   (match_operand:GPI 2 "nonmemory_operand")
+;;   (label_ref (match_operand 3 "" ""))]
+;;  ""
+;;  )
+;;
+;;(define_expand "negv<GPI:mode>3"
+;;  [(match_operand:GPI 0 "register_operand")
+;;   (match_operand:GPI 1 "register_operand")
+;;   (label_ref (match_operand 2 "" ""))]
+;;  ""
+;;  )
+;;
+;;(define_expand "usubv<mode>4"
+;;  [(match_operand:GPI 0 "register_operand")
+;;   (match_operand:GPI 1 "nonmemory_operand")
+;;   (match_operand:GPI 2 "nonmemory_operand")
+;;   (label_ref (match_operand 3 "" ""))]
+;;  ""
+;;  )
 
 ;; -------------------------------------------------------------------
 ;; Comparison insns
