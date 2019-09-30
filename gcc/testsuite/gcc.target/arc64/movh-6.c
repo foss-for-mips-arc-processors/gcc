@@ -5,7 +5,7 @@
 
 /* assign immediate to a memory: this immediate cannot be   *
  * represented by 6-bit, hence stb w6, mem is not an option */
-char mem;
+short mem;
 void foo(void)
 {
   mem = 0x40;    /* smallest 7-bit number */
@@ -19,5 +19,4 @@ void foo(void)
 /* FIXME: why not mov_s? related to FIXME in movh-1.c */
 /* { dg-final { scan-assembler "mov\\s+r0,-128" } } */
 /* { dg-final { scan-assembler "mov\\s+r0,-33" } } */
-/* FIXME: 'stb' is emitted instead of 'sth' */
 /* { dg-final { scan-assembler-times "sth\\s+r0,\\\[@mem\\\]" 4 } } */
