@@ -17,8 +17,7 @@ void foo(void)
 }
 /* { dg-final { scan-assembler "mov_s\\s+r0,64" } } */
 /* { dg-final { scan-assembler "mov_s\\s+r0,127" } } */
-/* { dg-final { scan-assembler "mov_s\\s+r0,128" } } */
-/* FIXME: mov is emitted i.s.o mov_s? related to FIXME in movh-1.c? 0x80 works fine */
-/* { dg-final { scan-assembler "mov_s\\s+r0,-128" } } */
+/* FIXME: mov r0,-128 is emitted i.s.o mov_s r0,128 */
+/* { dg-final { scan-assembler-times "mov_s\\s+r0,128" 2 } } */
 /* { dg-final { scan-assembler "mov\\s+r0,-33" } } */
 /* { dg-final { scan-assembler-times "sth\\s+r0,\\\[@mem\\\]" 5 } } */
