@@ -379,7 +379,7 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 
   /* Emit mov sp,fp if need.  Thus, we get rid of the offset without
      using a possible expensive add3 instruction.  */
-  if (frame_pointer_needed && offset)
+  if (frame_pointer_needed)
     {
       rtx tmp = emit_move_insn (stack_pointer_rtx, hard_frame_pointer_rtx);
       RTX_FRAME_RELATED_P (tmp) = 1;
