@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0" } */
+/* { dg-options "-O0 -fomit-frame-pointer" } */
 
 /* check "movq-1.c" for further details. */
 
@@ -11,5 +11,5 @@ void foo(void)
   mem_dst = mem_src;
 }
 /* { dg-final { scan-assembler "ldb\\s+r\[0-9\]+,\\\[@mem_src\\\]" } } */
-/* { dg-final { scan-assembler-not "ext\[bhw\]\\s+" } } */
+/* { dg-final { scan-assembler-not "ext\[bhw\]" } } */
 /* { dg-final { scan-assembler "stb\\s+r0,\\\[@mem_dst\\\]" } } */
