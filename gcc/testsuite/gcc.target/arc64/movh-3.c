@@ -9,5 +9,5 @@ void foo(void)
 {
   register short dst = mem;
 }
-/* { dg-final { scan-assembler "ldh\\s+r0,\\\[@mem\\\]" } } */
+/* { dg-final { scan-assembler "ldh\\s+r\[0-9\]+,\\\[@mem\\\]" } } */
 

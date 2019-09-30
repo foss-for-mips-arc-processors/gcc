@@ -30,12 +30,13 @@ void foo(void)
   dst = 0x22;
   dst = 0x40;
   dst = 0x80;
+  dst = -128;
   dst = 0xFF;
   dummy = dst;
 }
-/* FIXME: expect mov_s! movsi pattern is used instead, buty why? */
-/* { dg-final { scan-assembler "mov\\s+r14,0" } } */
-/* { dg-final { scan-assembler "mov\\s+r14,34" } } */
-/* { dg-final { scan-assembler "mov\\s+r14,64" } } */
-/* { dg-final { scan-assembler "mov\\s+r14,128" } } */
-/* { dg-final { scan-assembler "mov\\s+r14,255" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r14,0" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r14,34" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r14,64" } } */
+/* expecting "mov_s r0,128" twice to cover both dst=-/+128 */
+/* { dg-final { scan-assembler-times "mov_s\\s+r14,128" 2 } } */
+/* { dg-final { scan-assembler "mov_s\\s+r14,255" } } */
