@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0" } */
+/* { dg-options "-O0 -fomit-frame-pointer" } */
 
 /* check "movq-1.c" for further details. */
 
