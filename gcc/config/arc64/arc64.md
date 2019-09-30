@@ -238,6 +238,16 @@ unknown, xor, xorl"
   "
   )
 
+;; We use movsf for soft and hard floats.
+(define_expand "movsf"
+  [(set (match_operand:SF 0 "nonimmediate_operand" "")
+	(match_operand:SF 1 "general_operand"))]
+  ""
+  {
+   if (arc64_prepare_move_operands (operands[0], operands[1], SFmode))
+      DONE;
+   })
+
 ;(define_insn_and_split "*movsi_arc64"             ;  3     4   5  12  13  14  15 16   17   18  22  23 26 27  28
 ;  [(set (match_operand:SI 0 "nonimmediate_operand" "=q,   qh,  r,  q,  h,  r,  q, S  Us<,qRck,!*Rcd,r,m,  m,VMcnst")
 ;	(match_operand:SI 1 "arc64_mov_operand"    " P,qhCm1,rLI,Cax,Cal,Cal,Uts, q,qRck  Us>,  Ucd,m,r,Cm3,   i"))]
@@ -335,12 +345,12 @@ unknown, xor, xorl"
 )
 
 (define_insn "*arc64_movsi"
-   [(set (match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m,m")
-	 (match_operand:SI 1 "general_operand"      " r, i, m, r,i"))
+   [(set (match_operand:SI 0 "nonimmediate_operand" "=r, r, r, m,    m")
+	 (match_operand:SI 1 "general_operand"      " r, i, m, r,S06S0"))
    ]
    "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
-   || (immediate_operand (operands[1], SImode)
+   || (satisfies_constraint_S06S0 (operands[1])
        && memory_operand (operands[0], SImode))"
    "@
     mov\\t%0,%1
@@ -349,6 +359,20 @@ unknown, xor, xorl"
     st%U0\\t%1,[%0]
     st%U0\\t%1,[%0]"
 )
+
+;; Softcore float move.
+(define_insn "*arc64_movsf"
+   [(set (match_operand:SF 0 "nonimmediate_operand" "=r, r, r, m")
+	 (match_operand:SF 1 "general_operand"      " r, E, m, r"))
+   ]
+   "register_operand (operands[0], SFmode)
+   || register_operand (operands[1], SFmode)"
+   "@
+    mov\\t%0,%1
+    mov\\t%0,%1
+    ld%U1\\t%0,[%1]
+    st%U0\\t%1,[%0]"
+   )
 
 (define_insn "*arc64_push"
   [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
@@ -1049,13 +1073,16 @@ unknown, xor, xorl"
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
 
-(define_expand "movsf"
-  [(set (match_operand:SF 0 "nonimmediate_operand" "")
-	(match_operand:SF 1 "general_operand"))]
-  ""
-  {
-   FAIL;
-   })
 
 (include "arith.md")
 ;;(include "generate/logic.md")
+
+;; mode:emacs-lisp
+;; comment-start: ";; "
+;; eval: (set-syntax-table (copy-sequence (syntax-table)))
+;; eval: (modify-syntax-entry ?[ "(]")
+;; eval: (modify-syntax-entry ?] ")[")
+;; eval: (modify-syntax-entry ?{ "(}")
+;; eval: (modify-syntax-entry ?} "){")
+;; eval: (setq indent-tabs-mode t)
+;; End:
