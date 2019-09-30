@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O0 -fomit-frame-pointer" } */
 
-/* check "movq-1.c" for further details. */
+/* check "movh-1.c" for further details. */
 
 /* assign immediate to a memory: this immediate cannot be   *
  * represented by 6-bit, hence stb w6, mem is not an option */
@@ -12,11 +12,12 @@ void foo(void)
   mem = 0x7F;    /* largest  7-bit number */
   mem = 0x80;    /* smallest 8-bit number */
   mem = -33;     /* first negative number outside w6's range. else,
-                    it would use something like 'stb -32, [@mem]'  */
+                    it would use something like 'sth -32, [@mem]'  */
 }
 /* { dg-final { scan-assembler "mov_s\\s+r0,64" } } */
 /* { dg-final { scan-assembler "mov_s\\s+r0,127" } } */
-/* FIXME: why not mov_s? related to FIXME in movq-1.c */
+/* FIXME: why not mov_s? related to FIXME in movh-1.c */
 /* { dg-final { scan-assembler "mov\\s+r0,-128" } } */
 /* { dg-final { scan-assembler "mov\\s+r0,-33" } } */
-/* { dg-final { scan-assembler-times "stb\\s+r0,\\\[@mem\\\]" 4 } } */
+/* FIXME: 'stb' is emitted instead of 'sth' */
+/* { dg-final { scan-assembler-times "sth\\s+r0,\\\[@mem\\\]" 4 } } */

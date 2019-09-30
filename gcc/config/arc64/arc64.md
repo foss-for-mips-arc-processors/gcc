@@ -327,21 +327,24 @@ unknown, xor, xorl"
 )
 
 (define_insn "*arc64_movhi"
-  [(set (match_operand:HI 0 "nonimmediate_operand" "=r, r,    m, r, m")
-	(match_operand:HI 1 "general_operand"      " r, i,S06S0, m, r"))
+  [(set (match_operand:HI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, m, r, m")
+	(match_operand:HI 1 "general_operand"      " qh, r, U08S0, i, S06S0, i, m, r"))
    ]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
    || (satisfies_constraint_S06S0 (operands[1])
        && memory_operand (operands[0], HImode))"
    "@
+    mov_s\\t%0,%1
     mov\\t%0,%1
+    mov_s\\t%0,%1
     mov\\t%0,%1
+    sth%U0\\t%1,[%0]
     sth%U0\\t%1,[%0]
     ldh%U1\\t%0,[%1]
     sth%U0\\t%1,[%0]"
-   [(set_attr "type" "move,move,st,ld,st")
-    (set_attr "length" "4,8,*,*,*")]
+   [(set_attr "type" "move,move,move,move,st,st,ld,st")
+    (set_attr "length" "2,4,2,8,*,8,*,*")]
 )
 
 (define_insn "*arc64_movsi"
