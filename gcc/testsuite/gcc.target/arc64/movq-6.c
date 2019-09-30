@@ -16,7 +16,7 @@ void foo(void)
 }
 /* { dg-final { scan-assembler "mov_s\\s+r0,64" } } */
 /* { dg-final { scan-assembler "mov_s\\s+r0,127" } } */
-/* FIXME: why not mov_s? related to FIXME in movq-1.c */
-/* { dg-final { scan-assembler "mov\\s+r0,-128" } } */
+/* FIXME: mov is emitted i.s.o mov_s? related to FIXME in movq-1.c */
+/* { dg-final { scan-assembler "mov_s\\s+r0,-128" } } */
 /* { dg-final { scan-assembler "mov\\s+r0,-33" } } */
 /* { dg-final { scan-assembler-times "stb\\s+r0,\\\[@mem\\\]" 4 } } */
