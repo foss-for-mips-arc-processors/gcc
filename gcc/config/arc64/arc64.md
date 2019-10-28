@@ -301,8 +301,8 @@ unknown, xor, xorl"
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-   [(set (match_operand:QI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, m, r, m")
-	 (match_operand:QI 1 "general_operand"      " qh, r, U08S0, i, S06S0, i, m, r"))
+   [(set (match_operand:QI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, Ucnst, r, m")
+	 (match_operand:QI 1 "general_operand"      " qh, r, U08S0, i, S06S0,     i, m, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
