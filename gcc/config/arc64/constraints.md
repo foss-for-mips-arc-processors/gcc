@@ -80,10 +80,16 @@
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT6 (ival - 1)")))
 
+(define_constraint "SymIm"
+  "@internal
+   Special constant/symbol which fits in limm field."
+  (match_code "const_int, label_ref, symbol_ref"))
+
 (define_constraint "S32S0"
   "@internal
    Special constant/symbol which fits in limm field."
-  (match_code "const_int, symbol_ref, label_ref"))
+  (and (match_code "const_int")
+       (match_test "UNSIGNED_INT32 (ival)")))
 
 (define_constraint "S06S0" "@internal
   A 6-bit signed integer constant"

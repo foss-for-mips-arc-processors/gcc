@@ -38,11 +38,6 @@
    1.  */
 #define MAX_REGS_PER_ADDRESS 1
 
-/* Recognize any constant value that is a valid address.  */
-#define CONSTANT_ADDRESS_P(X)					\
-  ((GET_CODE (X) == LABEL_REF || GET_CODE (X) == SYMBOL_REF	\
-    || GET_CODE (X) == CONST_INT || GET_CODE (X) == CONST))
-
 /* The number of registers used for parameter passing.  Local to this
    file.  */
 #define MAX_ARC64_PARM_REGS 8
