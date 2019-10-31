@@ -449,10 +449,18 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
 }
 
 /* Return TRUE if X is a legitimate address for accessing memory in
-   mode MODE.  */
+   mode MODE.  We do recognize addresses like:
+   - [Rb]
+   - [Rb, s9]
+   - predec/postdec
+   - preinc/postinc
+   - premodif/postmodif
+*/
 
 static bool
-arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
+arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
+			    rtx x,
+			    bool strict ATTRIBUTE_UNUSED)
 {
   if (REG_P (x))
     return true;
@@ -463,9 +471,6 @@ arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
       && CONST_INT_P (XEXP (x, 1))
       && SIGNED_INT9 (INTVAL (XEXP (x, 1))))
       return true;
-
-  if (CONSTANT_P (x))
-    return true;
 
   if ((GET_CODE (x) == PRE_DEC || GET_CODE (x) == PRE_INC
        || GET_CODE (x) == POST_DEC || GET_CODE (x) == POST_INC)
@@ -482,11 +487,23 @@ arc64_legitimate_address_p (machine_mode mode, rtx x, bool strict)
    that should be rematerialized rather than spilled.  */
 
 static bool
-arc64_legitimate_constant_p (machine_mode mode, rtx x)
+arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
+			     rtx x)
 {
-  if (CONST_INT_P (x))
-    return true;
-  return false;
+  switch (GET_CODE (x))
+    {
+    case CONST_INT:
+    case CONST_WIDE_INT:
+    case HIGH:
+      return true;
+
+    case SYMBOL_REF:
+    case LABEL_REF:
+      return true;
+
+    default:
+      return false;
+    }
 }
 
 /* Worker for return_in_memory.  */
@@ -857,7 +874,13 @@ arc64_print_operand (FILE *file, rtx x, int code)
       break;
 
     case 'L':
-      if (!CONST_INT_P (x))
+      if (GET_CODE (x) == SYMBOL_REF
+	  || GET_CODE (x) == LABEL_REF)
+	{
+	  output_addr_const (asm_out_file, x);
+	  break;
+	}
+      else if (!CONST_INT_P (x))
 	{
 	  output_operand_lossage ("invalid operand for %%L code");
 	  return;
@@ -868,7 +891,13 @@ arc64_print_operand (FILE *file, rtx x, int code)
       break;
 
     case 'h':
-      if (!CONST_INT_P (x))
+      if (GET_CODE (x) == SYMBOL_REF
+	  || GET_CODE (x) == LABEL_REF)
+	{
+	  output_addr_const (asm_out_file, x);
+	  break;
+	}
+      else if (!CONST_INT_P (x))
 	{
 	  output_operand_lossage ("invalid operand for %%h code");
 	  return;
@@ -931,6 +960,7 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
     case REG :
       fputs (reg_names[REGNO (addr)], file);
       break;
+
     case PLUS :
       if (GET_CODE (XEXP (addr, 0)) == MULT)
 	index = XEXP (XEXP (addr, 0), 0), base = XEXP (addr, 1);
@@ -948,38 +978,43 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
       gcc_assert (OBJECT_P (index));
       arc64_print_operand_address (file, mode, index);
       break;
-    case CONST:
-      {
-	rtx c = XEXP (addr, 0);
 
-	gcc_assert (GET_CODE (c) == PLUS);
-	gcc_assert (GET_CODE (XEXP (c, 0)) == SYMBOL_REF);
-	gcc_assert (GET_CODE (XEXP (c, 1)) == CONST_INT);
-
-	output_address (VOIDmode, XEXP (addr, 0));
-
-	break;
-      }
     case PRE_INC:
     case POST_INC:
       output_address (VOIDmode,
 		      plus_constant (Pmode, XEXP (addr, 0),
 				     GET_MODE_SIZE (mode)));
       break;
+
     case PRE_DEC:
     case POST_DEC:
       output_address (VOIDmode,
 		      plus_constant (Pmode, XEXP (addr, 0),
 				     -GET_MODE_SIZE (mode)));
       break;
+
     case PRE_MODIFY:
     case POST_MODIFY:
       output_address (VOIDmode, XEXP (addr, 1));
       break;
 
-    case SYMBOL_REF:
-    default :
+#if 0
+      /* This type of address can be only accepted by LD instructions.  */
+    case LO_SUM:
+      base = XEXP (addr,0);
+      index = XEXP (addr,1);
+      arc64_print_operand_address (file, mode, base);
+      fputc (',', file);
+      output_addr_const (file, index);
+      break;
+#endif
+
+    case CONST_INT:
       output_addr_const (file, addr);
+      break;
+
+    default:
+      gcc_unreachable ();
       break;
     }
 }
@@ -991,6 +1026,47 @@ static bool
 arc64_print_operand_punct_valid_p (unsigned char code)
 {
   return (code == '?');
+}
+
+/* Helper function.  Returns a valid ARC64 RTX that represents the
+   argument X which is an invalid address RTX.  The argument SCRATCH
+   may be used as a temp when building affresses.  */
+
+static rtx
+arc64_legitimize_address_1 (rtx x, rtx scratch)
+{
+  rtx base, addend, t1;
+
+  switch (GET_CODE (x))
+    {
+    case SYMBOL_REF:
+    case LABEL_REF:
+      t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
+      gcc_assert (t1);
+      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
+      return gen_rtx_LO_SUM (Pmode, t1, x);
+
+    case LO_SUM:
+      return x;
+
+    case CONST:
+      /* We expect something like: const (plus (symbol_ref) (const_int))
+	 A c-function which will generate this should be:
+	 int a;
+	 void b (void) { a = "" ? "" + 8 : 3; }
+       */
+      gcc_assert (can_create_pseudo_p ());
+      split_const (x, &base, &addend);
+      base = force_reg (Pmode, base);
+      if (addend == const0_rtx)
+	return base;
+      return gen_rtx_PLUS (Pmode, base, addend);
+
+    default:
+      break;
+    }
+
+  gcc_unreachable ();
 }
 
 /*
@@ -1016,40 +1092,55 @@ arc64_gen_compare_reg (enum rtx_code code, rtx x, rtx y)
 bool
 arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 {
-  /* The 64 bit moves are special as they need more care with what
-     they can move, load or save.  */
-  if (mode == E_DImode)
+  if (MEM_P (op0) && !REG_P (op1))
     {
-      /* FIXME! check for the case when we have std limm,[b,s9].  */
-      if (MEM_P (op0))
+      if (mode == E_DImode
+	  || !satisfies_constraint_S06S0 (op1))
 	op1 = force_reg (mode, op1);
+    }
+  else if (mode == E_DImode)
+    {
+      switch (GET_CODE (op1))
+	{
+	case CONST_INT:
+	  if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
+	    {
+	      /* We have a large 64bit immediate:
+		 movhl rA, (val64 >> 32)
+		 orl   rA,rA, (val64 & 0xffffffff)
+		 FIXME! add strategies to minimize the size.  */
 
-      /* Check for large constants.  Normally the strategy is to split
-	 the constant in two moves: one "regular" movl and the second
-	 one a "high" operation via movhl.  For PIC code, we need to
-	 use addhl instruction.  */
-      if (CONST_INT_P (op1))
-	if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
-	  {
-	    /* We have a large immediate.  FIXME! add strategies to
-	       minimize the size.  */
-	    emit_insn (gen_rtx_SET (op0, gen_rtx_HIGH (mode, op1)));
-	    op1 = gen_rtx_LO_SUM (mode, op0, op1);
-	  }
-      /* FIXME! we need to split also label_ref and symbol_ref.  */
-      emit_set_insn (op0, op1);
-      return true;
+	      HOST_WIDE_INT val = INTVAL (op1);
+	      unsigned HOST_WIDE_INT lo = sext_hwi (val, 32);
+	      unsigned HOST_WIDE_INT hi = sext_hwi ((val - lo) >> 32, 32);
+	      rtx tmp = op0;
+
+	      if (can_create_pseudo_p ())
+		tmp = gen_reg_rtx (DImode);
+
+	      /* Maybe do first a move cnst to movsi to get the
+		 constants minimized.  */
+	      emit_insn (gen_rtx_SET (tmp,
+				      gen_rtx_ASHIFT (DImode, GEN_INT (hi),
+						      GEN_INT (32))));
+	      emit_insn (gen_iordi3 (op0, tmp, GEN_INT (lo)));
+	      return true;
+	    }
+	  break;
+
+	case CONST:
+	case SYMBOL_REF:
+	case LABEL_REF:
+	  op1 = arc64_legitimize_address_1 (op1, op0);
+	  break;
+
+	default:
+	  break;
+	}
     }
 
-  if (MEM_P (op0))
-    {
-      if (!satisfies_constraint_S06S0 (op1))
-	op1 = force_reg (mode, op1);
-      emit_set_insn (op0, op1);
-      return true;
-    }
-
-  return false; /* FIXME: Place holder for move expand ops.  */
+  emit_insn (gen_rtx_SET (op0, op1));
+  return true;
 }
 
 /* Split a mov with long immediate instruction into smaller, size
@@ -1280,7 +1371,9 @@ void arc64_init_expanders (void)
    COMPARE, return the mode to be used for the comparison.  */
 
 machine_mode
-arc64_select_cc_mode (enum rtx_code op, rtx x, rtx y)
+arc64_select_cc_mode (enum rtx_code op ATTRIBUTE_UNUSED,
+		      rtx x ATTRIBUTE_UNUSED,
+		      rtx y ATTRIBUTE_UNUSED)
 {
   return CCmode;
 }
