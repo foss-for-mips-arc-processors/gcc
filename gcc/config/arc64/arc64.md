@@ -248,45 +248,6 @@ unknown, xor, xorl"
       DONE;
    })
 
-;(define_insn_and_split "*movsi_arc64"             ;  3     4   5  12  13  14  15 16   17   18  22  23 26 27  28
-;  [(set (match_operand:SI 0 "nonimmediate_operand" "=q,   qh,  r,  q,  h,  r,  q, S  Us<,qRck,!*Rcd,r,m,  m,VMcnst")
-;	(match_operand:SI 1 "arc64_mov_operand"    " P,qhCm1,rLI,Cax,Cal,Cal,Uts, q,qRck  Us>,  Ucd,m,r,Cm3,   i"))]
-;  "register_operand (operands[0], SImode)
-;   || register_operand (operands[1], SImode)
-;   || (CONSTANT_P (operands[1])
-;       && satisfies_constraint_Usc (operands[0]))
-;   || (satisfies_constraint_Cm3 (operands[1])
-;      && memory_operand (operands[0], SImode))"
-;  "@
-;   mov%?\\t%0,%1	;3
-;   mov%?\\t%0,%1	;4
-;   mov%?\\t%0,%1	;5
-;   #
-;   mov%?\\t%0,%j1	;13
-;   mov%?\\t%0,%j1	;14
-;   ld%?\\t%0,%1		;15
-;   st%?\\t%1,%0		;16
-;   push%?\\t%1          ;17
-;   pop%?\\t%0           ;18
-;   ld%?\\t%0,%1		;22
-;   ld%U1%V1\\t%0,%1	;23
-;   st%U0%V0\\t%1,%0	;26
-;   st%U0%V0\\t%1,%0	;27
-;   st%U0%V0\\t%1,%0	;28"
-;  "reload_completed && satisfies_constraint_Cax (operands[1])
-;   && register_operand (operands[0], SImode)"
-;  [(const_int 0)]
-;  "
-;   arc64_split_mov_const (operands);
-;   DONE;
-;  "
-;   ;                          3    4     5    12   13    14   15    16    17   18   22   23    26    27   28
-;  [(set_attr "type"       "move,move, move,multi,move, move,load,store,store,load,load,load,store,store,store")
-;   (set_attr "iscompact"  "true,true,false,false,true,false,true, true, true,true,true,true,false,false,false")
-;   (set_attr "length"        "*,   *,    4,    *,   6,    *,   *,    *,    *,   *,   4,   *,    *,   *,   8")
-;   (set_attr "predicable"   "no,  no,  yes,   no, yes,  yes,  no,   no,   no,  no,  no,  no,   no,  no,  no")])
-
-
 ;; mov<.f>        b, c
 ;; mov<.f>        b, s12
 ;; mov_s          b, u8
@@ -424,7 +385,7 @@ unknown, xor, xorl"
 (define_insn "*movdi_high"
   [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r")
 	(high:DI
-	 (match_operand:DI 1 "immediate_operand" "S12S0,S32S0,S32S0")))]
+	 (match_operand:DI 1 "immediate_operand" "S12S0,SymIm,SymIm")))]
   ""
   "@
    movhl\\t%0,%h1
@@ -433,61 +394,28 @@ unknown, xor, xorl"
   [(set_attr "type" "move")
    (set_attr "length" "4,6,8")])
 
-(define_insn "*movdi_lo_sum_iori"
-  [(set (match_operand:DI 0 "register_operand"                "=q,    r,   qh,    r")
-	(lo_sum:DI (match_operand:DI 1 "register_operand"      "0,    r,    0,    r")
-		   (match_operand:DI 2 "immediate_operand" "U08S0,S12S0,S32S0,S32S0")))]
+;; The immediates are already trimmed to fit the 32 bit limm field.
+(define_insn "*movdi_high"
+  [(set (match_operand:DI 0 "register_operand"            "=     r,   qh,    r")
+	(ashift:DI (match_operand:DI 1 "nonmemory_operand" "rS12S0,S32S0,S32S0")
+		   (const_int 32)))]
   ""
   "@
-   movl_s\\t%0,%L2
-   orl\\t%0,%1,%L2
-   movl_s\\t%0,%L2
-   orl\\t%0,%1,%L2"
-  [(set_attr "type" "move,or,move,or")
+   movhl\\t%0,%1
+   movhl_s\\t%0,%1
+   movhl\\t%0,%1"
+  [(set_attr "type" "move")
+   (set_attr "length" "4,6,8")])
+
+(define_insn "*movdi_lo_sum_iori"
+  [(set (match_operand:DI 0 "register_operand"            "=q,    r,    h,    r")
+	(lo_sum:DI (match_operand:DI 1 "register_operand"  "0,    r,    0,    r")
+		   (match_operand:DI 2 "immediate_operand" "q,S12S0,SymIm,SymIm")))]
+  ""
+  "orl%?\\t%0,%1,%L2"
+  [(set_attr "type" "or")
+   (set_attr "iscompact" "yes,no,yes,no")
    (set_attr "length" "2,4,6,8")])
-
-;(define_insn "*arc64_movqi"
-;  [(set (match_operand:QI 0 "nonimmediate_operand" "=q,   qh,  r,h,w,q,  r,r,   m,Usc")
-;	(match_operand:QI 1 "arc64_mov_operand"     " P,qhCm1,rLI,i,i,T,Ucm,m,rCm3,i"))]
-;  "register_operand (operands[0], QImode)
-;   || register_operand (operands[1], QImode)
-;   || (satisfies_constraint_Cm3 (operands[1])
-;       && memory_operand (operands[0], QImode))"
-;  "@
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   ldb%?\\t%0,%1
-;   ldb%U1%V1\\t%0,%1
-;   stb%U0%V0\\t%1,%0
-;   stb%U0%V0\\t%1,%0"
-;  [(set_attr "type"       "move,move, move, move,      move,load, load,store,store")
-;   (set_attr "iscompact"  "true,true,false,false,maybe_limm,true,false,false,false")])
-;
-
-;(define_insn "*movhi_arc64"
-;  [(set (match_operand:HI 0 "move_dest_operand" "=q,   qh,  r,q,h, r,  q,r,   m,VUsc")
-;	(match_operand:HI 1 "move_src_operand" "  P,qhCm1,rLI,i,i, i,  T,m,rCm3,i"))]
-;  "register_operand (operands[0], HImode)
-;   || register_operand (operands[1], HImode)
-;   || (satisfies_constraint_Cm3 (operands[1])
-;       && memory_operand (operands[0], HImode))"
-;  "@
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   mov%?\\t%0,%1
-;   ldh%?\\t%0,%1%&
-;   ldh%U1%V1\\t%0,%1
-;   sth%U0%V0\\t%1,%0
-;   sth%U0%V0\\t%1,%0"
-;  [(set_attr "type"      "move,move, move,      move,      move, move,load, load,store,store")
-;   (set_attr "iscompact" "true,true,false,maybe_limm,maybe_limm,false,true,false,false,false")])
-
 
 ;; -------------------------------------------------------------------
 ;; Subroutine calls and sibcalls

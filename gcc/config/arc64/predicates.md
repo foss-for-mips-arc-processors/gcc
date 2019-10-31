@@ -23,7 +23,6 @@
   (and (match_code "reg, subreg, mem, const, const_int, symbol_ref, label_ref")
        (ior (match_operand 0 "register_operand")
 	    (match_operand 0 "memory_operand")
-	    (match_code "label_ref, symbol_ref")
 	    (and (match_code "const_int")
 		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
