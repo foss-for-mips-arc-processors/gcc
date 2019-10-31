@@ -506,4 +506,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TARGET_LRA 1
 #endif
 
+/* To verify later on.
+*/
+#define LIBGCC2_UNITS_PER_WORD 4
+
 #endif /* GCC_ARC64_H */
