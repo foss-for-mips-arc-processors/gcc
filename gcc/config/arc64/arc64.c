@@ -657,8 +657,12 @@ arc64_function_value_regno_p (const unsigned int regno)
 {
   /* Maximum of 16 bytes can be returned in the general registers.  Examples
      of 16-byte return values are: 128-bit integers and 16-byte small
-     structures (excluding homogeneous floating-point aggregates).  */
-  if (regno == R0_REGNUM || regno == R1_REGNUM)
+     structures (excluding homogeneous floating-point aggregates).
+
+     FIXME! We need to implement untyped_call instruction pattern for this.
+     if (regno == R0_REGNUM || regno == R1_REGNUM) */
+
+  if (regno == R0_REGNUM)
     return true;
 
   return false;
