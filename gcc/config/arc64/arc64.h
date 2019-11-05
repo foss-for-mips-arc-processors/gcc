@@ -397,14 +397,12 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #define REGNO_OK_FOR_INDEX_P(REGNO) REGNO_OK_FOR_BASE_P(REGNO)
 
-  /* Length in units of the trampoline for entering a nested function.  */
-#define TRAMPOLINE_SIZE 16
+/* Length in units of the trampoline for entering a nested function: 3
+   insns + 2 pointer-sized entries.  */
+#define TRAMPOLINE_SIZE 26
 
 /* Alignment required for a trampoline in bits .  */
-/* For actual data alignment we just need 32, no more than the stack;
-   however, to reduce cache coherency issues, we want to make sure that
-   trampoline instructions always appear the same in any given cache line.  */
-#define TRAMPOLINE_ALIGNMENT 256
+#define TRAMPOLINE_ALIGNMENT 64
 
 /* Names to predefine in the preprocessor for this target machine.  */
 #define TARGET_CPU_CPP_BUILTINS()		\
