@@ -544,6 +544,7 @@ unknown, xor, xorl"
   ""
   "b%?\\t%l0"
   [(set_attr "type" "branch")
+   (set_attr "iscompact" "maybe")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
