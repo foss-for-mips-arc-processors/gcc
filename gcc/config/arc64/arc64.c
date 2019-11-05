@@ -513,10 +513,13 @@ arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
 {
   HOST_WIDE_INT size;
 
+  /* Maybe we may need to return simple scalar types in registers:
   if (!AGGREGATE_TYPE_P (type)
       && TREE_CODE (type) != COMPLEX_TYPE)
-    /* Simple scalar types always returned in registers.  */
     return false;
+  */
+  if (AGGREGATE_TYPE_P (type) || TREE_ADDRESSABLE (type))
+    return true;
 
   /* Types larger than 2 registers returned in memory.  */
   size = int_size_in_bytes (type);
