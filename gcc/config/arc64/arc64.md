@@ -660,11 +660,13 @@ unknown, xor, xorl"
   ""
 )
 
-(define_expand "<optab>qihi2"
-  [(set (match_operand:HI 0 "register_operand")
-	(ANY_EXTEND:HI (match_operand:QI 1 "nonimmediate_operand")))]
-  ""
-)
+;; TODO: Commented out this to fix issues in dejagnu.
+;;       NEEDS TO BE VERIFIED LATER ON.
+;; (define_expand "<optab>qihi2"
+;;   [(set (match_operand:HI 0 "register_operand")
+;; 	(ANY_EXTEND:HI (match_operand:QI 1 "nonimmediate_operand")))]
+;;   ""
+;; )
 
 (define_insn "*arc64_zero_extend_<mode>_to_si"
    [(set (match_operand:SI 0 "register_operand"      "=q,r,r")
