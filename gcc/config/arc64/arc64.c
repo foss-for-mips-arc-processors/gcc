@@ -40,6 +40,9 @@
 /* This file should be included last.  */
 #include "target-def.h"
 
+/* Defined for convenience.  */
+#define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
+
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
   {
@@ -1076,6 +1079,48 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
   gcc_unreachable ();
 }
 
+
+/* Nested function support.  */
+
+/* Output assembler code for a block containing the constant parts of
+   a trampoline, leaving space for variable parts.  A trampoline looks
+   like this:
+
+   ldl  r12,[pcl,10]
+   ldl  r11,[pcl,18]
+   j_s [r12]
+   .xword function's address
+   .xword static chain value
+
+*/
+
+static void
+arc64_asm_trampoline_template (FILE *f)
+{
+  asm_fprintf (f, "\tldl\t%s,[pcl,8]\n", reg_names[12]);
+  asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[STATIC_CHAIN_REGNUM]);
+  asm_fprintf (f, "\tj_s\t[%s]\n", reg_names[12]);
+  assemble_aligned_integer (POINTER_BYTES, const0_rtx);
+  assemble_aligned_integer (POINTER_BYTES, const0_rtx);
+}
+
+/* Helper initialize trampoline.  */
+
+static void
+arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
+{
+  rtx fnaddr = XEXP (DECL_RTL (fndecl), 0);
+
+  emit_block_move (tramp, assemble_trampoline_template (),
+		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
+  emit_move_insn (adjust_address (tramp, Pmode, 8), fnaddr);
+  emit_move_insn (adjust_address (tramp, Pmode, 12), cxt);
+  emit_library_call (gen_rtx_SYMBOL_REF (Pmode, "__clear_cache"),
+		     LCT_NORMAL, VOIDmode, XEXP (tramp, 0), Pmode,
+		     plus_constant (Pmode, XEXP (tramp, 0), TRAMPOLINE_SIZE),
+		     Pmode);
+}
+
 /*
   Global functions.
 */
@@ -1544,6 +1589,15 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
 #define TARGET_PRINT_OPERAND_PUNCT_VALID_P arc64_print_operand_punct_valid_p
+
+#undef TARET_TRAMPOLINE_INIT
+#define TARGET_TRAMPOLINE_INIT arc64_initialize_trampoline
+
+#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
+#define TARGET_ASM_TRAMPOLINE_TEMPLATE arc64_asm_trampoline_template
+
+#undef TARGET_HAVE_SPECULATION_SAFE_VALUE
+#define TARGET_HAVE_SPECULATION_SAFE_VALUE speculation_safe_value_not_needed
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
