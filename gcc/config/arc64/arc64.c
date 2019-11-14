@@ -197,6 +197,8 @@ arc64_compute_frame_info (void)
   HOST_WIDE_INT offset;
   struct arc64_frame *frame = &cfun->machine->frame;
 
+  gcc_assert (!frame->layout_p);
+
   memset (frame, 0, sizeof (*frame));
 
   /* Find out which GPR need to be saved.  */
@@ -245,7 +247,7 @@ arc64_compute_frame_info (void)
   frame->frame_size = frame->saved_outargs_size + frame->saved_locals_size
     + frame->saved_regs_size + frame->saved_varargs_size;
 
-  frame->layout_p = true;
+  frame->layout_p = reload_completed;
 }
 
 /* Helper for prologue: emit frame store with pre_modify or pre_dec to
@@ -1387,9 +1389,6 @@ arc64_initial_elimination_offset (unsigned from, unsigned to)
 {
   struct arc64_frame *frame = &cfun->machine->frame;
 
-  if (!frame->layout_p)
-    arc64_compute_frame_info ();
-
   if (from == ARG_POINTER_REGNUM && to == HARD_FRAME_POINTER_REGNUM)
     return frame->saved_regs_size;
 
@@ -1457,9 +1456,6 @@ arc64_expand_prologue (void)
   HOST_WIDE_INT frame_allocated;
   struct arc64_frame *frame = &cfun->machine->frame;
 
-  if (!frame->layout_p)
-    arc64_compute_frame_info ();
-
   if (flag_stack_usage_info)
     current_function_static_stack_size = frame->frame_size;
 
@@ -1482,9 +1478,6 @@ arc64_expand_epilogue (bool sibcall_p)
 {
   HOST_WIDE_INT frame_deallocated;
   struct arc64_frame *frame = &cfun->machine->frame;
-
-  if (!frame->layout_p)
-    arc64_compute_frame_info ();
 
   frame_deallocated = frame->frame_size;
   frame_deallocated -= arc64_restore_callee_saves (sibcall_p);
@@ -1572,6 +1565,9 @@ arc64_limm_addr_p (rtx op)
 #undef TARGET_FUNCTION_ARG_ADVANCE
 #define TARGET_FUNCTION_ARG_ADVANCE arc64_function_arg_advance
 
+#undef TARGET_COMPUTE_FRAME_LAYOUT
+#define TARGET_COMPUTE_FRAME_LAYOUT arc64_compute_frame_info
+
 #undef TARGET_HARD_REGNO_NREGS
 #define TARGET_HARD_REGNO_NREGS arc64_hard_regno_nregs
 
@@ -1590,7 +1586,7 @@ arc64_limm_addr_p (rtx op)
 #undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
 #define TARGET_PRINT_OPERAND_PUNCT_VALID_P arc64_print_operand_punct_valid_p
 
-#undef TARET_TRAMPOLINE_INIT
+#undef TARGET_TRAMPOLINE_INIT
 #define TARGET_TRAMPOLINE_INIT arc64_initialize_trampoline
 
 #undef TARGET_ASM_TRAMPOLINE_TEMPLATE
