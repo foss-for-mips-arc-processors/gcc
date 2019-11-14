@@ -402,7 +402,7 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
   if (frame_pointer_needed)
     frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
 
-  for (regno = R0_REGNUM; regno >= R58_REGNUM; regno++)
+  for (regno = R0_REGNUM; regno <= R58_REGNUM; regno++)
     {
       if (frame->reg_offset[regno] == -1
 	  /* Hard frame pointer has been restored.  */
