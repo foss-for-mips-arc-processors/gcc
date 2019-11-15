@@ -499,12 +499,4 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TARGET_LRA 1
 #endif
 
-/* We have a problem with libgcc2.  It only defines two versions of
-   each function, one for "int" and one for "long long".  Ie it
-   assumes that "sizeof (int) == sizeof (long)".  We explicitly define
-   LIBGCC2_UNITS_PER_WORD here so that it is clear that we are
-   expecting to get the SI and DI versions from the libgcc2.c sources.
-   For TI mode, we need to provide our own set of functions.  */
-#define LIBGCC2_UNITS_PER_WORD 8
-
 #endif /* GCC_ARC64_H */
