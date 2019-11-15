@@ -250,6 +250,19 @@ arc64_compute_frame_info (void)
   frame->layout_p = reload_completed;
 }
 
+/* Emit a frame insn which adjusts stack pointer by OFFSET.  */
+
+static void
+frame_stack_add (HOST_WIDE_INT offset)
+{
+  rtx tmp;
+
+  tmp = gen_rtx_SET (stack_pointer_rtx,
+		     plus_constant (Pmode, stack_pointer_rtx, offset));
+  tmp = emit_insn (tmp);
+  RTX_FRAME_RELATED_P (tmp) = 1;
+}
+
 /* Helper for prologue: emit frame store with pre_modify or pre_dec to
    save register REG on stack.  An initial offset OFFSET can be passed
    to the function.  */
@@ -333,22 +346,12 @@ arc64_save_callee_saves (void)
    via OFFSET.  */
 
 static HOST_WIDE_INT
-frame_restore_reg (rtx reg, HOST_WIDE_INT offset)
+frame_restore_reg (rtx reg)
 {
   rtx addr, insn;
 
-  if (offset)
-    {
-      rtx tmp = plus_constant (Pmode, stack_pointer_rtx,
-			       offset + GET_MODE_SIZE (GET_MODE (reg)));
-      addr = gen_frame_mem (GET_MODE (reg),
-			    gen_rtx_POST_MODIFY (Pmode,
-						 stack_pointer_rtx,
-						 tmp));
-    }
-  else
-    addr = gen_frame_mem (GET_MODE (reg), gen_rtx_POST_INC (Pmode,
-							    stack_pointer_rtx));
+  addr = gen_frame_mem (GET_MODE (reg),
+			gen_rtx_POST_INC (Pmode, stack_pointer_rtx));
   insn = emit_move_insn (reg, addr);
   RTX_FRAME_RELATED_P (insn) = 1;
   add_reg_note (insn, REG_CFA_RESTORE, reg);
@@ -356,15 +359,14 @@ frame_restore_reg (rtx reg, HOST_WIDE_INT offset)
   if (reg == hard_frame_pointer_rtx)
     add_reg_note (insn, REG_CFA_DEF_CFA,
 		  plus_constant (Pmode, stack_pointer_rtx,
-				 GET_MODE_SIZE (GET_MODE (reg)) + offset));
+				 GET_MODE_SIZE (GET_MODE (reg))));
   else
     add_reg_note (insn, REG_CFA_ADJUST_CFA,
 		  gen_rtx_SET (stack_pointer_rtx,
 			       plus_constant (Pmode, stack_pointer_rtx,
-					      GET_MODE_SIZE (GET_MODE (reg))
-					      + offset)));
+					      GET_MODE_SIZE (GET_MODE (reg)))));
 
-  return GET_MODE_SIZE (GET_MODE (reg)) + offset;
+  return GET_MODE_SIZE (GET_MODE (reg));
 }
 
 /* ARC' epilogue restore regs routine.  */
@@ -388,19 +390,20 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
     {
       rtx tmp = emit_move_insn (stack_pointer_rtx, hard_frame_pointer_rtx);
       RTX_FRAME_RELATED_P (tmp) = 1;
-      frame_deallocated += offset;
-      offset = 0;
     }
+  else if (offset)
+    frame_stack_add (offset);
+
+  frame_deallocated += offset;
 
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
-      frame_deallocated += frame_restore_reg (reg, offset);
-      offset = 0;
+      frame_deallocated += frame_restore_reg (reg);
     }
 
   if (frame_pointer_needed)
-    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
+    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx);
 
   for (regno = R0_REGNUM; regno <= R58_REGNUM; regno++)
     {
@@ -412,24 +415,10 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	continue;
 
       reg = gen_rtx_REG (restore_mode, regno);
-      frame_deallocated += frame_restore_reg (reg, offset);
-      offset = 0;
+      frame_deallocated += frame_restore_reg (reg);
     }
 
   return frame_deallocated;
-}
-
-/* Emit a frame insn which adjusts stack pointer by OFFSET.  */
-
-static void
-frame_stack_add (HOST_WIDE_INT offset)
-{
-  rtx tmp;
-
-  tmp = gen_rtx_SET (stack_pointer_rtx,
-		     plus_constant (Pmode, stack_pointer_rtx, offset));
-  tmp = emit_insn (tmp);
-  RTX_FRAME_RELATED_P (tmp) = 1;
 }
 
 /* Emit an insn that's a simple single-set.  Both the operands must be
