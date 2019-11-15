@@ -6,14 +6,3 @@ softfp_exclude_libgcc2 := n
 #softfp_extras := fixhfti fixunshfti floattihf floatuntihf
 
 #TARGET_LIBGCC2_CFLAGS += -Wno-missing-prototypes
-
-#LIB2ADD += $(srcdir)/config/aarch64/sfp-exceptions.c
-#LIB2ADD = fp-bit.c dp-bit.c
-#
-#fp-bit.c: $(srcdir)/fp-bit.c
-#	echo '#define FLOAT' > fp-bit.c
-#	echo '#ifndef __big_endian__' >> fp-bit.c
-#	echo '#define FLOAT_BIT_ORDER_MISMATCH' >> fp-bit.c
-#	echo '#endif' >> fp-bit.c
-#	echo '#include "config/arc/fp-hack.h"' >> fp-bit.c
-#	cat $(srcdir)/fp-bit.c >> fp-bit.c
