@@ -25,8 +25,12 @@
 
 typedef          int  sint64_t   __attribute__ ((mode (DI)));
 typedef unsigned int  uint64_t   __attribute__ ((mode (DI)));
+typedef int           word_t     __attribute__ ((mode (__word__)));
+
 
 sint64_t __muldi3 (sint64_t, sint64_t);
+sint64_t __divdi3 (sint64_t, sint64_t);
+sint64_t __moddi3 (sint64_t, sint64_t);
 
 sint64_t
 __muldi3 (sint64_t a, sint64_t b)
@@ -44,14 +48,92 @@ __muldi3 (sint64_t a, sint64_t b)
   return res;
 }
 
-/* Build DI version of libgcc functions. */
-#undef LIBGCC2_UNITS_PER_WORD
-#define LIBGCC2_UNITS_PER_WORD 4
+/* Unsigned integer division/modulus.  */
 
-#define L_divdi3
-#define L_moddi3
-#define L_umoddi3
-#define L_udivdi3
-#define L_udivmoddi4
+static inline __attribute__ ((__always_inline__))
+uint64_t
+udivmoddi4 (uint64_t num, uint64_t den, word_t modwanted)
+{
+  uint64_t bit = 1;
+  uint64_t res = 0;
 
-#include "libgcc2.c"
+  while (den < num && bit && !(den & (1LL << 63)))
+    {
+      den <<= 1;
+      bit <<= 1;
+    }
+  while (bit)
+    {
+      if (num >= den)
+	{
+	  num -= den;
+	  res |= bit;
+	}
+      bit >>= 1;
+      den >>= 1;
+    }
+  if (modwanted)
+    return num;
+  return res;
+}
+
+sint64_t
+__divdi3 (sint64_t a, sint64_t b)
+{
+  word_t neg = 0;
+  sint64_t res;
+
+  if (a < 0)
+    {
+      a = -a;
+      neg = !neg;
+    }
+
+  if (b < 0)
+    {
+      b = -b;
+      neg = !neg;
+    }
+
+  res = udivmoddi4 (a, b, 0);
+
+  if (neg)
+    res = -res;
+
+  return res;
+}
+
+sint64_t
+__moddi3 (sint64_t a, sint64_t b)
+{
+  word_t neg = 0;
+  sint64_t res;
+
+  if (a < 0)
+    {
+      a = -a;
+      neg = 1;
+    }
+
+  if (b < 0)
+    b = -b;
+
+  res = udivmoddi4 (a, b, 1);
+
+  if (neg)
+    res = -res;
+
+  return res;
+}
+
+uint64_t
+__udivdi3 (uint64_t a, uint64_t b)
+{
+  return udivmoddi4 (a, b, 0);
+}
+
+uint64_t
+__umoddi3 (uint64_t a, uint64_t b)
+{
+  return udivmoddi4 (a, b, 1);
+}
