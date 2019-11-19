@@ -14,9 +14,9 @@
 (define_code_iterator arith_pattern1 [and plus ior xor minus ashift ashiftrt lshiftrt] )
 
 (define_insn "*<optab>si_insn"
-    [(set (                   match_operand:SI 0 "register_operand"  "=q,r,    r,    r,    r,r,    r,    r")
-          (arith_pattern1:SI (match_operand:SI 1 "nonmemory_operand" " 0,0,    0,    0,    r,r,ULIMM,    r")
-                             (match_operand:SI 2 "nonmemory_operand" " q,r,U06S0,S12S0,U06S0,r,    r,ULIMM")))]
+    [(set (                   match_operand:SI 0 "register_operand"  "=q,r,    r,    r,    r,r,    r,     r")
+          (arith_pattern1:SI (match_operand:SI 1 "nonmemory_operand" " 0,0,    0,    0,    r,r,S32S0,     r")
+                             (match_operand:SI 2 "nonmemory_operand" " q,r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
     "register_operand (operands[1], SImode) || register_operand (operands[2], SImode)"
     "<arc64_code_map>\\t%0,%1,%2"
     [(set_attr "predicable" "no,yes,yes,no,no,no,no,no")
@@ -26,8 +26,8 @@
 
 (define_insn "*<optab>di_insn"
     [(set (                   match_operand:DI 0 "register_operand"  "=r,    r,    r,    r,r,    r,    r")
-          (arith_pattern1:DI (match_operand:DI 1 "nonmemory_operand" " 0,    0,    0,    r,r,ULIMM,    r")
-                             (match_operand:DI 2 "nonmemory_operand" " r,U06S0,S12S0,U06S0,r,    r,ULIMM")))]
+          (arith_pattern1:DI (match_operand:DI 1 "nonmemory_operand" " 0,    0,    0,    r,r,S32S0,    r")
+                             (match_operand:DI 2 "nonmemory_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
     "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
     "<arc64_code_map>l\\t%0,%1,%2"
     [(set_attr "predicable" "yes,yes,no,no,no,no,no")

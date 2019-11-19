@@ -89,6 +89,12 @@
   "@internal
    Special constant/symbol which fits in limm field."
   (and (match_code "const_int")
+       (match_test "SIGNED_INT32 (ival)")))
+
+(define_constraint "U32S0"
+  "@internal
+   Special constant/symbol which fits in limm field."
+  (and (match_code "const_int")
        (match_test "UNSIGNED_INT32 (ival)")))
 
 (define_constraint "S06S0" "@internal
@@ -236,14 +242,6 @@
   (and
     (match_code "const_int")
     (match_test "UNSIGNED_INT9 (ival)")))
-
-(define_constraint "ULIMM" "@internal
-  A 32-bit unsigned integer constant"
-  (match_code "const_int"))
-
-(define_constraint "UXIMM" "@internal
-  A 32-bit signed extended integer constant"
-  (match_code "const_int"))
 
 
 ; TODO: Below this line definition should be corrected

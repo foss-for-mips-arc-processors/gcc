@@ -754,7 +754,10 @@ unknown, xor, xorl"
 	(ARITH:GPI (match_operand:GPI 1 "register_operand")
 		   (match_operand:GPI 2 "nonmemory_operand")))]
   ""
-  )
+  {
+   if (!register_operand (operands[2], <MODE>mode))
+      operands[2] = force_reg (<MODE>mode, operands[2]);
+  })
 
 ;;(define_expand "addv<mode>4"
 ;;  [(match_operand:GPI 0 "register_operand")
