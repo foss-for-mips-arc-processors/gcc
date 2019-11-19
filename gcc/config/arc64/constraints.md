@@ -89,7 +89,8 @@
   "@internal
    Special constant/symbol which fits in limm field."
   (and (match_code "const_int")
-       (match_test "SIGNED_INT32 (ival)")))
+       (ior (match_test "UNSIGNED_INT32 (ival)")
+	    (match_test "SIGNED_INT32 (ival)"))))
 
 (define_constraint "U32S0"
   "@internal
