@@ -27,6 +27,11 @@
 		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
 
+(define_predicate "arc64_nonmem_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_code "const_int")
+	    (match_test "SIGNED_INT32 (INTVAL (op))"))))
+
 ;; Acceptable arguments for the call insn.
 (define_predicate "arc64_call_insn_operand"
   (ior (match_code "symbol_ref")
