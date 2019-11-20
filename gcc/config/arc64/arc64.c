@@ -1164,7 +1164,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 
 	      HOST_WIDE_INT val = INTVAL (op1);
 	      unsigned HOST_WIDE_INT lo = sext_hwi (val, 32);
-	      unsigned HOST_WIDE_INT hi = sext_hwi ((val - lo) >> 32, 32);
+	      unsigned HOST_WIDE_INT hi = sext_hwi (val >> 32, 32);
 	      rtx tmp = op0;
 
 	      if (can_create_pseudo_p ())
@@ -1175,7 +1175,9 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	      emit_insn (gen_rtx_SET (tmp,
 				      gen_rtx_ASHIFT (DImode, GEN_INT (hi),
 						      GEN_INT (32))));
-	      emit_insn (gen_iordi3 (op0, tmp, GEN_INT (lo)));
+	      emit_insn (gen_rtx_SET (op0,
+				      gen_rtx_LO_SUM (mode, tmp,
+						      GEN_INT (lo))));
 	      return true;
 	    }
 	  break;
