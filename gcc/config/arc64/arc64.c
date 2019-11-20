@@ -1112,6 +1112,15 @@ arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 		     Pmode);
 }
 
+
+/* Implement FUNCTION_OK_FOR_SIBCALL hook.  */
+static bool
+arc64_function_ok_for_sibcall (tree decl ATTRIBUTE_UNUSED,
+			     tree exp ATTRIBUTE_UNUSED)
+{
+  return true;
+}
+
 /*
   Global functions.
 */
@@ -1583,6 +1592,9 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_HAVE_SPECULATION_SAFE_VALUE
 #define TARGET_HAVE_SPECULATION_SAFE_VALUE speculation_safe_value_not_needed
+
+#undef  TARGET_FUNCTION_OK_FOR_SIBCALL
+#define TARGET_FUNCTION_OK_FOR_SIBCALL arc64_function_ok_for_sibcall
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
