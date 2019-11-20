@@ -727,7 +727,7 @@ unknown, xor, xorl"
    ]
    ""
    "@
-   sex<exttab>l\\t%1,%0
+   sex<exttab>l\\t%0,%1
    ld<sfxtab>.x%U1\\t%0,[%1]"
   [(set_attr "type" "sex,ld")
    (set_attr "length" "4,*")]
