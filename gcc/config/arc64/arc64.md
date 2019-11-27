@@ -802,10 +802,20 @@ unknown, xor, xorl"
 ;; Comparison insns
 ;; -------------------------------------------------------------------
 
-(define_insn "cmp<mode>"
+(define_expand "cmp<mode>"
   [(set (reg:CC CC_REGNUM)
-	(compare:CC (match_operand:GPI 0 "nonmemory_operand" "r,    r,    r,U06S0,S12S0,i,r")
-		    (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,S12S0,    r,    r,r,i")))]
+	(compare:CC (match_operand:GPI 0 "register_operand" "")
+		    (match_operand:GPI 1 "nonmemory_operand" "")))]
+  ""
+  {
+   if (!register_operand (operands[2], DImode))
+      operands[2] = force_reg (DImode, operands[2]);
+  })
+
+(define_insn "*cmp<mode>"
+  [(set (reg:CC CC_REGNUM)
+	(compare:CC (match_operand:GPI 0 "nonmemory_operand" "r,    r,    r,U06S0,S12S0,S32S0,r")
+		    (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,S12S0,    r,    r,    r,S32S0")))]
   "register_operand (operands[0], <MODE>mode)
    || register_operand (operands[1], <MODE>mode)"
   "@
