@@ -1114,11 +1114,24 @@ arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 
 
 /* Implement FUNCTION_OK_FOR_SIBCALL hook.  */
+
 static bool
 arc64_function_ok_for_sibcall (tree decl ATTRIBUTE_UNUSED,
 			     tree exp ATTRIBUTE_UNUSED)
 {
   return true;
+}
+
+/* Implement INIT_LIBFUNCS hook.  */
+
+static void
+arc64_init_libfuncs (void)
+{
+  set_optab_libfunc (ffs_optab, SImode, "__ffssi2");
+  set_optab_libfunc (clz_optab, SImode, "__clzsi2");
+  set_optab_libfunc (ctz_optab, SImode, "__ctzsi2");
+  set_optab_libfunc (popcount_optab, SImode, "__popcountsi2");
+  set_optab_libfunc (parity_optab, SImode, "__paritysi2");
 }
 
 /*
@@ -1597,6 +1610,9 @@ arc64_limm_addr_p (rtx op)
 
 #undef  TARGET_FUNCTION_OK_FOR_SIBCALL
 #define TARGET_FUNCTION_OK_FOR_SIBCALL arc64_function_ok_for_sibcall
+
+#undef TARGET_INIT_LIBFUNCS
+#define TARGET_INIT_LIBFUNCS arc64_init_libfuncs
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
