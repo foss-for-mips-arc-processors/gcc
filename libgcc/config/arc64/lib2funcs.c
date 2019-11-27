@@ -137,3 +137,15 @@ __umoddi3 (uint64_t a, uint64_t b)
 {
   return udivmoddi4 (a, b, 1);
 }
+
+/* We need 32bit version for some of the functions defined in
+   libgcc2.c.  */
+#define LIBGCC2_UNITS_PER_WORD 4
+
+#define L_clzsi2
+#define L_ctzsi2
+#define L_ffssi2
+#define L_paritysi2
+#define L_popcountsi2
+
+#include "libgcc2.c"
