@@ -631,7 +631,7 @@ arc64_function_arg (cumulative_args_t pcum_v, machine_mode mode,
     return NULL_RTX;
 
   arg = ROUND_ADVANCE_CUM (*pcum, mode, type);
-  if (arg <= MAX_ARC64_PARM_REGS)
+  if (arg < MAX_ARC64_PARM_REGS)
     return gen_rtx_REG (mode, arg);
 
   return NULL_RTX;
