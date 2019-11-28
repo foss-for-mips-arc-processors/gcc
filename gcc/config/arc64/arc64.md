@@ -191,12 +191,12 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-(define_attr "type" "abs, add, addl, and, andl, asl, asll, asr, asrl,
-bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl, compare,
-div, jl, jump, ld, lsr, lsrl, max, maxl, min, minl, move, neg, nop,
-norm, normh, norml, not, notl, or, orl, rem, reml, remu, remul,
-return, ror, setcc, sex, st, sub, subl, swape, swapel, udiv, udivl,
-unknown, xor, xorl"
+(define_attr "type" "abs, add, addhl, addl, and, andl, asl, asll, asr,
+asrl, bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl,
+compare, div, jl, jump, ld, lsr, lsrl, max, maxl, min, minl, move,
+neg, nop, norm, normh, norml, not, notl, or, orl, rem, reml, remu,
+remul, return, ror, setcc, sex, st, sub, subl, swape, swapel, udiv,
+udivl, unknown, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -409,13 +409,29 @@ unknown, xor, xorl"
 
 (define_insn "*movdi_lo_sum_iori"
   [(set (match_operand:DI 0 "register_operand"            "=q,    r,    h,    r")
-	(lo_sum:DI (match_operand:DI 1 "register_operand"  "0,    r,    0,    r")
+	(lo_sum:DI (match_operand:DI 1 "register_operand"  "0,    0,    0,    r")
 		   (match_operand:DI 2 "immediate_operand" "q,S12S0,SymIm,SymIm")))]
   ""
   "orl%?\\t%0,%1,%L2"
   [(set_attr "type" "or")
    (set_attr "iscompact" "yes,no,yes,no")
    (set_attr "length" "2,4,6,8")])
+
+(define_insn "*adddi_high"
+  [(set (match_operand:DI 0 "register_operand"          "=    qh,    r,    r,r,     r")
+	(plus:DI (match_operand:DI 1 "register_operand"   "    0,    0,    r,r,     r")
+		 (high:DI
+		  (match_operand:DI 2 "nonmemory_operand" "S32S0,S12S0,U06S0,r,S32S0"))))]
+  ""
+  "@
+   addhl_s\\t%0,%1,%2
+   addhl\\t%0,%1,%2
+   addhl\\t%0,%1,%2
+   addhl\\t%0,%1,%2
+   addhl\\t%0,%1,%2"
+  [(set_attr "type" "addhl")
+   (set_attr "iscompact" "yes,no,no,no,no")
+   (set_attr "length" "6,4,4,4,8")])
 
 ;; -------------------------------------------------------------------
 ;; Subroutine calls and sibcalls

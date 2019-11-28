@@ -256,11 +256,22 @@ static void
 frame_stack_add (HOST_WIDE_INT offset)
 {
   rtx tmp;
+  HOST_WIDE_INT lo = sext_hwi (offset, 32);
+  unsigned HOST_WIDE_INT hi = sext_hwi (offset >> 32, 32);
+
+  if (hi != 0xffffffffULL || hi != 0ULL)
+    tmp = gen_rtx_SET (stack_pointer_rtx,
+		       gen_rtx_PLUS (Pmode, stack_pointer_rtx,
+				     gen_rtx_HIGH (Pmode, GEN_INT (hi))));
 
   tmp = gen_rtx_SET (stack_pointer_rtx,
-		     plus_constant (Pmode, stack_pointer_rtx, offset));
+		     plus_constant (Pmode, stack_pointer_rtx, lo));
   tmp = emit_insn (tmp);
   RTX_FRAME_RELATED_P (tmp) = 1;
+  add_reg_note (tmp, REG_FRAME_RELATED_EXPR,
+		gen_rtx_SET (stack_pointer_rtx,
+			     plus_constant (Pmode, stack_pointer_rtx,
+					    offset)));
 }
 
 /* Helper for prologue: emit frame store with pre_modify or pre_dec to
