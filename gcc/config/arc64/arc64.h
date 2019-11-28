@@ -399,7 +399,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* Length in units of the trampoline for entering a nested function: 3
    insns + 2 pointer-sized entries.  */
-#define TRAMPOLINE_SIZE 26
+#define TRAMPOLINE_SIZE (12+16)
 
 /* Alignment required for a trampoline in bits .  */
 #define TRAMPOLINE_ALIGNMENT 64

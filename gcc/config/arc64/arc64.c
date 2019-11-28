@@ -1088,9 +1088,9 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
    a trampoline, leaving space for variable parts.  A trampoline looks
    like this:
 
-   ldl  r12,[pcl,10]
-   ldl  r11,[pcl,18]
-   j_s [r12]
+   ldl  r12,[pcl,12]
+   ldl  r11,[pcl,16]
+   j    [r12]
    .xword function's address
    .xword static chain value
 
@@ -1099,9 +1099,9 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 static void
 arc64_asm_trampoline_template (FILE *f)
 {
-  asm_fprintf (f, "\tldl\t%s,[pcl,8]\n", reg_names[12]);
-  asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[STATIC_CHAIN_REGNUM]);
-  asm_fprintf (f, "\tj_s\t[%s]\n", reg_names[12]);
+  asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[12]);
+  asm_fprintf (f, "\tldl\t%s,[pcl,16]\n", reg_names[STATIC_CHAIN_REGNUM]);
+  asm_fprintf (f, "\tj\t[%s]\n", reg_names[12]);
   assemble_aligned_integer (POINTER_BYTES, const0_rtx);
   assemble_aligned_integer (POINTER_BYTES, const0_rtx);
 }
@@ -1115,14 +1115,13 @@ arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 
   emit_block_move (tramp, assemble_trampoline_template (),
 		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
-  emit_move_insn (adjust_address (tramp, Pmode, 8), fnaddr);
-  emit_move_insn (adjust_address (tramp, Pmode, 12), cxt);
+  emit_move_insn (adjust_address (tramp, Pmode, 12), fnaddr);
+  emit_move_insn (adjust_address (tramp, Pmode, 20), cxt);
   emit_library_call (gen_rtx_SYMBOL_REF (Pmode, "__clear_cache"),
 		     LCT_NORMAL, VOIDmode, XEXP (tramp, 0), Pmode,
 		     plus_constant (Pmode, XEXP (tramp, 0), TRAMPOLINE_SIZE),
 		     Pmode);
 }
-
 
 /* Implement FUNCTION_OK_FOR_SIBCALL hook.  */
 
