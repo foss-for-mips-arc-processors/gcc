@@ -25,3 +25,11 @@ along with GCC; see the file COPYING3.  If not see
 #undef LINK_GCC_C_SEQUENCE_SPEC
 #define LINK_GCC_C_SEQUENCE_SPEC				\
   "--start-group %G %{!specs=*:%{!nolibc:-lc -lnosys}} --end-group"
+
+/* Make sure we include the crtbegin.o.  */
+#undef STARTFILE_SPEC
+#define STARTFILE_SPEC "crt0.o%s crti%O%s crtbegin.o%s"
+
+/* ...and crtend.o.  */
+#undef ENDFILE_SPEC
+#define ENDFILE_SPEC "crtend.o%s crtn%O%s"
