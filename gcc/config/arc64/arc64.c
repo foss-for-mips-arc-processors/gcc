@@ -229,7 +229,8 @@ arc64_compute_frame_info (void)
 
   /* 1. At the bottom of the stack are any outgoing stack
      arguments.  */
-  frame->saved_outargs_size = crtl->outgoing_args_size;
+  frame->saved_outargs_size = ROUND_UP (crtl->outgoing_args_size,
+					STACK_BOUNDARY / BITS_PER_UNIT);
 
   /* 2. Size of locals and temporaries.  */
   frame->saved_locals_size = ROUND_UP (get_frame_size (),
@@ -237,11 +238,13 @@ arc64_compute_frame_info (void)
 
   /* 3. Size of the saved registers (including FP/BLINK).
      FIXME! FPR registers.  */
-  frame->saved_regs_size = offset;
+  frame->saved_regs_size = ROUND_UP (offset,
+				     STACK_BOUNDARY / BITS_PER_UNIT);
 
   /* 4. Size of the callee-allocated area for pretend stack
      arguments.  */
-  frame->saved_varargs_size = crtl->args.pretend_args_size;
+  frame->saved_varargs_size = ROUND_UP (crtl->args.pretend_args_size,
+					STACK_BOUNDARY / BITS_PER_UNIT);
 
   /* Total size.  */
   frame->frame_size = frame->saved_outargs_size + frame->saved_locals_size
@@ -1623,6 +1626,9 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_INIT_LIBFUNCS
 #define TARGET_INIT_LIBFUNCS arc64_init_libfuncs
+
+#undef TARGET_ASM_FILE_END
+#define TARGET_ASM_FILE_END file_end_indicate_exec_stack
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
