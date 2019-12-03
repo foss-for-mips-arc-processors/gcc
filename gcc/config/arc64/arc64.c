@@ -105,10 +105,12 @@ struct GTY (()) arc64_frame
 typedef struct GTY (()) machine_function
 {
   struct arc64_frame frame;
+  /* Record if the function has a variable argument list.  */
+  int uses_anonymous_args;
 } machine_function;
 
 /* ALIGN FRAMES on word boundaries.  */
-#define ARC_STACK_ALIGN(LOC)						\
+#define ARC64_STACK_ALIGN(LOC)						\
   (((LOC) + STACK_BOUNDARY / BITS_PER_UNIT - 1) & -STACK_BOUNDARY/BITS_PER_UNIT)
 
 /* Round CUM up to the necessary point for argument MODE/TYPE.  */
@@ -229,27 +231,24 @@ arc64_compute_frame_info (void)
 
   /* 1. At the bottom of the stack are any outgoing stack
      arguments.  */
-  frame->saved_outargs_size = ROUND_UP (crtl->outgoing_args_size,
-					STACK_BOUNDARY / BITS_PER_UNIT);
+  frame->saved_outargs_size = ARC64_STACK_ALIGN (crtl->outgoing_args_size);
 
   /* 2. Size of locals and temporaries.  */
-  frame->saved_locals_size = ROUND_UP (get_frame_size (),
-				       STACK_BOUNDARY / BITS_PER_UNIT);
+  frame->saved_locals_size = ARC64_STACK_ALIGN (get_frame_size ());
 
   /* 3. Size of the saved registers (including FP/BLINK).
      FIXME! FPR registers.  */
-  frame->saved_regs_size = ROUND_UP (offset,
-				     STACK_BOUNDARY / BITS_PER_UNIT);
+  frame->saved_regs_size = ARC64_STACK_ALIGN (offset);
 
   /* 4. Size of the callee-allocated area for pretend stack
      arguments.  */
-  frame->saved_varargs_size = ROUND_UP (crtl->args.pretend_args_size,
-					STACK_BOUNDARY / BITS_PER_UNIT);
+  frame->saved_varargs_size = ARC64_STACK_ALIGN (crtl->args.pretend_args_size);
 
   /* Total size.  */
   frame->frame_size = frame->saved_outargs_size + frame->saved_locals_size
     + frame->saved_regs_size + frame->saved_varargs_size;
 
+  gcc_assert (frame->frame_size == ARC64_STACK_ALIGN (frame->frame_size));
   frame->layout_p = reload_completed;
 }
 
@@ -693,6 +692,7 @@ arc64_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
      argument, to find out how many registers are left over.  */
   arc64_function_arg_advance (pack_cumulative_args (&cum), mode, type, true);
 
+  cfun->machine->uses_anonymous_args = 1;
   if (!FUNCTION_ARG_REGNO_P (cum))
     return;
 
@@ -1091,6 +1091,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
    a trampoline, leaving space for variable parts.  A trampoline looks
    like this:
 
+   nop
    ldl  r12,[pcl,12]
    ldl  r11,[pcl,16]
    j    [r12]
@@ -1102,6 +1103,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 static void
 arc64_asm_trampoline_template (FILE *f)
 {
+  asm_fprintf (f, "\tnop\n");
   asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[12]);
   asm_fprintf (f, "\tldl\t%s,[pcl,16]\n", reg_names[STATIC_CHAIN_REGNUM]);
   asm_fprintf (f, "\tj\t[%s]\n", reg_names[12]);
@@ -1118,8 +1120,8 @@ arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 
   emit_block_move (tramp, assemble_trampoline_template (),
 		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
-  emit_move_insn (adjust_address (tramp, Pmode, 12), fnaddr);
-  emit_move_insn (adjust_address (tramp, Pmode, 20), cxt);
+  emit_move_insn (adjust_address (tramp, Pmode, 12+4), fnaddr);
+  emit_move_insn (adjust_address (tramp, Pmode, 20+4), cxt);
   emit_library_call (gen_rtx_SYMBOL_REF (Pmode, "__clear_cache"),
 		     LCT_NORMAL, VOIDmode, XEXP (tramp, 0), Pmode,
 		     plus_constant (Pmode, XEXP (tramp, 0), TRAMPOLINE_SIZE),
@@ -1146,6 +1148,132 @@ arc64_init_libfuncs (void)
   set_optab_libfunc (popcount_optab, SImode, "__popcountsi2");
   set_optab_libfunc (parity_optab, SImode, "__paritysi2");
 }
+
+/* Helper evp_dump_stack_info.  */
+
+static void
+arc64_print_format_registers(FILE *stream,
+			     unsigned regno,
+			     enum machine_mode mode)
+{
+  unsigned int  j, nregs = arc64_hard_regno_nregs (regno, mode);
+  unsigned int ll = 0;
+  for (j = regno+nregs; j > regno; j--)
+    {
+      asm_fprintf (stream,"%s", reg_names[j-1]);
+      ll += strlen (reg_names[j-1]);
+    }
+  asm_fprintf (stream,"`");
+  for (j = ll; j <20; j++)
+    asm_fprintf (stream, " ");
+
+  asm_fprintf (stream,"\t(%d)\n",
+	   GET_MODE_SIZE (mode));
+}
+
+/* Place some comment into assembler stream describing the current
+   function.  */
+
+static void
+arc64_output_function_prologue (FILE *f)
+{
+  int regno, i;
+  struct arc64_frame *frame = &cfun->machine->frame;
+  tree parm = DECL_ARGUMENTS (current_function_decl);
+
+  asm_fprintf (f, "\t# args = %wd, pretend = %ld, frame = %wd\n",
+	       (HOST_WIDE_INT) crtl->args.size,
+	       frame->saved_varargs_size,
+	       (HOST_WIDE_INT) get_frame_size ());
+  asm_fprintf (f, "\t# frame_needed = %d, uses_anonymous_args = %d\n",
+	       frame_pointer_needed,
+	       cfun->machine->uses_anonymous_args);
+  asm_fprintf (f, "\t# size = %wd bytes\n",
+	       frame->frame_size);
+  asm_fprintf (f, "\t# outargs = %wd bytes\n",
+	       frame->saved_outargs_size);
+  asm_fprintf (f, "\t# locals = %wd bytes\n",
+	       frame->saved_locals_size);
+  asm_fprintf (f, "\t# regs = %wd bytes\n",
+	       frame->saved_regs_size);
+  asm_fprintf (f, "\t# varargs = %wd bytes\n",
+	       frame->saved_varargs_size);
+
+  if (crtl->calls_eh_return)
+    asm_fprintf (f, "\t# Calls __builtin_eh_return.\n");
+
+  for (regno = R0_REGNUM; regno <= R59_REGNUM; regno++)
+    if (frame->reg_offset[regno] != -1)
+      asm_fprintf (f, "\t# regsave[%s] => %ld\n", reg_names[regno],
+		   frame->reg_offset[regno]);
+
+  asm_fprintf(f, "\t# Parameters:\n");
+  while (parm)
+    {
+      rtx  rtl = DECL_INCOMING_RTL (parm);
+      if (rtl)
+	{
+	  asm_fprintf(f,"\t#  ");
+	  tree decl_name;
+	  decl_name = DECL_NAME (parm);
+	  if (decl_name != NULL && IDENTIFIER_POINTER (decl_name) != NULL)
+	    {
+	      const char *name =  lang_hooks.dwarf_name (parm, 0);
+	      if(name)
+		asm_fprintf(f, "%-20.20s =`", name);
+	      else
+		asm_fprintf(f, "N.A.`");
+	    }
+	  if (REG_P (rtl))
+	    {
+	      unsigned regno = REGNO (rtl);
+	      enum machine_mode mode = GET_MODE (rtl);
+	      arc64_print_format_registers (f, regno, mode);
+	    }
+	  else if (MEM_P (rtl))
+	    {
+	      rtx addr = XEXP (rtl, 0);
+	      long argPtrOfs = frame->frame_size -
+		arc64_initial_elimination_offset (ARG_POINTER_REGNUM,
+						  (frame_pointer_needed ?
+						   HARD_FRAME_POINTER_REGNUM :
+						   STACK_POINTER_REGNUM));
+	      if (GET_CODE (addr) == PLUS)
+		{
+		  rtx ofs = XEXP (addr, 1);
+		  gcc_assert (CONST_INT_P (ofs));
+		  argPtrOfs += INTVAL (ofs);
+		}
+	      asm_fprintf (f, "%s[%4ld]`                 (%d)\n",
+			   (frame_pointer_needed ? "fp" : "sp"),
+			   argPtrOfs,
+			   GET_MODE_SIZE (GET_MODE (rtl)));
+	    }
+	  else if (GET_CODE (rtl) == PARALLEL)
+	    {
+	      asm_fprintf (f,"xvec`                 (%d)\n",
+			   GET_MODE_SIZE (GET_MODE (rtl)));
+	      for (i = 0; i < XVECLEN (rtl, 0); i++)
+		{
+		  rtx xv = XEXP (XVECEXP (rtl, 0, i), 0);
+		  if (REG_P (xv))
+		    {
+		      unsigned regno = REGNO (xv);
+		      enum machine_mode mode = GET_MODE (xv);
+		      asm_fprintf (f,"#                         `");
+		      arc64_print_format_registers (f, regno, mode);
+		    }
+		}
+	    }
+	  else
+	    {
+	      asm_fprintf(f,"N.A. `\n");
+	    }
+	}
+      parm = TREE_CHAIN (parm);
+    }
+}
+
 
 /*
   Global functions.
@@ -1629,6 +1757,9 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_ASM_FILE_END
 #define TARGET_ASM_FILE_END file_end_indicate_exec_stack
+
+#undef  TARGET_ASM_FUNCTION_PROLOGUE
+#define TARGET_ASM_FUNCTION_PROLOGUE arc64_output_function_prologue
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

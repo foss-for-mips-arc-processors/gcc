@@ -61,12 +61,10 @@
 
 /* Alignments.  */
 #define FASTEST_ALIGNMENT       BITS_PER_WORD
-#define BIGGEST_ALIGNMENT	128
+#define BIGGEST_ALIGNMENT	64
 #define ARC64_EXPAND_ALIGNMENT(COND, EXP, ALIGN)			\
   (((COND) && ((ALIGN) < FASTEST_ALIGNMENT)				\
-    && (TREE_CODE (EXP) == ARRAY_TYPE					\
-	|| TREE_CODE (EXP) == UNION_TYPE				\
-	|| TREE_CODE (EXP) == RECORD_TYPE)) ? FASTEST_ALIGNMENT : (ALIGN))
+    && (TREE_CODE (EXP) == ARRAY_TYPE)) ? FASTEST_ALIGNMENT : (ALIGN))
 
 /* Align global data.  */
 #define DATA_ALIGNMENT(EXP, ALIGN)			\
@@ -399,7 +397,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* Length in units of the trampoline for entering a nested function: 3
    insns + 2 pointer-sized entries.  */
-#define TRAMPOLINE_SIZE (12+16)
+#define TRAMPOLINE_SIZE (16+16)
 
 /* Alignment required for a trampoline in bits .  */
 #define TRAMPOLINE_ALIGNMENT 64
