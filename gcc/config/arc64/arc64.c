@@ -1761,6 +1761,13 @@ arc64_limm_addr_p (rtx op)
 #undef  TARGET_ASM_FUNCTION_PROLOGUE
 #define TARGET_ASM_FUNCTION_PROLOGUE arc64_output_function_prologue
 
+#undef TARGET_CONSTANT_ALIGNMENT
+#define TARGET_CONSTANT_ALIGNMENT constant_alignment_word_strings
+
+#undef TARGET_PROMOTE_FUNCTION_MODE
+#define TARGET_PROMOTE_FUNCTION_MODE \
+  default_promote_function_mode_always_promote
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 #include "gt-arc64.h"
