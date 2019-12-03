@@ -1768,6 +1768,10 @@ arc64_limm_addr_p (rtx op)
 #define TARGET_PROMOTE_FUNCTION_MODE \
   default_promote_function_mode_always_promote
 
+/* To be checked if it is better without it.  */
+#undef TARGET_PROMOTE_PROTOTYPES
+#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 #include "gt-arc64.h"
