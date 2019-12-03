@@ -188,7 +188,7 @@
    uses alloca.  */
 #define EXIT_IGNORE_STACK (cfun->calls_alloca)
 
-#define STATIC_CHAIN_REGNUM		R14_REGNUM
+#define STATIC_CHAIN_REGNUM		R11_REGNUM
 #define HARD_FRAME_POINTER_REGNUM	R27_REGNUM
 #define FRAME_POINTER_REGNUM		SFP_REGNUM
 #define STACK_POINTER_REGNUM		SP_REGNUM
@@ -268,6 +268,8 @@ enum reg_class
 /* Stack layout; function entry, exit and calling.  */
 #define STACK_GROWS_DOWNWARD	1
 
+/* Addresses of local variables slots are at negative offsets from the
+   frame pointer.  */
 #define FRAME_GROWS_DOWNWARD	1
 
 /* If defined, the maximum amount of space required for outgoing
