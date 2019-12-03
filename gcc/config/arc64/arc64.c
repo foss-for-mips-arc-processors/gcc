@@ -598,11 +598,37 @@ arc64_layout_arg (cumulative_args_t pcum_v, machine_mode mode,
 
 static void
 arc64_function_arg_advance (cumulative_args_t pcum_v,
-			      machine_mode mode,
-			      const_tree type,
-			      bool named ATTRIBUTE_UNUSED)
+			    machine_mode mode,
+			    const_tree type,
+			    bool named ATTRIBUTE_UNUSED)
 {
   arc64_layout_arg (pcum_v, mode, type);
+}
+
+/* Implement TARGET_ARG_PARTIAL_BYTES.  */
+
+static int
+arc64_arg_partial_bytes (cumulative_args_t pcum_v,
+			 machine_mode mode,
+			 tree type,
+			 bool named ATTRIBUTE_UNUSED)
+{
+  CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
+  int ret = 0;
+  HOST_WIDE_INT size;
+  int anum, nregs;
+
+  if (type)
+    size = int_size_in_bytes (type);
+  else
+    size = GET_MODE_SIZE (mode);
+  nregs = (size + UNITS_PER_WORD - 1) / UNITS_PER_WORD;
+
+  anum = ROUND_ADVANCE_CUM (*pcum, mode, type);
+  if (anum <= MAX_ARC64_PARM_REGS)
+    ret = MAX_ARC64_PARM_REGS - anum;
+
+  return (ret >= nregs ? 0 : ret * UNITS_PER_WORD);
 }
 
 /* This function is used to control a function argument is passed in a
@@ -1718,6 +1744,9 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_FUNCTION_ARG_ADVANCE
 #define TARGET_FUNCTION_ARG_ADVANCE arc64_function_arg_advance
+
+#undef TARGET_ARG_PARTIAL_BYTES
+#define TARGET_ARG_PARTIAL_BYTES arc64_arg_partial_bytes
 
 #undef TARGET_COMPUTE_FRAME_LAYOUT
 #define TARGET_COMPUTE_FRAME_LAYOUT arc64_compute_frame_info
