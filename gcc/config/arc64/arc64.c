@@ -487,6 +487,12 @@ arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
   if ((GET_CODE (x) == PRE_MODIFY || GET_CODE (x) == POST_MODIFY))
     return true;
 
+  /* PIC address.  */
+  if (GET_CODE (x) == LO_SUM
+      && REG_P (XEXP (x, 0))
+      && GET_CODE (XEXP (x, 1)) == UNSPEC)
+    return true;
+
   return false;
 }
 
@@ -933,7 +939,8 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
     case 'h':
       if (GET_CODE (x) == SYMBOL_REF
-	  || GET_CODE (x) == LABEL_REF)
+	  || GET_CODE (x) == LABEL_REF
+	  || GET_CODE (x) == UNSPEC)
 	{
 	  output_addr_const (asm_out_file, x);
 	  break;
@@ -971,6 +978,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
 	case LABEL_REF:
 	case SYMBOL_REF:
+	case UNSPEC:
 	  output_addr_const (asm_out_file, x);
 	  break;
 
@@ -1039,16 +1047,14 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
       output_address (VOIDmode, XEXP (addr, 1));
       break;
 
-#if 0
       /* This type of address can be only accepted by LD instructions.  */
     case LO_SUM:
-      base = XEXP (addr,0);
-      index = XEXP (addr,1);
+      base = XEXP (addr, 0);
+      index = XEXP (addr, 1);
       arc64_print_operand_address (file, mode, base);
       fputc (',', file);
       output_addr_const (file, index);
       break;
-#endif
 
     case CONST_INT:
       output_addr_const (file, addr);
@@ -1069,6 +1075,44 @@ arc64_print_operand_punct_valid_p (unsigned char code)
   return (code == '?');
 }
 
+/* Implement TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA.  */
+
+static bool
+arc64_output_addr_const_extra (FILE *file, rtx x)
+{
+  rtx base;
+
+  if (GET_CODE (x) == UNSPEC)
+    {
+      base = XVECEXP (x, 0, 0);
+      output_addr_const (file, base);
+      switch (XINT (x, 1))
+	{
+	case ARC64_UNSPEC_GOTOFF:
+	  fputs ("@pcl", file);
+	  break;
+
+	case ARC64_UNSPEC_GOT:
+	  fputs ("@gotpc", file);
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+      return true;
+    }
+
+  return false;
+}
+
+/* Wrap X in an unspec of kind KIND.  */
+
+static rtx
+gen_sym_unspec (rtx x, int kind)
+{
+  return gen_rtx_UNSPEC (Pmode, gen_rtvec (1, x), kind);
+}
+
 /* Helper function.  Returns a valid ARC64 RTX that represents the
    argument X which is an invalid address RTX.  The argument SCRATCH
    may be used as a temp when building affresses.  */
@@ -1077,15 +1121,37 @@ static rtx
 arc64_legitimize_address_1 (rtx x, rtx scratch)
 {
   rtx base, addend, t1;
+  bool is_local = true;
 
   switch (GET_CODE (x))
     {
     case SYMBOL_REF:
+      is_local = SYMBOL_REF_LOCAL_P (x);
+      /* FALLTHRU */
+
     case LABEL_REF:
       t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
       gcc_assert (t1);
-      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
-      return gen_rtx_LO_SUM (Pmode, t1, x);
+      if (!flag_pic)
+	{
+	  emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
+	  return gen_rtx_LO_SUM (Pmode, t1, x);
+	}
+      else if (is_local)
+	{
+	  /* Local symbol, we can access it using a simple
+	     PCL-relative access.  */
+	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
+	  return base;
+	}
+      else
+	{
+	  /* Global symbol, we access it via a load from the GOT.  */
+	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT);
+	  emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, base)));
+	  t1 = gen_rtx_LO_SUM (Pmode, t1, copy_rtx (base));
+	  return gen_const_mem (Pmode, t1);
+	}
 
     case LO_SUM:
       return x;
@@ -1800,6 +1866,9 @@ arc64_limm_addr_p (rtx op)
 /* To be checked if it is better without it.  */
 #undef TARGET_PROMOTE_PROTOTYPES
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
+
+#undef TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA
+#define TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA arc64_output_addr_const_extra
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
