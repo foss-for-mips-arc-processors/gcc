@@ -461,7 +461,7 @@ udivl, unknown, xor, xorl"
   "@
    jl_s\\t[%0]
    jl\\t[%0]
-   bl\\t%c0"
+   bl\\t%C0"
   [(set_attr "type" "jl,jl,bl")
    (set_attr "predicable" "no,yes,yes")
    (set_attr "length" "2,4,4")])
@@ -490,7 +490,7 @@ udivl, unknown, xor, xorl"
   "@
    jl_s\\t[%1]
    jl\\t[%1]
-   bl\\t%c1"
+   bl\\t%C1"
   [(set_attr "type" "jl,jl,bl")
    (set_attr "predicable" "no,yes,yes")
    (set_attr "length" "2,4,4")])
@@ -527,7 +527,7 @@ udivl, unknown, xor, xorl"
   "SIBLING_CALL_P (insn)"
   "@
    j\\t[%0]
-   b\\t%c0"
+   b\\t%C0"
   [(set_attr "type" "jump,branch")
    (set_attr "predicable" "yes,yes")
    (set_attr "iscompact" "maybe,no")]
@@ -541,7 +541,7 @@ udivl, unknown, xor, xorl"
   "SIBLING_CALL_P (insn)"
   "@
    j\\t[%1]
-   b\\t%c1"
+   b\\t%C1"
   [(set_attr "type" "jump,branch")
    (set_attr "predicable" "yes,yes")
    (set_attr "iscompact" "maybe,no")]

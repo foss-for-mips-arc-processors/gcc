@@ -874,6 +874,7 @@ get_arc64_condition_code (rtx comparison)
      '?': Short instruction suffix.
      'L': Lower 32bit of immediate or symbol.
      'h': Higher 32bit of an immediate or symbol.
+     'C': Constant address, switches on/off @plt.
 */
 
 static void
@@ -957,6 +958,20 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
     case 'm':
       fputs (arc_condition_codes[get_arc64_condition_code (x)], file);
+      break;
+
+    case 'C':
+      if (GET_CODE (x) != SYMBOL_REF
+	  && GET_CODE (x) != LABEL_REF)
+	{
+	  output_operand_lossage ("invalid operand for %%C code");
+	  return;
+	}
+      output_addr_const (asm_out_file, x);
+      if (flag_pic
+	  && GET_CODE (x) == SYMBOL_REF
+	  && !SYMBOL_REF_LOCAL_P (x))
+	fputs ("@plt", file);
       break;
 
     case 0:
