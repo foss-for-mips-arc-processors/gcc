@@ -824,8 +824,8 @@ udivl, unknown, xor, xorl"
 		    (match_operand:GPI 1 "nonmemory_operand" "")))]
   ""
   {
-   if (!register_operand (operands[2], DImode))
-      operands[2] = force_reg (DImode, operands[2]);
+   if (!register_operand (operands[1], DImode))
+      operands[1] = force_reg (DImode, operands[1]);
   })
 
 (define_insn "*cmp<mode>"
