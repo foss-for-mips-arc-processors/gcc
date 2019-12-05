@@ -104,6 +104,10 @@
     (match_code "const_int")
     (match_test "SIGNED_INT6 (ival)")))
 
+(define_constraint "SyPic"
+  "@internal
+   Special symbol used for PIC addressing."
+  (match_code "unspec"))
 ;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal

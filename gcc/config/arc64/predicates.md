@@ -20,9 +20,10 @@
 
 ;; Place holder for mov operand predicate
 (define_predicate "arc64_movl_operand"
-  (and (match_code "reg, subreg, mem, const, const_int, symbol_ref, label_ref")
+  (and (match_code "unspec,reg, subreg, mem, const, const_int, symbol_ref, label_ref")
        (ior (match_operand 0 "register_operand")
 	    (match_operand 0 "memory_operand")
+	    (match_code "unspec")
 	    (and (match_code "const_int")
 		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
@@ -32,6 +33,11 @@
        (and (match_code "const_int")
 	    (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		 (match_test "SIGNED_INT32 (INTVAL (op))")))))
+
+;; Used for HIGH or LO_SUM patterns
+(define_predicate "arc64_immediate_or_pic"
+  (ior (match_operand 0 "immediate_operand")
+       (match_code "unspec")))
 
 ;; Acceptable arguments for the call insn.
 (define_predicate "arc64_call_insn_operand"

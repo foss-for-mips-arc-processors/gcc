@@ -70,7 +70,9 @@
 
 (define_c_enum "unspec"
   [
-   VUNSPEC_ARC_BLOCKAGE
+   ARC64_UNSPEC_GOTOFF
+   ARC64_UNSPEC_GOT
+   ARC64_VUNSPEC_BLOCKAGE
    ])
 
 (include "constraints.md")
@@ -364,8 +366,8 @@ udivl, unknown, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "nonimmediate_operand" "=qh,    q,r,    r,    r,r, m")
-	 (match_operand:DI 1 "arc64_movl_operand"    "qh,U08S0,r,S12S0,S32S0,m, r"))]
+   [(set (match_operand:DI 0 "nonimmediate_operand" "=qh,    q,r,    r,    r,    r,r, m")
+	 (match_operand:DI 1 "arc64_movl_operand"    "qh,U08S0,r,S12S0,S32S0,SyPic,m, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)"
    "@
@@ -374,25 +376,27 @@ udivl, unknown, xor, xorl"
     movl\\t%0,%1
     movl\\t%0,%1
     movl\\t%0,%1
+    addl\\t%0,pcl,%1
     ldl%U1\\t%0,[%1]
     stl%U0\\t%1,[%0]"
-   [(set_attr "type" "move,move,move,move,move,ld,st")
-    (set_attr "length" "2,2,4,4,8,*,*")]
+   [(set_attr "type" "move,move,move,move,move,addl,ld,st")
+    (set_attr "length" "2,2,4,4,8,8,*,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
 
 (define_insn "*movdi_high"
-  [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r")
+  [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r,r")
 	(high:DI
-	 (match_operand:DI 1 "immediate_operand" "S12S0,SymIm,SymIm")))]
+	 (match_operand:DI 1 "arc64_immediate_or_pic" "S12S0,SymIm,SymIm,SyPic")))]
   ""
   "@
    movhl\\t%0,%h1
    movhl_s\\t%0,%h1
-   movhl\\t%0,%h1"
+   movhl\\t%0,%h1
+   addhl\\t%0,pcl,%h1"
   [(set_attr "type" "move")
-   (set_attr "length" "4,6,8")])
+   (set_attr "length" "4,6,8,8")])
 
 ;; The immediates are already trimmed to fit the 32 bit limm field.
 (define_insn "*movdi_high"
@@ -655,7 +659,7 @@ udivl, unknown, xor, xorl"
    (set_attr "length" "2")])
 
 (define_insn "blockage"
-  [(unspec_volatile [(const_int 0)] VUNSPEC_ARC_BLOCKAGE)]
+  [(unspec_volatile [(const_int 0)] ARC64_VUNSPEC_BLOCKAGE)]
   ""
   ""
   [(set_attr "length" "0")
