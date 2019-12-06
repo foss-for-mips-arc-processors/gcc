@@ -1171,10 +1171,12 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
 	  return base;
 	}
-      else if (flag_pic == 1)
+      else if (flag_pic)
 	{
 	  /* Global symbol, we access it via a load from the GOT
 	     (small model).  */
+	  /* FIXME! to enable LARGE/small pic models make the above
+	     condition flag_pic == 1.  */
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT32);
 	  return gen_const_mem (Pmode, base);
 	}
@@ -1427,6 +1429,9 @@ arc64_is_long_call_p (rtx sym)
       && !targetm.binds_local_p (decl))
     return true;
 
+  /* FIXME! it will return FLASE for libgcc calls routines.  We can
+     force checking SYM using SYMBOL_REF_LOCAL_P (x) if there is no
+     decl.  */
   return false;
 }
 
