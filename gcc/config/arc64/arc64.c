@@ -487,10 +487,15 @@ arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
   if ((GET_CODE (x) == PRE_MODIFY || GET_CODE (x) == POST_MODIFY))
     return true;
 
-  /* PIC address.  */
+  /* PIC address (LARGE).  */
   if (GET_CODE (x) == LO_SUM
       && REG_P (XEXP (x, 0))
       && GET_CODE (XEXP (x, 1)) == UNSPEC)
+    return true;
+
+  /* PIC address (small).  */
+  if (GET_CODE (x) == UNSPEC
+      && XINT (x, 1) == ARC64_UNSPEC_GOT32)
     return true;
 
   return false;
@@ -1062,13 +1067,19 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
       output_address (VOIDmode, XEXP (addr, 1));
       break;
 
-      /* This type of address can be only accepted by LD instructions.  */
     case LO_SUM:
+      /* This type of address can be only accepted by LD instructions.  */
       base = XEXP (addr, 0);
       index = XEXP (addr, 1);
       arc64_print_operand_address (file, mode, base);
       fputc (',', file);
       output_addr_const (file, index);
+      break;
+
+    case UNSPEC:
+      /* Small PIC.  */
+      fputs ("pcl,", file);
+      output_addr_const (file, addr);
       break;
 
     case CONST_INT:
@@ -1107,6 +1118,7 @@ arc64_output_addr_const_extra (FILE *file, rtx x)
 	  fputs ("@pcl", file);
 	  break;
 
+	case ARC64_UNSPEC_GOT32:
 	case ARC64_UNSPEC_GOT:
 	  fputs ("@gotpc", file);
 	  break;
@@ -1159,9 +1171,17 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
 	  return base;
 	}
+      else if (flag_pic == 1)
+	{
+	  /* Global symbol, we access it via a load from the GOT
+	     (small model).  */
+	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT32);
+	  return gen_const_mem (Pmode, base);
+	}
       else
 	{
-	  /* Global symbol, we access it via a load from the GOT.  */
+	  /* Global symbol, we access it via a load from the GOT
+	     (LARGE model).  */
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT);
 	  emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, base)));
 	  t1 = gen_rtx_LO_SUM (Pmode, t1, copy_rtx (base));
@@ -1381,10 +1401,34 @@ arc64_output_function_prologue (FILE *f)
     }
 }
 
-
 /*
   Global functions.
 */
+
+/* Returns TRUE if CALLEE should be treated as long-calls (i.e. called
+   via a register).  */
+
+bool
+arc64_is_long_call_p (rtx sym)
+{
+  const_tree decl;
+
+  if (!SYMBOL_REF_P (sym))
+    return false;
+
+  /* If my memory model is small everything can go via usual bl/jl
+     instructions.  */
+  if (arc64_cmodel_var == ARC64_CMODEL_SMALL)
+    return false;
+
+  decl = SYMBOL_REF_DECL (sym);
+  if (flag_pic
+      && decl
+      && !targetm.binds_local_p (decl))
+    return true;
+
+  return false;
+}
 
 /* X and Y are two things to compare using CODE.  Emit the compare insn and
    return the rtx for the cc reg in the proper mode.  */
@@ -1596,8 +1640,8 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
   /* Decide if we should generate indirect calls by loading the
      address of the callee into a register before performing the
      branch-and-link.  */
-// FIXME!  if (arc64_is_long_call_p (callee) && !REG_P (callee))
-// FIXME!    XEXP (mem, 0) = force_reg (mode, callee);
+  if (arc64_is_long_call_p (callee) && !REG_P (callee))
+    XEXP (mem, 0) = force_reg (mode, callee);
 
   call = gen_rtx_CALL (VOIDmode, mem, const0_rtx);
 
