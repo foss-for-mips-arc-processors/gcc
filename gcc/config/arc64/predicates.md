@@ -41,7 +41,8 @@
 
 ;; Acceptable arguments for the call insn.
 (define_predicate "arc64_call_insn_operand"
-  (ior (match_code "symbol_ref")
+  (ior (and (match_code "symbol_ref")
+	    (match_test "!arc64_is_long_call_p (op)"))
        (match_operand 0 "register_operand")))
 
 ; to be used for br{eq/ne}_s instructions.

@@ -19,6 +19,7 @@ extern bool arc64_prepare_move_operands (rtx, rtx, machine_mode);
 extern void arc64_expand_prologue (void);
 extern void arc64_expand_epilogue (bool);
 extern bool arc64_limm_addr_p (rtx);
+extern bool arc64_is_long_call_p (rtx);
 
 #endif /* RTX_CODE */
 
