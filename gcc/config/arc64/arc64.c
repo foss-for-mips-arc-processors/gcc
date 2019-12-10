@@ -1123,6 +1123,18 @@ arc64_output_addr_const_extra (FILE *file, rtx x)
 	  fputs ("@gotpc", file);
 	  break;
 
+	case ARC64_UNSPEC_TLS_GD:
+	  fputs ("@tlsgd", file);
+	  break;
+
+	case ARC64_UNSPEC_TLS_IE:
+	  fputs ("@tlsie", file);
+	  break;
+
+	case ARC64_UNSPEC_TLS_OFF:
+	  fputs ("@tpoff", file);
+	  break;
+
 	default:
 	  gcc_unreachable ();
 	}
@@ -1140,6 +1152,94 @@ gen_sym_unspec (rtx x, int kind)
   return gen_rtx_UNSPEC (Pmode, gen_rtvec (1, x), kind);
 }
 
+/* The __tls_get_attr symbol.  */
+static GTY(()) rtx arc_tls_symbol;
+
+/* Emit a call to __tls_get_addr.  TI is the argument to this function.
+   RET is an RTX for the return value location.  The entire insn sequence
+   is returned.  */
+
+static void
+arc64_tls_call (rtx dest, rtx arg)
+{
+  if (!arc_tls_symbol)
+    arc_tls_symbol = init_one_libfunc ("__tls_get_addr");
+
+  emit_library_call_value (arc_tls_symbol, dest, LCT_CONST, Pmode,
+			   arg, Pmode);
+}
+
+/* Create a legitimate mov instruction for the given BASE (unspec).  */
+
+static rtx
+arc64_legit_unspec (rtx base)
+{
+  rtx t1, ret;
+  gcc_assert (can_create_pseudo_p ());
+
+  switch (arc64_cmodel_var)
+    {
+    case ARC64_CMODEL_SMALL:
+    case ARC64_CMODEL_MEDIUM:
+      return base;
+
+    case ARC64_CMODEL_LARGE:
+      t1 = gen_reg_rtx (Pmode);
+      ret = gen_reg_rtx (Pmode);
+      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, base)));
+      emit_insn (gen_rtx_SET (ret, gen_rtx_LO_SUM (Pmode, t1, base)));
+      return ret;
+
+    default:
+      break;
+    }
+  gcc_unreachable ();
+}
+
+/* Return a legitimized TLS address to access ADDR, which is a
+   SYMBOL_REF.  */
+
+static rtx
+arc64_legitimize_tls_address (rtx addr)
+{
+  rtx t1, t2;
+  rtx base;
+  enum tls_model model = SYMBOL_REF_TLS_MODEL (addr);
+
+  gcc_assert (can_create_pseudo_p ());
+
+  switch (model)
+    {
+    case TLS_MODEL_LOCAL_DYNAMIC:
+    case TLS_MODEL_GLOBAL_DYNAMIC:
+      /* Gen:
+	 addl r0,pcl,@ADDR@tlsgd
+	 bl __tls_get_addr@plt  */
+      t2 = gen_reg_rtx (Pmode);
+      base = gen_sym_unspec (addr, ARC64_UNSPEC_TLS_GD);
+      t1 = arc64_legit_unspec (base);
+      arc64_tls_call (t2, t1);
+      return t2;
+
+    case TLS_MODEL_INITIAL_EXEC:
+      /* Gen:
+	 ldl  rx,[pcl,@ADDR@tlsie]
+	 addl rx,rx,r30  */
+      addr = arc64_legit_unspec (gen_sym_unspec (addr, ARC64_UNSPEC_TLS_IE));
+      addr = copy_to_mode_reg (Pmode, gen_const_mem (Pmode, addr));
+      return gen_rtx_PLUS (Pmode, addr, gen_rtx_REG (Pmode, R30_REGNUM));
+
+    case TLS_MODEL_LOCAL_EXEC:
+      /* Gen:
+	 addl rx,r30,@ADDR@tpoff  */
+      addr = arc64_legit_unspec (gen_sym_unspec (addr, ARC64_UNSPEC_TLS_OFF));
+      return gen_rtx_PLUS (Pmode, gen_rtx_REG (Pmode, R30_REGNUM), addr);
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
 /* Helper function.  Returns a valid ARC64 RTX that represents the
    argument X which is an invalid address RTX.  The argument SCRATCH
    may be used as a temp when building affresses.  */
@@ -1154,6 +1254,8 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
     {
     case SYMBOL_REF:
       is_local = SYMBOL_REF_LOCAL_P (x);
+      if (SYMBOL_REF_TLS_MODEL (x))
+	return arc64_legitimize_tls_address (x);
       /* FALLTHRU */
 
     case LABEL_REF:
@@ -1933,6 +2035,12 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA
 #define TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA arc64_output_addr_const_extra
+
+/* Having TLS support, we turn R30 fixed as well.  */
+#ifdef HAVE_AS_TLS
+#undef TARGET_HAVE_TLS
+#define TARGET_HAVE_TLS HAVE_AS_TLS
+#endif
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

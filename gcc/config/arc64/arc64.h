@@ -107,6 +107,12 @@
 /* Mode of a function address in a call instruction (for indexing purposes).  */
 #define FUNCTION_MODE	Pmode
 
+#ifdef HAVE_AS_TLS
+#define ARC64_TLS_REGNO 1
+#else
+#define ARC64_TLS_REGNO 0
+#endif
+
 /* Register usage:
    R0-R3    Parameter/result registers
    R4-R7    Parameter registers
@@ -138,7 +144,7 @@
    0, 0, 0, 0,   0, 0, 0, 0,  /* R0 - R7 */				\
    0, 0, 0, 0,   0, 0, 0, 0,  /* R8 - R15 */				\
    0, 0, 0, 0,   0, 0, 0, 0,  /* R16 - R23 */				\
-   0, 0, 0, 0,   1, 1, 0, 1,  /* R24 - R26, FP, SP, ILINK, R30, BLINK */ \
+   0, 0, 0, 0,   1, 1, ARC64_TLS_REGNO, 1,  /* R24 - R26, FP, SP, ILINK, R30, BLINK */ \
 									\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R32 - R39 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
