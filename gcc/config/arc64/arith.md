@@ -34,3 +34,16 @@
      (set_attr "length"     "4,4,4,4,4,8,8")
      (set_attr "type"       "<arc64_code_map>")]
 )
+
+
+;; To be merged into adddi3
+(define_insn "*add_tls_off"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(plus:DI (match_operand:DI 1 "register_operand" "r")
+		 (unspec:DI [(match_operand 2 "" "")]
+			    ARC64_UNSPEC_TLS_OFF)))]
+  ""
+  "addl\\t%0,%1,%2@tpoff"
+  [(set_attr "type" "addl")
+   (set_attr "length" "8")]
+  )
