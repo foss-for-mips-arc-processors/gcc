@@ -95,7 +95,7 @@ amdgcn*-*-*)
 	cpu_type=gcn
 	tmake_file="${tmake_file} t-softfp-sfdf t-softfp"
 	;;
-arc[be]*-*-*)
+arc-*-* | arceb-*-*)
 	cpu_type=arc
 	;;
 arc64-*-*)
@@ -497,12 +497,12 @@ amdgcn*-*-amdhsa)
 	tmake_file="$tmake_file gcn/t-amdgcn"
 	extra_parts="crt0.o"
 	;;
-arc[eb]*-*-elf*)
+arc-*-elf* | arceb-*-elf*)
 	tmake_file="arc/t-arc"
 	extra_parts="crti.o crtn.o crtend.o crtbegin.o crtendS.o crtbeginS.o"
 	extra_parts="$extra_parts crttls.o"
 	;;
-arc[eb]*-*-linux*)
+arc-*-linux* | arceb-*-linux*)
 	tmake_file="${tmake_file} t-slibgcc-libgcc t-slibgcc-nolc-override arc/t-arc-uClibc arc/t-arc"
 	extra_parts="$extra_parts crti.o crtn.o"
 	extra_parts="$extra_parts crttls.o"
