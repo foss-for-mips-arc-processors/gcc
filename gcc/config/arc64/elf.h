@@ -28,8 +28,15 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Make sure we include the crtbegin.o.  */
 #undef STARTFILE_SPEC
-#define STARTFILE_SPEC "crt0.o%s crti%O%s crtbegin.o%s"
+#define STARTFILE_SPEC "crt0%O%s crti%O%s crtbegin%O%s"
+
+#undef  LINK_SPEC
+#define LINK_SPEC "%{h*} \
+   %{static:-Bstatic}				\
+   %{shared:-shared}				\
+   %{symbolic:-Bsymbolic}			\
+   %{!static:%{rdynamic:-export-dynamic}}"
 
 /* ...and crtend.o.  */
 #undef ENDFILE_SPEC
-#define ENDFILE_SPEC "crtend.o%s crtn%O%s"
+#define ENDFILE_SPEC "crtend%O%s crtn%O%s"
