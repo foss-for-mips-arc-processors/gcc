@@ -592,6 +592,7 @@ udivl, unknown, xor, xorl"
   "
   )
 
+;; TODO: Improve the length attribute to take in consideration PCL instead of PC.
 (define_insn "condjump"
   [(set (pc) (if_then_else
 	      (match_operator 0 "ordered_comparison_operator"
@@ -610,8 +611,8 @@ udivl, unknown, xor, xorl"
 		     (le (minus (match_dup 2) (pc)) (const_int 506))))
 	   (const_int 2)
 
-	   (and (ge (minus (match_dup 2) (pc)) (const_int -62))
-		(le (minus (match_dup 2) (pc)) (const_int 60)))
+	   (and (ge (minus (match_dup 2) (pc)) (const_int -60))
+		(le (minus (match_dup 2) (pc)) (const_int 58)))
 	   (const_int 2)]
 	  (const_int 4)))])
 
