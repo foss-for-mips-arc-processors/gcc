@@ -77,6 +77,12 @@
    ARC64_UNSPEC_TLS_IE
    ARC64_UNSPEC_TLS_OFF
    ARC64_VUNSPEC_BLOCKAGE
+
+   ARC64_VUNSPEC_LR
+   ARC64_VUNSPEC_SR
+   ARC64_VUNSPEC_FLAG
+   ARC64_VUNSPEC_BRK
+   ARC64_VUNSPEC_NOP
    ])
 
 (include "constraints.md")
@@ -198,10 +204,10 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "abs, add, addhl, addl, and, andl, asl, asll, asr,
-asrl, bl, block, bmsk, branch, branchcc, bset, bsetl, bxor, bxorl,
-compare, div, jl, jump, ld, lsr, lsrl, max, maxl, min, minl, move,
+asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl, bxor, bxorl,
+compare, div, flag, jl, jump, ld, lsr, lsrl, lr, max, maxl, min, minl, move,
 neg, nop, norm, normh, norml, not, notl, or, orl, rem, reml, remu,
-remul, return, ror, setcc, sex, st, sub, subl, swape, swapel, udiv,
+remul, return, ror, setcc, sex, sr, st, sub, subl, swape, swapel, udiv,
 udivl, unknown, xor, xorl"
   (const_string "unknown"))
 
@@ -1052,6 +1058,55 @@ udivl, unknown, xor, xorl"
 ;; -------------------------------------------------------------------
 ;; Floating-point arithmetic
 ;; -------------------------------------------------------------------
+
+;; -------------------------------------------------------------------
+;; Builtins
+;; -------------------------------------------------------------------
+
+(define_insn "lr"
+  [(set (match_operand:SI  0 "register_operand" "=r,r,r,r")
+	(unspec_volatile:SI [(match_operand:SI 1 "general_operand" "U06S0, S12S0, r, i")]
+			    ARC64_VUNSPEC_LR))]
+  ""
+  "lr\\t%0,[%1]"
+  [(set_attr "length" "4,8,4,8")
+   (set_attr "type" "lr,lr,lr,lr")])
+
+(define_insn "sr"
+  [(unspec_volatile [(match_operand:SI 0 "general_operand" "r, r, r, r, i, i, i")
+		     (match_operand:SI 1 "general_operand" "U06S0, S12S0, i, r, r, U06S0, S12S0")]
+		   ARC64_VUNSPEC_SR)]
+  ""
+  "sr\\t%0,[%1]"
+  [(set_attr "length" "4,4,8,4,8,8,8")
+   (set_attr "type" "sr,sr,sr,sr,sr,sr,sr")])
+
+(define_insn "flag"
+  [(unspec_volatile [(match_operand:SI 0 "nonmemory_operand" "U06S0,S12S0,r,i")]
+		   ARC64_VUNSPEC_FLAG)]
+  ""
+  "@
+    flag%? %0
+    flag %0
+    flag%? %0
+    flag%? %0"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "flag")
+   (set_attr "predicable" "yes,no,yes,yes")])
+
+(define_insn "brk"
+  [(unspec_volatile [(const_int 0)] ARC64_VUNSPEC_BRK)]
+  ""
+  "brk"
+  [(set_attr "length" "4")
+  (set_attr "type" "brk")])
+
+(define_insn "nopv"
+  [(unspec_volatile [(const_int 0)] ARC64_VUNSPEC_NOP)]
+  ""
+  "nop%?"
+  [(set_attr "type" "nop")
+   (set_attr "length" "*")])
 
 
 (include "arith.md")
