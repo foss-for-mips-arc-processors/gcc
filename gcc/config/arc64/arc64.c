@@ -1929,6 +1929,215 @@ arc64_limm_addr_p (rtx op)
   return false;
 }
 
+/* IDs for all the ARC builtins.  */
+
+enum arc64_builtin_id
+  {
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)	\
+    ARC64_BUILTIN_ ## NAME,
+#include "builtins.def"
+#undef DEF_BUILTIN
+
+    ARC64_BUILTIN_COUNT
+  };
+
+struct GTY(()) arc64_builtin_description
+{
+  enum insn_code icode;
+  int n_args;
+  tree fndecl;
+};
+
+static GTY(()) struct arc64_builtin_description
+arc_bdesc[ARC64_BUILTIN_COUNT] =
+{
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)		\
+  { (enum insn_code) CODE_FOR_ ## ICODE, N_ARGS, NULL_TREE },
+#include "builtins.def"
+#undef DEF_BUILTIN
+};
+
+static tree
+arc64_builtin_decl (unsigned id, bool initialize_p ATTRIBUTE_UNUSED)
+{
+  if (id < ARC64_BUILTIN_COUNT)
+    return arc_bdesc[id].fndecl;
+
+  return error_mark_node;
+}
+
+/* Transform UP into lowercase and write the result to LO.
+   You must provide enough space for LO.  Return LO.  */
+
+static char*
+arc64_tolower (char *lo, const char *up)
+{
+  char *lo0 = lo;
+
+  for (; *up; up++, lo++)
+    *lo = TOLOWER (*up);
+
+  *lo = '\0';
+
+  return lo0;
+}
+
+static void
+arc64_init_builtins (void)
+{
+  tree void_ftype_usint_usint
+    = build_function_type_list (void_type_node, long_unsigned_type_node,
+				long_unsigned_type_node, NULL_TREE);
+  tree usint_ftype_usint
+    = build_function_type_list  (long_unsigned_type_node,
+				 long_unsigned_type_node, NULL_TREE);
+  tree void_ftype_void
+    = build_function_type_list (void_type_node, NULL_TREE);
+  tree void_ftype_usint
+    = build_function_type_list (void_type_node, long_unsigned_type_node,
+				NULL_TREE);
+
+  /* Add the builtins.  */
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)			\
+  {									\
+    int id = ARC64_BUILTIN_ ## NAME;					\
+    const char *Name = "__builtin_arc_" #NAME;				\
+    char *name = (char*) alloca (1 + strlen (Name));			\
+									\
+    gcc_assert (id < ARC64_BUILTIN_COUNT);				\
+    if (MASK)								\
+      arc_bdesc[id].fndecl						\
+	= add_builtin_function (arc64_tolower(name, Name), TYPE, id,	\
+				BUILT_IN_MD, NULL, NULL_TREE);		\
+  }
+#include "builtins.def"
+#undef DEF_BUILTIN
+}
+
+/* Helper arc_expand_builtin, generates a pattern for the given icode
+   and arguments.  */
+
+static rtx_insn *
+apply_GEN_FCN (enum insn_code icode, rtx *arg)
+{
+  switch (insn_data[icode].n_generator_args)
+    {
+    case 0:
+      return GEN_FCN (icode) ();
+    case 1:
+      return GEN_FCN (icode) (arg[0]);
+    case 2:
+      return GEN_FCN (icode) (arg[0], arg[1]);
+    case 3:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2]);
+    case 4:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3]);
+    case 5:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3], arg[4]);
+    default:
+      gcc_unreachable ();
+    }
+}
+
+/* Expand an expression EXP that calls a built-in function,
+   with result going to TARGET if that's convenient
+   (and in mode MODE if that's convenient).
+   SUBTARGET may be used as the target for computing one of EXP's operands.
+   IGNORE is nonzero if the value is to be ignored.  */
+
+static rtx
+arc64_expand_builtin (tree exp,
+		      rtx target,
+		      rtx subtarget ATTRIBUTE_UNUSED,
+		      machine_mode mode ATTRIBUTE_UNUSED,
+		      int ignore ATTRIBUTE_UNUSED)
+{
+  tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
+  unsigned int id = DECL_FUNCTION_CODE (fndecl);
+  const struct arc64_builtin_description *d = &arc_bdesc[id];
+  int i, j, n_args = call_expr_nargs (exp);
+  rtx pat = NULL_RTX;
+  rtx xop[5];
+  enum insn_code icode = d->icode;
+  machine_mode tmode = insn_data[icode].operand[0].mode;
+  int nonvoid;
+
+  if (id >= ARC64_BUILTIN_COUNT)
+    internal_error ("bad builtin fcode");
+
+  /* 1st part: Expand special builtins.  */
+  switch (id)
+    {
+    case ARC64_BUILTIN_NOP:
+      emit_insn (gen_nopv ());
+      return NULL_RTX;
+
+    case ARC64_BUILTIN_BRK:
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (const1_rtx));
+      return NULL_RTX;
+    default:
+      break;
+    }
+
+  /* 2nd part: Expand regular builtins.  */
+  if (icode == 0)
+    internal_error ("bad builtin fcode");
+
+  nonvoid = TREE_TYPE (TREE_TYPE (fndecl)) != void_type_node;
+  j = 0;
+
+  if (nonvoid)
+    {
+      if (target == NULL_RTX
+	  || GET_MODE (target) != tmode
+	  || !insn_data[icode].operand[0].predicate (target, tmode))
+	{
+	  target = gen_reg_rtx (tmode);
+	}
+      xop[j++] = target;
+    }
+
+  gcc_assert (n_args <= 4);
+  for (i = 0; i < n_args; i++, j++)
+    {
+      tree arg = CALL_EXPR_ARG (exp, i);
+      machine_mode mode = insn_data[icode].operand[j].mode;
+      rtx op = expand_expr (arg, NULL_RTX, mode, EXPAND_NORMAL);
+      machine_mode opmode = GET_MODE (op);
+
+      if (CONST_INT_P (op))
+	opmode = mode;
+
+      if ((opmode == SImode) && (mode == HImode))
+	{
+	  opmode = HImode;
+	  op = gen_lowpart (HImode, op);
+	}
+
+      /* In case the insn wants input operands in modes different from
+	 the result, abort.  */
+      gcc_assert (opmode == mode || opmode == VOIDmode);
+
+      if (!insn_data[icode].operand[i + nonvoid].predicate (op, mode))
+	op = copy_to_mode_reg (mode, op);
+
+      xop[j] = op;
+    }
+
+  pat = apply_GEN_FCN (icode, xop);
+  if (pat == NULL_RTX)
+    return NULL_RTX;
+
+  emit_insn (pat);
+
+  if (nonvoid)
+    return target;
+  else
+    return const0_rtx;
+}
+
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
@@ -2035,6 +2244,15 @@ arc64_limm_addr_p (rtx op)
 
 #undef TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA
 #define TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA arc64_output_addr_const_extra
+
+#undef  TARGET_INIT_BUILTINS
+#define TARGET_INIT_BUILTINS  arc64_init_builtins
+
+#undef  TARGET_EXPAND_BUILTIN
+#define TARGET_EXPAND_BUILTIN arc64_expand_builtin
+
+#undef  TARGET_BUILTIN_DECL
+#define TARGET_BUILTIN_DECL arc64_builtin_decl
 
 /* Having TLS support, we turn R30 fixed as well.  */
 #ifdef HAVE_AS_TLS
