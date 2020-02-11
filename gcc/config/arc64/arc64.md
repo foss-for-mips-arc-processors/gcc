@@ -203,11 +203,11 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-(define_attr "type" "abs, add, addhl, addl, and, andl, asl, asll, asr,
+(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl, asll, asr,
 asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl, bxor, bxorl,
 compare, div, flag, jl, jump, ld, lsr, lsrl, lr, max, maxl, min, minl, move,
 neg, nop, norm, normh, norml, not, notl, or, orl, rem, reml, remu,
-remul, return, ror, setcc, sex, sr, st, sub, subl, swape, swapel, udiv,
+remul, return, ror, sbcl, setcc, sex, sr, st, sub, subl, swape, swapel, udiv,
 udivl, unknown, xor, xorl"
   (const_string "unknown"))
 
