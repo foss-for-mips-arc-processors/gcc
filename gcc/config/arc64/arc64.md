@@ -862,6 +862,15 @@ udivl, unknown, xor, xorl"
    (set_attr "predicable" "yes,yes,no,yes,no,no,no")
    (set_attr "length" "*,*,*,*,*,8,8")])
 
+(define_insn "*cmp<mode>_zn"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN (match_operand:GPI 0 "register_operand" "q,r")
+		       (const_int 0)))]
+  ""
+  "tst<sfxtab>%?\\t%0,%0"
+  [(set_attr "type" "compare")
+   (set_attr "iscompact" "yes,no")
+   (set_attr "length" "2,4")])
 
 ;; -------------------------------------------------------------------
 ;; Store-flag and conditional select insns
@@ -1086,10 +1095,10 @@ udivl, unknown, xor, xorl"
 		   ARC64_VUNSPEC_FLAG)]
   ""
   "@
-    flag%? %0
-    flag %0
-    flag%? %0
-    flag%? %0"
+    flag%?\\t%0
+    flag\\t%0
+    flag%?\\t%0
+    flag%?\\t%0"
   [(set_attr "length" "4,4,4,8")
    (set_attr "type" "flag")
    (set_attr "predicable" "yes,no,yes,yes")])
@@ -1104,13 +1113,12 @@ udivl, unknown, xor, xorl"
 (define_insn "nopv"
   [(unspec_volatile [(const_int 0)] ARC64_VUNSPEC_NOP)]
   ""
-  "nop%?"
+  "nop_s"
   [(set_attr "type" "nop")
-   (set_attr "length" "*")])
+   (set_attr "length" "2")])
 
 
 (include "arith.md")
-;;(include "generate/logic.md")
 
 ;; mode:emacs-lisp
 ;; comment-start: ";; "
