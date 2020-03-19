@@ -967,19 +967,19 @@ udivl, unknown, xor, xorl"
    (set_attr "iscompact" "maybe,yes,no,no")
    (set_attr "predicable" "no,no,yes,no")])
 
-;FIXME;(define_insn "*<optab>2_short"
-;FIXME;  [(set (match_operand:SI 0 "compact_register_operand" "=q")
-;FIXME;	(LOGIC2:SI (match_operand:SI 1 "compact_register_operand" "q")))]
-;FIXME;  ""
-;FIXME;  "<cctab>_s\\t%0,%1"
-;FIXME;  [(set_attr "type" "<cctab>")
-;FIXME;   (set_attr "length" "2")])
-
-(define_insn "*<optab><mode>2"
-  [(set (match_operand:GPI 0 "register_operand" "=r")
-	(LOGIC2:GPI (match_operand:GPI 1 "register_operand" "r")))]
+(define_insn "*<optab>si2"
+  [(set (match_operand:SI 0 "register_operand" "=q,r")
+	(LOGIC2:SI (match_operand:SI 1 "register_operand" "q,r")))]
   ""
-  "<cctab><sfxtab>%?\\t%0,%1"
+  "<cctab>%?\\t%0,%1"
+  [(set_attr "type" "<cctab>")
+   (set_attr "length" "2,4")])
+
+(define_insn "*<optab>di2"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(LOGIC2:DI (match_operand:DI 1 "register_operand" "r")))]
+  ""
+  "<cctab>l\\t%0,%1"
   [(set_attr "type" "<cctab>")
    (set_attr "length" "4")])
 
