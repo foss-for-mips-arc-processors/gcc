@@ -23,7 +23,7 @@
           (arith_pattern1:SI (match_operand:SI 1 "nonmemory_operand" " 0,0,    0,    0,    r,r,i,r")
                              (match_operand:SI 2 "nonmemory_operand" " q,r,U06S0,S12S0,U06S0,r,r,i")))]
     "register_operand (operands[1], SImode) || register_operand (operands[2], SImode)"
-    "<arc64_code_map>\\t%0,%1,%2"
+    "<arc64_code_map>%?\\t%0,%1,%2"
     [(set_attr "predicable" "no,yes,yes,no,no,no,no,no")
      (set_attr "length"     "2,4,4,4,4,4,8,8")
      (set_attr "type"       "<arc64_code_map>")]

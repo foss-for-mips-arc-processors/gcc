@@ -810,7 +810,7 @@ arc64_short_insn_p (rtx_insn *insn)
     return (get_attr_length (insn) == 2)
       || (get_attr_length (insn) == 6);
 
-  return false;
+  return (get_attr_length (insn) == 2);
 }
 
 /* Returns the index of the ARC condition code string in
