@@ -79,3 +79,9 @@
 (define_predicate "limm_ldst_operand"
   (and (match_code "mem")
        (match_test "arc64_limm_addr_p (op)")))
+
+;; Allows only 1,2,3 values.  It is used with add/sub shifted operations.
+(define_predicate "_1_2_3_operand"
+  (and (match_code "const_int")
+       (match_test "INTVAL (op) == 1 || INTVAL (op) == 2 || INTVAL (op) == 3"))
+)
