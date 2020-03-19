@@ -1838,6 +1838,15 @@ arc64_select_cc_mode (enum rtx_code op ATTRIBUTE_UNUSED,
 		      rtx x ATTRIBUTE_UNUSED,
 		      rtx y ATTRIBUTE_UNUSED)
 {
+  machine_mode mode = GET_MODE (x);
+
+  /* Matches all instructions which can do .f and clobbers Z and N
+     flags.  */
+  if (GET_MODE_CLASS (mode) == MODE_INT
+      && y == const0_rtx
+      && (op == EQ || op == NE))
+    return CC_ZNmode;
+
   return CCmode;
 }
 
