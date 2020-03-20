@@ -1841,10 +1841,12 @@ arc64_select_cc_mode (enum rtx_code op ATTRIBUTE_UNUSED,
   machine_mode mode = GET_MODE (x);
 
   /* Matches all instructions which can do .f and clobbers Z and N
-     flags.  */
+     flags.  Because we compare with zero, for LT we can use "mi" and
+     for GT we can use "pl".  We cannot use GT with "pnz" because it
+     cannot be reversed.  */
   if (GET_MODE_CLASS (mode) == MODE_INT
       && y == const0_rtx
-      && (op == EQ || op == NE))
+      && (op == EQ || op == NE || op == LT || op == GE))
     return CC_ZNmode;
 
   return CCmode;
