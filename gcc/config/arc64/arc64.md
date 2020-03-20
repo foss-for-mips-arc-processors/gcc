@@ -598,7 +598,6 @@ udivl, unknown, xor, xorl"
   "
   )
 
-;; TODO: Improve the length attribute to take in consideration PCL instead of PC.
 (define_insn "condjump"
   [(set (pc) (if_then_else
 	      (match_operator 0 "ordered_comparison_operator"
@@ -612,13 +611,14 @@ udivl, unknown, xor, xorl"
    (set_attr "iscompact" "maybe")
    (set (attr "length")
 	(cond
-	  [(and (match_operand 1 "equality_comparison_operator" "")
+	  [(and (match_operand 0 "equality_comparison_operator" "")
 		(and (ge (minus (match_dup 2) (pc)) (const_int -512))
 		     (le (minus (match_dup 2) (pc)) (const_int 506))))
 	   (const_int 2)
 
-	   (and (ge (minus (match_dup 2) (pc)) (const_int -60))
-		(le (minus (match_dup 2) (pc)) (const_int 58)))
+	   (and (match_operand 0 "ccmode_comparison_operator" "")
+		(and (ge (minus (match_dup 2) (pc)) (const_int -60))
+		     (le (minus (match_dup 2) (pc)) (const_int 58))))
 	   (const_int 2)]
 	  (const_int 4)))])
 
@@ -862,15 +862,25 @@ udivl, unknown, xor, xorl"
    (set_attr "predicable" "yes,yes,no,yes,no,no,no")
    (set_attr "length" "*,*,*,*,*,8,8")])
 
-(define_insn "*cmp<mode>_zn"
+(define_insn "*cmpsi_zn"
   [(set (reg:CC_ZN CC_REGNUM)
-	(compare:CC_ZN (match_operand:GPI 0 "register_operand" "q,r")
+	(compare:CC_ZN (match_operand:SI 0 "register_operand" "q,r")
 		       (const_int 0)))]
   ""
-  "tst<sfxtab>%?\\t%0,%0"
+  "tst%?\\t%0,%0"
   [(set_attr "type" "compare")
    (set_attr "iscompact" "yes,no")
    (set_attr "length" "2,4")])
+
+(define_insn "*cmpdi_zn"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN (match_operand:DI 0 "register_operand" "r")
+		       (const_int 0)))]
+  ""
+  "tstl\\t%0,%0"
+  [(set_attr "type" "compare")
+   (set_attr "iscompact" "no")
+   (set_attr "length" "4")])
 
 ;; -------------------------------------------------------------------
 ;; Store-flag and conditional select insns
