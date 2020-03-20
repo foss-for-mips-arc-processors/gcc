@@ -505,4 +505,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TARGET_LRA 1
 #endif
 
+/* DIVREM options.  */
+#undef TARGET_ARC64_DIVREM_DEFAULT
+#define TARGET_ARC64_DIVREM_DEFAULT 0
+
 #endif /* GCC_ARC64_H */
