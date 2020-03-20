@@ -3,21 +3,27 @@
 ;; -------------------------------------------------------------------
 ;; Map rtl objects to arc instuction names
 (define_code_attr arc64_code_map [(ashift   "asl")
-                                  (ashiftrt "asr")
-                                  (lshiftrt "lsr")
-                                  (and      "and")
-                                  (ior      "or")
-                                  (xor      "xor")
-                                  (plus     "add")
-                                  (minus    "sub")])
+				  (ashiftrt "asr")
+				  (div      "div")
+				  (udiv     "divu")
+				  (mod      "rem")
+				  (umod     "remu")
+				  (lshiftrt "lsr")
+				  (and      "and")
+				  (ior      "or")
+				  (xor      "xor")
+				  (plus     "add")
+				  (minus    "sub")])
 
 (define_code_iterator arith_pattern1 [and plus ior xor minus ashift ashiftrt lshiftrt] )
+(define_code_iterator DIVREM [div udiv mod umod] )
 
 (define_code_attr arc64_carry_map [(plus   "adc")
                                    (minus  "sbc")])
 
 (define_code_iterator arith_pattern2 [plus minus] )
 
+;; SI instructions having short instruction variant
 (define_insn "*<optab>si_insn"
   [(set (                   match_operand:SI 0 "register_operand"  "=q,r,    r,    r,    r,r,r,r")
 	(arith_pattern1:SI (match_operand:SI 1 "nonmemory_operand" " 0,0,    0,    0,    r,r,i,r")
@@ -29,16 +35,39 @@
    (set_attr "type"       "<arc64_code_map>")]
   )
 
+;; DI instruction without short instruction variant.  Same list like above
 (define_insn "*<optab>di_insn"
-    [(set (                   match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
-          (arith_pattern1:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
-                             (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
-    "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
-    "<arc64_code_map>l\\t%0,%1,%2"
-    [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-     (set_attr "length"     "4,4,4,4,4,8,8")
-     (set_attr "type"       "<arc64_code_map>")]
-)
+  [(set (                   match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
+	(arith_pattern1:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
+			   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
+  "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
+  "<arc64_code_map>l%?\\t%0,%1,%2"
+  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
+   (set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<arc64_code_map>")]
+  )
+
+;; SI/DI DIV/REM instructions.
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(DIVREM:GPI (match_operand:GPI 1 "nonmemory_operand")
+		    (match_operand:GPI 2 "nonmemory_operand")))]
+  "TARGET_ARC64_DIVREM"
+  ""
+  )
+
+(define_insn "*<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand"                 "=r,    r,    r,    r,r,    r,    r")
+	(DIVREM:GPI (match_operand:GPI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
+		    (match_operand:GPI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
+  "TARGET_ARC64_DIVREM
+   && (register_operand (operands[1], <MODE>mode)
+       || register_operand (operands[2], <MODE>mode))"
+  "<arc64_code_map><sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
+   (set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<optab><sfxtab>")]
+  )
 
 ;; To be merged into adddi3
 (define_insn "*add_tls_off"
