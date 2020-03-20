@@ -163,6 +163,8 @@
 			 (mult "mul")
 			 (div "div")
 			 (udiv "udiv")
+			 (mod "mod")
+			 (umod "umod")
 			 (ss_plus "qadd")
 			 (us_plus "qadd")
 			 (ss_minus "qsub")
@@ -203,12 +205,12 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl, asll, asr,
-asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl, bxor, bxorl,
-compare, div, flag, jl, jump, ld, lsr, lsrl, lr, max, maxl, min, minl, move,
-neg, nop, norm, normh, norml, not, notl, or, orl, rem, reml, remu,
-remul, return, ror, sbcl, setcc, sex, sr, st, sub, subl, swape, swapel, udiv,
-udivl, unknown, xor, xorl"
+(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
+asll, asr, asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl,
+bxor, bxorl, compare, div, divl, flag, jl, jump, ld, lsr, lsrl, lr,
+max, maxl, min, minl, move, mod, modl, neg, nop, norm, normh, norml,
+not, notl, or, orl, return, ror, sbcl, setcc, sex, sr, st, sub, subl,
+swape, swapel, udiv, udivl, umod, umodl, unknown, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
