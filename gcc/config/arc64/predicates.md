@@ -45,9 +45,28 @@
 	    (match_test "!arc64_is_long_call_p (op)"))
        (match_operand 0 "register_operand")))
 
-; to be used for br{eq/ne}_s instructions.
+; to be used for b{eq/ne}_s instructions.
 (define_predicate "equality_comparison_operator"
   (match_code "eq, ne"))
+
+; to be used for b{eq/ne/...}_s instructions.
+(define_predicate "ccmode_comparison_operator"
+  (match_code "eq, ne, gt, ge, lt, le, gtu, geu, ltu, leu")
+  {
+   enum rtx_code code = GET_CODE (op);
+
+   switch (GET_MODE (XEXP (op, 0)))
+     {
+     case E_CCmode:
+       return 1;
+
+     case E_CC_ZNmode:
+       return (code == EQ || code == NE);
+
+     default:
+       return 0;
+     }
+  })
 
 (define_special_predicate "cc_register"
   (match_code "reg")
@@ -85,3 +104,4 @@
   (and (match_code "const_int")
        (match_test "INTVAL (op) == 1 || INTVAL (op) == 2 || INTVAL (op) == 3"))
 )
+
