@@ -509,4 +509,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #undef TARGET_ARC64_DIVREM_DEFAULT
 #define TARGET_ARC64_DIVREM_DEFAULT 0
 
+#define TARGET_ARC64_MPY64 TARGET_MPY64
+
 #endif /* GCC_ARC64_H */
