@@ -95,6 +95,10 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
+;; Iterator for General Purpose Integer registers (32- and 64-bit
+;; modes) used by MPY instructions
+(define_mode_iterator GPIM [SI (DI "TARGET_ARC64_MPY64")])
+
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
@@ -118,7 +122,10 @@
 (define_code_iterator SETCC [eq ne gt lt ge le ltu geu])
 
 ;; Three operand arithmetic operations
-(define_code_iterator ARITH [plus minus])
+(define_code_iterator ARITH [plus minus mult])
+
+;; Three operand 64 bit arithmetic operations
+(define_code_iterator ARITH64 [plus minus (mult "TARGET_ARC64_MPY64")])
 
 ;; Three operand logic operations
 (define_code_iterator LOGIC [and ior xor smin smax])
@@ -201,6 +208,14 @@
 			 (leu "NA")
 			 (geu "hs")
 			 (gtu "NA")])
+
+;; Sign- or zero-extend data-op
+(define_code_attr su [(sign_extend "s") (zero_extend "u")])
+
+;; Optab prefix for sign/zero-extending operations
+(define_code_attr su_optab [(sign_extend "") (zero_extend "u")])
+
+
 ;; -------------------------------------------------------------------
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
@@ -209,8 +224,9 @@
 asll, asr, asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl,
 bxor, bxorl, compare, div, divl, flag, jl, jump, ld, lsr, lsrl, lr,
 max, maxl, min, minl, move, mod, modl, neg, nop, norm, normh, norml,
-not, notl, or, orl, return, ror, sbcl, setcc, sex, sr, st, sub, subl,
-swape, swapel, udiv, udivl, umod, umodl, unknown, xor, xorl"
+mpy, mpyl, not, notl, or, orl, return, ror, sbcl, setcc, sex, sr, st,
+sub, subl, swape, swapel, udiv, udivl, umod, umodl, unknown, xor,
+xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -219,7 +235,9 @@ swape, swapel, udiv, udivl, umod, umodl, unknown, xor, xorl"
 
 (define_attr "length" ""
   (cond
-   [
+   [(eq_attr "iscompact" "yes")
+    (const_int 2)
+
     (eq_attr "type" "ld")
     (if_then_else
      (match_operand 1 "limm_ldst_operand" "")
@@ -231,6 +249,16 @@ swape, swapel, udiv, udivl, umod, umodl, unknown, xor, xorl"
 	  (and (not (match_operand 1 "S06S0_immediate_operand" ""))
 	       (match_operand 1 "immediate_operand" "")))
      (const_int 8) (const_int 4))
+
+    (eq_attr "iscompact" "maybe")
+    (cond
+     [(match_test "GET_CODE (PATTERN (insn)) == COND_EXEC")
+      (const_int 4)
+
+      (match_operand:DI 0 "" "")
+      (const_int 4)
+      ]
+     (const_int 2))
     ]
    (const_int 8)))
 
@@ -782,15 +810,22 @@ swape, swapel, udiv, udivl, umod, umodl, unknown, xor, xorl"
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
 
-(define_expand "<optab><mode>3"
-  [(set (match_operand:GPI 0 "register_operand")
-	(ARITH:GPI (match_operand:GPI 1 "register_operand")
-		   (match_operand:GPI 2 "nonmemory_operand")))]
+(define_expand "<optab>di3"
+  [(set (match_operand:DI 0 "register_operand")
+	(ARITH64:DI (match_operand:DI 1 "register_operand")
+		    (match_operand:DI 2 "nonmemory_operand")))]
   ""
   {
-   if (!register_operand (operands[2], <MODE>mode))
-      operands[2] = force_reg (<MODE>mode, operands[2]);
+   if (!register_operand (operands[2], DImode))
+      operands[2] = force_reg (DImode, operands[2]);
   })
+
+(define_expand "<optab>si3"
+  [(set (match_operand:SI 0 "register_operand")
+	(ARITH:SI (match_operand:SI 1 "register_operand")
+		   (match_operand:SI 2 "nonmemory_operand")))]
+  ""
+  "")
 
 ;;(define_expand "addv<mode>4"
 ;;  [(match_operand:GPI 0 "register_operand")
