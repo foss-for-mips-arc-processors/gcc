@@ -81,25 +81,21 @@
    (set_attr "length" "8")]
   )
 
-
-
 (define_insn "<optab>di3_cmp"
-    [(set (match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
-          (arith_pattern2:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
-                   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
-     (set (reg:CC_C CC_REGNUM)
+  [(set (match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
+	(arith_pattern2:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
+			   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
+   (set (reg:CC_C CC_REGNUM)
 	(compare:CC_C (arith_pattern2:DI (match_dup 1)
-		       (match_dup 2))
+					 (match_dup 2))
 		      (match_dup 2)))]
 
-    "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
-    "<optab>l.f\\t%0,%1,%2"
-    [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-     (set_attr "length"     "4,4,4,4,4,8,8")
-     (set_attr "type"       "<optab>l")]
-)
-
-
+  "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
+  "<optab>l.f\\t%0,%1,%2"
+  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
+   (set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<optab>l")]
+  )
 
 (define_insn "<optab>di3_carry"
   [(set (match_operand:DI 0 "register_operand" "=r")
@@ -199,3 +195,167 @@
   [(set_attr "type" "sub<sfxtab>")
    (set_attr "length" "4,4,8")
    (set_attr "predicable" "yes,no,no")])
+
+;; Multiplications
+
+(define_expand "<ANY_EXTEND:su_optab>mulhisi3"
+  [(set (match_operand:SI 0 "register_operand")
+	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand"))
+		 (ANY_EXTEND:SI (match_operand:HI 2 "nonmemory_operand"))))]
+   ""
+   "
+    if (CONSTANT_P (operands[2]))
+    {
+      emit_insn (gen_<ANY_EXTEND:su_optab>mulhisi3i (operands[0], operands[1], operands[2]));
+      DONE;
+    }
+   "
+  )
+
+(define_insn "*<ANY_EXTEND:su_optab>mulhisi3r"
+  [(set (match_operand:SI 0 "register_operand"                         "=q,r,r")
+	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "%0,0,r"))
+		 (ANY_EXTEND:SI (match_operand:HI 2 "register_operand"  "q,r,r"))))]
+  ""
+  "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
+  [(set_attr "length" "*,4,4")
+   (set_attr "iscompact" "maybe,no,no")
+   (set_attr "type" "mpy")
+   (set_attr "predicable" "yes,yes,no")
+   ])
+
+(define_insn "<ANY_EXTEND:su_optab>mulhisi3i"
+  [(set (match_operand:SI 0 "register_operand"              "=r,    r,    r,r,r")
+	(mult:SI (ANY_EXTEND:SI
+		  (match_operand:HI 1 "register_operand"    "%0,    r,    0,0,r"))
+		 (match_operand:HI 2 "immediate_operand" "U06S0,U06S0,S12S0,i,i")))]
+  ""
+  "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
+  [(set_attr "length" "4,4,4,8,8")
+   (set_attr "type" "mpy")
+   (set_attr "predicable" "yes,no,no,yes,no")])
+
+
+(define_insn "*mul<mode>3"
+ [(set (match_operand:GPIM 0 "register_operand"             "=q,q,     r,     r,    r,    r,    r")
+       (mult:GPIM (match_operand:GPIM 1 "register_operand"  "%0,q,     0,     r,    0,    0,    r")
+		  (match_operand:GPIM 2 "nonmemory_operand"  "q,0,rU06S0,rU06S0,S12S0,S32S0,S32S0")))]
+ ""
+ "@
+  mpy<sfxtab>%?\\t%0,%1,%2
+  mpy<sfxtab>%?\\t%0,%2,%1
+  mpy<sfxtab>%?\\t%0,%1,%2
+  mpy<sfxtab>%?\\t%0,%1,%2
+  mpy<sfxtab>%?\\t%0,%1,%2
+  mpy<sfxtab>%?\\t%0,%1,%2
+  mpy<sfxtab>%?\\t%0,%1,%2"
+ [(set_attr "length" "*,*,4,4,4,8,8")
+  (set_attr "iscompact" "maybe,maybe,no,no,no,no,no")
+  (set_attr "type" "mpy<sfxtab>")
+  (set_attr "predicable" "no,no,yes,no,no,yes,no")])
+
+(define_insn "*mul<mode>3_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (mult:GPIM
+	  (match_operand:GPIM 1 "register_operand"  "%     0,     r,    0,    0,    r")
+	  (match_operand:GPIM 2 "nonmemory_operand"  "rU06S0,rU06S0,S12S0,S32S0,S32S0"))
+	 (const_int 0)))
+   (set (match_operand:GPIM 0 "register_operand"   "=     r,     r,    r,    r,    r")
+	(mult:GPIM (match_dup 1) (match_dup 2)))]
+ ""
+ "mpy<sfxtab>%?.f\\t%0,%1,%2"
+ [(set_attr "length" "4,4,4,8,8")
+  (set_attr "iscompact" "no,no,no,no,no")
+  (set_attr "type" "mpy<sfxtab>")
+  (set_attr "predicable" "yes,no,no,yes,no")])
+
+(define_insn "*mul<mode>3_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (mult:GPIM
+	  (match_operand:GPIM 0 "register_operand"  "%     r,    r,    r")
+	  (match_operand:GPIM 1 "nonmemory_operand"  "rU06S0,S12S0,S32S0"))
+	 (const_int 0)))]
+ ""
+ "mpy<sfxtab>%?.f\\t0,%0,%1"
+ [(set_attr "length" "4,4,8")
+  (set_attr "iscompact" "no,no,no")
+  (set_attr "type" "mpy<sfxtab>")
+  (set_attr "predicable" "no,no,no")])
+
+(define_insn "<su>mulsi3_highpart"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(truncate:SI
+	 (lshiftrt:DI
+	  (mult:DI
+	   (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "%0,r"))
+	   (ANY_EXTEND:DI (match_operand:SI 2 "register_operand"  "r,r")))
+	  (const_int 32))))]
+  ""
+  "mpym<su_optab>%?\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "mpy")
+   (set_attr "predicable" "yes,no")])
+
+(define_insn "<su>muldi3_highpart"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(truncate:DI
+	 (lshiftrt:TI
+	  (mult:TI
+	   (ANY_EXTEND:TI (match_operand:DI 1 "register_operand" "%0,r"))
+	   (ANY_EXTEND:TI (match_operand:DI 2 "register_operand" "r,r")))
+	  (const_int 64))))]
+  "TARGET_ARC64_MPY64"
+  "mpym<su_optab>l%?\\t%0,%1,%2"
+  [(set_attr "type" "mpyl")
+   (set_attr "length" "4")
+   (set_attr "predicable" "yes,no")])
+
+(define_expand "<su_optab>mulditi3"
+  [(set (match_operand:TI 0 "register_operand")
+	(mult:TI (ANY_EXTEND:TI (match_operand:DI 1 "register_operand"))
+		 (ANY_EXTEND:TI (match_operand:DI 2 "register_operand"))))]
+  "TARGET_ARC64_MPY64"
+{
+  rtx low = gen_reg_rtx (DImode);
+  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+
+  rtx high = gen_reg_rtx (DImode);
+  emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+
+  emit_move_insn (gen_lowpart (DImode, operands[0]), low);
+  emit_move_insn (gen_highpart (DImode, operands[0]), high);
+  DONE;
+})
+
+(define_expand "usmulditi3"
+  [(set (match_operand:TI                          0 "register_operand")
+	(mult:TI (zero_extend:TI (match_operand:DI 1 "register_operand"))
+		 (sign_extend:TI (match_operand:DI 2 "register_operand"))))]
+  "TARGET_ARC64_MPY64"
+{
+  rtx low = gen_reg_rtx (DImode);
+  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+
+  rtx high = gen_reg_rtx (DImode);
+  emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+
+  emit_move_insn (gen_lowpart (DImode, operands[0]), low);
+  emit_move_insn (gen_highpart (DImode, operands[0]), high);
+  DONE;
+})
+
+(define_insn "usmuldi3_highpart"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(truncate:DI
+	 (lshiftrt:TI
+	  (mult:TI (zero_extend:TI
+		    (match_operand:DI 1 "register_operand"  "r"))
+		   (sign_extend:TI
+		    (match_operand:DI 2 "register_operand" " r")))
+	  (const_int 64))))]
+  "TARGET_ARC64_MPY64"
+  "mpymsul\t%0,%2,%1"
+  [(set_attr "type" "mpyl")
+   (set_attr "length" "4")])
