@@ -17,11 +17,12 @@
 
 (define_code_iterator COMMUTATIVE [and ior xor] )
 
+(define_code_iterator BIT [ior xor] )
+
 (define_code_iterator DIVREM [div udiv mod umod] )
 
 (define_code_attr bit_optab [(plus   "adc")
 				   (minus  "sbc")
-				   (and    "btst")
 				   (ior    "bset")
 				   (xor    "bxor")
 				   ])
@@ -145,7 +146,7 @@
 
 (define_insn "*<bit_optab><mode>3"
   [(set (match_operand:GPI 0 "register_operand" "=r,r,r")
-	(COMMUTATIVE:GPI
+	(BIT:GPI
 	 (ashift:GPI
 	  (const_int 1)
 	  (match_operand:GPI 1 "register_operand" "r,r,r"))
@@ -160,14 +161,14 @@
 (define_insn "*bset<mode>3_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (COMMUTATIVE:GPI
+	 (BIT:GPI
 	  (ashift:GPI
 	   (const_int 1)
 	   (match_operand:GPI 1 "register_operand" "r,r,r"))
 	  (match_operand:GPI 2 "nonmemory_operand" "0,r,S32S0"))
 	 (const_int 0)))
    (set (match_operand:GPI 0 "register_operand" "=r,r,r")
-	(COMMUTATIVE:GPI
+	(BIT:GPI
 	 (ashift:GPI
 	  (const_int 1)
 	  (match_dup 1))
@@ -182,7 +183,7 @@
 (define_insn "*bset<mode>3_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (COMMUTATIVE:GPI
+	 (BIT:GPI
 	  (ashift:GPI
 	   (const_int 1)
 	   (match_operand:GPI 0 "register_operand" "r,r"))
