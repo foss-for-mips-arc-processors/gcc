@@ -221,12 +221,12 @@
 ;; -------------------------------------------------------------------
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
-asll, asr, asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl,
-bxor, bxorl, compare, dbnz, div, divl, flag, jl, jump, ld, lsr, lsrl,
-lr, max, maxl, min, minl, move, mod, modl, neg, nop, norm, normh,
-norml, mpy, mpyl, not, notl, or, orl, return, ror, sbcl, setcc, sex,
-sr, st, sub, subl, swape, swapel, udiv, udivl, umod, umodl, unknown,
-xor, xorl"
+asll, asr, asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset,
+bsetl, btst, bxor, bxorl, compare, dbnz, div, divl, flag, jl, jump,
+ld, lsr, lsrl, lr, max, maxl, min, minl, move, mod, modl, neg, nop,
+norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror, sbcl,
+setcc, sex, sr, st, sub, subl, swape, swapel, udiv, udivl, umod,
+umodl, unknown, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -254,6 +254,12 @@ xor, xorl"
     (cond
      [(match_test "GET_CODE (PATTERN (insn)) == COND_EXEC")
       (const_int 4)
+
+      (eq_attr "type" "and")
+      (const_int 2)
+
+      (eq_attr "type" "or")
+      (const_int 2)
 
       (match_operand:DI 0 "" "")
       (const_int 4)
@@ -899,11 +905,15 @@ xor, xorl"
 
 (define_insn "*cmp<mode>"
   [(set (reg:CC CC_REGNUM)
-	(compare:CC (match_operand:GPI 0 "nonmemory_operand" "r,    r,    r,U06S0,S12S0,S32S0,r")
-		    (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,S12S0,    r,    r,    r,S32S0")))]
+	(compare:CC
+	 (match_operand:GPI 0 "nonmemory_operand" " q,   qh,    q,r,    r,    r,U06S0,S12S0,S32S0,r")
+	 (match_operand:GPI 1 "nonmemory_operand" "qh,S03S0,U07S0,r,U06S0,S12S0,    r,    r,    r,S32S0")))]
   "register_operand (operands[0], <MODE>mode)
    || register_operand (operands[1], <MODE>mode)"
   "@
+   cmp<sfxtab>%?\\t%0,%1
+   cmp<sfxtab>%?\\t%0,%1
+   cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
@@ -912,9 +922,9 @@ xor, xorl"
    rcmp<sfxtab>%?\\t%1,%0
    cmp<sfxtab>%?\\t%0,%1"
   [(set_attr "type" "compare")
-   (set_attr "iscompact" "no")
-   (set_attr "predicable" "yes,yes,no,yes,no,no,no")
-   (set_attr "length" "*,*,*,*,*,8,8")])
+   (set_attr "iscompact" "maybe,maybe,maybe,no,no,no,no,no,no,no")
+   (set_attr "predicable" "no,no,no,yes,yes,no,yes,no,no,no")
+   (set_attr "length" "*,*,*,4,4,4,4,4,8,8")])
 
 (define_insn "*cmpsi_zn"
   [(set (reg:CC_ZN CC_REGNUM)
@@ -1038,7 +1048,8 @@ xor, xorl"
   "neg%?\\t%0,%1"
   [(set_attr "type" "neg")
    (set_attr "iscompact" "maybe,yes,no,no")
-   (set_attr "predicable" "no,no,yes,no")])
+   (set_attr "predicable" "yes,no,yes,no")
+   (set_attr "length" "*,2,4,4")])
 
 (define_insn "*<optab>si2"
   [(set (match_operand:SI 0 "register_operand" "=q,r")
@@ -1057,25 +1068,25 @@ xor, xorl"
    (set_attr "length" "4")])
 
 (define_insn "*smax<mode>3"
-   [(set (match_operand:GPI 0 "register_operand"                "=r,     r,r")
-	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,     r,r")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,rU06S0,i")))]
+   [(set (match_operand:GPI 0 "register_operand"                "=r,    r,     r,r")
+	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,    0,     r,r")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0")))]
   ""
   "max<sfxtab>%?\\t%0,%1,%2"
   [(set_attr "type" "max")
-   (set_attr "length" "4,4,8")
-   (set_attr "predicable" "yes,no,no")]
+   (set_attr "length" "4,4,4,8")
+   (set_attr "predicable" "yes,no,no,no")]
 )
 
 (define_insn "*smin<mode>3"
-   [(set (match_operand:GPI 0 "register_operand"                "=r,     r,r")
-	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,     r,r")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,rU06S0,i")))]
+   [(set (match_operand:GPI 0 "register_operand"                "=r,    r,     r,r")
+	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,    0,     r,r")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0")))]
   ""
   "min<sfxtab>%?\\t%0,%1,%2"
   [(set_attr "type" "min")
-   (set_attr "length" "4,4,8")
-   (set_attr "predicable" "yes,no,no")]
+   (set_attr "length" "4,4,4,8")
+   (set_attr "predicable" "yes,no,no,no")]
 )
 
 ;; -------------------------------------------------------------------
