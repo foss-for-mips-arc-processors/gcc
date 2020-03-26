@@ -15,37 +15,185 @@
 				  (plus     "add")
 				  (minus    "sub")])
 
-(define_code_iterator arith_pattern1 [and plus ior xor minus ashift ashiftrt lshiftrt] )
+(define_code_iterator COMMUTATIVE [and ior xor] )
+
 (define_code_iterator DIVREM [div udiv mod umod] )
 
-(define_code_attr arc64_carry_map [(plus   "adc")
-                                   (minus  "sbc")])
+(define_code_attr bit_optab [(plus   "adc")
+				   (minus  "sbc")
+				   (and    "btst")
+				   (ior    "bset")
+				   (xor    "bxor")
+				   ])
 
-(define_code_iterator arith_pattern2 [plus minus] )
+(define_code_iterator ADDSUB [plus minus] )
 
 ;; SI instructions having short instruction variant
-(define_insn "*<optab>si_insn"
-  [(set (                   match_operand:SI 0 "register_operand"  "=q,r,    r,    r,    r,r,r,r")
-	(arith_pattern1:SI (match_operand:SI 1 "nonmemory_operand" " 0,0,    0,    0,    r,r,i,r")
-			   (match_operand:SI 2 "nonmemory_operand" " q,r,U06S0,S12S0,U06S0,r,r,i")))]
-  "register_operand (operands[1], SImode) || register_operand (operands[2], SImode)"
-  "<arc64_code_map>%?\\t%0,%1,%2"
-  [(set_attr "predicable" "no,yes,yes,no,no,no,no,no")
-   (set_attr "length"     "2,4,4,4,4,4,8,8")
+(define_insn "*<optab><mode>_insn"
+  [(set (                match_operand:GPI 0 "register_operand"  "=q,q,     r,    r,     r,    r,    r,    r,r")
+	(COMMUTATIVE:GPI (match_operand:GPI 1 "nonmemory_operand" "%0,q,     0,    0,     r,U06S0,S12S0,S32S0,r")
+			 (match_operand:GPI 2 "nonmemory_operand" " q,0,rU06S0,S12S0,rU06S0,    r,    0,    r,S32S0")))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "@
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?\\t%0,%2,%1
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?\\t%0,%2,%1
+   <arc64_code_map><sfxtab>%?\\t%0,%2,%1
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "iscompact" "maybe,maybe,no,no,no,no,no,no,no")
+   (set_attr "predicable" "no,no,yes,no,no,no,no,no,no")
+   (set_attr "length"     "*,*,4,4,4,4,4,8,8")
    (set_attr "type"       "<arc64_code_map>")]
   )
 
-;; DI instruction without short instruction variant.  Same list like above
-(define_insn "*<optab>di_insn"
-  [(set (                   match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
-	(arith_pattern1:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
-			   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))]
-  "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
-  "<arc64_code_map>l%?\\t%0,%1,%2"
-  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-   (set_attr "length"     "4,4,4,4,4,8,8")
+(define_insn "*<optab><mode>_insn"
+  [(set (            match_operand:GPI 0 "register_operand"  "=q,     r,    r,    r,    r,r")
+	(ASHIFT:GPI (match_operand:GPI 1 "nonmemory_operand" " 0,     0,    0,    r,S32S0,r")
+		    (match_operand:GPI 2 "nonmemory_operand" " q,rU06S0,S12S0,rU06S0,   r,S32S0")))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "<arc64_code_map><sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "iscompact" "maybe,no,no,no,no,no")
+   (set_attr "predicable" "no,yes,no,no,no,no")
+   (set_attr "length"     "*,4,4,4,8,8")
    (set_attr "type"       "<arc64_code_map>")]
   )
+
+(define_insn "*sub<mode>_insn"
+  [(set (           match_operand:GPI 0 "register_operand"  "=q,    q,    q,     r,     r,    r,     r,    r,    r,    r,r")
+	(minus:GPI (match_operand:GPI 1 "nonmemory_operand" " 0,    0,    q,     0,rU06S0,    0,     r,U06S0,S12S0,S32S0,r")
+		   (match_operand:GPI 2 "nonmemory_operand" " q,U05S0,U03S0,rU06S0,     0,S12S0,rU06S0,    r,    0,    r,S32S0")))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "@
+   sub<sfxtab>%?\\t%0,%1,%2
+   sub<sfxtab>%?\\t%0,%1,%2
+   sub<sfxtab>%?\\t%0,%1,%2
+   sub<sfxtab>%?\\t%0,%1,%2
+   rsub<sfxtab>%?\\t%0,%2,%1
+   sub<sfxtab>%?\\t%0,%1,%2
+   sub<sfxtab>%?\\t%0,%1,%2
+   rsub<sfxtab>%?\\t%0,%2,%1
+   rsub<sfxtab>%?\\t%0,%2,%1
+   sub<sfxtab>%?\\t%0,%1,%2
+   sub<sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "iscompact"  "yes,maybe,maybe,no,no,no,no,no,no,no,no")
+   (set_attr "predicable" "no,yes,no,yes,yes,no,no,no,no,no,no")
+   (set_attr "length"     "2,*,*,4,4,4,4,4,4,8,8")
+   (set_attr "type"       "sub")]
+  )
+
+(define_insn "*add<mode>_insn"
+  [(set (          match_operand:GPI 0 "register_operand"  "=q, q,q,    q,    q,     r,    r,     r,r")
+	(plus:GPI (match_operand:GPI 1 "register_operand"  "%0, 0,q,    0,    q,     0,    0,     r,r")
+		  (match_operand:GPI 2 "nonmemory_operand" " q,qh,q,U07S0,U03S0,rU06S0,S12S0,rU06S0,S32S0")))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "add<sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "iscompact"  "yes,maybe,maybe,maybe,maybe,no,no,no,no")
+   (set_attr "predicable" "no,no,no,no,no,yes,no,no,no")
+   (set_attr "length"     "2,*,*,*,*,4,4,4,8")
+   (set_attr "type"       "add")]
+  )
+
+;; Arithmetic patterns used by the combiner.
+(define_insn "*bic<mode>3"
+  [(set (                  match_operand:GPI 0 "register_operand"  "=q,r,r,    r")
+	(and:GPI (not:GPI (match_operand:GPI 1 "register_operand"   "q,r,r,    r"))
+		 (         match_operand:GPI 2 "nonmemory_operand"  "0,0,r,S32S0")))]
+  ""
+  "bic<sfxtab>%?\\t%0,%2,%1"
+  [(set_attr "iscompact" "maybe,no,no,no")
+   (set_attr "predicable" "no,yes,no,no")
+   (set_attr "length"     "*,4,4,8")
+   (set_attr "type"       "bic")])
+
+(define_insn "*bic<mode>3_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (and:GPI
+	  (not:GPI (match_operand:GPI 1 "register_operand"   "r,r,    r"))
+	  (match_operand:GPI 2 "nonmemory_operand"  "0,r,S32S0"))
+	 (const_int 0)))
+   (set (match_operand:GPI 0 "register_operand"  "=r,r,r")
+	(and:GPI (not:GPI (match_dup 1)) (match_dup 2)))]
+  ""
+  "bic<sfxtab>%?.f\\t%0,%2,%1"
+  [(set_attr "iscompact" "no,no,no")
+   (set_attr "predicable" "yes,no,no")
+   (set_attr "length"     "4,4,8")
+   (set_attr "type"       "bic")])
+
+(define_insn "*bic<mode>3_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (and:GPI
+	  (not:GPI (match_operand:GPI 0 "register_operand"   "r,r"))
+	  (match_operand:GPI 1 "nonmemory_operand"  "r,S32S0"))
+	 (const_int 0)))]
+  ""
+  "bic<sfxtab>.f\\t0,%1,%0"
+  [(set_attr "iscompact"  "no,no")
+   (set_attr "predicable" "no,no")
+   (set_attr "length"     "4,8")
+   (set_attr "type"       "bic")])
+
+(define_insn "*<bit_optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand" "=r,r,r")
+	(COMMUTATIVE:GPI
+	 (ashift:GPI
+	  (const_int 1)
+	  (match_operand:GPI 1 "register_operand" "r,r,r"))
+	 (match_operand:GPI 2 "nonmemory_operand" "0,r,S32S0")))]
+  ""
+  "<bit_optab><sfxtab>%?\\t%0,%2,%1"
+  [(set_attr "type" "<bit_optab>")
+   (set_attr "iscompact" "no")
+   (set_attr "length" "4,4,8")
+   (set_attr "predicable" "yes,no,no")])
+
+(define_insn "*bset<mode>3_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (COMMUTATIVE:GPI
+	  (ashift:GPI
+	   (const_int 1)
+	   (match_operand:GPI 1 "register_operand" "r,r,r"))
+	  (match_operand:GPI 2 "nonmemory_operand" "0,r,S32S0"))
+	 (const_int 0)))
+   (set (match_operand:GPI 0 "register_operand" "=r,r,r")
+	(COMMUTATIVE:GPI
+	 (ashift:GPI
+	  (const_int 1)
+	  (match_dup 1))
+	 (match_dup 2)))]
+  ""
+  "<bit_optab><sfxtab>%?.f\\t%0,%2,%1"
+  [(set_attr "type" "<bit_optab>")
+   (set_attr "iscompact" "no")
+   (set_attr "length" "4,4,8")
+   (set_attr "predicable" "yes,no,no")])
+
+(define_insn "*bset<mode>3_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (COMMUTATIVE:GPI
+	  (ashift:GPI
+	   (const_int 1)
+	   (match_operand:GPI 0 "register_operand" "r,r"))
+	  (match_operand:GPI 1 "nonmemory_operand" "r,S32S0"))
+	 (const_int 0)))]
+  ""
+  "<bit_optab><sfxtab>.f\\t0,%1,%0"
+  [(set_attr "type" "<bit_optab>")
+   (set_attr "iscompact" "no")
+   (set_attr "length" "4,8")
+   (set_attr "predicable" "no,no")])
 
 ;; SI/DI DIV/REM instructions.
 (define_expand "<optab><mode>3"
@@ -83,10 +231,10 @@
 
 (define_insn "<optab>di3_cmp"
   [(set (match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
-	(arith_pattern2:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
+	(ADDSUB:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
 			   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
    (set (reg:CC_C CC_REGNUM)
-	(compare:CC_C (arith_pattern2:DI (match_dup 1)
+	(compare:CC_C (ADDSUB:DI (match_dup 1)
 					 (match_dup 2))
 		      (match_dup 2)))]
 
@@ -99,20 +247,20 @@
 
 (define_insn "<optab>di3_carry"
   [(set (match_operand:DI 0 "register_operand" "=r")
-	(arith_pattern2:DI
-	 (arith_pattern2:DI (match_operand:DI 1 "register_operand" "r")
-		  (match_operand:DI 2 "register_operand" "r"))
+	(ADDSUB:DI
+	 (ADDSUB:DI (match_operand:DI 1 "register_operand" "r")
+		    (match_operand:DI 2 "register_operand" "r"))
 	 (ltu:DI (reg:CC_C CC_REGNUM) (const_int 0))))]
   ""
-  "<arc64_carry_map>l\\t%0,%1,%2"
-  [(set_attr "type" "<arc64_carry_map>l")
+  "<bit_optab>l\\t%0,%1,%2"
+  [(set_attr "type" "<bit_optab>l")
    (set_attr "length" "4")]
 )
 
 (define_expand "<optab>ti3"
   [(set (match_operand:TI 0 "register_operand")
-        (arith_pattern2:TI (match_operand:TI 1 "register_operand")
-                 (match_operand:TI 2 "nonmemory_operand")))]
+        (ADDSUB:TI (match_operand:TI 1 "register_operand")
+		   (match_operand:TI 2 "nonmemory_operand")))]
   ""
 {
   rtx low_dest, op1_low, op2_low, high_dest, op1_high, op2_high;
