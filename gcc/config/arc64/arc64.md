@@ -222,11 +222,11 @@
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, bl, block, bmsk, branch, branchcc, brk, bset, bsetl,
-bxor, bxorl, compare, div, divl, flag, jl, jump, ld, lsr, lsrl, lr,
-max, maxl, min, minl, move, mod, modl, neg, nop, norm, normh, norml,
-mpy, mpyl, not, notl, or, orl, return, ror, sbcl, setcc, sex, sr, st,
-sub, subl, swape, swapel, udiv, udivl, umod, umodl, unknown, xor,
-xorl"
+bxor, bxorl, compare, dbnz, div, divl, flag, jl, jump, ld, lsr, lsrl,
+lr, max, maxl, min, minl, move, mod, modl, neg, nop, norm, normh,
+norml, mpy, mpyl, not, notl, or, orl, return, ror, sbcl, setcc, sex,
+sr, st, sub, subl, swape, swapel, udiv, udivl, umod, umodl, unknown,
+xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -705,7 +705,24 @@ xorl"
   ""
   [(set_attr "length" "0")
    (set_attr "type" "block")]
-)
+  )
+
+(define_insn "dbnz"
+  [(set (pc)
+	(if_then_else
+	 (ne (match_operand:DI 0 "register_operand" "+r")
+	     (const_int 1))
+	 (label_ref (match_operand 1 "" ""))
+	 (pc)))
+   (set (match_dup 0)
+	(plus:DI (match_dup 0)
+		 (const_int -1)))]
+  ""
+  "dbnz\\t%0,%l1"
+  [(set_attr "iscompact" "no")
+   (set_attr "type" "dbnz")
+   (set_attr "length" "4")])
+
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
 ;; -------------------------------------------------------------------
