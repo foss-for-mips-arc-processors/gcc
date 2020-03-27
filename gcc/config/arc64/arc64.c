@@ -940,7 +940,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	}
       ival = INTVAL (x);
       ival &= 0xffffffffULL;
-      fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
+      fprintf (file, "%d", (int32_t) ival);
       break;
 
     case 'h':
@@ -958,7 +958,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	}
       ival = INTVAL (x);
       ival >>= 32;
-      fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
+      fprintf (file, "%d", (int32_t) ival);
       break;
 
     case 'm':
