@@ -457,10 +457,11 @@ umodl, unknown, xor, xorl"
   [(set_attr "type" "move")
    (set_attr "length" "4,6,8")])
 
+;; N.B. All immediates needs to be unsiged to endup at most in u32.
 (define_insn "*movdi_lo_sum_iori"
   [(set (match_operand:DI 0 "register_operand"            "=q,    r,    h,    r")
 	(lo_sum:DI (match_operand:DI 1 "register_operand"  "0,    0,    0,    r")
-		   (match_operand:DI 2 "immediate_operand" "q,S12S0,SymIm,SymIm")))]
+		   (match_operand:DI 2 "immediate_operand" "q,U10S0,SymIm,SymIm")))]
   ""
   "orl%?\\t%0,%1,%L2"
   [(set_attr "type" "or")
