@@ -224,9 +224,9 @@
 asll, asr, asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset,
 bsetl, btst, bxor, bxorl, compare, dbnz, div, divl, flag, jl, jump,
 ld, lsr, lsrl, lr, max, maxl, min, minl, move, mod, modl, neg, nop,
-norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror, sbcl,
-setcc, sex, sr, st, sub, subl, swape, swapel, udiv, udivl, umod,
-umodl, unknown, xor, xorl"
+norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror, rol,
+sbcl, setcc, sex, sr, st, sub, subl, swape, swapel, udiv, udivl, umod,
+umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -1102,19 +1102,11 @@ umodl, unknown, xor, xorl"
   ""
 )
 
-;(define_expand "ashl<mode>3"
-;  [(set (match_operand:SHORT 0 "register_operand")
-;	(ashift:SHORT (match_operand:SHORT 1 "register_operand")
-;		      (match_operand:QI 2 "const_int_operand")))]
-;  ""
-;)
-
 (define_expand "rotrsi3"
   [(set (match_operand:SI 0 "register_operand")
 	(rotatert:SI (match_operand:SI 1 "nonmemory_operand")
 		     (match_operand:SI 2 "nonmemory_operand")))]
-  ""
-)
+  "")
 
 (define_insn "*rotrsi3"
   [(set (match_operand:SI 0 "register_operand"                   "=r,     r,r")
@@ -1128,9 +1120,122 @@ umodl, unknown, xor, xorl"
    (set_attr "predicable" "yes,no,no")
    (set_attr "length" "4,4,8")])
 
+(define_insn "rotr1"
+  [(set (match_operand:SI 0 "register_operand"              "=     r,r")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand" "rU06S0,i")
+		     (const_int 1)))]
+  ""
+  "ror%?\\t%0,%1"
+  [(set_attr "type" "ror")
+   (set_attr "predicable" "no")
+   (set_attr "length" "4,8")])
+
+(define_insn "rotr8"
+  [(set (match_operand:SI 0 "register_operand"              "=     r,r")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand" "rU06S0,i")
+		     (const_int 8)))]
+  ""
+  "ror8%?\\t%0,%1"
+  [(set_attr "type" "ror")
+   (set_attr "predicable" "no")
+   (set_attr "length" "4,8")])
+
+(define_expand "rotlsi3"
+  [(set (match_operand:SI 0 "register_operand")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand")
+		     (match_operand:SI 2 "nonmemory_operand")))]
+  ""
+  "
+  if (CONST_INT_P (operands[2])
+      && (INTVAL (operands[2]) == 1))
+    {
+     gen_rotl1 (operands[0], operands[1]);
+     DONE;
+    }
+
+  if (CONST_INT_P (operands[2])
+      && (INTVAL (operands[2]) == 8))
+    {
+     gen_rotl8 (operands[0], operands[1]);
+     DONE;
+    }
+
+  if (CONST_INT_P (operands[2]))
+    operands[2] = GEN_INT ((32 - INTVAL (operands[2])) % 32);
+  else
+    {
+      rtx reg = gen_reg_rtx (SImode);
+      emit_insn (gen_subsi3 (reg, GEN_INT (32), operands[2]));
+      operands[2] = reg;
+    }
+  ")
+
+(define_insn "rotl1"
+  [(set (match_operand:SI 0 "register_operand"             "=     r,r")
+	(rotate:SI (match_operand:SI 1 "nonmemory_operand"  "rU06S0,i")
+		   (const_int 1)))]
+  ""
+  "rol%?\\t%0,%1"
+  [(set_attr "type" "rol")
+   (set_attr "predicable" "no")
+   (set_attr "length" "4,8")])
+
+(define_insn "rotl8"
+  [(set (match_operand:SI 0 "register_operand"             "=     r,r")
+	(rotate:SI (match_operand:SI 1 "nonmemory_operand"  "rU06S0,i")
+		   (const_int 8)))]
+  ""
+  "rol8%?\\t%0,%1"
+  [(set_attr "type" "rol")
+   (set_attr "predicable" "no")
+   (set_attr "length" "4,8")])
+
 ;; -------------------------------------------------------------------
 ;; Bitfields
 ;; -------------------------------------------------------------------
+
+(define_expand "extzv<mode>"
+  [(set (match_operand:GPI 0 "register_operand" "")
+	(zero_extract:GPI (match_operand:GPI 1 "register_operand" "")
+			  (match_operand 2 "const_int_operand" "")
+			  (match_operand 3 "const_int_operand" "")))]
+  "")
+
+(define_insn "*extzvsi"
+  [(set (match_operand:SI 0 "register_operand"                  "=r,r")
+	(zero_extract:SI (match_operand:SI 1 "register_operand"  "0,r")
+			 (match_operand 2    "const_int_operand" "n,n")
+			 (match_operand 3    "const_int_operand" "n,n")))]
+  ""
+  {
+   int assemble_op2 = (((INTVAL (operands[2]) - 1) & 0x1f) << 5)
+                       | (INTVAL (operands[3]) & 0x1f);
+   operands[2] = GEN_INT (assemble_op2);
+   return "xbfu%?\\t%0,%1,%2";
+  }
+  [(set_attr "type"       "xbfu")
+   (set_attr "iscompact"  "no")
+   (set_attr "length"     "4,8")
+   (set_attr "predicable" "no")])
+
+(define_insn "*extzvdi"
+  [(set (match_operand:DI 0 "register_operand"                  "=r,r")
+	(zero_extract:DI (match_operand:DI 1 "register_operand"  "0,r")
+			 (match_operand 2    "const_int_operand" "n,n")
+			 (match_operand 3    "const_int_operand" "n,n")))]
+  ""
+  {
+   int assemble_op2 = (((INTVAL (operands[2]) - 1) & 0x3f) << 6)
+                       | (INTVAL (operands[3]) & 0x3f);
+   operands[2] = GEN_INT (assemble_op2);
+   return "xbful%?\\t%0,%1,%2";
+  }
+  [(set_attr "type"       "xbfu")
+   (set_attr "iscompact"  "no")
+   (set_attr "length"     "4,8")
+   (set_attr "predicable" "no")])
+
+
 
 ;; -------------------------------------------------------------------
 ;; Floating-point intrinsics
