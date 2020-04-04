@@ -455,19 +455,14 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
   return ((to == HARD_FRAME_POINTER_REGNUM) || (to == STACK_POINTER_REGNUM));
 }
 
-/* Return TRUE if X is a legitimate address for accessing memory in
-   mode MODE.  We do recognize addresses like:
-   - [Rb]
-   - [Rb, s9]
-   - predec/postdec
-   - preinc/postinc
-   - premodif/postmodif
-*/
 
+/* Helper legitimate address. Extra takes an input to discriminate
+   among load or store addresses.  */
 static bool
-arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
-			    rtx x,
-			    bool strict ATTRIBUTE_UNUSED)
+arc64_legitimate_address_1_p (machine_mode mode,
+			      rtx x,
+			      bool strict ATTRIBUTE_UNUSED,
+			      bool load_p)
 {
   if (REG_P (x))
     return true;
@@ -479,13 +474,39 @@ arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
       && SIGNED_INT9 (INTVAL (XEXP (x, 1))))
       return true;
 
+  /* Indexed addresses.  */
+  if (load_p
+      && GET_CODE (x) == PLUS
+      && REG_P (XEXP (x, 0))
+      && REG_P (XEXP (x, 1)))
+    return true;
+
+  /* Scalled addresses.  */
+  if (load_p
+      && GET_CODE (x) == PLUS
+      && GET_CODE (XEXP (x, 0)) == MULT
+      && REG_P (XEXP (x, 1))
+      && REG_P (XEXP (XEXP (x, 0), 0))
+      && CONST_INT_P (XEXP (XEXP (x, 0), 1)))
+    switch (GET_MODE_SIZE (mode))
+      {
+      case 2:
+      case 4:
+      case 8:
+	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
+	  return true;;
+	break;
+      default:
+	break;
+      }
+
   if ((GET_CODE (x) == PRE_DEC || GET_CODE (x) == PRE_INC
        || GET_CODE (x) == POST_DEC || GET_CODE (x) == POST_INC)
       && REG_P (XEXP (x, 0)))
     return true;
 
   if ((GET_CODE (x) == PRE_MODIFY || GET_CODE (x) == POST_MODIFY))
-    return true;
+    return arc64_legitimate_address_1_p (mode, XEXP (x, 1), strict, load_p);
 
   /* PIC address (LARGE).  */
   if (GET_CODE (x) == LO_SUM
@@ -499,6 +520,24 @@ arc64_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
     return true;
 
   return false;
+}
+
+/* Return TRUE if X is a legitimate address for accessing memory in
+   mode MODE.  We do recognize addresses like:
+   - [Rb]
+   - [Rb, s9]
+   - predec/postdec
+   - preinc/postinc
+   - premodif/postmodif
+*/
+
+static bool
+arc64_legitimate_address_p (machine_mode mode,
+			    rtx x,
+			    bool strict ATTRIBUTE_UNUSED)
+{
+  /* Allow all the addresses accepted by load.  */
+  return arc64_legitimate_address_1_p (mode, x, strict, true);
 }
 
 /* Implement TARGET_LEGITIMATE_CONSTANT_P hook.  Return true for constants
@@ -921,6 +960,9 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  fputs (".ab", file);
 	  break;
 
+	case PLUS:
+	  if (GET_CODE (XEXP (XEXP (x, 0), 0)) == MULT)
+	    fputs (".as", file);
 	default:
 	  break;
 	}
@@ -1505,6 +1547,7 @@ arc64_output_function_prologue (FILE *f)
     }
 }
 
+
 /*
   Global functions.
 */
@@ -1605,6 +1648,43 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	}
     }
 
+  /* Check and fix unsupported store addresses.  */
+  if (MEM_P (op0)
+      && GET_CODE (XEXP (op0, 0)) == PLUS
+      && !CONST_INT_P (XEXP (XEXP (op0, 0), 1)))
+    {
+      rtx tmp = gen_reg_rtx (Pmode);
+      rtx addr = XEXP (op0, 0);
+      rtx t0 = XEXP (addr, 0);
+      rtx t1 = XEXP (addr, 1);
+
+      if (GET_CODE (t0) == MULT)
+	{
+	  rtx ta = XEXP (t0, 0);
+	  rtx tb = XEXP (t0, 1);
+	  HOST_WIDE_INT shift;
+
+	  gcc_assert (CONST_INT_P (tb));
+	  switch (INTVAL (tb))
+	    {
+	    case 2:
+	      shift = 1;
+	      break;
+	    case 4:
+	      shift = 2;
+	      break;
+	    case 8:
+	      shift = 3;
+	      break;
+	    default:
+	      gcc_unreachable ();
+	    }
+	  t0 = gen_rtx_ASHIFT (Pmode, ta, GEN_INT (shift));
+	}
+
+      emit_insn (gen_rtx_SET (tmp, gen_rtx_PLUS (Pmode, t0, t1)));
+      op0 = replace_equiv_address (op0, tmp);
+    }
   emit_insn (gen_rtx_SET (op0, op1));
   return true;
 }
@@ -2148,6 +2228,13 @@ arc64_expand_builtin (tree exp,
     return const0_rtx;
 }
 
+/* Used by move_dest_operand predicate.  */
+
+bool
+arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
+{
+  return arc64_legitimate_address_1_p (mode, addr, true, false);
+}
 
 /* Target hooks.  */
 
