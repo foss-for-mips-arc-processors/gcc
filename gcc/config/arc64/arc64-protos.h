@@ -20,6 +20,7 @@ extern void arc64_expand_prologue (void);
 extern void arc64_expand_epilogue (bool);
 extern bool arc64_limm_addr_p (rtx);
 extern bool arc64_is_long_call_p (rtx);
+extern bool arc64_legitimate_store_address_p (machine_mode, rtx);
 
 #endif /* RTX_CODE */
 

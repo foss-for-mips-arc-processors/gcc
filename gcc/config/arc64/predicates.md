@@ -105,3 +105,12 @@
        (match_test "INTVAL (op) == 1 || INTVAL (op) == 2 || INTVAL (op) == 3"))
 )
 
+;; Return TRUE if OP can be used as a destination for any move
+;; (mov,st,ld) instruction.
+(define_predicate "arc64_dest_operand"
+  (match_code "reg, subreg, mem")
+  {
+   if (MEM_P (op))
+      return arc64_legitimate_store_address_p (mode, XEXP (op, 0));
+   return nonimmediate_operand (op, mode);
+  })
