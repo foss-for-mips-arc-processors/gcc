@@ -38,6 +38,16 @@
    1.  */
 #define MAX_REGS_PER_ADDRESS 1
 
+/* Addressing modes.  */
+#define HAVE_PRE_INCREMENT 1
+#define HAVE_PRE_DECREMENT 1
+#define HAVE_POST_INCREMENT 1
+#define HAVE_POST_DECREMENT 1
+#define HAVE_PRE_MODIFY_DISP 1
+#define HAVE_POST_MODIFY_DISP 1
+#define HAVE_PRE_MODIFY_REG 1
+#define HAVE_POST_MODIFY_REG 1
+
 /* The number of registers used for parameter passing.  Local to this
    file.  */
 #define MAX_ARC64_PARM_REGS 8
