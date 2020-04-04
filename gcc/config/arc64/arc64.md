@@ -310,8 +310,8 @@ umodl, unknown, xbfu, xor, xorl"
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-   [(set (match_operand:QI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, Ucnst, r, m")
-	 (match_operand:QI 1 "general_operand"      " qh, r, U08S0, i, S06S0,     i, m, r"))
+   [(set (match_operand:QI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, Ucnst, r, m")
+	 (match_operand:QI 1 "general_operand"    " qh, r, U08S0, i, S06S0,     i, m, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
@@ -336,8 +336,8 @@ umodl, unknown, xbfu, xor, xorl"
 )
 
 (define_insn "*arc64_movhi"
-  [(set (match_operand:HI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, m, r, m")
-	(match_operand:HI 1 "general_operand"      " qh, r, U08S0, i, S06S0, i, m, r"))
+  [(set (match_operand:HI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, m, r, m")
+	(match_operand:HI 1 "general_operand"    " qh, r, U08S0, i, S06S0, i, m, r"))
    ]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
@@ -357,8 +357,8 @@ umodl, unknown, xbfu, xor, xorl"
 )
 
 (define_insn "*arc64_movsi"
-  [(set (match_operand:SI 0 "nonimmediate_operand" "=qh, r,     q, r,     m, m, r, m")
-	(match_operand:SI 1 "general_operand"      " qh, r, U08S0, i, S06S0, i, m, r"))
+  [(set (match_operand:SI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, m, r, m")
+	(match_operand:SI 1 "general_operand"    " qh, r, U08S0, i, S06S0, i, m, r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -379,8 +379,8 @@ umodl, unknown, xbfu, xor, xorl"
 
 ;; Softcore float move.
 (define_insn "*arc64_movsf"
-   [(set (match_operand:SF 0 "nonimmediate_operand" "=r, r, r, m")
-	 (match_operand:SF 1 "general_operand"      " r, E, m, r"))
+   [(set (match_operand:SF 0 "arc64_dest_operand" "=r, r, r, m")
+	 (match_operand:SF 1 "general_operand"    " r, E, m, r"))
    ]
    "register_operand (operands[0], SFmode)
    || register_operand (operands[1], SFmode)"
@@ -412,8 +412,8 @@ umodl, unknown, xbfu, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "nonimmediate_operand" "=qh,    q,r,    r,    r,    r,r, m")
-	 (match_operand:DI 1 "arc64_movl_operand"    "qh,U08S0,r,S12S0,S32S0,SyPic,m, r"))]
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,    r,    r,r, m")
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0,SyPic,m, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)"
    "@
