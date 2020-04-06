@@ -1547,6 +1547,54 @@ arc64_output_function_prologue (FILE *f)
     }
 }
 
+/* Helper for INSN_COST.
+
+   Per Segher Boessenkool: rtx_costs computes the cost for any rtx (an
+   insn, a set, a set source, any random piece of one).  set_src_cost,
+   set_rtx_cost, etc. are helper functions that use that.
+
+   Those functions do not work for parallels.  Also, costs are not
+   additive like this simplified model assumes.  Also, more complex
+   backends tend to miss many cases in their rtx_costs function.
+
+   Many passes that want costs want to know the cost of a full insn.  Like
+   combine.  That's why I created insn_cost: it solves all of the above
+   problems.  */
+
+static int
+arc64_insn_cost (rtx_insn *insn, bool speed)
+{
+  int cost;
+  if (recog_memoized (insn) < 0)
+    return 0;
+
+  /* If optimizing for size, we want the insn size.  */
+  if (!speed)
+    return get_attr_length (insn);
+
+  /* Use cost if provided.  */
+  cost = get_attr_cost (insn);
+  if (cost > 0)
+    return cost;
+
+  /* For speed make a simple cost model: memory access is more
+     expensive than any other instruction.  */
+  enum attr_type type = get_attr_type (insn);
+
+  switch (type)
+    {
+    case TYPE_LD:
+    case TYPE_ST:
+      cost = COSTS_N_INSNS (2);
+      break;
+
+    default:
+      cost = COSTS_N_INSNS (1);
+      break;
+    }
+
+  return cost;
+}
 
 /*
   Global functions.
@@ -2356,6 +2404,11 @@ arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
 #ifdef HAVE_AS_TLS
 #undef TARGET_HAVE_TLS
 #define TARGET_HAVE_TLS HAVE_AS_TLS
+#endif
+
+#if 0
+#undef  TARGET_INSN_COST
+#define TARGET_INSN_COST arc64_insn_cost
 #endif
 
 struct gcc_target targetm = TARGET_INITIALIZER;
