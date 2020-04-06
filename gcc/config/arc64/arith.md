@@ -4,6 +4,8 @@
 ;; Map rtl objects to arc instuction names
 (define_code_attr arc64_code_map [(ashift   "asl")
 				  (ashiftrt "asr")
+				  (sign_extend "sex")
+				  (zero_extend "ext")
 				  (div      "div")
 				  (udiv     "divu")
 				  (mod      "rem")
@@ -22,10 +24,10 @@
 (define_code_iterator DIVREM [div udiv mod umod] )
 
 (define_code_attr bit_optab [(plus   "adc")
-				   (minus  "sbc")
-				   (ior    "bset")
-				   (xor    "bxor")
-				   ])
+			     (minus  "sbc")
+			     (ior    "bset")
+			     (xor    "bxor")
+			     ])
 
 (define_code_iterator ADDSUB [plus minus] )
 
@@ -196,6 +198,95 @@
    (set_attr "length" "4,8")
    (set_attr "predicable" "no,no")])
 
+(define_insn "*<optab><mode>_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (COMMUTATIVE:GPI
+	  (match_operand:GPI 1 "nonmemory_operand" "%     0,    0,     r,U06S0,S12S0,S32S0,r")
+	  (match_operand:GPI 2 "nonmemory_operand" " rU06S0,S12S0,rU06S0,    r,    0,    r,S32S0"))
+	 (const_int 0)))
+   (set (match_operand:GPI 0 "register_operand"  "=     r,    r,     r,    r,    r,    r,r")
+	(COMMUTATIVE:GPI (match_dup 1) (match_dup 2)))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "@
+   <arc64_code_map><sfxtab>%?.f\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?.f\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?.f\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?.f\\t%0,%2,%1
+   <arc64_code_map><sfxtab>%?.f\\t%0,%2,%1
+   <arc64_code_map><sfxtab>%?.f\\t%0,%1,%2
+   <arc64_code_map><sfxtab>%?.f\\t%0,%1,%2"
+  [(set_attr "iscompact"  "no,no,no,no,no,no,no")
+   (set_attr "predicable" "yes,no,no,no,no,no,no")
+   (set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<arc64_code_map>")]
+  )
+
+(define_insn "*<optab><mode>_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (COMMUTATIVE:GPI
+	  (match_operand:GPI 0 "nonmemory_operand" "%     r,U06S0,S32S0,r")
+	  (match_operand:GPI 1 "nonmemory_operand" " rU06S0,    r,    r,S32S0"))
+	 (const_int 0)))]
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
+  "@
+   <arc64_code_map><sfxtab>.f\\t0,%0,%1
+   <arc64_code_map><sfxtab>.f\\t0,%1,%0
+   <arc64_code_map><sfxtab>.f\\t0,%0,%1
+   <arc64_code_map><sfxtab>.f\\t0,%0,%1"
+  [(set_attr "iscompact"  "no")
+   (set_attr "predicable" "no")
+   (set_attr "length"     "4,4,8,8")
+   (set_attr "type"       "<arc64_code_map>")]
+  )
+
+(define_insn "*<ANY_EXTEND:optab><SHORT:mode>si2_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (ANY_EXTEND:SI (match_operand:SHORT 0 "register_operand" "r"))
+	 (const_int 0)))]
+  ""
+  "<ANY_EXTEND:arc64_code_map><SHORT:exttab>.f\\t0,%0"
+  [(set_attr "type" "<ANY_EXTEND:arc64_code_map>")
+   (set_attr "length" "4")])
+
+(define_insn "*extend<EXT:mode>di2_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (sign_extend:DI (match_operand:EXT 0 "register_operand" "r"))
+	 (const_int 0)))]
+  ""
+  "sex<EXT:exttab>l.f\\t0,%0"
+  [(set_attr "type" "sex")
+   (set_attr "length" "4")])
+
+(define_insn "*<ANY_EXTEND:optab><SHORT:mode>si_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (ANY_EXTEND:SI (match_operand:SHORT 1 "register_operand" "r"))
+	 (const_int 0)))
+   (set (match_operand:SI 0 "register_operand" "=r")
+	(ANY_EXTEND:SI (match_dup 1)))]
+  ""
+  "<ANY_EXTEND:arc64_code_map><SHORT:exttab>.f\\t%0,%1"
+  [(set_attr "type" "<ANY_EXTEND:arc64_code_map>")
+   (set_attr "length" "4")])
+
+(define_insn "*extend<EXT:mode>di_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (sign_extend:DI (match_operand:EXT 1 "register_operand" "r"))
+	 (const_int 0)))
+   (set (match_operand:DI 0 "register_operand" "=r")
+	(sign_extend:DI (match_dup 1)))]
+  ""
+  "sex<EXT:exttab>l.f\\t%0,%1"
+  [(set_attr "type" "sex")
+   (set_attr "length" "4")])
+
 ;; SI/DI DIV/REM instructions.
 (define_expand "<optab><mode>3"
   [(set (match_operand:GPI 0 "register_operand")
@@ -233,10 +324,10 @@
 (define_insn "<optab>di3_cmp"
   [(set (match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
 	(ADDSUB:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
-			   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
+		   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
    (set (reg:CC_C CC_REGNUM)
 	(compare:CC_C (ADDSUB:DI (match_dup 1)
-					 (match_dup 2))
+				 (match_dup 2))
 		      (match_dup 2)))]
 
   "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
