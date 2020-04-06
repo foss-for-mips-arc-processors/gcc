@@ -36,7 +36,7 @@
 /* Maximum number of registers that can appear in a valid memory
    address.  N.B. The ld insn allows 2, but the st insn only allows
    1.  */
-#define MAX_REGS_PER_ADDRESS 1
+#define MAX_REGS_PER_ADDRESS 2
 
 /* Addressing modes.  */
 #define HAVE_PRE_INCREMENT 1
