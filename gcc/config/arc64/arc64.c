@@ -936,6 +936,9 @@ get_arc64_condition_code (rtx comparison)
      'L': Lower 32bit of immediate or symbol.
      'h': Higher 32bit of an immediate or symbol.
      'C': Constant address, switches on/off @plt.
+     's': Scalled immediate.
+     'S': Scalled immediate, to be used in pair with 's'.
+     'N': Negative immediate, to be used in pair with 's'.
 */
 
 static void
@@ -947,6 +950,9 @@ arc64_print_operand (FILE *file, rtx x, int code)
      "al", 0, "eq", "ne", "p", "n", "lo", "hs", "v", "nv",
      "gt", "le", "ge", "lt", "hi", "ls", "pnz", 0
     };
+
+  int scalled = 0;
+  int sign = 1;
 
   switch (code)
     {
@@ -1041,6 +1047,56 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  && GET_CODE (x) == SYMBOL_REF
 	  && !SYMBOL_REF_LOCAL_P (x))
 	fputs ("@plt", file);
+      break;
+
+    case 's':
+      if (REG_P (x))
+	break;
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%s code");
+	  return;
+	}
+      ival = INTVAL (x);
+      if ((ival & 0x07) == 0)
+	  scalled = 3;
+      else if ((ival & 0x03) == 0)
+	  scalled = 2;
+      else if ((ival & 0x01) == 0)
+	  scalled = 1;
+
+      if (scalled)
+	asm_fprintf (file, "%d", scalled);
+      break;
+
+    case 'N':
+      if (REG_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%N code");
+	  return;
+	}
+      sign = -1;
+      /* fall through */
+    case 'S':
+      if (REG_P (x))
+	{
+	  asm_fprintf (file, "%s", reg_names [REGNO (x)]);
+	  return;
+	}
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%N or %%S code");
+	  return;
+	}
+      ival = sign * INTVAL (x);
+      if ((ival & 0x07) == 0)
+	  scalled = 3;
+      else if ((ival & 0x03) == 0)
+	  scalled = 2;
+      else if ((ival & 0x01) == 0)
+	  scalled = 1;
+
+      asm_fprintf (file, "%wd", (ival >> scalled));
       break;
 
     case 0:
