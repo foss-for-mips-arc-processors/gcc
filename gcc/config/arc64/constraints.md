@@ -108,6 +108,33 @@
   "@internal
    Special symbol used for PIC addressing."
   (match_code "unspec"))
+
+(define_constraint "U06Sx" "@internal
+  A 6-bit unsigned integer constant shifted by x-bit(s)"
+  (and (match_code "const_int")
+       (ior (match_test "UNSIGNED_INT9_SHIFTED (ival,3)")
+	    (match_test "UNSIGNED_INT8_SHIFTED (ival,2)")
+	    (match_test "UNSIGNED_INT7_SHIFTED (ival,1)")
+	    (match_test "UNSIGNED_INT6 (ival)"))))
+
+(define_constraint "N06Sx" "@internal
+  A negate 6-bit unsigned integer constant shifted by x-bit(s) used by add."
+  (and (match_code "const_int")
+       (match_test "ival < 0")
+       (match_test "SIGNED_INT10(ival)")
+       (ior (match_test "UNSIGNED_INT9_SHIFTED (-ival,3)")
+	    (match_test "UNSIGNED_INT8_SHIFTED (-ival,2)")
+	    (match_test "UNSIGNED_INT7_SHIFTED (-ival,1)")
+	    (match_test "UNSIGNED_INT6 (-ival)"))))
+
+(define_constraint "S12Sx" "@internal
+  A 12-bit signed integer constant shifted by x-bit(s)"
+  (and (match_code "const_int")
+       (ior (match_test "SIGNED_INT15_SHIFTED (ival,3)")
+	    (match_test "SIGNED_INT14_SHIFTED (ival,2)")
+	    (match_test "SIGNED_INT13_SHIFTED (ival,1)")
+	    (match_test "SIGNED_INT12 (ival)"))))
+
 ;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal
