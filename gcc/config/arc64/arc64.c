@@ -109,6 +109,19 @@ typedef struct GTY (()) machine_function
   int uses_anonymous_args;
 } machine_function;
 
+/* Simple LUT for log2.  */
+static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
+			      3, 0, 0, 0, 0, 0, 0, 0 };
+
+/* Safe access lut log2 table.  */
+#define ARC64LOG2(X) lutlog2[((X) & 0x0f)]
+
+/* Check if an offset fits in signed 8 bit immediate field.  */
+#define ARC64_CHECK_SMALL_IMMEDIATE(indx, mode)				\
+  (CONST_INT_P (indx)							\
+   && VERIFY_SHIFT (INTVAL (indx), ARC64LOG2 (GET_MODE_SIZE (mode)))	\
+   && SIGNED_INT9 (INTVAL (indx) >> ARC64LOG2 (GET_MODE_SIZE (mode))))
+
 /* ALIGN FRAMES on word boundaries.  */
 #define ARC64_STACK_ALIGN(LOC)						\
   (((LOC) + STACK_BOUNDARY / BITS_PER_UNIT - 1) & -STACK_BOUNDARY/BITS_PER_UNIT)
@@ -467,11 +480,13 @@ arc64_legitimate_address_1_p (machine_mode mode,
   if (REG_P (x))
     return true;
 
-  /* ST instruction can only accept a single register in address.  */
+  /* ST instruction can only accept a single register plus a small
+     offset as address.  */
   if (GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
-      && CONST_INT_P (XEXP (x, 1))
-      && SIGNED_INT9 (INTVAL (XEXP (x, 1))))
+      && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1), mode)
+	  || (load_p && CONST_INT_P (XEXP (x, 1))
+	      && !lra_in_progress && !optimize_size)))
       return true;
 
   /* Indexed addresses.  */
@@ -526,6 +541,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
    mode MODE.  We do recognize addresses like:
    - [Rb]
    - [Rb, s9]
+   - [Rb, Ri] (ld only)
+   - [Rb, limm] (ld only)
    - predec/postdec
    - preinc/postinc
    - premodif/postmodif
@@ -963,6 +980,11 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	case PLUS:
 	  if (GET_CODE (XEXP (XEXP (x, 0), 0)) == MULT)
 	    fputs (".as", file);
+	  else if (REG_P (XEXP (XEXP (x, 0), 0))
+		   && ARC64LOG2 (GET_MODE_SIZE (GET_MODE (x)))
+		   && ARC64_CHECK_SMALL_IMMEDIATE (XEXP (XEXP (x, 0), 1),
+						   GET_MODE (x)))
+	    fputs (".as", file);
 	default:
 	  break;
 	}
@@ -1081,6 +1103,11 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 	base = XEXP (addr, 0), index = XEXP (addr, 1);
 
       gcc_assert (OBJECT_P (base));
+      if (REG_P (base)
+	  && ARC64LOG2 (GET_MODE_SIZE (mode))
+	  && ARC64_CHECK_SMALL_IMMEDIATE (index, mode))
+	index = GEN_INT (INTVAL (index) >> ARC64LOG2 (GET_MODE_SIZE (mode)));
+
       arc64_print_operand_address (file, mode, base);
       if (CONSTANT_P (base) && CONST_INT_P (index))
 	fputc ('+', file);
@@ -1698,8 +1725,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 
   /* Check and fix unsupported store addresses.  */
   if (MEM_P (op0)
-      && GET_CODE (XEXP (op0, 0)) == PLUS
-      && !CONST_INT_P (XEXP (XEXP (op0, 0), 1)))
+      && !arc64_legitimate_address_1_p (mode, XEXP (op0, 0), false, false))
     {
       rtx tmp = gen_reg_rtx (Pmode);
       rtx addr = XEXP (op0, 0);
@@ -1710,24 +1736,8 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	{
 	  rtx ta = XEXP (t0, 0);
 	  rtx tb = XEXP (t0, 1);
-	  HOST_WIDE_INT shift;
-
-	  gcc_assert (CONST_INT_P (tb));
-	  switch (INTVAL (tb))
-	    {
-	    case 2:
-	      shift = 1;
-	      break;
-	    case 4:
-	      shift = 2;
-	      break;
-	    case 8:
-	      shift = 3;
-	      break;
-	    default:
-	      gcc_unreachable ();
-	    }
-	  t0 = gen_rtx_ASHIFT (Pmode, ta, GEN_INT (shift));
+	  t0 = gen_rtx_ASHIFT (Pmode, ta,
+			       GEN_INT (ARC64LOG2 (INTVAL (tb))));
 	}
 
       emit_insn (gen_rtx_SET (tmp, gen_rtx_PLUS (Pmode, t0, t1)));
@@ -2284,6 +2294,7 @@ arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
   return arc64_legitimate_address_1_p (mode, addr, true, false);
 }
 
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
@@ -2405,6 +2416,9 @@ arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
 #undef TARGET_HAVE_TLS
 #define TARGET_HAVE_TLS HAVE_AS_TLS
 #endif
+
+#undef TARGET_LRA_P
+#define TARGET_LRA_P hook_bool_void_true
 
 #if 0
 #undef  TARGET_INSN_COST
