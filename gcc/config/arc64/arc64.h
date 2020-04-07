@@ -511,10 +511,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
        "jl  [r12]\n"						\
        TEXT_SECTION_ASM_OP);
 
-#ifndef TARGET_LRA
-#define TARGET_LRA 1
-#endif
-
 /* DIVREM options.  */
 #undef TARGET_ARC64_DIVREM_DEFAULT
 #define TARGET_ARC64_DIVREM_DEFAULT 0
