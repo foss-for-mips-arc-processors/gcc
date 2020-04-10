@@ -17,11 +17,14 @@
 				  (plus     "add")
 				  (minus    "sub")])
 
-(define_code_iterator COMMUTATIVE [and ior xor] )
+(define_code_iterator COMMUTATIVE [and ior xor])
 
-(define_code_iterator BIT [ior xor] )
+;; Operations which can be predicated
+(define_code_iterator ARITHP [and ior xor plus minus ashift ashiftrt lshiftrt])
 
-(define_code_iterator DIVREM [div udiv mod umod] )
+(define_code_iterator BIT [ior xor])
+
+(define_code_iterator DIVREM [div udiv mod umod])
 
 (define_code_attr bit_optab [(plus   "adc")
 			     (minus  "sbc")
@@ -33,7 +36,7 @@
 
 ;; SI instructions having short instruction variant
 (define_insn "*<optab><mode>_insn"
-  [(set (                match_operand:GPI 0 "register_operand"  "=q,q,     r,    r,     r,    r,    r,    r,r")
+  [(set (                match_operand:GPI 0 "register_operand"   "=q,q,     r,    r,     r,    r,    r,    r,r")
 	(COMMUTATIVE:GPI (match_operand:GPI 1 "nonmemory_operand" "%0,q,     0,    0,     r,U06S0,S12S0,S32S0,r")
 			 (match_operand:GPI 2 "nonmemory_operand" " q,0,rU06S0,S12S0,rU06S0,    r,    0,    r,S32S0")))]
   "register_operand (operands[1], <MODE>mode)
@@ -114,6 +117,20 @@
    (set_attr "length"     "2,*,*,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")]
   )
+
+; Conditional execution
+(define_insn "*<optab><mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPI 0 "register_operand"            "=     r,r")
+	(ARITHP:GPI (match_operand:GPI 1 "register_operand"  "     0,0")
+		    (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+  ""
+  "<arc64_code_map><sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "iscompact" "no")
+   (set_attr "length"     "4,8")
+   (set_attr "type"       "<arc64_code_map>")])
 
 ;; Arithmetic patterns used by the combiner.
 (define_insn "*bic<mode>3"
@@ -384,28 +401,18 @@
 })
 
 ;; Shifted adds and subs
-(define_insn "*addsi_shift"
-  [(set (match_operand:SI 0 "register_operand" "=q,r,r,r")
-	(plus:SI (ashift:SI (match_operand:SI 1 "register_operand" "q,r,r,r")
-			    (match_operand:SI 2 "_1_2_3_operand" ""))
-		 (match_operand:SI 3 "arc64_nonmem_operand"  "0,0,r,S32S0")))]
+(define_insn "*add<mode>_shift"
+  [(set (match_operand:GPI 0 "register_operand" "=q,r,r,r")
+	(plus:GPI
+	 (ashift:GPI (match_operand:GPI 1 "register_operand" "q,r,r,r")
+		     (match_operand:GPI 2 "_1_2_3_operand" ""))
+	 (match_operand:GPI 3 "arc64_nonmem_operand"  "0,0,r,S32S0")))]
   ""
-  "add%2%?\\t%0,%3,%1"
+  "add%2<sfxtab>%?\\t%0,%3,%1"
   [(set_attr "type" "add")
    (set_attr "length" "*,4,4,8")
    (set_attr "predicable" "yes,yes,no,no")
    (set_attr "iscompact" "maybe,no,no,no")])
-
-(define_insn "*adddi_shift"
-  [(set (match_operand:DI 0 "register_operand" "=r,r,r")
-	(plus:DI (ashift:DI (match_operand:DI 1 "register_operand" "r,r,r")
-			    (match_operand:DI 2 "_1_2_3_operand" ""))
-		 (match_operand:DI 3 "arc64_nonmem_operand"  "0,r,S32S0")))]
-  ""
-  "add%2l%?\\t%0,%3,%1"
-  [(set_attr "type" "add")
-   (set_attr "length" "4,4,8")
-   (set_attr "predicable" "yes,no,no")])
 
 (define_insn "*add<mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
@@ -475,6 +482,19 @@
    (set_attr "predicable" "yes,yes,no")
    ])
 
+(define_insn "*<ANY_EXTEND:su_optab>mulhisi3r_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+   (set (match_operand:SI 0 "register_operand"                         "=r")
+	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "%0"))
+		 (ANY_EXTEND:SI (match_operand:HI 2 "register_operand"  "r")))))]
+  ""
+  "mpy<ANY_EXTEND:su_optab>w.%m3\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "mpy")
+   ])
+
 (define_insn "<ANY_EXTEND:su_optab>mulhisi3i"
   [(set (match_operand:SI 0 "register_operand"              "=r,    r,    r,r,r")
 	(mult:SI (ANY_EXTEND:SI
@@ -485,7 +505,6 @@
   [(set_attr "length" "4,4,4,8,8")
    (set_attr "type" "mpy")
    (set_attr "predicable" "yes,no,no,yes,no")])
-
 
 (define_insn "*mul<mode>3"
  [(set (match_operand:GPIM 0 "register_operand"             "=q,q,     r,     r,    r,    r,    r")
@@ -504,6 +523,18 @@
   (set_attr "iscompact" "maybe,maybe,no,no,no,no,no")
   (set_attr "type" "mpy<sfxtab>")
   (set_attr "predicable" "no,no,yes,no,no,yes,no")])
+
+(define_insn "*mul<mode>3_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPIM 0 "register_operand"             "=     r,    r")
+	 (mult:GPIM (match_operand:GPIM 1 "register_operand"  "%     0,    0")
+		    (match_operand:GPIM 2 "nonmemory_operand"  "rU06S0,S32S0"))))]
+ ""
+ "mpy<sfxtab>.%m3\\t%0,%1,%2"
+ [(set_attr "length" "4,8")
+  (set_attr "type" "mpy<sfxtab>")])
 
 (define_insn "*mul<mode>3_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
