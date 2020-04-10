@@ -1648,9 +1648,17 @@ static int
 arc64_insn_cost (rtx_insn *insn, bool speed)
 {
   int cost;
+
+  /* Needed for ifcvt.  */
+  if (GET_CODE (PATTERN (insn)) == USE)
+    return 1;
+
   if (recog_memoized (insn) < 0)
     return 0;
 
+  cost = pattern_cost (PATTERN (insn), speed);
+  return cost;
+#if 0
   /* If optimizing for size, we want the insn size.  */
   if (!speed)
     return get_attr_length (insn);
@@ -1677,6 +1685,7 @@ arc64_insn_cost (rtx_insn *insn, bool speed)
     }
 
   return cost;
+#endif
 }
 
 /*
@@ -2476,10 +2485,8 @@ arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
 #undef TARGET_LRA_P
 #define TARGET_LRA_P hook_bool_void_true
 
-#if 0
 #undef  TARGET_INSN_COST
 #define TARGET_INSN_COST arc64_insn_cost
-#endif
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
