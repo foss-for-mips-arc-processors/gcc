@@ -143,6 +143,9 @@
 ;; Map rtl mode to ARC mnemonic suffixes
 (define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")])
 
+;; Same as above but to be used by mov conditional
+(define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")])
+
 ;; -------------------------------------------------------------------
 ;; Code Attributes
 ;; -------------------------------------------------------------------
@@ -488,6 +491,18 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "iscompact" "yes,no,no,no,no")
    (set_attr "length" "6,4,4,4,8")])
 
+; conditional execution patterns
+(define_insn "*mov<mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 2 "cc_register" "") (const_int 0)])
+   (set (match_operand:ALLI 0 "register_operand"  "=    r,r")
+	(match_operand:ALLI 1 "nonmemory_operand" "rU06S0,S32S0")))]
+  ""
+  "mov<mcctab>.%m3\\t%0,%1"
+  [(set_attr "type" "move")
+   (set_attr "length" "4,8")])
+
 ;; -------------------------------------------------------------------
 ;; Subroutine calls and sibcalls
 ;; -------------------------------------------------------------------
@@ -598,6 +613,70 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "iscompact" "maybe,no")]
 )
 
+; conditional execution patterns
+(define_insn "*call_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 2 "cc_register" "") (const_int 0)])
+    (parallel
+     [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "r,BLsym"))
+	    (match_operand 1 "" ""))
+      (clobber (reg:DI BLINK_REGNUM))]))]
+  ""
+  "@
+   jl%m3\\t[%0]
+   bl%m3\\t%C0"
+  [(set_attr "type" "jl,bl")
+   (set_attr "length" "4")])
+
+(define_insn "*callv_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (parallel
+     [(set (match_operand 0 "" "")
+	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand"
+					   "r,BLsym"))
+		 (match_operand 2 "" "")))
+      (clobber (reg:DI BLINK_REGNUM))]))]
+  ""
+  "@
+   jl%m3\\t[%1]
+   bl%m3\\t%C1"
+  [(set_attr "type" "jl,bl")
+   (set_attr "length" "4")])
+
+(define_insn "*sibcall_insn_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 2 "cc_register" "") (const_int 0)])
+    (parallel
+     [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym"))
+	    (match_operand 1 "" ""))
+      (return)]))]
+  "SIBLING_CALL_P (insn)"
+  "@
+   j%m3\\t[%0]
+   b%m3\\t%C0"
+  [(set_attr "type" "jump,branch")
+   (set_attr "length" "4")])
+
+(define_insn "*sibcall_value_insn_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (parallel
+     [(set (match_operand 0 "" "")
+	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
+		 (match_operand 2 "" "")))
+      (return)]))]
+  "SIBLING_CALL_P (insn)"
+  "@
+   j%m3\\t[%1]
+   b%m3\\t%C1"
+  [(set_attr "type" "jump,branch")
+   (set_attr "length" "4")])
+
 ;; -------------------------------------------------------------------
 ;; Jumps and other miscellaneous insns
 ;; -------------------------------------------------------------------
@@ -691,7 +770,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
 )
 
 (define_expand "return"
-  [(return)]
+  [(simple_return)]
   "arc64_can_use_return_insn_p ()"
   "")
 
@@ -732,6 +811,17 @@ umod, umodl, unknown, xbfu, xor, xorl"
   "dbnz\\t%0,%l1"
   [(set_attr "iscompact" "no")
    (set_attr "type" "dbnz")
+   (set_attr "length" "4")])
+
+; conditional execution
+(define_insn "*returnt_ce"
+  [(set (pc)
+	(if_then_else (match_operator 0 "ordered_comparison_operator"
+				      [(reg CC_REGNUM) (const_int 0)])
+		      (simple_return) (pc)))]
+  ""
+  "j%m0\\t[blink]"
+  [(set_attr "type" "return")
    (set_attr "length" "4")])
 
 ;; -------------------------------------------------------------------
@@ -1026,6 +1116,20 @@ umod, umodl, unknown, xbfu, xor, xorl"
 ;;  ""
 ;;  )
 
+;; conditional patterns
+;; Todo: add conditional execution for leu and geu
+(define_insn "*set<cctab><mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:SI 0 "register_operand"            "=r,r")
+	 (SETCC:SI (match_operand:GPI 1 "register_operand"  "0,0")
+		   (match_operand:GPI 2 "nonmemory_operand" "r,n"))))]
+  ""
+  "set<cctab><sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "type" "setcc")
+   (set_attr "length" "4,8")])
+
 ;; -------------------------------------------------------------------
 ;; Logical operations
 ;; -------------------------------------------------------------------
@@ -1056,21 +1160,14 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "predicable" "yes,no,yes,no")
    (set_attr "length" "*,2,4,4")])
 
-(define_insn "*<optab>si2"
-  [(set (match_operand:SI 0 "register_operand" "=q,r")
-	(LOGIC2:SI (match_operand:SI 1 "register_operand" "q,r")))]
+(define_insn "*<optab><mode>2"
+  [(set (match_operand:GPI 0 "register_operand" "=q,r")
+	(LOGIC2:GPI (match_operand:GPI 1 "register_operand" "q,r")))]
   ""
-  "<cctab>%?\\t%0,%1"
+  "<cctab><sfxtab>%?\\t%0,%1"
   [(set_attr "type" "<cctab>")
-   (set_attr "length" "2,4")])
-
-(define_insn "*<optab>di2"
-  [(set (match_operand:DI 0 "register_operand" "=r")
-	(LOGIC2:DI (match_operand:DI 1 "register_operand" "r")))]
-  ""
-  "<cctab>l\\t%0,%1"
-  [(set_attr "type" "<cctab>")
-   (set_attr "length" "4")])
+   (set_attr "iscompact" "maybe,no")
+   (set_attr "length" "*,4")])
 
 (define_insn "*smax<mode>3"
    [(set (match_operand:GPI 0 "register_operand"                "=r,    r,     r,r")
@@ -1094,6 +1191,31 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "predicable" "yes,no,no,no")]
 )
 
+;; Conditional execution
+(define_insn "*smax<mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPI 0 "register_operand"                "=r,r")
+	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+  ""
+  "max<sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "type" "max")
+   (set_attr "length" "4,8")])
+
+(define_insn "*smin<mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPI 0 "register_operand"                "=r,r")
+	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
+		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+  ""
+  "min<sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "type" "min")
+   (set_attr "length" "4,8")])
+
 ;; -------------------------------------------------------------------
 ;; Shifts
 ;; -------------------------------------------------------------------
@@ -1103,8 +1225,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   [(set (match_operand:GPI 0 "register_operand")
 	(ASHIFT:GPI (match_operand:GPI 1 "register_operand")
 		    (match_operand:GPI 2 "nonmemory_operand")))]
-  ""
-)
+  "")
 
 (define_expand "rotrsi3"
   [(set (match_operand:SI 0 "register_operand")
@@ -1194,6 +1315,20 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "predicable" "no")
    (set_attr "length" "4,8")])
 
+;; Conditional execution
+(define_insn "*rotrsi_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:SI 0 "register_operand"                   "=r,r")
+	 (rotatert:SI (match_operand:SI 1 "register_operand"      "%0,0")
+		      (match_operand:SI 2 "nonmemory_operand" "rU06S0,S32S0"))))
+   ]
+  ""
+  "ror.%m3\\t%0,%1,%2"
+  [(set_attr "type" "ror")
+   (set_attr "length" "4,8")])
+
 ;; -------------------------------------------------------------------
 ;; Bitfields
 ;; -------------------------------------------------------------------
@@ -1238,8 +1373,6 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "iscompact"  "no")
    (set_attr "length"     "4,8")
    (set_attr "predicable" "no")])
-
-
 
 ;; -------------------------------------------------------------------
 ;; Floating-point intrinsics
