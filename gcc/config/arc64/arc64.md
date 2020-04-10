@@ -1053,14 +1053,17 @@ umod, umodl, unknown, xbfu, xor, xorl"
   ""
   {
    if (!register_operand (operands[2], <MODE>mode))
-      operands[2] = force_reg (<MODE>mode, operands[2]);
-   })
+     operands[2] = force_reg (<MODE>mode, operands[2]);
+   if (!arc64_nonmem_operand (operands[3], <MODE>mode))
+     operands[3] = force_reg (<MODE>mode, operands[3]);
+  })
 
 ;; SETcc instructions
 (define_insn "set<cctab><mode>"
-  [(set (match_operand:SI 0 "register_operand"            "=r,r,    r,    r,    r,r,r")
-	(SETCC:SI (match_operand:GPI 1 "register_operand"  "0,r,    0,    r,    0,0,r")
-		  (match_operand:GPI 2 "nonmemory_operand" "r,r,U06S0,U06S0,S12S0,n,n")))]
+  [(set (match_operand:SI 0 "register_operand"      "=r,r,    r,    r,    r,r,r")
+	(SETCC:SI
+	 (match_operand:GPI 1 "register_operand"     "0,r,    0,    r,    0,0,r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,r,U06S0,U06S0,S12S0,n,n")))]
   ""
   "set<cctab><sfxtab>%?\\t%0,%1,%2"
   [(set_attr "length" "4,4,4,4,4,8,8")
@@ -1124,7 +1127,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (set (match_operand:SI 0 "register_operand"            "=r,r")
 	 (SETCC:SI (match_operand:GPI 1 "register_operand"  "0,0")
-		   (match_operand:GPI 2 "nonmemory_operand" "r,n"))))]
+		   (match_operand:GPI 2 "arc64_nonmem_operand" "r,n"))))]
   ""
   "set<cctab><sfxtab>.%m3\\t%0,%1,%2"
   [(set_attr "type" "setcc")
@@ -1140,7 +1143,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
 		   (match_operand:GPI 2 "nonmemory_operand")))]
   ""
   {
-   if (!register_operand (operands[2], <MODE>mode))
+   if (!arc64_nonmem_operand (operands[2], <MODE>mode))
       operands[2] = force_reg (<MODE>mode, operands[2]);
   })
 
