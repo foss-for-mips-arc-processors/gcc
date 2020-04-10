@@ -517,4 +517,9 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #define TARGET_ARC64_MPY64 TARGET_MPY64
 
+/* IFCVT macros.  */
+#define STORE_FLAG_VALUE 1
+#define MAX_CONDITIONAL_EXECUTE 12
+#define BRANCH_COST(speed_p, predictable_p) 2
+
 #endif /* GCC_ARC64_H */
