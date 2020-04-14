@@ -40,6 +40,11 @@
 /* This file should be included last.  */
 #include "target-def.h"
 
+/* Return true if REGNO is suited for short instructions.  */
+#define COMPACT_REG_P(REGNO)						\
+  (((signed)(REGNO) >= R0_REGNUM && (REGNO) <= R3_REGNUM)		\
+   || ((REGNO) >= R12_REGNUM && (REGNO) <= R15_REGNUM))
+
 /* Defined for convenience.  */
 #define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
 
@@ -109,6 +114,8 @@ typedef struct GTY (()) machine_function
   int uses_anonymous_args;
 } machine_function;
 
+/* Local variable true if we output scalled address.  */
+static bool scalled_p = false;
 /* Simple LUT for log2.  */
 static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
 			      3, 0, 0, 0, 0, 0, 0, 0 };
@@ -990,7 +997,10 @@ arc64_print_operand (FILE *file, rtx x, int code)
 		   && ARC64LOG2 (GET_MODE_SIZE (GET_MODE (x)))
 		   && ARC64_CHECK_SMALL_IMMEDIATE (XEXP (XEXP (x, 0), 1),
 						   GET_MODE (x)))
-	    fputs (".as", file);
+	    {
+	      fputs (".as", file);
+	      scalled_p = true;
+	    }
 	default:
 	  break;
 	}
@@ -1160,9 +1170,11 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 
       gcc_assert (OBJECT_P (base));
       if (REG_P (base)
+	  && scalled_p
 	  && ARC64LOG2 (GET_MODE_SIZE (mode))
 	  && ARC64_CHECK_SMALL_IMMEDIATE (index, mode))
 	index = GEN_INT (INTVAL (index) >> ARC64LOG2 (GET_MODE_SIZE (mode)));
+      scalled_p = false;
 
       arc64_print_operand_address (file, mode, base);
       if (CONSTANT_P (base) && CONST_INT_P (index))
@@ -1686,6 +1698,39 @@ arc64_insn_cost (rtx_insn *insn, bool speed)
 
   return cost;
 #endif
+}
+
+/* Helper for arc64_short_access_p.  */
+
+static bool
+check_short_insn_register_p (rtx op, bool hclass_p)
+{
+  if (!REG_P (op))
+    return false;
+
+  return (REGNO (op) >= FIRST_PSEUDO_REGISTER
+	  || COMPACT_REG_P (REGNO (op))
+	  || (hclass_p && (REGNO (op) <= R30_REGNUM)));
+}
+
+/* Helper for arc64_short_access_p.  */
+
+static bool
+check_short_insn_constant_p (rtx op, machine_mode mode)
+{
+  HOST_WIDE_INT ival;
+
+  if (!CONST_INT_P (op))
+    return false;
+
+  ival = INTVAL (op);
+
+  /* Check u5, u6, u7 short immediates.  */
+  if (VERIFY_SHIFT (ival, ARC64LOG2 (GET_MODE_SIZE (mode)))
+      && UNSIGNED_INT5 (ival >> ARC64LOG2 (GET_MODE_SIZE (mode))))
+    return true;
+
+  return false;
 }
 
 /*
@@ -2357,6 +2402,54 @@ bool
 arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
 {
   return arc64_legitimate_address_1_p (mode, addr, true, false);
+}
+
+/* Return true if an address fits a short load/store instruction.  */
+
+bool
+arc64_short_access_p (rtx op, machine_mode mode, bool load_p)
+{
+  rtx addr, plus0, plus1;
+  bool f0, f1;
+
+  /* Eliminate non-memory operations.  */
+  if (GET_CODE (op) != MEM)
+    return 0;
+
+  if (mode == VOIDmode)
+    mode = GET_MODE (op);
+
+  /* Decode the address now.  */
+  addr = XEXP (op, 0);
+  switch (GET_CODE (addr))
+    {
+    case REG:
+      return check_short_insn_register_p (addr, false);
+
+    case PLUS:
+      plus0 = XEXP (addr, 0);
+      plus1 = XEXP (addr, 1);
+
+      f0 = check_short_insn_register_p (plus0, false);
+      f1 = check_short_insn_constant_p (plus1, mode);
+
+      /* Check for [Rb + shimm].  */
+      if (f0 && f1)
+	return true;
+
+      if (!load_p)
+	return false;
+
+      /* Check for [Rb + Ri].  */
+      f1 = check_short_insn_register_p (plus1, false);
+
+      if (f0 && f1)
+	return true;
+
+    default:
+      break;
+    }
+  return false;
 }
 
 
