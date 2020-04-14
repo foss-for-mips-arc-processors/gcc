@@ -307,18 +307,23 @@ umod, umodl, unknown, xbfu, xor, xorl"
 ;; mov<.f>        b, s12
 ;; mov_s          b, u8
 ;; mov_s          g, h
+;; mov_s          h, s3
 ;;
 ;; ld             a, [b, s9]
 ;; ld             a, [b,  c]
 ;; ld             a, [limm ]
+;;
+;; ldb_s          a, [b,  c]
+;; ldb_s          c, [b,  u5]
 ;;
 ;; st<zz>         c   , [b , s9]
 ;; st<zz>         limm, [b , s9]
 ;; stb_s          b   , [sp, u7]
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
-   [(set (match_operand:QI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, Ucnst, r, m")
-	 (match_operand:QI 1 "general_operand"    " qh, r, U08S0, i, S06S0,     i, m, r"))
+  [(set
+    (match_operand:QI 0 "arc64_dest_operand"   "=qh,    q, r,    q,Ustms,    m, Ucnst, r, m")
+    (match_operand:QI 1 "general_operand" " qhS03MV,U08S0,ri,Uldms,    q,S06S0,     i, m, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
@@ -331,20 +336,22 @@ umod, umodl, unknown, xbfu, xor, xorl"
        && memory_operand (operands[0], QImode))"
    "@
     mov_s\\t%0,%1
-    mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
+    ldb_s\\t%0,[%1]
+    stb_s\\t%1,[%0]
     stb%U0\\t%1,[%0]
     stb%U0\\t%1,[%0]
     ldb%U1\\t%0,[%1]
     stb%U0\\t%1,[%0]"
-   [(set_attr "type" "move,move,move,move,st,st,ld,st")
-    (set_attr "length" "2,4,2,4,*,8,*,*")]
+   [(set_attr "type" "move,move,move,ld,st,st,st,ld,st")
+    (set_attr "length" "2,2,4,2,2,*,8,*,*")]
 )
 
 (define_insn "*arc64_movhi"
-  [(set (match_operand:HI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, m, r, m")
-	(match_operand:HI 1 "general_operand"    " qh, r, U08S0, i, S06S0, i, m, r"))
+  [(set
+    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,    m, m, r, m")
+    (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0, i, m, r"))
    ]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
@@ -355,17 +362,22 @@ umod, umodl, unknown, xbfu, xor, xorl"
     mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
+    mov_s\\t%0,%1
+    mov\\t%0,%1
+    ldh_s\\t%0,[%1]
+    sth_s\\t%1,[%0]
     sth%U0\\t%1,[%0]
     sth%U0\\t%1,[%0]
     ldh%U1\\t%0,[%1]
     sth%U0\\t%1,[%0]"
-   [(set_attr "type" "move,move,move,move,st,st,ld,st")
-    (set_attr "length" "2,4,2,8,*,8,*,*")]
+   [(set_attr "type" "move,move,move,move,move,move,ld,st,st,st,ld,st")
+    (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
 )
 
 (define_insn "*arc64_movsi"
-  [(set (match_operand:SI 0 "arc64_dest_operand" "=qh, r,     q, r,     m, m, r, m")
-	(match_operand:SI 1 "general_operand"    " qh, r, U08S0, i, S06S0, i, m, r"))
+  [(set
+    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,    m, m, r, m")
+    (match_operand:SI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,    q,S06S0, i, m, r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -376,12 +388,16 @@ umod, umodl, unknown, xbfu, xor, xorl"
     mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
+    mov_s\\t%0,%1
+    mov\\t%0,%1
+    ld_s\\t%0,[%1]
+    st_s\\t%1,[%0]
     st%U0\\t%1,[%0]
     st%U0\\t%1,[%0]
     ld%U1\\t%0,[%1]
     st%U0\\t%1,[%0]"
-   [(set_attr "type" "move,move,move,move,st,st,ld,st")
-    (set_attr "length" "2,4,2,8,*,8,*,*")]
+   [(set_attr "type" "move,move,move,move,move,move,ld,st,st,st,ld,st")
+    (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
 )
 
 ;; Softcore float move.
@@ -849,54 +865,58 @@ umod, umodl, unknown, xbfu, xor, xorl"
 ;; )
 
 (define_insn "*arc64_zero_extend_<mode>_to_si"
-   [(set (match_operand:SI 0 "register_operand"      "=q,r,r")
+   [(set (match_operand:SI 0 "register_operand"      "=q,r,q,r")
 	 (zero_extend:SI
-	  (match_operand:SHORT 1 "nonimmediate_operand"  "q,r,m")))]
+	  (match_operand:SHORT 1 "nonimmediate_operand"  "q,r,Uldms,m")))]
    ""
    "@
    ext<exttab>_s\\t%0,%1
    ext<exttab>\\t%0,%1
+   ld<sfxtab>_s\\t%0,[%1]
    ld<sfxtab>%U1\\t%0,[%1]"
-  [(set_attr "type" "sex,sex,ld")
-   (set_attr "length" "2,4,*")])
+  [(set_attr "type" "sex,sex,ld,ld")
+   (set_attr "length" "2,4,2,*")])
 
 (define_insn "*arc64_zero_extend_si_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,r")
+   [(set (match_operand:DI 0 "register_operand"       "=r,q,r")
 	 (zero_extend:DI
-	  (match_operand:SI 1 "nonimmediate_operand"   "r,m")))
+	  (match_operand:SI 1 "nonimmediate_operand"   "r,Uldms,m")))
    ]
    ""
    "@
    bmskl\\t%0,%1,31
+   ld_s\\t%0,[%1]
    ld%U1\\t%0,[%1]"
-  [(set_attr "type" "and,ld")
-   (set_attr "length" "4,*")]
+  [(set_attr "type" "and,ld,ld")
+   (set_attr "length" "4,2,*")]
 )
 
 (define_insn "*arc64_zero_extend_qi_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,r")
+   [(set (match_operand:DI 0 "register_operand"       "=r,    q,r")
 	 (zero_extend:DI
-	  (match_operand:QI 1 "nonimmediate_operand"   "r,m")))
+	  (match_operand:QI 1 "nonimmediate_operand"   "r,Uldms,m")))
    ]
    ""
    "@
    bmskl\\t%0,%1,7
+   ldb_s\\t%0,[%1]
    ldb%U1\\t%0,[%1]"
-  [(set_attr "type" "and,ld")
-   (set_attr "length" "4,*")]
+  [(set_attr "type" "and,ld,ld")
+   (set_attr "length" "4,2,*")]
 )
 
 (define_insn "*arc64_zero_extend_hi_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,r")
+   [(set (match_operand:DI 0 "register_operand"       "=r,q,r")
 	 (zero_extend:DI
-	  (match_operand:HI 1 "nonimmediate_operand"   "r,m")))
+	  (match_operand:HI 1 "nonimmediate_operand"   "r,Uldms,m")))
    ]
    ""
    "@
    bmskl\\t%0,%1,15
+   ldh_s\\t%0,[%1]
    ldh%U1\\t%0,[%1]"
-  [(set_attr "type" "and,ld")
-   (set_attr "length" "4,*")]
+  [(set_attr "type" "and,ld,ld")
+   (set_attr "length" "4,2,*")]
 )
 
 (define_insn "*arc64_sign_extend_<mode>_to_di"
