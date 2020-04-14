@@ -43,7 +43,17 @@
   "@internal
    A valid memory operand for storing constants"
   (and (match_code "mem")
-       (match_test "!CONSTANT_P (XEXP (op,0))")))
+       (match_test "!CONSTANT_P (XEXP (op, 0))")))
+
+(define_memory_constraint "Uldms" "@internal
+  A valid memory operand for loading using short instructions"
+  (and (match_code "mem")
+       (match_test "arc64_short_access_p (op, mode, true)")))
+
+(define_memory_constraint "Ustms" "@internal
+  A valid memory operand for loading using short instructions"
+  (and (match_code "mem")
+       (match_test "arc64_short_access_p (op, mode, false)")))
 
 ;(define_constraint "Us<"
 ;  "@internal
@@ -134,6 +144,11 @@
 	    (match_test "SIGNED_INT14_SHIFTED (ival,2)")
 	    (match_test "SIGNED_INT13_SHIFTED (ival,1)")
 	    (match_test "SIGNED_INT12 (ival)"))))
+
+(define_constraint "S03MV" "@internal
+  A 3-bit Integer signed constant in the interval [-1,6]"
+  (and (match_code "const_int")
+       (match_test "(ival >= -1) && (ival <=6)")))
 
 ;---------------------------------------------------------
 
