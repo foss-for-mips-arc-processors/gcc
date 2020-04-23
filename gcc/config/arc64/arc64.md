@@ -1021,12 +1021,11 @@ umod, umodl, unknown, xbfu, xor, xorl"
 (define_insn "*cmp<mode>"
   [(set (reg:CC CC_REGNUM)
 	(compare:CC
-	 (match_operand:GPI 0 "nonmemory_operand" " q,   qh,    q,r,    r,    r,U06S0,S12S0,S32S0,r")
-	 (match_operand:GPI 1 "nonmemory_operand" "qh,S03S0,U07S0,r,U06S0,S12S0,    r,    r,    r,S32S0")))]
+	 (match_operand:GPI 0 "nonmemory_operand" " q,   qh,r,    r,    r,U06S0,S12S0,S32S0,r")
+	 (match_operand:GPI 1 "nonmemory_operand" "qh,S03S0,r,U06S0,S12S0,    r,    r,    r,S32S0")))]
   "register_operand (operands[0], <MODE>mode)
    || register_operand (operands[1], <MODE>mode)"
   "@
-   cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
    cmp<sfxtab>%?\\t%0,%1
@@ -1037,9 +1036,9 @@ umod, umodl, unknown, xbfu, xor, xorl"
    rcmp<sfxtab>%?\\t%1,%0
    cmp<sfxtab>%?\\t%0,%1"
   [(set_attr "type" "compare")
-   (set_attr "iscompact" "maybe,maybe,maybe,no,no,no,no,no,no,no")
-   (set_attr "predicable" "no,no,no,yes,yes,no,yes,no,no,no")
-   (set_attr "length" "*,*,*,4,4,4,4,4,8,8")])
+   (set_attr "iscompact" "maybe,maybe,no,no,no,no,no,no,no")
+   (set_attr "predicable" "no,no,yes,yes,no,yes,no,no,no")
+   (set_attr "length" "*,*,4,4,4,4,4,8,8")])
 
 (define_insn "*cmpsi_zn"
   [(set (reg:CC_ZN CC_REGNUM)
