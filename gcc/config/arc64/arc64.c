@@ -2245,15 +2245,15 @@ static void
 arc64_init_builtins (void)
 {
   tree void_ftype_usint_usint
-    = build_function_type_list (void_type_node, long_unsigned_type_node,
-				long_unsigned_type_node, NULL_TREE);
+    = build_function_type_list (void_type_node, unsigned_type_node,
+				unsigned_type_node, NULL_TREE);
   tree usint_ftype_usint
     = build_function_type_list  (long_unsigned_type_node,
-				 long_unsigned_type_node, NULL_TREE);
+				 unsigned_type_node, NULL_TREE);
   tree void_ftype_void
     = build_function_type_list (void_type_node, NULL_TREE);
   tree void_ftype_usint
-    = build_function_type_list (void_type_node, long_unsigned_type_node,
+    = build_function_type_list (void_type_node, unsigned_type_node,
 				NULL_TREE);
 
   /* Add the builtins.  */
