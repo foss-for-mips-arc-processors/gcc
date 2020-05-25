@@ -1414,21 +1414,23 @@ umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_insn "lr"
   [(set (match_operand:SI  0 "register_operand" "=r,r,r,r")
-	(unspec_volatile:SI [(match_operand:SI 1 "general_operand" "U06S0, S12S0, r, i")]
-			    ARC64_VUNSPEC_LR))]
+	(unspec_volatile:SI
+	 [(match_operand:SI 1 "nonmemory_operand" "U06S0,S12S0,r,i")]
+	 ARC64_VUNSPEC_LR))]
   ""
   "lr\\t%0,[%1]"
-  [(set_attr "length" "4,8,4,8")
-   (set_attr "type" "lr,lr,lr,lr")])
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "lr")])
 
 (define_insn "sr"
-  [(unspec_volatile [(match_operand:SI 0 "general_operand" "r, r, r, r, i, i, i")
-		     (match_operand:SI 1 "general_operand" "U06S0, S12S0, i, r, r, U06S0, S12S0")]
-		   ARC64_VUNSPEC_SR)]
+  [(unspec_volatile
+    [(match_operand:SI 0 "register_operand"  "    r,    r, r, r")
+     (match_operand:SI 1 "nonmemory_operand" "U06S0,S12S0, i, r")]
+    ARC64_VUNSPEC_SR)]
   ""
   "sr\\t%0,[%1]"
-  [(set_attr "length" "4,4,8,4,8,8,8")
-   (set_attr "type" "sr,sr,sr,sr,sr,sr,sr")])
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "sr")])
 
 (define_insn "flag"
   [(unspec_volatile [(match_operand:SI 0 "nonmemory_operand" "U06S0,S12S0,r,i")]
