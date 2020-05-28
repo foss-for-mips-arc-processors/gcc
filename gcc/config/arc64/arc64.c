@@ -2111,14 +2111,6 @@ arc64_return_addr (int count , rtx frame ATTRIBUTE_UNUSED)
   return get_hard_reg_initial_val (Pmode, BLINK_REGNUM);
 }
 
-/* Helper for TARGET_CPU_CPP_BUILTINS hook.  */
-
-void
-arc64_cpu_cpp_builtins (cpp_reader * pfile)
-{
-  //FIXME! builtin_define ("__arc64__");
-}
-
 /* Expand the "prologue" pattern.  */
 
 void
