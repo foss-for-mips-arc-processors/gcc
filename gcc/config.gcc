@@ -375,6 +375,8 @@ arc-*-* | arc[eb]*-*-*)
 	;;
 arc64-*-*)
 	cpu_type=arc64
+	c_target_objs="arc64-c.o"
+	cxx_target_objs="arc64-c.o"
 	;;
 arm*-*-*)
 	cpu_type=arm
