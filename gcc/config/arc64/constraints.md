@@ -148,7 +148,7 @@
 (define_constraint "S03MV" "@internal
   A 3-bit Integer signed constant in the interval [-1,6]"
   (and (match_code "const_int")
-       (match_test "(ival >= -1) && (ival <=6)")))
+       (match_test "(ival >= -1) && (ival <= 6)")))
 
 ;---------------------------------------------------------
 
