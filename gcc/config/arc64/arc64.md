@@ -1022,7 +1022,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   [(set (reg:CC CC_REGNUM)
 	(compare:CC
 	 (match_operand:GPI 0 "nonmemory_operand" " q,   qh,r,    r,    r,U06S0,S12S0,S32S0,r")
-	 (match_operand:GPI 1 "nonmemory_operand" "qh,S03S0,r,U06S0,S12S0,    r,    r,    r,S32S0")))]
+	 (match_operand:GPI 1 "nonmemory_operand" "qh,S03MV,r,U06S0,S12S0,    r,    r,    r,S32S0")))]
   "register_operand (operands[0], <MODE>mode)
    || register_operand (operands[1], <MODE>mode)"
   "@
