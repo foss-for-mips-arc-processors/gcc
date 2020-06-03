@@ -638,7 +638,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
      [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "r,BLsym"))
 	    (match_operand 1 "" ""))
       (clobber (reg:DI BLINK_REGNUM))]))]
-  ""
+  "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
+    || register_operand (operands[0], Pmode)"
   "@
    jl%m3\\t[%0]
    bl%m3\\t%C0"
@@ -655,7 +656,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
 					   "r,BLsym"))
 		 (match_operand 2 "" "")))
       (clobber (reg:DI BLINK_REGNUM))]))]
-  ""
+  "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
+    || register_operand (operands[0], Pmode)"
   "@
    jl%m3\\t[%1]
    bl%m3\\t%C1"
@@ -670,7 +672,9 @@ umod, umodl, unknown, xbfu, xor, xorl"
      [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym"))
 	    (match_operand 1 "" ""))
       (return)]))]
-  "SIBLING_CALL_P (insn)"
+  "SIBLING_CALL_P (insn)
+   && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
+       || register_operand (operands[0], Pmode))"
   "@
    j%m3\\t[%0]
    b%m3\\t%C0"
@@ -686,7 +690,9 @@ umod, umodl, unknown, xbfu, xor, xorl"
 	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
 		 (match_operand 2 "" "")))
       (return)]))]
-  "SIBLING_CALL_P (insn)"
+  "SIBLING_CALL_P (insn)
+   && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
+       || register_operand (operands[0], Pmode))"
   "@
    j%m3\\t[%1]
    b%m3\\t%C1"
