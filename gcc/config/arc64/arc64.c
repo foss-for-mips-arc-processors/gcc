@@ -1759,9 +1759,13 @@ arc64_is_long_call_p (rtx sym)
       && !targetm.binds_local_p (decl))
     return true;
 
-  /* FIXME! it will return FLASE for libgcc calls routines.  We can
-     force checking SYM using SYMBOL_REF_LOCAL_P (x) if there is no
-     decl.  */
+  /* If the symbol binds local then it is a short call.  */
+  if (decl && targetm.binds_local_p (decl))
+    return false;
+
+  /* If the model is large then make it a long one.  */
+  if (arc64_cmodel_var == ARC64_CMODEL_LARGE)
+    return !SYMBOL_REF_LOCAL_P (sym);
   return false;
 }
 
