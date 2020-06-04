@@ -602,6 +602,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   }
 )
 
+;FIXME! add short variant for jump
 (define_insn "*sibcall_insn"
  [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym"))
 	(match_operand 1 "" ""))
@@ -611,10 +612,10 @@ umod, umodl, unknown, xbfu, xor, xorl"
    j\\t[%0]
    b\\t%C0"
   [(set_attr "type" "jump,branch")
-   (set_attr "predicable" "yes,yes")
-   (set_attr "iscompact" "maybe,no")]
+   (set_attr "length" "4")]
 )
 
+;FIXME! add short variant for jump
 (define_insn "*sibcall_value_insn"
  [(set (match_operand 0 "" "")
        (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
@@ -625,8 +626,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
    j\\t[%1]
    b\\t%C1"
   [(set_attr "type" "jump,branch")
-   (set_attr "predicable" "yes,yes")
-   (set_attr "iscompact" "maybe,no")]
+   (set_attr "length" "4")]
 )
 
 ; conditional execution patterns
