@@ -716,7 +716,6 @@ umod, umodl, unknown, xbfu, xor, xorl"
   ""
   "b%?\\t%l0"
   [(set_attr "type" "branch")
-   (set_attr "iscompact" "maybe")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
@@ -750,7 +749,6 @@ umod, umodl, unknown, xbfu, xor, xorl"
   ""
   "b%m0%?\\t%l2"
   [(set_attr "type" "branchcc")
-   (set_attr "iscompact" "maybe")
    (set (attr "length")
 	(cond
 	  [(and (match_operand 0 "equality_comparison_operator" "")
@@ -801,8 +799,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   ""
   "j_s\\t[blink]"
   [(set_attr "type" "return")
-   (set_attr "iscompact" "maybe")
-   (set_attr "length" "*")])
+   (set_attr "length" "2")])
 
 (define_insn "nop"
   [(const_int 0)]
