@@ -1011,6 +1011,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  || GET_CODE (x) == LABEL_REF)
 	{
 	  output_addr_const (asm_out_file, x);
+	  fputs ("@u32", file);
 	  break;
 	}
       else if (!CONST_INT_P (x))
