@@ -2182,6 +2182,7 @@ arc64_limm_addr_p (rtx op)
     case LABEL_REF:
     case CONST_INT:
     case CONST:
+    case UNSPEC:
       return true;
     case PLUS:
       /* legitimate address doesn't recognize [b,limm] variant of ld.
