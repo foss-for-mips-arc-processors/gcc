@@ -657,7 +657,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
 		 (match_operand 2 "" "")))
       (clobber (reg:DI BLINK_REGNUM))]))]
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
-    || register_operand (operands[0], Pmode)"
+    || register_operand (operands[1], Pmode)"
   "@
    jl%m3\\t[%1]
    bl%m3\\t%C1"
@@ -692,7 +692,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
       (return)]))]
   "SIBLING_CALL_P (insn)
    && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
-       || register_operand (operands[0], Pmode))"
+       || register_operand (operands[1], Pmode))"
   "@
    j%m3\\t[%1]
    b%m3\\t%C1"
