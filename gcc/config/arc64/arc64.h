@@ -517,4 +517,14 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define MAX_CONDITIONAL_EXECUTE 12
 #define BRANCH_COST(speed_p, predictable_p) 2
 
+/* DWARF macros.  */
+/* The mapping from gcc register number to DWARF2 CFA column number.  */
+#define DWARF_FRAME_REGNUM(REGNO) (REGNO)
+/* DWARF2 CFA column which tracks the return address.  */
+#define DWARF_FRAME_RETURN_COLUMN BLINK_REGNUM
+#define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG (Pmode, BLINK_REGNUM)
+/* Enable DWARF 2 exceptions.  */
+#undef DWARF2_UNWIND_INFO
+#define DWARF2_UNWIND_INFO 1
+
 #endif /* GCC_ARC64_H */
