@@ -18,8 +18,10 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
+/* Comment it out for the time being
 #undef DWARF2_UNWIND_INFO
 #define DWARF2_UNWIND_INFO 0
+*/
 
 /* If no specs file is enforced, default to nosys libarary.  */
 #undef LINK_GCC_C_SEQUENCE_SPEC
