@@ -36,6 +36,8 @@
 #include "rtl-iter.h"
 #include "alias.h"
 #include "opts.h"
+#include "dwarf2.h"
+
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -2450,6 +2452,70 @@ arc64_short_access_p (rtx op, machine_mode mode, bool load_p)
   return false;
 }
 
+/* Implement EH_RETURN_HANDLER_RTX.  EH returns need to either return
+   normally or return to a previous frame after unwinding.
+
+   An EH return uses a single shared return sequence.  The epilogue is
+   exactly like a normal epilogue except that it has an extra input
+   register (EH_RETURN_STACKADJ_RTX) which contains the stack
+   adjustment that must be applied after the frame has been destroyed.
+   An extra label is inserted before the epilogue which initializes
+   this register to zero, and this is the entry point for a normal
+   return.
+
+   An actual EH return updates the return address, initializes the
+   stack adjustment and jumps directly into the epilogue (bypassing
+   the zeroing of the adjustment).  Since the return address is
+   typically saved on the stack when a function makes a call, the
+   saved BLINK must be updated outside the epilogue.
+
+   This poses problems as the store is generated well before the
+   epilogue, so the offset of BLINK is not known yet.  Also
+   optimizations will remove the store as it appears dead, even after
+   the epilogue is generated (as the base or offset for loading BLINK
+   is different in many cases).
+
+   To avoid these problems this implementation forces the frame
+   pointer in eh_return functions so that the location of BLINK is
+   fixed and known early.  It also marks the store volatile, so no
+   optimization is permitted to remove the store.  */
+
+rtx
+arc64_eh_return_handler_rtx (void)
+{
+  rtx tmp = gen_frame_mem (Pmode,
+    plus_constant (Pmode, hard_frame_pointer_rtx, UNITS_PER_WORD));
+
+  /* Mark the store volatile, so no optimization is permitted to remove it.  */
+  MEM_VOLATILE_P (tmp) = true;
+  return tmp;
+}
+
+/* Select a format to encode pointers in exception handling data.  */
+
+int
+arc64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
+{
+   int type;
+
+   if (!flag_pic)
+     return DW_EH_PE_absptr;
+
+   switch (arc64_cmodel_var)
+     {
+    case ARC64_CMODEL_SMALL:
+    case ARC64_CMODEL_MEDIUM:
+       /* text+got+data < 4Gb.  4-byte signed relocs are sufficient
+	  for everything.  */
+       type = DW_EH_PE_sdata4;
+       break;
+     default:
+       /* No assumptions here.  8-byte relocs required.  */
+       type = DW_EH_PE_sdata8;
+       break;
+     }
+   return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
+}
 
 /* Target hooks.  */
 
