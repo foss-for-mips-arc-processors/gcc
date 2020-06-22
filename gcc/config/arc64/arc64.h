@@ -502,8 +502,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #undef CRT_CALL_STATIC_FUNCTION
 #define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)		\
   asm (SECTION_OP "\n\t"					\
-       "add r12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t"	\
-       "jl  [r12]\n"						\
+       "addl\tr12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t"	\
+       "jl\t[r12]\n"						\
        TEXT_SECTION_ASM_OP);
 
 /* DIVREM options.  */
