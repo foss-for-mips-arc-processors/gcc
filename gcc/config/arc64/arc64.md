@@ -120,6 +120,7 @@
 
 ;; Iterates over the SETcc instructions
 (define_code_iterator SETCC [eq ne gt lt ge le ltu geu])
+(define_code_iterator ALLCC [eq ne gt lt ge le ltu geu gtu leu])
 
 ;; Three operand arithmetic operations
 (define_code_iterator ARITH [plus minus mult])
@@ -1081,22 +1082,33 @@ umod, umodl, unknown, xbfu, xor, xorl"
   })
 
 ;; SETcc instructions
-(define_insn "set<cctab><mode>"
-  [(set (match_operand:SI 0 "register_operand"      "=r,r,    r,    r,    r,r,r")
+(define_expand "set<optab><mode>"
+  [(set (match_operand:SI 0 "register_operand")
+	(ALLCC:SI
+	 (match_operand:GPI 1 "register_operand")
+	 (match_operand:GPI 2 "nonmemory_operand")))]
+  ""
+  {
+   if (!arc64_nonmem_operand (operands[2], <MODE>mode))
+      operands[2] = force_reg (<MODE>mode, operands[2]);
+   })
+
+(define_insn "*set<cctab><mode>"
+  [(set (match_operand:SI 0 "register_operand"      "=r,    r,    r,r")
 	(SETCC:SI
-	 (match_operand:GPI 1 "register_operand"     "0,r,    0,    r,    0,0,r")
-	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,r,U06S0,U06S0,S12S0,n,n")))]
+	 (match_operand:GPI 1 "register_operand"     "r,    r,    0,r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06S0,S12S0,n")))]
   ""
   "set<cctab><sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "length" "4,4,4,4,4,8,8")
-   (set_attr "type" "setcc")
-   (set_attr "predicable" "yes,no,yes,no,no,yes,no")])
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "setcc")])
 
 ;; Special cases of SETCC
 (define_insn_and_split "*sethi<mode>"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r,    r,r")
-	(gtu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
-		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
+  [(set (match_operand:SI 0 "register_operand"      "=r,    r,r")
+	(gtu:SI
+	 (match_operand:GPI 1 "register_operand"     "r,    r,r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06M1,n")))]
   ""
   "setlo<sfxtab>%?\\t%0,%2,%1"
   "reload_completed
@@ -1106,17 +1118,17 @@ umod, umodl, unknown, xbfu, xor, xorl"
   "{
     /* sethi a,b,u6 => seths a,b,u6 + 1.  */
     operands[2] = GEN_INT (INTVAL (operands[2]) + 1);
-    emit_insn (gen_seths<mode> (operands[0], operands[1], operands[2]));
+    emit_insn (gen_setgeu<mode> (operands[0], operands[1], operands[2]));
     DONE;
    }"
- [(set_attr "length" "4,4,4,8")
-   (set_attr "type" "setcc")
-   (set_attr "predicable" "yes,no,no,no")])
+ [(set_attr "length" "4,4,8")
+   (set_attr "type" "setcc")])
 
 (define_insn_and_split "*setls<mode>"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r,    r,r")
-	(leu:SI (match_operand:GPI 1 "register_operand"  "r,r,    r,r")
-		(match_operand:GPI 2 "nonmemory_operand" "0,r,U06M1,n")))]
+  [(set (match_operand:SI 0 "register_operand"      "=r,    r,r")
+	(leu:SI
+	 (match_operand:GPI 1 "register_operand"     "r,    r,r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06M1,n")))]
   ""
   "seths<sfxtab>%?\\t%0,%2,%1"
   "reload_completed
@@ -1125,12 +1137,11 @@ umod, umodl, unknown, xbfu, xor, xorl"
   "{
     /* setls a,b,u6 => setlo a,b,u6 + 1.  */
     operands[2] = GEN_INT (INTVAL (operands[2]) + 1);
-    emit_insn (gen_setlo<mode> (operands[0], operands[1], operands[2]));
+    emit_insn (gen_setltu<mode> (operands[0], operands[1], operands[2]));
     DONE;
    }"
-  [(set_attr "length" "4,4,4,8")
-   (set_attr "type" "setcc")
-   (set_attr "predicable" "yes,no,no,no")])
+  [(set_attr "length" "4,4,8")
+   (set_attr "type" "setcc")])
 
 
 ;;(define_expand "mov<mode>cc"
