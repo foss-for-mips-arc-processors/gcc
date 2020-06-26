@@ -1126,7 +1126,9 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  break;
 
 	case MEM :
+	  fputc ('[', file);
 	  output_address (GET_MODE (x), XEXP (x, 0));
+	  fputc (']', file);
 	  break;
 
 	case LABEL_REF:
