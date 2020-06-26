@@ -339,12 +339,12 @@ umod, umodl, unknown, xbfu, xor, xorl"
     mov_s\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
-    ldb_s\\t%0,[%1]
-    stb_s\\t%1,[%0]
-    stb%U0\\t%1,[%0]
-    stb%U0\\t%1,[%0]
-    ldb%U1\\t%0,[%1]
-    stb%U0\\t%1,[%0]"
+    ldb_s\\t%0,%1
+    stb_s\\t%1,%0
+    stb%U0\\t%1,%0
+    stb%U0\\t%1,%0
+    ldb%U1\\t%0,%1
+    stb%U0\\t%1,%0"
    [(set_attr "type" "move,move,move,ld,st,st,st,ld,st")
     (set_attr "length" "2,2,4,2,2,*,8,*,*")]
 )
@@ -365,12 +365,12 @@ umod, umodl, unknown, xbfu, xor, xorl"
     mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
-    ldh_s\\t%0,[%1]
-    sth_s\\t%1,[%0]
-    sth%U0\\t%1,[%0]
-    sth%U0\\t%1,[%0]
-    ldh%U1\\t%0,[%1]
-    sth%U0\\t%1,[%0]"
+    ldh_s\\t%0,%1
+    sth_s\\t%1,%0
+    sth%U0\\t%1,%0
+    sth%U0\\t%1,%0
+    ldh%U1\\t%0,%1
+    sth%U0\\t%1,%0"
    [(set_attr "type" "move,move,move,move,move,move,ld,st,st,st,ld,st")
     (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
 )
@@ -391,12 +391,12 @@ umod, umodl, unknown, xbfu, xor, xorl"
     mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
-    ld_s\\t%0,[%1]
-    st_s\\t%1,[%0]
-    st%U0\\t%1,[%0]
-    st%U0\\t%1,[%0]
-    ld%U1\\t%0,[%1]
-    st%U0\\t%1,[%0]"
+    ld_s\\t%0,%1
+    st_s\\t%1,%0
+    st%U0\\t%1,%0
+    st%U0\\t%1,%0
+    ld%U1\\t%0,%1
+    st%U0\\t%1,%0"
    [(set_attr "type" "move,move,move,move,move,move,ld,st,st,st,ld,st")
     (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
 )
@@ -411,8 +411,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
    "@
     mov\\t%0,%1
     mov\\t%0,%1
-    ld%U1\\t%0,[%1]
-    st%U0\\t%1,[%0]"
+    ld%U1\\t%0,%1
+    st%U0\\t%1,%0"
    )
 
 (define_insn "*arc64_push"
@@ -447,8 +447,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
     movl\\t%0,%1
     movl\\t%0,%1
     addl\\t%0,pcl,%1
-    ldl%U1\\t%0,[%1]
-    stl%U0\\t%1,[%0]"
+    ldl%U1\\t%0,%1
+    stl%U0\\t%1,%0"
    [(set_attr "type" "move,move,move,move,move,addl,ld,st")
     (set_attr "length" "2,2,4,4,8,8,*,*")]
 )
@@ -876,8 +876,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
    "@
    ext<exttab>_s\\t%0,%1
    ext<exttab>\\t%0,%1
-   ld<sfxtab>_s\\t%0,[%1]
-   ld<sfxtab>%U1\\t%0,[%1]"
+   ld<sfxtab>_s\\t%0,%1
+   ld<sfxtab>%U1\\t%0,%1"
   [(set_attr "type" "sex,sex,ld,ld")
    (set_attr "length" "2,4,2,*")])
 
@@ -889,8 +889,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
    ""
    "@
    bmskl\\t%0,%1,31
-   ld_s\\t%0,[%1]
-   ld%U1\\t%0,[%1]"
+   ld_s\\t%0,%1
+   ld%U1\\t%0,%1"
   [(set_attr "type" "and,ld,ld")
    (set_attr "length" "4,2,*")]
 )
@@ -903,8 +903,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
    ""
    "@
    bmskl\\t%0,%1,7
-   ldb_s\\t%0,[%1]
-   ldb%U1\\t%0,[%1]"
+   ldb_s\\t%0,%1
+   ldb%U1\\t%0,%1"
   [(set_attr "type" "and,ld,ld")
    (set_attr "length" "4,2,*")]
 )
@@ -917,8 +917,8 @@ umod, umodl, unknown, xbfu, xor, xorl"
    ""
    "@
    bmskl\\t%0,%1,15
-   ldh_s\\t%0,[%1]
-   ldh%U1\\t%0,[%1]"
+   ldh_s\\t%0,%1
+   ldh%U1\\t%0,%1"
   [(set_attr "type" "and,ld,ld")
    (set_attr "length" "4,2,*")]
 )
@@ -931,7 +931,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
    ""
    "@
    sex<exttab>l\\t%0,%1
-   ld<sfxtab>.x%U1\\t%0,[%1]"
+   ld<sfxtab>.x%U1\\t%0,%1"
   [(set_attr "type" "sex,ld")
    (set_attr "length" "4,*")]
 )
@@ -944,7 +944,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   "@
   sex<exttab>_s\\t%0,%1
   sex<exttab>\\t%0,%1
-  ld<sfxtab>.x%U1\\t%0,[%1]"
+  ld<sfxtab>.x%U1\\t%0,%1"
   [(set_attr "type" "sex,sex,ld")
    (set_attr "length" "2,4,8")])
 
