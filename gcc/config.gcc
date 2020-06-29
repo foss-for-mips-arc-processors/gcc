@@ -1354,6 +1354,13 @@ arc-*-linux* | arc[eb]*-*linux*)
 arc64-*-elf*)
 	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h ${tm_file}"
 	;;
+arc64-*-linux*)
+	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h linux-android.h glibc-stdint.h ${tm_file}"
+	tmake_file="${tmake_file} arc64/t-arc64"
+	# Force .init_array support.  The configure script cannot always
+	# automatically detect that GAS supports it, yet we require it.
+	gcc_cv_initfini_array=yes
+	;;
 arm-wrs-vxworks7*)
 	# We only support VxWorks 7 now on ARM, post SR600.  Pre SR600
 	# VxWorks 7 was transitory and major versions prior to 7 were based
