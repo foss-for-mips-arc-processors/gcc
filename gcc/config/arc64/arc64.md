@@ -1474,6 +1474,18 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "length" "2")])
 
 
+;; For thread pointer builtins
+(define_expand "get_thread_pointerdi"
+  [(set (match_operand:DI 0 "register_operand") (match_dup 1))]
+ ""
+ "operands[1] = gen_rtx_REG (Pmode, R30_REGNUM);")
+
+(define_expand "set_thread_pointerdi"
+  [(set (match_dup 1) (match_operand:DI 0 "register_operand"))]
+ ""
+ "operands[1] = gen_rtx_REG (Pmode, R30_REGNUM);")
+
+
 (include "arith.md")
 
 ;; mode:emacs-lisp
