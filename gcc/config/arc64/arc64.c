@@ -612,28 +612,26 @@ arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
 /* Worker for pass_by_reference.  */
 static bool
 arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
-			 machine_mode mode,
-			 const_tree type,
-			 bool named ATTRIBUTE_UNUSED)
+			 const function_arg_info &arg)
 {
   HOST_WIDE_INT size;
 
   /* Floats are passed by reference.  */
-  if (FLOAT_MODE_P (mode))
+  if (FLOAT_MODE_P (arg.mode))
     return true;
 
   /* GET_MODE_SIZE (BLKmode) is useless since it is 0.  */
-  if (mode == BLKmode && type)
-    size = int_size_in_bytes (type);
+  if (arg.mode == BLKmode && arg.type)
+    size = int_size_in_bytes (arg.type);
   else
     /* No frontends can create types with variable-sized modes, so we
        shouldn't be asked to pass or return them.  */
-    size = GET_MODE_SIZE (mode);
+    size = GET_MODE_SIZE (arg.mode);
 
   /* Aggregates are passed by reference based on their size.  */
-  if (type && AGGREGATE_TYPE_P (type))
+  if (arg.type && AGGREGATE_TYPE_P (arg.type))
     {
-      size = int_size_in_bytes (type);
+      size = int_size_in_bytes (arg.type);
     }
 
   /* Variable sized arguments are always returned by reference.  */
@@ -674,33 +672,29 @@ arc64_layout_arg (cumulative_args_t pcum_v, machine_mode mode,
 
 static void
 arc64_function_arg_advance (cumulative_args_t pcum_v,
-			    machine_mode mode,
-			    const_tree type,
-			    bool named ATTRIBUTE_UNUSED)
+			    const function_arg_info &arg)
 {
-  arc64_layout_arg (pcum_v, mode, type);
+  arc64_layout_arg (pcum_v, arg.mode, arg.type);
 }
 
 /* Implement TARGET_ARG_PARTIAL_BYTES.  */
 
 static int
 arc64_arg_partial_bytes (cumulative_args_t pcum_v,
-			 machine_mode mode,
-			 tree type,
-			 bool named ATTRIBUTE_UNUSED)
+			 const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
   int ret = 0;
   HOST_WIDE_INT size;
   int anum, nregs;
 
-  if (type)
-    size = int_size_in_bytes (type);
+  if (arg.type)
+    size = int_size_in_bytes (arg.type);
   else
-    size = GET_MODE_SIZE (mode);
+    size = GET_MODE_SIZE (arg.mode);
   nregs = (size + UNITS_PER_WORD - 1) / UNITS_PER_WORD;
 
-  anum = ROUND_ADVANCE_CUM (*pcum, mode, type);
+  anum = ROUND_ADVANCE_CUM (*pcum, arg.mode, arg.type);
   if (anum <= MAX_ARC64_PARM_REGS)
     ret = MAX_ARC64_PARM_REGS - anum;
 
@@ -724,19 +718,18 @@ arc64_arg_partial_bytes (cumulative_args_t pcum_v,
    argument on the stack.  */
 
 static rtx
-arc64_function_arg (cumulative_args_t pcum_v, machine_mode mode,
-		    const_tree type ATTRIBUTE_UNUSED,
-		    bool named ATTRIBUTE_UNUSED)
+arc64_function_arg (cumulative_args_t pcum_v,
+		    const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
-  int arg;
+  int narg;
 
-  if (mode == VOIDmode)
+  if (arg.mode == VOIDmode)
     return NULL_RTX;
 
-  arg = ROUND_ADVANCE_CUM (*pcum, mode, type);
-  if (arg < MAX_ARC64_PARM_REGS)
-    return gen_rtx_REG (mode, arg);
+  narg = ROUND_ADVANCE_CUM (*pcum, arg.mode, arg.type);
+  if (narg < MAX_ARC64_PARM_REGS)
+    return gen_rtx_REG (arg.mode, narg);
 
   return NULL_RTX;
 }
@@ -783,8 +776,9 @@ arc64_function_value_regno_p (const unsigned int regno)
 /* Implement TARGET_SETUP_INCOMING_VARARGS.  */
 
 static void
-arc64_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
-			      tree type, int *pretend_size, int no_rtl)
+arc64_setup_incoming_varargs (cumulative_args_t cum_v,
+			      const function_arg_info &arg,
+			      int *pretend_size, int no_rtl)
 {
   CUMULATIVE_ARGS cum = *get_cumulative_args (cum_v);
   int gpi_saved;
@@ -792,7 +786,7 @@ arc64_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
   /* The caller has advanced CUM up to, but not beyond, the last named
      argumend.  Advance a local copu of CUM past the last "real" named
      argument, to find out how many registers are left over.  */
-  arc64_function_arg_advance (pack_cumulative_args (&cum), mode, type, true);
+  arc64_function_arg_advance (pack_cumulative_args (&cum), arg);
 
   cfun->machine->uses_anonymous_args = 1;
   if (!FUNCTION_ARG_REGNO_P (cum))
