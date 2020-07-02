@@ -1732,6 +1732,85 @@ check_short_insn_constant_p (rtx op, machine_mode mode)
   return false;
 }
 
+/* Output code to add DELTA to the first argument, and then jump to
+   FUNCTION.  Used for C++ multiple inheritance.  */
+
+static void
+arc64_output_mi_thunk (FILE *file,
+		       tree thunk_fndecl,
+		       HOST_WIDE_INT delta,
+		       HOST_WIDE_INT vcall_offset,
+		       tree function)
+{
+  const char *fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_fndecl));
+  rtx this_rtx, fnaddr, temp1;
+  rtx_insn *insn;
+
+  /* Pretend to be a post-reload pass while generating rtl.  */
+  reload_completed = 1;
+
+  /* Mark the end of the (empty) prologue.  */
+  emit_note (NOTE_INSN_PROLOGUE_END);
+
+  /* Determine if we can use a sibcall to call FUNCTION directly.  */
+  fnaddr = gen_rtx_MEM (FUNCTION_MODE, XEXP (DECL_RTL (function), 0));
+
+  /* We need one temporary register in some cases.  */
+  temp1 = gen_rtx_REG (Pmode, R12_REGNUM);
+
+  /* Find out which register contains the "this" pointer.  */
+  if (aggregate_value_p (TREE_TYPE (TREE_TYPE (function)), function))
+    this_rtx = gen_rtx_REG (Pmode, R1_REGNUM);
+  else
+    this_rtx = gen_rtx_REG (Pmode, R0_REGNUM);
+
+  /* Add DELTA to THIS_RTX.  */
+  if (delta != 0)
+    {
+      rtx offset = GEN_INT (delta);
+      /* FIXME! check if delta fits in 32bit immediate.  Also we can
+	 switch from an ADD to a SUB instruction.  */
+      gcc_assert (UNSIGNED_INT32 (delta) || SIGNED_INT32 (delta));
+      emit_insn (gen_rtx_SET (this_rtx,
+			      gen_rtx_PLUS (Pmode, this_rtx, offset)));
+    }
+
+  if (vcall_offset != 0)
+    {
+      rtx addr;
+
+      /* Set TEMP1 to *THIS_RTX.  */
+      emit_insn (gen_rtx_SET (temp1, gen_rtx_MEM (Pmode, this_rtx)));
+
+      /* Set ADDR to a legitimate address for *THIS_RTX + VCALL_OFFSET.  */
+      /* FIXME! check if vcall_offset fits in 32bit immediate. */
+      gcc_assert (UNSIGNED_INT32 (vcall_offset) || SIGNED_INT32 (vcall_offset));
+      addr = plus_constant (Pmode, temp1, vcall_offset);
+
+      /* Load the offset and add it to THIS_RTX.  */
+      emit_insn (gen_rtx_SET (temp1, gen_rtx_MEM (Pmode, addr)));
+      emit_insn (gen_add3_insn (this_rtx, this_rtx, temp1));
+    }
+
+  /* Jump to the target function.  */
+  insn = emit_call_insn (gen_sibcall (fnaddr, const0_rtx, const0_rtx));
+  SIBLING_CALL_P (insn) = 1;
+
+  /* Run just enough of rest_of_compilation.  This sequence was
+     "borrowed" from alpha.c.  */
+  insn = get_insns ();
+  split_all_insns_noflow ();
+  shorten_branches (insn);
+  assemble_start_function (thunk_fndecl, fnname);
+  final_start_function (insn, file, 1);
+  final (insn, file, 1);
+  final_end_function ();
+  assemble_end_function (thunk_fndecl, fnname);
+
+  /* Stop pretending to be a post-reload pass.  */
+  reload_completed = 0;
+}
+
 /*
   Global functions.
 */
@@ -2527,6 +2606,9 @@ arc64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
 #undef  TARGET_ASM_CAN_OUTPUT_MI_THUNK
 #define TARGET_ASM_CAN_OUTPUT_MI_THUNK \
   hook_bool_const_tree_hwi_hwi_const_tree_true
+
+#undef TARGET_ASM_OUTPUT_MI_THUNK
+#define TARGET_ASM_OUTPUT_MI_THUNK arc64_output_mi_thunk
 
 #undef TARGET_CAN_ELIMINATE
 #define TARGET_CAN_ELIMINATE arc64_can_eliminate
