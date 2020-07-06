@@ -538,9 +538,11 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && GET_CODE (XEXP (x, 1)) == UNSPEC)
     return true;
 
-  /* PIC address (small).  */
-  if (GET_CODE (x) == UNSPEC
-      && XINT (x, 1) == ARC64_UNSPEC_GOT32)
+  /* PIC address (small) or local symbol.  */
+  if (load_p
+      && GET_CODE (x) == UNSPEC
+      && (XINT (x, 1) == ARC64_UNSPEC_GOT32
+	  || XINT (x, 1) == ARC64_UNSPEC_GOTOFF))
     return true;
 
   return false;
@@ -1384,12 +1386,15 @@ static rtx
 arc64_legitimize_address_1 (rtx x, rtx scratch)
 {
   rtx base, addend, t1;
-  bool is_local = true;
+  bool is_local = true, is_weak = false;
 
   switch (GET_CODE (x))
     {
     case SYMBOL_REF:
-      is_local = SYMBOL_REF_LOCAL_P (x);
+      is_local = SYMBOL_REF_DECL (x)
+	? targetm.binds_local_p (SYMBOL_REF_DECL (x))
+	: SYMBOL_REF_LOCAL_P (x);
+      is_weak = SYMBOL_REF_WEAK (x);
       if (SYMBOL_REF_TLS_MODEL (x))
 	return arc64_legitimize_tls_address (x);
       /* FALLTHRU */
@@ -1398,10 +1403,29 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
       t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
       gcc_assert (t1);
       if (!flag_pic)
-	{
-	  emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
-	  return gen_rtx_LO_SUM (Pmode, t1, x);
-	}
+	switch (arc64_cmodel_var)
+	  {
+	  case ARC64_CMODEL_SMALL:
+	  case ARC64_CMODEL_MEDIUM:
+	    if (!is_weak || is_local)
+	      {
+		/* Use a pc-relative address to access data, in this
+		   way we are sure the code is correct when it is run
+		   at any address.  However, the offset needs to fit
+		   the 32bit offset.  */
+		base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
+		return base;
+	      }
+	    /* If we have a weak non local symbol then just use most
+	       generic contruction.  FIXME! we can just use a single
+	       mov instruction if we assume the code is placed always
+	       in lower 4G memory range.  */
+	    /* FALLTHRU */
+
+	  default:
+	    emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
+	    return gen_rtx_LO_SUM (Pmode, t1, x);
+	  }
       else if (is_local)
 	{
 	  /* Local symbol, we can access it using a simple
