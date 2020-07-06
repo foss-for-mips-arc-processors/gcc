@@ -542,7 +542,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
   if (load_p
       && GET_CODE (x) == UNSPEC
       && (XINT (x, 1) == ARC64_UNSPEC_GOT32
-	  || XINT (x, 1) == ARC64_UNSPEC_GOTOFF))
+	  || XINT (x, 1) == ARC64_UNSPEC_PCREL))
     return true;
 
   return false;
@@ -1252,7 +1252,7 @@ arc64_output_addr_const_extra (FILE *file, rtx x)
       output_addr_const (file, base);
       switch (XINT (x, 1))
 	{
-	case ARC64_UNSPEC_GOTOFF:
+	case ARC64_UNSPEC_PCREL:
 	  fputs ("@pcl", file);
 	  break;
 
@@ -1413,7 +1413,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 		   way we are sure the code is correct when it is run
 		   at any address.  However, the offset needs to fit
 		   the 32bit offset.  */
-		base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
+		base = gen_sym_unspec (x, ARC64_UNSPEC_PCREL);
 		return base;
 	      }
 	    /* If we have a weak non local symbol then just use most
@@ -1430,7 +1430,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 	{
 	  /* Local symbol, we can access it using a simple
 	     PCL-relative access.  */
-	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOTOFF);
+	  base = gen_sym_unspec (x, ARC64_UNSPEC_PCREL);
 	  return base;
 	}
       else if (flag_pic)
