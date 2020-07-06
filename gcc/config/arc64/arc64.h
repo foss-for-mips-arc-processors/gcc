@@ -523,9 +523,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* DWARF2 CFA column which tracks the return address.  */
 #define DWARF_FRAME_RETURN_COLUMN BLINK_REGNUM
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG (Pmode, BLINK_REGNUM)
-/* Enable DWARF 2 exceptions.  */
-#undef DWARF2_UNWIND_INFO
-#define DWARF2_UNWIND_INFO 1
 
 /* Exception Handling support.  */
 /* Use R0 through R3 to pass exception handling information.  */
