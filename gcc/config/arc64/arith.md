@@ -19,6 +19,8 @@
 
 (define_code_iterator COMMUTATIVE [and ior xor])
 
+(define_code_iterator COMMUTATIVEF [plus and ior xor])
+
 ;; Operations which can be predicated
 (define_code_iterator ARITHP [and ior xor plus minus ashift ashiftrt lshiftrt])
 
@@ -228,12 +230,12 @@
 (define_insn "*<optab><mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (COMMUTATIVE:GPI
+	 (COMMUTATIVEF:GPI
 	  (match_operand:GPI 1 "nonmemory_operand" "%     0,    0,     r,U06S0,S12S0,S32S0,r")
 	  (match_operand:GPI 2 "nonmemory_operand" " rU06S0,S12S0,rU06S0,    r,    0,    r,S32S0"))
 	 (const_int 0)))
    (set (match_operand:GPI 0 "register_operand"  "=     r,    r,     r,    r,    r,    r,r")
-	(COMMUTATIVE:GPI (match_dup 1) (match_dup 2)))]
+	(COMMUTATIVEF:GPI (match_dup 1) (match_dup 2)))]
   "register_operand (operands[1], <MODE>mode)
    || register_operand (operands[2], <MODE>mode)"
   "@
@@ -253,7 +255,7 @@
 (define_insn "*<optab><mode>_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (COMMUTATIVE:GPI
+	 (COMMUTATIVEF:GPI
 	  (match_operand:GPI 0 "nonmemory_operand" "%     r,U06S0,S32S0,r")
 	  (match_operand:GPI 1 "nonmemory_operand" " rU06S0,    r,    r,S32S0"))
 	 (const_int 0)))]
