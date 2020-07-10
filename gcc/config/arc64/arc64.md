@@ -817,21 +817,37 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "type" "block")]
   )
 
-(define_insn "dbnz"
+(define_insn_and_split "dbnz"
   [(set (pc)
 	(if_then_else
-	 (ne (match_operand:DI 0 "register_operand" "+r")
+	 (ne (match_operand:DI 0 "nonimmediate_operand" "+r,m")
 	     (const_int 1))
 	 (label_ref (match_operand 1 "" ""))
 	 (pc)))
    (set (match_dup 0)
 	(plus:DI (match_dup 0)
-		 (const_int -1)))]
+		 (const_int -1)))
+   (clobber (match_scratch:DI 2 "=X,r"))]
   ""
-  "dbnz\\t%0,%l1"
+  "@
+   dbnz\\t%0,%l1
+   #"
+  "reload_completed && memory_operand (operands[0], DImode)"
+  [(set (match_dup 2) (match_dup 0))
+   (parallel
+    [(set (reg:CC_ZN CC_REGNUM)
+	  (compare:CC_ZN (plus:DI (match_dup 2) (const_int -1))
+			 (const_int 0)))
+     (set (match_dup 2) (plus:DI (match_dup 2) (const_int -1)))])
+   (set (match_dup 0) (match_dup 2))
+   (set (pc) (if_then_else (ge (reg:CC_ZN CC_REGNUM)
+			       (const_int 0))
+			   (label_ref (match_dup 1))
+			   (pc)))]
+  ""
   [(set_attr "iscompact" "no")
    (set_attr "type" "dbnz")
-   (set_attr "length" "4")])
+   (set_attr "length" "4,20")])
 
 ; conditional execution
 (define_insn "*returnt_ce"
