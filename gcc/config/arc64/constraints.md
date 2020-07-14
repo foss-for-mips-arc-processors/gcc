@@ -323,3 +323,9 @@
    @code{PCL} register."
   (and (match_code "reg")
        (match_test "REGNO (op) == R0_REGNUM")))
+
+;; Memory constraint used for atomic ops.
+(define_memory_constraint "ATOMC"
+  "A memory with only a base register"
+  (match_operand 0 "mem_noofs_operand"))
+
