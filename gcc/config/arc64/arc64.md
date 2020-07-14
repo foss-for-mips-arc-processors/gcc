@@ -83,6 +83,14 @@
    ARC64_VUNSPEC_FLAG
    ARC64_VUNSPEC_BRK
    ARC64_VUNSPEC_NOP
+
+   ARC64_VUNSPEC_EX
+   ARC64_VUNSPEC_CAS
+   ARC64_VUNSPEC_SC
+   ARC64_VUNSPEC_LL
+   ARC64_VUNSPEC_SYNC
+
+   ARC64_UNSPEC_MEMBAR
    ])
 
 (include "constraints.md")
@@ -230,10 +238,10 @@
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset,
-bsetl, btst, bxor, bxorl, compare, dbnz, div, divl, ext, flag, jl,
-jump, ld, lsr, lsrl, lr, max, maxl, min, minl, move, mod, modl, neg,
+bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex, div, divl, ext, flag, jl,
+jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl, neg,
 nop, norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror,
-rol, sbcl, setcc, sex, sr, st, sub, subl, swape, swapel, udiv, udivl,
+rol, sbcl, scond, setcc, sex, sr, st, sub, subl, swape, swapel, sync, udiv, udivl,
 umod, umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
 
@@ -459,6 +467,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r,r")
 	(high:DI
 	 (match_operand:DI 1 "arc64_immediate_or_pic" "S12S0,SymIm,SymIm,SyPic")))]
+
   ""
   "@
    movhl\\t%0,%h1
@@ -1097,6 +1106,25 @@ umod, umodl, unknown, xbfu, xor, xorl"
      operands[3] = force_reg (<MODE>mode, operands[3]);
   })
 
+(define_insn_and_split "*scc_insn"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(match_operator:SI 1 "ordered_comparison_operator" [(reg CC_REGNUM) (const_int 0)]))]
+  ""
+  "#"
+  "reload_completed"
+  [(set (match_dup 0) (const_int 1))
+   (cond_exec
+     (match_dup 1)
+     (set (match_dup 0) (const_int 0)))]
+{
+  operands[1]
+    = gen_rtx_fmt_ee (REVERSE_CONDITION (GET_CODE (operands[1]),
+					 GET_MODE (XEXP (operands[1], 0))),
+		      VOIDmode,
+		      XEXP (operands[1], 0), XEXP (operands[1], 1));
+}
+  [(set_attr "type" "movecc")])
+
 ;; SETcc instructions
 (define_expand "set<optab><mode>"
   [(set (match_operand:SI 0 "register_operand")
@@ -1503,6 +1531,17 @@ umod, umodl, unknown, xbfu, xor, xorl"
 
 
 (include "arith.md")
+
+(define_insn "sync"
+  [(unspec_volatile [(const_int 1)]
+		   ARC64_VUNSPEC_SYNC)]
+  ""
+  "sync"
+  [(set_attr "length" "4")
+  (set_attr "type" "sync")])
+
+(include "atomic.md")
+
 
 ;; mode:emacs-lisp
 ;; comment-start: ";; "

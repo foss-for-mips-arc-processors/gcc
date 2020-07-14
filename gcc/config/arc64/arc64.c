@@ -2641,6 +2641,393 @@ arc64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
    return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
 }
 
+/* Expand a compare and swap pattern.  */
+
+static void
+emit_unlikely_jump (rtx insn)
+{
+  rtx_insn *jump = emit_jump_insn (insn);
+  add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
+}
+
+// /* Implements target hook TARGET_VECTORIZE_PREFERRED_SIMD_MODE.  */
+// 
+// static machine_mode
+// arc_preferred_simd_mode (scalar_mode mode)
+// {
+//   switch (mode)
+//     {
+//     case E_HImode:
+//       return V4HImode;
+//     case E_SImode:
+//       return V2SImode;
+// 
+//     default:
+//       return word_mode;
+//     }
+// }
+
+/* Emit a (pre) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_pre_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, true))
+    emit_insn (gen_memory_barrier ());
+}
+
+/* Emit a (post) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_post_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, false))
+    emit_insn (gen_memory_barrier ());
+}
+
+
+/* Expand an atomic fetch-and-operate pattern.  CODE is the binary operation
+   to perform.  MEM is the memory on which to operate.  VAL is the second
+   operand of the binary operator.  BEFORE and AFTER are optional locations to
+   return the value of MEM either before of after the operation.  MODEL_RTX
+   is a CONST_INT containing the memory model to use.  */
+
+void
+arc64_expand_atomic_op (enum rtx_code code, rtx mem, rtx val,
+			 rtx orig_before, rtx orig_after, rtx model_rtx)
+{
+  enum memmodel model = (enum memmodel) INTVAL (model_rtx);
+  machine_mode mode = GET_MODE (mem);
+  rtx label, x, cond;
+  rtx before = orig_before, after = orig_after;
+
+  /* ARC atomic ops work only with 32-bit aligned memories.  */
+  gcc_assert (mode == SImode || mode == DImode);
+
+  arc64_pre_atomic_barrier (model);
+
+  label = gen_label_rtx ();
+  emit_label (label);
+  label = gen_rtx_LABEL_REF (VOIDmode, label);
+
+  if (before == NULL_RTX)
+    before = gen_reg_rtx (mode);
+
+  if (after == NULL_RTX)
+    after = gen_reg_rtx (mode);
+
+  /* Load exclusive.  */
+  if(mode == SImode)
+    emit_insn (gen_arc_load_exclusivesi (before, mem));
+  else /* DImode */
+    emit_insn (gen_arc_load_exclusivedi (before, mem));
+
+  switch (code)
+    {
+    case NOT:
+      x = gen_rtx_AND (mode, before, val);
+      emit_insn (gen_rtx_SET (after, x));
+      x = gen_rtx_NOT (mode, after);
+      emit_insn (gen_rtx_SET (after, x));
+      break;
+
+    case MINUS:
+      if (CONST_INT_P (val))
+	{
+	  val = GEN_INT (-INTVAL (val));
+	  code = PLUS;
+	}
+
+      /* FALLTHRU.  */
+    default:
+      x = gen_rtx_fmt_ee (code, mode, before, val);
+      emit_insn (gen_rtx_SET (after, x));
+      break;
+   }
+
+  /* Exclusively store new item.  Store clobbers CC reg.  */
+  if(mode == SImode)
+    emit_insn (gen_arc_store_exclusivesi (mem, after));
+  else /* DImode */
+    emit_insn (gen_arc_store_exclusivedi (mem, after));
+
+  /* Check the result of the store.  */
+  cond = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+  x = gen_rtx_NE (VOIDmode, cond, const0_rtx);
+  x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+			    label, pc_rtx);
+  emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+
+  arc64_post_atomic_barrier (model);
+}
+
+/* Expand code to perform a 8 or 16-bit compare and swap by doing
+   32-bit compare and swap on the word containing the byte or
+   half-word.  The difference between a weak and a strong CAS is that
+   the weak version may simply fail.  The strong version relies on two
+   loops, one checks if the SCOND op is succsfully or not, the other
+   checks if the 32 bit accessed location which contains the 8 or 16
+   bit datum is not changed by other thread.  The first loop is
+   implemented by the atomic_compare_and_swapsdi_1 pattern.  The second
+   loops is implemented by this routine.  */
+
+static void
+arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
+				rtx oldval, rtx newval, rtx weak,
+				rtx mod_s, rtx mod_f)
+{
+  rtx addr1 = force_reg (Pmode, XEXP (mem, 0));
+  rtx addr = gen_reg_rtx (Pmode);
+  rtx off = gen_reg_rtx (SImode);
+  rtx oldv = gen_reg_rtx (SImode);
+  rtx newv = gen_reg_rtx (SImode);
+  rtx oldvalue = gen_reg_rtx (SImode);
+  rtx newvalue = gen_reg_rtx (SImode);
+  rtx res = gen_reg_rtx (SImode);
+  rtx resv = gen_reg_rtx (SImode);
+  rtx memsi, val, mask, end_label, loop_label, cc, x;
+  machine_mode mode;
+  bool is_weak = (weak != const0_rtx);
+
+  /* Truncate the address.  */
+  emit_insn (gen_rtx_SET (addr,
+			  gen_rtx_AND (Pmode, addr1, GEN_INT (-4))));
+
+  /* Compute the datum offset.  */
+
+  emit_insn (gen_rtx_SET (off, gen_rtx_AND (SImode,
+					    gen_lowpart(SImode, addr1),
+					    GEN_INT (3))));
+
+  /* Normal read from truncated address.  */
+  memsi = gen_rtx_MEM (SImode, addr);
+  set_mem_alias_set (memsi, ALIAS_SET_MEMORY_BARRIER);
+  MEM_VOLATILE_P (memsi) = MEM_VOLATILE_P (mem);
+
+  val = copy_to_reg (memsi);
+
+  /* Convert the offset in bits.  */
+  emit_insn (gen_rtx_SET (off,
+			  gen_rtx_ASHIFT (SImode, off, GEN_INT (3))));
+
+  /* Get the proper mask.  */
+  if (GET_MODE (mem) == QImode)
+    mask = force_reg (SImode, GEN_INT (0xff));
+  else
+    mask = force_reg (SImode, GEN_INT (0xffff));
+
+  emit_insn (gen_rtx_SET (mask,
+			  gen_rtx_ASHIFT (SImode, mask, off)));
+
+  /* Prepare the old and new values.  */
+  emit_insn (gen_rtx_SET (val,
+			  gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
+				       val)));
+
+  oldval = gen_lowpart (SImode, oldval);
+  emit_insn (gen_rtx_SET (oldv,
+			  gen_rtx_ASHIFT (SImode, oldval, off)));
+
+  newval = gen_lowpart_common (SImode, newval);
+  emit_insn (gen_rtx_SET (newv,
+			  gen_rtx_ASHIFT (SImode, newval, off)));
+
+  emit_insn (gen_rtx_SET (oldv,
+			  gen_rtx_AND (SImode, oldv, mask)));
+
+  emit_insn (gen_rtx_SET (newv,
+			  gen_rtx_AND (SImode, newv, mask)));
+
+  if (!is_weak)
+    {
+      end_label = gen_label_rtx ();
+      loop_label = gen_label_rtx ();
+      emit_label (loop_label);
+    }
+
+  /* Make the old and new values.  */
+  emit_insn (gen_rtx_SET (oldvalue,
+			  gen_rtx_IOR (SImode, oldv, val)));
+
+  emit_insn (gen_rtx_SET (newvalue,
+			  gen_rtx_IOR (SImode, newv, val)));
+
+  /* Try an 32bit atomic compare and swap.  It clobbers the CC
+     register.  */
+  if(mode == SImode)
+    emit_insn (gen_atomic_compare_and_swapsi_1 (res, memsi, oldvalue, newvalue,
+						weak, mod_s, mod_f));
+  else /* DImode */
+    emit_insn (gen_atomic_compare_and_swapdi_1 (res, memsi, oldvalue, newvalue,
+						weak, mod_s, mod_f));
+
+  /* Regardless of the weakness of the operation, a proper boolean
+     result needs to be provided.  */
+  x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+  x = gen_rtx_EQ (SImode, x, const0_rtx);
+  emit_insn (gen_rtx_SET (bool_result, x));
+
+  if (!is_weak)
+    {
+      /* Check the results: if the atomic op is successfully the goto
+	 to end label.  */
+      x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+      x = gen_rtx_EQ (VOIDmode, x, const0_rtx);
+      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+				gen_rtx_LABEL_REF (Pmode, end_label), pc_rtx);
+      emit_jump_insn (gen_rtx_SET (pc_rtx, x));
+
+      /* Wait for the right moment when the accessed 32-bit location
+	 is stable.  */
+      emit_insn (gen_rtx_SET (resv,
+			      gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
+					   res)));
+      mode = SELECT_CC_MODE (NE, resv, val);
+      cc = gen_rtx_REG (mode, CC_REGNUM);
+      emit_insn (gen_rtx_SET (cc, gen_rtx_COMPARE (mode, resv, val)));
+
+      /* Set the new value of the 32 bit location, proper masked.  */
+      emit_insn (gen_rtx_SET (val, resv));
+
+      /* Try again if location is unstable.  Fall through if only
+	 scond op failed.  */
+      x = gen_rtx_NE (VOIDmode, cc, const0_rtx);
+      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+				gen_rtx_LABEL_REF (Pmode, loop_label), pc_rtx);
+      emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+
+      emit_label (end_label);
+    }
+
+  /* End: proper return the result for the given mode.  */
+  emit_insn (gen_rtx_SET (res,
+			  gen_rtx_AND (SImode, res, mask)));
+
+  emit_insn (gen_rtx_SET (res,
+			  gen_rtx_LSHIFTRT (SImode, res, off)));
+
+  emit_move_insn (result, gen_lowpart (GET_MODE (result), res));
+}
+
+/* Helper function used by "atomic_compare_and_swap" expand
+   pattern.  */
+
+void
+arc64_expand_compare_and_swap (rtx operands[])
+{
+  rtx bval, rval, mem, oldval, newval, is_weak, mod_s, mod_f, x;
+  machine_mode mode;
+
+  bval = operands[0];
+  rval = operands[1];
+  mem = operands[2];
+  oldval = operands[3];
+  newval = operands[4];
+  is_weak = operands[5];
+  mod_s = operands[6];
+  mod_f = operands[7];
+  mode = GET_MODE (mem);
+
+  if (reg_overlap_mentioned_p (rval, oldval))
+    oldval = copy_to_reg (oldval);
+
+  if (mode == SImode || mode == DImode)
+    {
+      if (mode == SImode)
+	emit_insn (gen_atomic_compare_and_swapsi_1 (rval, mem, oldval, newval,
+						    is_weak, mod_s, mod_f));
+      else /* DImode */
+	emit_insn (gen_atomic_compare_and_swapdi_1 (rval, mem, oldval, newval,
+						    is_weak, mod_s, mod_f));
+
+      x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+      x = gen_rtx_EQ (SImode, x, const0_rtx);
+      emit_insn (gen_rtx_SET (bval, x));
+    }
+  else
+    {
+      arc_expand_compare_and_swap_qh (bval, rval, mem, oldval, newval,
+				      is_weak, mod_s, mod_f);
+    }
+}
+
+/* Helper function used by the "atomic_compare_and_swapsdi_1"
+   pattern.  */
+
+void
+arc64_split_compare_and_swap (rtx operands[])
+{
+  rtx rval, mem, oldval, newval;
+  machine_mode mode, mode_cc;
+  enum memmodel mod_s, mod_f;
+  bool is_weak;
+  rtx label1, label2, x, cond;
+
+  rval = operands[0];
+  mem = operands[1];
+  oldval = operands[2];
+  newval = operands[3];
+  is_weak = (operands[4] != const0_rtx);
+  mod_s = (enum memmodel) INTVAL (operands[5]);
+  mod_f = (enum memmodel) INTVAL (operands[6]);
+  mode = GET_MODE (mem);
+
+  /* ARC atomic ops work only with 32-bit or 64-bit aligned memories.  */
+  gcc_assert (mode == SImode || mode == DImode);
+
+  arc64_pre_atomic_barrier (mod_s);
+
+  label1 = NULL_RTX;
+  if (!is_weak)
+    {
+      label1 = gen_label_rtx ();
+      emit_label (label1);
+    }
+  label2 = gen_label_rtx ();
+
+  /* Load exclusive.  */
+  if(mode == SImode)
+    emit_insn (gen_arc_load_exclusivesi (rval, mem));
+  else /* DImode */
+    emit_insn (gen_arc_load_exclusivedi (rval, mem));
+
+  /* Check if it is oldval.  */
+  mode_cc = SELECT_CC_MODE (NE, rval, oldval);
+  cond = gen_rtx_REG (mode_cc, CC_REGNUM);
+  emit_insn (gen_rtx_SET (cond, gen_rtx_COMPARE (mode_cc, rval, oldval)));
+
+  x = gen_rtx_NE (VOIDmode, cond, const0_rtx);
+  x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+			    gen_rtx_LABEL_REF (Pmode, label2), pc_rtx);
+  emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+
+  /* Exclusively store new item.  Store clobbers CC reg.  */
+  if(mode == SImode)
+    emit_insn (gen_arc_store_exclusivesi (mem, newval));
+  else /* DImode */
+    emit_insn (gen_arc_store_exclusivedi (mem, newval));
+
+  if (!is_weak)
+    {
+      /* Check the result of the store.  */
+      cond = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+      x = gen_rtx_NE (VOIDmode, cond, const0_rtx);
+      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+				gen_rtx_LABEL_REF (Pmode, label1), pc_rtx);
+      emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+    }
+
+  if (mod_f != MEMMODEL_RELAXED)
+    emit_label (label2);
+
+  arc64_post_atomic_barrier (mod_s);
+
+  if (mod_f == MEMMODEL_RELAXED)
+    emit_label (label2);
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
