@@ -114,3 +114,8 @@
       return arc64_legitimate_store_address_p (mode, XEXP (op, 0));
    return nonimmediate_operand (op, mode);
   })
+
+(define_predicate "mem_noofs_operand"
+  (and (match_code "mem")
+       (match_code "reg" "0")))
+
