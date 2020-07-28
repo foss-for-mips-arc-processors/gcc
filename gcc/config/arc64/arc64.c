@@ -2139,6 +2139,11 @@ arc64_can_use_return_insn_p (void)
 int
 arc64_epilogue_uses (int regno)
 {
+#ifdef HAVE_AS_TLS
+  if (regno == R30_REGNUM)
+    return 1;
+#endif
+
   if (epilogue_completed)
     if (regno == BLINK_REGNUM)
       return 1;
