@@ -518,6 +518,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define BRANCH_COST(speed_p, predictable_p) 2
 
 /* DWARF macros.  */
+#define DWARF2_DEBUGGING_INFO 1
 /* The mapping from gcc register number to DWARF2 CFA column number.  */
 #define DWARF_FRAME_REGNUM(REGNO) (REGNO)
 /* DWARF2 CFA column which tracks the return address.  */
