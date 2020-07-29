@@ -2151,6 +2151,20 @@ arc64_epilogue_uses (int regno)
   return 0;
 }
 
+/* Return 1 if we use TP because it is alivel on entry to an exception
+   edge.  */
+
+int
+arc64_eh_uses (int regno)
+{
+#ifdef HAVE_AS_TLS
+  if (regno == R30_REGNUM)
+    return 1;
+#endif
+  return 0;
+}
+
+
 /* Implement INITIAL_ELIMINATION_OFFSET.  FROM is either the frame pointer
    or argument pointer.  TO is either the stack pointer or hard frame
    pointer.  */
