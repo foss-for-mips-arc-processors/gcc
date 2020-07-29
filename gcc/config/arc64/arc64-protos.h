@@ -2,6 +2,7 @@
 #define GCC_ARC64_PROTOS_H
 
 extern int arc64_epilogue_uses (int);
+extern int arc64_eh_uses (int);
 extern HOST_WIDE_INT arc64_initial_elimination_offset (unsigned, unsigned);
 extern void arc64_init_expanders (void);
 extern void arc64_cpu_cpp_builtins (cpp_reader *);
