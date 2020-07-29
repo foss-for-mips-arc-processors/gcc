@@ -531,6 +531,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
   ((N) < 4 ? ((unsigned int) R0_REGNUM + (N)) : INVALID_REGNUM)
 #define EH_RETURN_STACKADJ_RTX	gen_rtx_REG (Pmode, R4_REGNUM)
 #define EH_RETURN_HANDLER_RTX  arc64_eh_return_handler_rtx ()
+#define EH_USES(REGNO) (arc64_eh_uses((REGNO)))
 
 /* Select a format to encode pointers in exception handling data.  */
 #define ASM_PREFERRED_EH_DATA_FORMAT(CODE, GLOBAL) \
