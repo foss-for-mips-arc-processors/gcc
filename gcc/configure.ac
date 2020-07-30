@@ -3802,9 +3802,15 @@ foo:	.long	25
 	lda	$4,foo($29)			!tprel'
 	tls_as_opt=--fatal-warnings
 	;;
-  arc*-*-*)
+  arc-*-*)
     conftest_s='
 	add_s r0,r0, @foo@tpoff'
+	;;
+  arc64-*-*)
+    conftest_s='
+	addl r0,r0, @foo@tpoff'
+	tls_first_major=2
+	tls_first_minor=23
 	;;
   cris-*-*|crisv32-*-*)
     conftest_s='
