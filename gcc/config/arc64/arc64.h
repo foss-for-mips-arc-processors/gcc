@@ -515,7 +515,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* IFCVT macros.  */
 #define STORE_FLAG_VALUE 1
 #define MAX_CONDITIONAL_EXECUTE 12
-#define BRANCH_COST(speed_p, predictable_p) 2
+#define BRANCH_COST(speed_p, predictable_p) 10
 
 /* DWARF macros.  */
 #define DWARF2_DEBUGGING_INFO 1
