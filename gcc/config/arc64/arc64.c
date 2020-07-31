@@ -1691,6 +1691,12 @@ arc64_insn_cost (rtx_insn *insn, bool speed)
   if (recog_memoized (insn) < 0)
     return 0;
 
+
+  /* Use cost if provided.  */
+  cost = get_attr_cost (insn);
+  if (cost > 0)
+    return cost;
+
   cost = pattern_cost (PATTERN (insn), speed);
   return cost;
 #if 0
@@ -2155,7 +2161,7 @@ arc64_epilogue_uses (int regno)
    edge.  */
 
 int
-arc64_eh_uses (int regno)
+arc64_eh_uses (int regno ATTRIBUTE_UNUSED)
 {
 #ifdef HAVE_AS_TLS
   if (regno == R30_REGNUM)
