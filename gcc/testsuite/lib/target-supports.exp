@@ -867,6 +867,10 @@ proc check_effective_target_freestanding { } {
 
 # Check to see that file I/O functions are available.
 proc check_effective_target_fileio { } {
+    if { [istarget arc64-*-*] } {
+	return 0
+    }
+
     return [check_no_compiler_messages fileio_available executable {
 #include <stdio.h>
 int main() {
