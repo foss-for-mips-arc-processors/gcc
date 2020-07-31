@@ -272,6 +272,46 @@
    (set_attr "type"       "<arc64_code_map>")]
   )
 
+(define_insn "*sub<mode>_insn_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (minus:GPI (match_operand:GPI 1 "nonmemory_operand" "    0,     r,U06S0,S12S0,S32S0,r")
+		    (match_operand:GPI 2 "nonmemory_operand" "S12S0,rU06Sx,    r,    0,    r,S32S0"))
+	 (const_int 0)))
+   (set (           match_operand:GPI 0 "register_operand"  "=    r,     r,    r,    r,    r,r")
+	(minus:GPI (match_dup 1) (match_dup 2)))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "@
+   sub<sfxtab>.f\\t%0,%1,%2
+   sub%s2<sfxtab>.f\\t%0,%1,%S2
+   rsub<sfxtab>.f\\t%0,%2,%1
+   rsub<sfxtab>.f\\t%0,%2,%1
+   sub<sfxtab>.f\\t%0,%1,%2
+   sub<sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "iscompact"  "no")
+   (set_attr "length"     "4,4,4,4,8,8")
+   (set_attr "type"       "sub")]
+  )
+
+(define_insn "*sub<mode>_insn_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (minus:GPI (match_operand:GPI 0 "nonmemory_operand" "     r,U06S0,S32S0,r")
+		    (match_operand:GPI 1 "nonmemory_operand" "rU06Sx,    r,    r,S32S0"))
+	 (const_int 0)))]
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
+  "@
+   sub%s1<sfxtab>.f\\t0,%0,%S1
+   rsub<sfxtab>.f\\t0,%1,%0
+   sub<sfxtab>.f\\t0,%0,%1
+   sub<sfxtab>.f\\t0,%0,%1"
+  [(set_attr "iscompact"  "no")
+   (set_attr "length"     "4,4,8,8")
+   (set_attr "type"       "sub")]
+  )
+
 (define_insn "*<ANY_EXTEND:optab><SHORT:mode>si2_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
@@ -315,6 +355,20 @@
   "sex<EXT:exttab>l.f\\t%0,%1"
   [(set_attr "type" "sex")
    (set_attr "length" "4")])
+
+(define_insn "*btst<mode>"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN (zero_extract:GPI
+			(match_operand:GPI 0 "register_operand"   "q,r")
+			(const_int 1)
+			(match_operand 1 "const_int_operand" "U05S0,S12S0"))
+		       (const_int 0)))]
+  ""
+  "btst<sfxtab>%?\\t%0,%1"
+  [(set_attr "type" "btst")
+   (set_attr "length" "*,4")
+   (set_attr "iscompact" "maybe,no")
+   (set_attr "cost" "2,4")])
 
 ;; SI/DI DIV/REM instructions.
 (define_expand "<optab><mode>3"
