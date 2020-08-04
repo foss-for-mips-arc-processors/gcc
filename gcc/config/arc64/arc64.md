@@ -826,10 +826,29 @@ umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "type" "block")]
   )
 
+; operand 0 is the loop count pseudo register
+; operand 1 is the label to jump to at the top of the loop
+(define_expand "doloop_end"
+  [(parallel [(set (pc)
+		   (if_then_else
+		    (ne (match_operand:DI 0 "" "")
+			(const_int 1))
+		    (label_ref (match_operand 1 "" ""))
+		    (pc)))
+	      (set (match_dup 0) (plus:DI (match_dup 0) (const_int -1)))
+	      (clobber (match_dup 2))])]
+  ""
+  {
+   machine_mode mode = GET_MODE (operands[0]);
+   if (mode != DImode)
+     FAIL;
+   operands[2] = gen_rtx_SCRATCH (mode);
+  })
+
 (define_insn_and_split "dbnz"
   [(set (pc)
 	(if_then_else
-	 (ne (match_operand:DI 0 "nonimmediate_operand" "+r,m")
+	 (ne (match_operand:DI 0 "nonimmediate_operand" "+r,!m")
 	     (const_int 1))
 	 (label_ref (match_operand 1 "" ""))
 	 (pc)))
@@ -849,7 +868,7 @@ umod, umodl, unknown, xbfu, xor, xorl"
 			 (const_int 0)))
      (set (match_dup 2) (plus:DI (match_dup 2) (const_int -1)))])
    (set (match_dup 0) (match_dup 2))
-   (set (pc) (if_then_else (ge (reg:CC_ZN CC_REGNUM)
+   (set (pc) (if_then_else (ne (reg:CC_ZN CC_REGNUM)
 			       (const_int 0))
 			   (label_ref (match_dup 1))
 			   (pc)))]
