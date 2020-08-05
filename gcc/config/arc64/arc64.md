@@ -83,6 +83,7 @@
    ARC64_VUNSPEC_FLAG
    ARC64_VUNSPEC_BRK
    ARC64_VUNSPEC_NOP
+   ARC64_VUNSPEC_TRAP_S
 
    ARC64_VUNSPEC_EX
    ARC64_VUNSPEC_CAS
@@ -236,13 +237,13 @@
 ;; this.  For optimizing for size the "length" attribute is used instead.
 (define_attr "cost" "" (const_int 0))
 
-(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
-asll, asr, asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset,
-bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex, div, divl, ext, flag, jl,
-jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl, neg,
-nop, norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror,
-rol, sbcl, scond, setcc, sex, sr, st, sub, subl, swape, swapel, sync, udiv, udivl,
-umod, umodl, unknown, xbfu, xor, xorl"
+(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl, asll, asr,
+asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset, bsetl, btst, bxor,
+bxorl, compare, dbnz, dmb, ex, div, divl, ext, flag, jl, jump, ld, llock,
+lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl, neg, nop,
+norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror,rol, sbcl,
+scond, setcc, sex, sr, st, sub, subl, swape, swapel, sync, trap, udiv,
+udivl, umod, umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -810,6 +811,17 @@ umod, umodl, unknown, xbfu, xor, xorl"
   "j_s\\t[blink]"
   [(set_attr "type" "return")
    (set_attr "length" "2")])
+
+(define_insn "trap_s"
+  [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "U06S0")]
+		   ARC64_VUNSPEC_TRAP_S)]
+  ""
+{
+  //arc_toggle_unalign ();
+  return \"trap_s %0\";
+}
+  [(set_attr "length" "2")
+  (set_attr "type" "trap")])
 
 (define_insn "nop"
   [(const_int 0)]
