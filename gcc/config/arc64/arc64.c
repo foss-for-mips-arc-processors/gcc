@@ -2444,6 +2444,8 @@ arc64_expand_builtin (tree exp,
   enum insn_code icode = d->icode;
   machine_mode tmode = insn_data[icode].operand[0].mode;
   int nonvoid;
+  tree arg0;
+  rtx op0;
 
   if (id >= ARC64_BUILTIN_COUNT)
     internal_error ("bad builtin fcode");
@@ -2458,6 +2460,15 @@ arc64_expand_builtin (tree exp,
     case ARC64_BUILTIN_BRK:
       gcc_assert (icode != 0);
       emit_insn (GEN_FCN (icode) (const1_rtx));
+      return NULL_RTX;
+
+    case ARC64_BUILTIN_TRAP_S:
+      arg0 = CALL_EXPR_ARG (exp, 0);
+      fold (arg0);
+      op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (op0));
       return NULL_RTX;
     default:
       break;
