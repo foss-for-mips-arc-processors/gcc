@@ -227,7 +227,7 @@
    (set_attr "length" "4,8")
    (set_attr "predicable" "no,no")])
 
-(define_insn "*<optab><mode>_cmp0"
+(define_insn "<optab><mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
 	 (COMMUTATIVEF:GPI
@@ -469,7 +469,7 @@
    (set_attr "predicable" "yes,yes,no,no")
    (set_attr "iscompact" "maybe,no,no,no")])
 
-(define_insn "*add<mode>_cmp0"
+(define_insn "*addx<mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
 	 (plus:GPI (ashift:GPI (match_operand:GPI 1 "register_operand" "r,r,r")
@@ -485,7 +485,7 @@
    (set_attr "length" "4,4,8")
    (set_attr "predicable" "yes,no,no")])
 
-(define_insn "*add<mode>_cmp0_noout"
+(define_insn "*addx<mode>_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
 	 (plus:GPI (ashift:GPI (match_operand:GPI 0 "register_operand" "r,r,r")
