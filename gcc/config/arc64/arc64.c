@@ -37,7 +37,7 @@
 #include "alias.h"
 #include "opts.h"
 #include "dwarf2.h"
-
+#include "hw-doloop.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -49,6 +49,10 @@
 
 /* Defined for convenience.  */
 #define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
+
+/* Maximum size of a loop.  */
+#define MAX_LOOP_LENGTH 4094
+#define MIN_LOOP_LENGTH -4092
 
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
@@ -2531,6 +2535,108 @@ arc64_expand_builtin (tree exp,
     return const0_rtx;
 }
 
+/* A callback for the hw-doloop pass.  Called when a loop we have discovered
+   turns out not to be optimizable; we have to split the loop_end pattern into
+   a subtract and a test.  */
+
+static void
+hwloop_fail (hwloop_info loop)
+{
+  rtx test;
+  rtx insn;
+
+  emit_insn_before (gen_adddi_cmp0 (loop->iter_reg,
+				    loop->iter_reg,
+				    constm1_rtx),
+		    loop->loop_end);
+  test = gen_rtx_NE (VOIDmode, gen_rtx_REG (CC_ZNmode, CC_REGNUM), const0_rtx);
+  test = gen_rtx_IF_THEN_ELSE (VOIDmode, test,
+			       gen_rtx_LABEL_REF (Pmode, loop->start_label),
+			       pc_rtx);
+  insn = emit_jump_insn_before (gen_rtx_SET (pc_rtx, test),
+				loop->loop_end);
+
+  JUMP_LABEL (insn) = loop->start_label;
+  LABEL_NUSES (loop->start_label)++;
+  delete_insn (loop->loop_end);
+}
+
+/* Optimize LOOP.  We just are checking that the loop isn't too long,
+   returns true if so.  Return true if successful, false if the loop
+   should be marked bad.  If it returns false, the FAIL function is
+   called.  */
+
+static bool
+hwloop_optimize (hwloop_info loop)
+{
+  unsigned int length;
+
+  /* Call shorten_branches to calculate the insn lengths.  */
+  shorten_branches (get_insns());
+
+  if (!INSN_ADDRESSES_SET_P ())
+    {
+      fprintf (dump_file, ";; loop %d has an unknown length\n", loop->loop_no);
+      return false;
+    }
+
+  length = INSN_ADDRESSES (INSN_UID (loop->loop_end))
+    - INSN_ADDRESSES (INSN_UID (loop->start_label));
+  loop->length = length;
+  if (dump_file)
+    fprintf (dump_file, ";; loop %d with lenght %d\n", loop->loop_no,
+	     loop->length);
+  if (loop->length > MAX_LOOP_LENGTH
+      || loop->length < MIN_LOOP_LENGTH)
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; loop %d is too long\n", loop->loop_no);
+      return false;
+    }
+  if (loop->length == 0)
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; loop %d is empty\n", loop->loop_no);
+      return false;
+    }
+
+  return true;
+}
+
+/* A callback for the hw-doloop pass.  This function examines INSN; if
+   it is a loop_end pattern we recognize, return the reg rtx for the
+   loop counter.  Otherwise, return NULL_RTX.  */
+
+static rtx
+hwloop_pattern_reg (rtx_insn *insn)
+{
+  rtx reg;
+
+  if (!JUMP_P (insn) || recog_memoized (insn) != CODE_FOR_dbnz)
+    return NULL_RTX;
+
+  reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 1));
+  if (!REG_P (reg))
+    return NULL_RTX;
+  return reg;
+}
+
+static struct hw_doloop_hooks arc64_doloop_hooks =
+{
+  hwloop_pattern_reg,
+  hwloop_optimize,
+  hwloop_fail
+};
+
+/* Machine specific reorg step.  */
+static void
+arc64_reorg (void)
+{
+  compute_bb_for_insn ();
+  df_analyze ();
+  reorg_loops (true, &arc64_doloop_hooks);
+}
+
 /* Used by move_dest_operand predicate.  */
 
 bool
@@ -3169,6 +3275,9 @@ arc64_split_compare_and_swap (rtx operands[])
 
 #undef  TARGET_INSN_COST
 #define TARGET_INSN_COST arc64_insn_cost
+
+#undef  TARGET_MACHINE_DEPENDENT_REORG
+#define TARGET_MACHINE_DEPENDENT_REORG arc64_reorg
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
