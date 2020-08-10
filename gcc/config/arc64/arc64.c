@@ -590,6 +590,16 @@ arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
     case LABEL_REF:
       return true;
 
+    case CONST:
+      if (GET_CODE (XEXP (x, 0)) == PLUS)
+	{
+	  rtx tmp = XEXP (x, 0);
+	  bool t1 = arc64_legitimate_constant_p (mode, XEXP (tmp, 0));
+	  bool t2 = arc64_legitimate_constant_p (mode, XEXP (tmp, 1));
+	  return (t1 && t2);
+	}
+      return false;
+
     default:
       return false;
     }
