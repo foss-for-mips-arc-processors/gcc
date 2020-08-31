@@ -56,10 +56,12 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
   builtin_define ("__LITTLE_ENDIAN__");
   builtin_define ("__ARCV3__");
 
-#undef ARC_C_DEF
-#define ARC_C_DEF(NAME, CONDITION)		\
+  builtin_define_with_int_value ("__ARC64_ATOMIC__", arc64_atomic_option);
+
+#undef ARC64_C_DEF
+#define ARC64_C_DEF(NAME, CONDITION)		\
   def_or_undef_macro (pfile, NAME, CONDITION);
 
 #include "arc64-c.def"
-#undef ARC_C_DEF
+#undef ARC64_C_DEF
 }
