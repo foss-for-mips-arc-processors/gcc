@@ -16,6 +16,8 @@
    along with GCC; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
+#ifndef ARC64_OPTS_H
+#define ARC64_OPTS_H
 
 /* The code model defines the address generation strategy.  */
 enum arc64_code_model {
@@ -28,3 +30,5 @@ enum arc64_code_model {
   /* No assumptions about addresses of code and data.  */
   ARC64_CMODEL_LARGE
 };
+
+#endif /* ARC64_OPTS_H */
