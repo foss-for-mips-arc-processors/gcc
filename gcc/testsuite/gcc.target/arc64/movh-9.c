@@ -27,5 +27,5 @@ void foo(void)
 {
   mem_dst = mem_src;
 }
-/* { dg-final { scan-assembler "ldb\\s+r\[0-9\]+,\\\[@mem_src\\\]" } } */
-/* { dg-final { scan-assembler "stb\\s+r0,\\\[@mem_dst\\\]" } } */
+/* { dg-final { scan-assembler "ldb\\s+r\[0-9\]+,\\\[" } } */
+/* { dg-final { scan-assembler "stb_s\\s+r\\d,\\\[" } } */
