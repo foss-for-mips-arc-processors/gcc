@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0 -fomit-frame-pointer" } */
+/* { dg-options "-O1 -fomit-frame-pointer" } */
 
 /* check "movh-1.c" for further details. */
 
@@ -10,6 +10,6 @@ void foo(void)
 {
   mem_dst = mem_src;
 }
-/* { dg-final { scan-assembler "ldh\\s+r\[0-9\]+,\\\[@mem_src\\\]" } } */
+/* { dg-final { scan-assembler "ldh\\s+r\[0-9\]+,\\\[" } } */
 /* { dg-final { scan-assembler-not "sexh" } } */
-/* { dg-final { scan-assembler "sth\\s+r0,\\\[@mem_dst\\\]" } } */
+/* { dg-final { scan-assembler "sth_s\\s+r\\d,\\\[" } } */

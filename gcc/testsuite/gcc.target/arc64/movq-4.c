@@ -10,4 +10,4 @@ void foo(void)
   register char reg_char;
   mem = reg_char;
 }
-/* { dg-final { scan-assembler "stb\\s+r\[0-9\]+,\\\[@mem\\\]" } } */
+/* { dg-final { scan-assembler "stb_s\\s+r\[0-9\]+,\\\[" } } */
