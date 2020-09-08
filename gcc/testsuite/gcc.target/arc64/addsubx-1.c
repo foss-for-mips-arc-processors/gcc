@@ -31,8 +31,8 @@ int plus1 (int a, int b)
   return 20;
 }
 
-/* { dg-final { scan-assembler "add1\\s+" } } */
+/* { dg-final { scan-assembler "add1_s\\s+" } } */
 /* { dg-final { scan-assembler "add1l\\s+" } } */
 /* { dg-final { scan-assembler "sub1\\s+" } } */
 /* { dg-final { scan-assembler "sub1l\\s+" } } */
-/* { dg-final { scan-assembler "add3.f\\s+" } } */
+/* { dg-final { scan-assembler "add3\\.f\\s+" } } */
