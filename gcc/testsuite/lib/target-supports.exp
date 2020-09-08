@@ -5127,6 +5127,9 @@ proc check_effective_target_arc_atomic { } {
 # Return 1 if this is a compiler supporting ARC atomic operations
 proc check_effective_target_arc64_atomic { } {
     return [check_no_compiler_messages arc_atomic assembly {
+	#if !defined(__ARC64_ATOMIC__)
+	#error NO_ATOMIC64
+	#endif
     }]
 }
 
@@ -10294,7 +10297,7 @@ proc check_effective_target_sync_int_128_runtime { } {
 proc check_effective_target_sync_long_long { } {
     if { [check_effective_target_x86]
 	 || [istarget aarch64*-*-*]
-	 || ([istarget arc64*-*-*] && [check_effective_target_arc64_atomic])
+	 || ([istarget arc64-*-*] && [check_effective_target_arc64_atomic])
 	 || [istarget arm*-*-*]
 	 || [istarget alpha*-*-*]
 	 || ([istarget sparc*-*-*] && [check_effective_target_lp64])
@@ -10425,7 +10428,7 @@ proc check_effective_target_sync_long_long_runtime { } {
 	      } ""
 	  }])
 	 || [istarget aarch64*-*-*]
-	 || ([istarget arc64*-*-*] && [check_effective_target_arc64_atomic])
+	 || ([istarget arc64-*-*] && [check_effective_target_arc64_atomic])
 	 || [istarget arm*-*-uclinuxfdpiceabi]
 	 || ([istarget arm*-*-linux-*]
 	     && [check_runtime sync_longlong_runtime {
@@ -10502,7 +10505,7 @@ proc check_effective_target_sync_int_long { } {
 	     || [istarget powerpc*-*-*]
 	     || [istarget cris-*-*]
 	     || ([istarget sparc*-*-*] && [check_effective_target_sparc_v9])
-	     || ([istarget arc64*-*-*] && [check_effective_target_arc64_atomic])
+	     || ([istarget arc64-*-*] && [check_effective_target_arc64_atomic])
 	     || ([istarget arc*-*-*] && [check_effective_target_arc_atomic])
 	     || [check_effective_target_mips_llsc]
 	     || [istarget nvptx*-*-*]
@@ -10539,8 +10542,9 @@ proc check_effective_target_sync_char_short { } {
 	     || [istarget powerpc*-*-*]
 	     || [istarget cris-*-*]
 	     || ([istarget sparc*-*-*] && [check_effective_target_sparc_v9])
-	     || ([istarget arc64*-*-*] && [check_effective_target_arc64_atomic])
-	     || ([istarget arc*-*-*] && [check_effective_target_arc_atomic])
+	     || ([istarget arc64-*-*] && [check_effective_target_arc64_atomic])
+	     || ([istarget arc-*-*] && [check_effective_target_arc_atomic])
+	     || ([istarget arceb-*-*] && [check_effective_target_arc_atomic])
 	     || [istarget loongarch*-*-*]
 	     || ([istarget riscv*-*-*]
 		 && ([check_effective_target_riscv_zalrsc]
