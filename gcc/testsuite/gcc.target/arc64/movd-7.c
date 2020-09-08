@@ -9,6 +9,6 @@ void foo(void)
 {
   mem_dst = mem_src;
 }
-/* { dg-final { scan-assembler "ld\\s+r\[0-9\]+,\\\[@mem_src\\\]" } } */
+/* { dg-final { scan-assembler "ld\\s+r\[0-9\]+,\\\[" } } */
 /* { dg-final { scan-assembler-not "ext\[bhw\]\\s+" } } */
-/* { dg-final { scan-assembler "st\\s+r0,\\\[@mem_dst\\\]" } } */
+/* { dg-final { scan-assembler "st_s\\s+r\\d,\\\[" } } */
