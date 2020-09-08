@@ -24,7 +24,7 @@
 volatile int dummy;
 void foo(void)
 {
-  register int dst;
+  volatile register int dst;
   dst = 0x12344321;
   dst = 0x40000000;
   dst = 0x7FFFFFFF;   /* largest positive number in 32-bit */
@@ -32,8 +32,7 @@ void foo(void)
   dst = 0xFFFFFFFF;  /* -1 */
   dummy = dst;
 }
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,305414945" } } */
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,1073741824" } } */
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,2147483647" } } */
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,-2147483648" } } */
-/* { dg-final { scan-assembler "mov\\s+r\[0-9\]+,-1" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r\[0-9\]+,305414945" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r\[0-9\]+,1073741824" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r\[0-9\]+,2147483647" } } */
+/* { dg-final { scan-assembler "mov_s\\s+r\[0-9\]+,-2147483648" } } */

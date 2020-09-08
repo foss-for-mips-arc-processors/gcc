@@ -13,7 +13,7 @@ void foo(void)
   mem = -32;     /* smallest negative number in w6 */
   mem = -1;      /* just a -1 (all bits 1) */
 }
-/* { dg-final { scan-assembler "sth\\s+0,\\\[@mem\\\]" } } */
-/* { dg-final { scan-assembler "sth\\s+31,\\\[@mem\\\]" } } */
-/* { dg-final { scan-assembler "sth\\s+-32,\\\[@mem\\\]" } } */
-/* { dg-final { scan-assembler "sth\\s+-1,\\\[@mem\\\]" } } */
+/* { dg-final { scan-assembler "sth\\s+0,\\\[" } } */
+/* { dg-final { scan-assembler "sth\\s+31,\\\[" } } */
+/* { dg-final { scan-assembler "sth\\s+-32,\\\[" } } */
+/* { dg-final { scan-assembler "sth\\s+-1,\\\[" } } */
