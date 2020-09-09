@@ -510,7 +510,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* FIXME: is 0 okay or should it be -1 like DEFAULT_arc_mpy_option?  */
 /* Default atomic option value.  */
 #undef DEFAULT_ARC64_ATOMIC_OPTION
-#define DEFAULT_ARC64_ATOMIC_OPTION 0
+#define DEFAULT_ARC64_ATOMIC_OPTION 1
 
 #define ARC64_HAS_ATOMIC_1 (arc64_atomic_option > 0)
 #define ARC64_HAS_ATOMIC_2 (arc64_atomic_option > 1)
