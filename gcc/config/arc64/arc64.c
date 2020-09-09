@@ -2647,6 +2647,35 @@ arc64_reorg (void)
   reorg_loops (true, &arc64_doloop_hooks);
 }
 
+/* Expand a compare and swap pattern.  */
+
+static void
+emit_unlikely_jump (rtx insn)
+{
+  rtx_insn *jump = emit_jump_insn (insn);
+  add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
+}
+
+/* Emit a (pre) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_pre_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, true))
+    emit_insn (gen_memory_barrier ());
+}
+
+/* Emit a (post) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_post_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, false))
+    emit_insn (gen_memory_barrier ());
+}
+
 /* Used by move_dest_operand predicate.  */
 
 bool
@@ -2767,53 +2796,6 @@ arc64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
      }
    return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
 }
-
-/* Expand a compare and swap pattern.  */
-
-static void
-emit_unlikely_jump (rtx insn)
-{
-  rtx_insn *jump = emit_jump_insn (insn);
-  add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
-}
-
-// /* Implements target hook TARGET_VECTORIZE_PREFERRED_SIMD_MODE.  */
-// 
-// static machine_mode
-// arc_preferred_simd_mode (scalar_mode mode)
-// {
-//   switch (mode)
-//     {
-//     case E_HImode:
-//       return V4HImode;
-//     case E_SImode:
-//       return V2SImode;
-// 
-//     default:
-//       return word_mode;
-//     }
-// }
-
-/* Emit a (pre) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_pre_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, true))
-    emit_insn (gen_memory_barrier ());
-}
-
-/* Emit a (post) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_post_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, false))
-    emit_insn (gen_memory_barrier ());
-}
-
 
 /* Expand an atomic fetch-and-operate pattern.  CODE is the binary operation
    to perform.  MEM is the memory on which to operate.  VAL is the second
