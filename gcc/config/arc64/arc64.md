@@ -117,6 +117,10 @@
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
 
+;; This mode iterator allows :P to be used for patterns that operate on
+;; pointer-sized quantities.  Exactly one of the two alternatives will match.
+(define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
+
 ;; -------------------------------------------------------------------
 ;; Code Iterators
 ;; -------------------------------------------------------------------
@@ -714,8 +718,20 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; Jumps and other miscellaneous insns
 ;; -------------------------------------------------------------------
 
-(define_insn "indirect_jump"
-  [(set (pc) (match_operand:DI 0 "register_operand" "q,r"))]
+(define_expand "indirect_jump"
+  [(set (pc) (match_operand 0 "register_operand"))]
+  ""
+{
+  operands[0] = force_reg (Pmode, operands[0]);
+  if (Pmode == SImode)
+    emit_jump_insn (gen_indirect_jumpsi (operands[0]));
+  else
+    emit_jump_insn (gen_indirect_jumpdi (operands[0]));
+  DONE;
+})
+
+(define_insn "indirect_jump<mode>"
+  [(set (pc) (match_operand:P 0 "register_operand" "q,r"))]
   ""
   "j%?\\t[%0]"
   [(set_attr "type" "jump")
@@ -816,10 +832,7 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "U06S0")]
 		   ARC64_VUNSPEC_TRAP_S)]
   ""
-{
-  //arc_toggle_unalign ();
-  return \"trap_s %0\";
-}
+  "trap_s\\t%0"
   [(set_attr "length" "2")
   (set_attr "type" "trap")])
 
@@ -899,6 +912,7 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
   "j%m0\\t[blink]"
   [(set_attr "type" "return")
    (set_attr "length" "4")])
+
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
