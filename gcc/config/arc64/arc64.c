@@ -2965,7 +2965,7 @@ arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
 
   /* Try an 32bit atomic compare and swap.  It clobbers the CC
      register.  */
-  if(mode == SImode)
+  if (GET_MODE (mem) == SImode)
     emit_insn (gen_atomic_compare_and_swapsi_1 (res, memsi, oldvalue, newvalue,
 						weak, mod_s, mod_f));
   else /* DImode */
