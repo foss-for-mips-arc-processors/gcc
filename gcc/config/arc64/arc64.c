@@ -3137,6 +3137,67 @@ arc64_split_compare_and_swap (rtx operands[])
     emit_label (label2);
 }
 
+/* Expander for casesi.  The vector table is always PC-relative, and
+   it is made up of branch instructions.  When we have CODE_DENSITY
+   option enabled, we use BI instruction, otherwise, depending on the
+   memory model, an emulation of it.  We use the same emulation
+   contruction, for PIC or LARGE memory model.  For a non-pic
+   SMALL/MEDIUM memory model, we make use of a single add2 instruction
+   which has one input the address of the start dispatch table, and
+   the other input indicates where we jump in the table.  */
+
+void arc64_expand_casesi (rtx operands[])
+{
+  rtx reg;
+
+  if (operands[1] != const0_rtx)
+    {
+      reg = gen_reg_rtx (SImode);
+      operands[1] = GEN_INT (trunc_int_for_mode (-INTVAL (operands[1]),
+						 SImode));
+      emit_insn (gen_addsi3 (reg, operands[0], operands[1]));
+      operands[0] = reg;
+    }
+  emit_jump_insn (gen_cbranchsi4 (gen_rtx_GTU (SImode, operands[0],
+					       operands[2]),
+				  operands[0], operands[2], operands[4]));
+
+  if (!ARC64_HAS_CODE_DENSITY)
+    {
+      switch (arc64_cmodel_var)
+	{
+	case ARC64_CMODEL_SMALL:
+	case ARC64_CMODEL_MEDIUM:
+	  if (!flag_pic)
+	    {
+	      reg = gen_reg_rtx (SImode);
+	      emit_insn (gen_casesi_addaddr (reg, operands[0], operands[3]));
+	      operands[0] = reg;
+	      break;
+	    }
+	  /* Fall through */
+	case ARC64_CMODEL_LARGE:
+	  {
+	    /* Same code is used for PIC and large memory model.  */
+	    rtx lbl = gen_rtx_LABEL_REF (VOIDmode, operands[3]);
+	    rtx tmp = gen_reg_rtx (DImode);
+	    reg = gen_reg_rtx (DImode);
+	    emit_insn (gen_rtx_SET (reg,
+				    gen_rtx_UNSPEC (DImode,
+						    gen_rtvec (1, lbl),
+						    ARC64_UNSPEC_PCREL)));
+	    emit_insn (gen_casesi_addaddrdi (tmp, operands[0], reg));
+	    emit_jump_insn (gen_casesi_dispatchdi (tmp, operands[3]));
+	    return;
+	  }
+	default:
+	  gcc_unreachable ();
+	}
+    }
+
+  emit_jump_insn (gen_casesi_dispatch (operands[0], operands[3]));
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
