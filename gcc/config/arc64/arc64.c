@@ -546,6 +546,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
   if (load_p
       && GET_CODE (x) == UNSPEC
       && (XINT (x, 1) == ARC64_UNSPEC_GOT32
+	  || XINT (x, 1) == ARC64_UNSPEC_TLS_IE
 	  || XINT (x, 1) == ARC64_UNSPEC_PCREL))
     return true;
 
