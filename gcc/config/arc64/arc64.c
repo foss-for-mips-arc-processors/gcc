@@ -161,10 +161,10 @@ static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
 	|  GPR save area                |
 	|                               |
 	+-------------------------------+
-	|  FP (if required)             |
-	+-------------------------------+
 	|  Return address register      |
 	|  (if required)                |
+	+-------------------------------+
+	|  FP (if required)             |
 	+-------------------------------+ <-- (hard) frame_pointer_rtx
 	|                               |
 	|  Local variables              |
@@ -240,18 +240,18 @@ arc64_compute_frame_info (void)
     else
       frame->reg_offset[regno] = -1;
 
+  /* Check if we need to save the return address.  */
+  if (!crtl->is_leaf || df_regs_ever_live_p (BLINK_REGNUM))
+    {
+      frame->reg_offset[BLINK_REGNUM] = offset;
+      offset += UNITS_PER_WORD;
+    }
+
   /* Check if we need frame pointer.  It is mutual exclusive with
      arc64_save_reg_p call.  */
   if (frame_pointer_needed)
     {
       frame->reg_offset[R27_REGNUM] = offset;
-      offset += UNITS_PER_WORD;
-    }
-
-  /* Check if we need to save the return address.  */
-  if (!crtl->is_leaf || df_regs_ever_live_p (BLINK_REGNUM))
-    {
-      frame->reg_offset[BLINK_REGNUM] = offset;
       offset += UNITS_PER_WORD;
     }
 
@@ -355,18 +355,18 @@ arc64_save_callee_saves (void)
       offset = 0;
     }
 
-  /* Save FP if required.  */
-  if (frame_pointer_needed)
-    {
-      frame_allocated += frame_save_reg (hard_frame_pointer_rtx, offset);
-      offset = 0;
-    }
-
   /* Save BLINK if required.  */
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
       frame_allocated += frame_save_reg (reg, offset);
+      offset = 0;
+    }
+
+  /* Save FP if required.  */
+  if (frame_pointer_needed)
+    {
+      frame_allocated += frame_save_reg (hard_frame_pointer_rtx, offset);
       offset = 0;
     }
 
@@ -435,14 +435,14 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 
   frame_deallocated += offset;
 
+  if (frame_pointer_needed)
+    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx);
+
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
       frame_deallocated += frame_restore_reg (reg);
     }
-
-  if (frame_pointer_needed)
-    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx);
 
   for (regno = R0_REGNUM; regno <= R58_REGNUM; regno++)
     {
