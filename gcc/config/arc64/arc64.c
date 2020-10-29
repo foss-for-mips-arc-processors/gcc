@@ -86,6 +86,11 @@ enum arc_cc_code_index
   ARC_CC_LO = ARC_CC_C, ARC_CC_HS = ARC_CC_NC
 };
 
+typedef enum arc64_symb_type
+{
+  ARC64_UNK = 0, ARC64_NORMAL, ARC64_PIC, ARC64_LPIC, ARC64_TLS
+} arc64_symb;
+
 /* Frame and machine specific info.  */
 
 struct GTY (()) arc64_frame
@@ -481,6 +486,38 @@ arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
   return ((to == HARD_FRAME_POINTER_REGNUM) || (to == STACK_POINTER_REGNUM));
 }
 
+/* Giving a symbol, return how it will be addressed.  */
+
+static arc64_symb
+arc64_get_symbol_type (rtx x)
+{
+  bool is_local = false, is_tls = false;
+
+  /* Labels are always local, so a short access will suffice.  */
+  if (LABEL_REF_P (x))
+    return flag_pic ? ARC64_PIC : ARC64_NORMAL;
+
+  /* FIXME! Maybe I should assert here.  */
+  if (!SYMBOL_REF_P (x))
+    return ARC64_UNK;
+
+  is_local = SYMBOL_REF_DECL (x)
+    ? targetm.binds_local_p (SYMBOL_REF_DECL (x))
+    : SYMBOL_REF_LOCAL_P (x);
+  is_tls = SYMBOL_REF_TLS_MODEL (x);
+
+  if (is_tls)
+    return ARC64_TLS;
+
+  if (!flag_pic)
+    return ARC64_NORMAL;
+  else if (flag_pic == 1)
+    return ARC64_PIC;
+  else if (is_local)
+    return ARC64_PIC;
+  else
+    return ARC64_LPIC;
+}
 
 /* Helper legitimate address. Extra takes an input to discriminate
    among load or store addresses.  */
@@ -492,6 +529,10 @@ arc64_legitimate_address_1_p (machine_mode mode,
 {
   if (REG_P (x))
     return true;
+
+  if (GET_CODE (x) == SYMBOL_REF
+      || GET_CODE (x) == LABEL_REF)
+    return (arc64_get_symbol_type (x) == ARC64_NORMAL);
 
   /* ST instruction can only accept a single register plus a small
      offset as address.  */
@@ -1235,6 +1276,8 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
       output_addr_const (file, addr);
       break;
 
+    case LABEL_REF:
+    case SYMBOL_REF:
     case CONST_INT:
       output_addr_const (file, addr);
       break;
@@ -1401,7 +1444,7 @@ static rtx
 arc64_legitimize_address_1 (rtx x, rtx scratch)
 {
   rtx base, addend, t1;
-  bool is_local = true, is_weak = false;
+  bool is_local = true, ATTRIBUTE_UNUSED is_weak = false;
 
   switch (GET_CODE (x))
     {
@@ -1418,29 +1461,17 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
       t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
       gcc_assert (t1);
       if (!flag_pic)
-	switch (arc64_cmodel_var)
-	  {
-	  case ARC64_CMODEL_SMALL:
-	  case ARC64_CMODEL_MEDIUM:
-	    if (!is_weak || is_local)
-	      {
-		/* Use a pc-relative address to access data, in this
-		   way we are sure the code is correct when it is run
-		   at any address.  However, the offset needs to fit
-		   the 32bit offset.  */
-		base = gen_sym_unspec (x, ARC64_UNSPEC_PCREL);
-		return base;
-	      }
-	    /* If we have a weak non local symbol then just use most
-	       generic contruction.  FIXME! we can just use a single
-	       mov instruction if we assume the code is placed always
-	       in lower 4G memory range.  */
-	    /* FALLTHRU */
-
-	  default:
-	    emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
-	    return gen_rtx_LO_SUM (Pmode, t1, x);
-	  }
+	{
+	  switch (arc64_cmodel_var)
+	    {
+	    case ARC64_CMODEL_SMALL:
+	    case ARC64_CMODEL_MEDIUM:
+	      return x;
+	    default:
+	      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
+	      return gen_rtx_LO_SUM (Pmode, t1, x);
+	    }
+	}
       else if (is_local)
 	{
 	  /* Local symbol, we can access it using a simple
@@ -1451,7 +1482,8 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
       else if (flag_pic)
 	{
 	  /* Global symbol, we access it via a load from the GOT
-	     (small model).  */
+	     (small model).  I.e., load pointer address via GOT, do
+	     the access of the datum using the loaded pointer.  */
 	  /* FIXME! to enable LARGE/small pic models make the above
 	     condition flag_pic == 1.  */
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT32);
@@ -3197,6 +3229,12 @@ void arc64_expand_casesi (rtx operands[])
     }
 
   emit_jump_insn (gen_casesi_dispatch (operands[0], operands[3]));
+}
+
+bool
+arc64_allow_direct_access_p (rtx op)
+{
+  return (arc64_get_symbol_type (op) == ARC64_NORMAL);
 }
 
 /* Target hooks.  */

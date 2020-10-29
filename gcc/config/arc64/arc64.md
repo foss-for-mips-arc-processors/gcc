@@ -376,8 +376,8 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_insn "*arc64_movhi"
   [(set
-    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,    m, m, r, m")
-    (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0, i, m, r"))
+    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,    m,Ucnst, r, m")
+    (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0,    i, m, r"))
    ]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
@@ -402,8 +402,8 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_insn "*arc64_movsi"
   [(set
-    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,    m, m, r, m")
-    (match_operand:SI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,    q,S06S0, i, m, r"))
+    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,    m,Ucnst, r, m")
+    (match_operand:SI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,    q,S06S0,    i, m, r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -461,8 +461,8 @@ udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,    r,    r,r, m")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0,SyPic,m, r"))]
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,r, m")
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,m, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)"
    "@
