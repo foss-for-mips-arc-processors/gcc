@@ -22,6 +22,9 @@
 (define_predicate "arc64_movl_operand"
   (and (match_code "unspec,reg, subreg, mem, const, const_int, symbol_ref, label_ref")
        (ior (match_operand 0 "register_operand")
+	    (and (ior (match_code "label_ref")
+		      (match_code "symbol_ref"))
+		 (match_test "arc64_allow_direct_access_p (op)"))
 	    (match_operand 0 "memory_operand")
 	    (and (match_code "unspec")
 		 (ior (match_test "XINT (op,1) == ARC64_UNSPEC_PCREL")
