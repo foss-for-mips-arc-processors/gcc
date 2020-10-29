@@ -90,10 +90,18 @@
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT6 (ival - 1)")))
 
+(define_constraint "SymMV"
+  "@internal
+   Special constant/symbol which fits in limm field."
+  (and (match_code "label_ref, symbol_ref")
+       (match_test "arc64_allow_direct_access_p (op)")))
+
 (define_constraint "SymIm"
   "@internal
    Special constant/symbol which fits in limm field."
-  (match_code "const_int, label_ref, symbol_ref"))
+  (ior (match_code "label_ref, symbol_ref")
+       (and (match_code "const_int")
+	    (match_test "SIGNED_INT32 (ival)"))))
 
 (define_constraint "S32S0"
   "@internal
