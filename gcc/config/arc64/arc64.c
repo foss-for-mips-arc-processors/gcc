@@ -88,7 +88,7 @@ enum arc_cc_code_index
 
 typedef enum arc64_symb_type
 {
-  ARC64_UNK = 0, ARC64_NORMAL, ARC64_PIC, ARC64_LPIC, ARC64_TLS
+  ARC64_UNK = 0, ARC64_LO32, ARC64_LARGE, ARC64_PIC, ARC64_LPIC, ARC64_TLS
 } arc64_symb;
 
 /* Frame and machine specific info.  */
@@ -493,9 +493,11 @@ arc64_get_symbol_type (rtx x)
 {
   bool is_local = false, is_tls = false;
 
-  /* Labels are always local, so a short access will suffice.  */
+  /* Labels are always local, so a short access will suffice.  FIXME!
+     For large model, we should use a pc-rel accessing.  */
   if (LABEL_REF_P (x))
-    return flag_pic ? ARC64_PIC : ARC64_NORMAL;
+    return flag_pic ? ARC64_PIC :
+      (arc64_cmodel_var ==  ARC64_CMODEL_LARGE ? ARC64_LARGE : ARC64_LO32);
 
   /* FIXME! Maybe I should assert here.  */
   if (!SYMBOL_REF_P (x))
@@ -510,7 +512,16 @@ arc64_get_symbol_type (rtx x)
     return ARC64_TLS;
 
   if (!flag_pic)
-    return ARC64_NORMAL;
+    switch (arc64_cmodel_var)
+      {
+      case ARC64_CMODEL_SMALL:
+      case ARC64_CMODEL_MEDIUM:
+	return ARC64_LO32;
+      case ARC64_CMODEL_LARGE:
+	return ARC64_LARGE;
+      default:
+	gcc_unreachable ();
+      }
   else if (flag_pic == 1)
     return ARC64_PIC;
   else if (is_local)
@@ -532,7 +543,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
 
   if (GET_CODE (x) == SYMBOL_REF
       || GET_CODE (x) == LABEL_REF)
-    return (arc64_get_symbol_type (x) == ARC64_NORMAL);
+    return (arc64_get_symbol_type (x) == ARC64_LO32);
 
   /* ST instruction can only accept a single register plus a small
      offset as address.  */
@@ -3234,7 +3245,7 @@ void arc64_expand_casesi (rtx operands[])
 bool
 arc64_allow_direct_access_p (rtx op)
 {
-  return (arc64_get_symbol_type (op) == ARC64_NORMAL);
+  return (arc64_get_symbol_type (op) == ARC64_LO32);
 }
 
 /* Target hooks.  */
