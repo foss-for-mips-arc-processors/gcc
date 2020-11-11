@@ -423,11 +423,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* Names to predefine in the preprocessor for this target machine.  */
 #define TARGET_CPU_CPP_BUILTINS() arc64_cpu_cpp_builtins (pfile)
 
-/* Dispatch tables.  */
-#define JUMP_TABLES_IN_TEXT_SECTION 1
-#define CASE_VECTOR_MODE SImode
-#define CASE_VECTOR_PC_RELATIVE 1
-#define ADDR_VEC_ALIGN(VEC_INSN) 0
+#define CASE_VECTOR_MODE Pmode
 
 /* Define this macro if it is advisable to hold scalars in registers
    in a wider mode than that declared by the program.  In such cases,
@@ -472,16 +468,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
       assemble_name ((FILE), (STR));			\
     }							\
   while (0)
-
-#define LOCAL_LABEL_PREFIX	"."
-
-/* This is how to output an element of a PIC case-vector. */
-#define ASM_OUTPUT_ADDR_DIFF_ELT(STREAM, BODY, VALUE, REL)		\
-  fprintf (STREAM, "\tb\t@%sL%d\n",					\
-	   LOCAL_LABEL_PREFIX, VALUE)
-
-/* Defined to also emit an .align in elfos.h.  We don't want that.  */
-#undef ASM_OUTPUT_CASE_LABEL
 
 /* Section selection.  */
 
@@ -535,8 +521,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define TARGET_ARC64_DIVREM_DEFAULT 0
 
 #define TARGET_ARC64_MPY64 TARGET_MPY64
-
-#define ARC64_HAS_CODE_DENSITY TARGET_CODE_DENSITY
 
 /* IFCVT macros.  */
 #define STORE_FLAG_VALUE 1
