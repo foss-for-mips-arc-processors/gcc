@@ -29,7 +29,6 @@ extern int arc64_asm_preferred_eh_data_format (int, int);
 extern void arc64_expand_atomic_op (enum rtx_code, rtx, rtx, rtx, rtx, rtx);
 extern void arc64_expand_compare_and_swap (rtx []);
 extern void arc64_split_compare_and_swap (rtx []);
-extern void arc64_expand_casesi (rtx []);
 extern bool arc64_allow_direct_access_p (rtx);
 
 #endif /* RTX_CODE */
