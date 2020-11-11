@@ -67,7 +67,3 @@ Enable MPY64 multiplication instructions.
 mcpu=
 Target RejectNegative Joined
 -mcpu= Generate code for specific ARCv3 CPU variant.
-
-mcode-density
-Target Report Mask(CODE_DENSITY)
-Enable code-density instructions.
