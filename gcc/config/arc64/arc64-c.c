@@ -59,6 +59,13 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
   if (arc64_atomic_option)
     builtin_define_with_int_value ("__ARC64_ATOMIC__", arc64_atomic_option);
 
+  if (arc64_cmodel_var == ARC64_CMODEL_SMALL)
+    builtin_define ("__ARC64_CMODEL_SMALL__");
+  else if (arc64_cmodel_var == ARC64_CMODEL_MEDIUM)
+    builtin_define ("__ARC64_CMODEL_MEDIUM__");
+  else if (arc64_cmodel_var == ARC64_CMODEL_LARGE)
+    builtin_define ("__ARC64_CMODEL_LARGE__");
+
 #undef ARC64_C_DEF
 #define ARC64_C_DEF(NAME, CONDITION)		\
   def_or_undef_macro (pfile, NAME, CONDITION);
