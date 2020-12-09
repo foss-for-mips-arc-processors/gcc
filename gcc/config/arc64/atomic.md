@@ -29,12 +29,6 @@
   MEM_VOLATILE_P (operands[0]) = 1;
 })
 
-;; A compiler-only memory barrier for ARC700.  Generic code, when
-;; checking for the existence of various named patterns, uses
-;; asm("":::"memory") when we don't need an actual instruction.  For
-;; ARCHS, we use a hardware data memory barrier that waits for
-;; completion of current data memory operations before initiating
-;; similar data memory operations.
 (define_insn "*memory_barrier"
   [(set (match_operand:BLK 0 "" "")
 	(unspec:BLK [(match_dup 0)] ARC64_UNSPEC_MEMBAR))]

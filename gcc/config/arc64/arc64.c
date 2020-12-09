@@ -125,6 +125,34 @@ typedef struct GTY (()) machine_function
   int uses_anonymous_args;
 } machine_function;
 
+/* IDs for all the ARC builtins.  */
+
+enum arc64_builtin_id
+  {
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)	\
+    ARC64_BUILTIN_ ## NAME,
+#include "builtins.def"
+#undef DEF_BUILTIN
+
+    ARC64_BUILTIN_COUNT
+  };
+
+struct GTY(()) arc64_builtin_description
+{
+  enum insn_code icode;
+  int n_args;
+  tree fndecl;
+};
+
+static GTY(()) struct arc64_builtin_description
+arc_bdesc[ARC64_BUILTIN_COUNT] =
+{
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)		\
+  { (enum insn_code) CODE_FOR_ ## ICODE, N_ARGS, NULL_TREE },
+#include "builtins.def"
+#undef DEF_BUILTIN
+};
+
 /* Local variable true if we output scalled address.  */
 static bool scalled_p = false;
 /* Simple LUT for log2.  */
@@ -1899,6 +1927,487 @@ arc64_output_mi_thunk (FILE *file,
   reload_completed = 0;
 }
 
+/* Helper INIT_EXPANDERS.  */
+
+static struct machine_function *
+arc64_init_machine_status (void)
+{
+  struct machine_function *machine;
+  machine = ggc_cleared_alloc<machine_function> ();
+  return machine;
+}
+
+static tree
+arc64_builtin_decl (unsigned id, bool initialize_p ATTRIBUTE_UNUSED)
+{
+  if (id < ARC64_BUILTIN_COUNT)
+    return arc_bdesc[id].fndecl;
+
+  return error_mark_node;
+}
+
+/* Transform UP into lowercase and write the result to LO.
+   You must provide enough space for LO.  Return LO.  */
+
+static char*
+arc64_tolower (char *lo, const char *up)
+{
+  char *lo0 = lo;
+
+  for (; *up; up++, lo++)
+    *lo = TOLOWER (*up);
+
+  *lo = '\0';
+
+  return lo0;
+}
+
+/* Helper for adding the builtins.  */
+static void
+arc64_init_builtins (void)
+{
+  tree void_ftype_usint_usint
+    = build_function_type_list (void_type_node, unsigned_type_node,
+				unsigned_type_node, NULL_TREE);
+  tree usint_ftype_usint
+    = build_function_type_list  (long_unsigned_type_node,
+				 unsigned_type_node, NULL_TREE);
+  tree void_ftype_void
+    = build_function_type_list (void_type_node, NULL_TREE);
+  tree void_ftype_usint
+    = build_function_type_list (void_type_node, unsigned_type_node,
+				NULL_TREE);
+
+  /* Add the builtins.  */
+#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)			\
+  {									\
+    int id = ARC64_BUILTIN_ ## NAME;					\
+    const char *Name = "__builtin_arc_" #NAME;				\
+    char *name = (char*) alloca (1 + strlen (Name));			\
+									\
+    gcc_assert (id < ARC64_BUILTIN_COUNT);				\
+    if (MASK)								\
+      arc_bdesc[id].fndecl						\
+	= add_builtin_function (arc64_tolower(name, Name), TYPE, id,	\
+				BUILT_IN_MD, NULL, NULL_TREE);		\
+  }
+#include "builtins.def"
+#undef DEF_BUILTIN
+}
+
+/* Helper arc_expand_builtin, generates a pattern for the given icode
+   and arguments.  */
+
+static rtx_insn *
+apply_GEN_FCN (enum insn_code icode, rtx *arg)
+{
+  switch (insn_data[icode].n_generator_args)
+    {
+    case 0:
+      return GEN_FCN (icode) ();
+    case 1:
+      return GEN_FCN (icode) (arg[0]);
+    case 2:
+      return GEN_FCN (icode) (arg[0], arg[1]);
+    case 3:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2]);
+    case 4:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3]);
+    case 5:
+      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3], arg[4]);
+    default:
+      gcc_unreachable ();
+    }
+}
+
+/* Expand an expression EXP that calls a built-in function,
+   with result going to TARGET if that's convenient
+   (and in mode MODE if that's convenient).
+   SUBTARGET may be used as the target for computing one of EXP's operands.
+   IGNORE is nonzero if the value is to be ignored.  */
+
+static rtx
+arc64_expand_builtin (tree exp,
+		      rtx target,
+		      rtx subtarget ATTRIBUTE_UNUSED,
+		      machine_mode mode ATTRIBUTE_UNUSED,
+		      int ignore ATTRIBUTE_UNUSED)
+{
+  tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
+  unsigned int id = DECL_FUNCTION_CODE (fndecl);
+  const struct arc64_builtin_description *d = &arc_bdesc[id];
+  int i, j, n_args = call_expr_nargs (exp);
+  rtx pat = NULL_RTX;
+  rtx xop[5];
+  enum insn_code icode = d->icode;
+  machine_mode tmode = insn_data[icode].operand[0].mode;
+  int nonvoid;
+  tree arg0;
+  rtx op0;
+
+  if (id >= ARC64_BUILTIN_COUNT)
+    internal_error ("bad builtin fcode");
+
+  /* 1st part: Expand special builtins.  */
+  switch (id)
+    {
+    case ARC64_BUILTIN_NOP:
+      emit_insn (gen_nopv ());
+      return NULL_RTX;
+
+    case ARC64_BUILTIN_BRK:
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (const1_rtx));
+      return NULL_RTX;
+
+    case ARC64_BUILTIN_TRAP_S:
+      arg0 = CALL_EXPR_ARG (exp, 0);
+      fold (arg0);
+      op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (op0));
+      return NULL_RTX;
+    default:
+      break;
+    }
+
+  /* 2nd part: Expand regular builtins.  */
+  if (icode == 0)
+    internal_error ("bad builtin fcode");
+
+  nonvoid = TREE_TYPE (TREE_TYPE (fndecl)) != void_type_node;
+  j = 0;
+
+  if (nonvoid)
+    {
+      if (target == NULL_RTX
+	  || GET_MODE (target) != tmode
+	  || !insn_data[icode].operand[0].predicate (target, tmode))
+	{
+	  target = gen_reg_rtx (tmode);
+	}
+      xop[j++] = target;
+    }
+
+  gcc_assert (n_args <= 4);
+  for (i = 0; i < n_args; i++, j++)
+    {
+      tree arg = CALL_EXPR_ARG (exp, i);
+      machine_mode mode = insn_data[icode].operand[j].mode;
+      rtx op = expand_expr (arg, NULL_RTX, mode, EXPAND_NORMAL);
+      machine_mode opmode = GET_MODE (op);
+
+      if (CONST_INT_P (op))
+	opmode = mode;
+
+      if ((opmode == SImode) && (mode == HImode))
+	{
+	  opmode = HImode;
+	  op = gen_lowpart (HImode, op);
+	}
+
+      /* In case the insn wants input operands in modes different from
+	 the result, abort.  */
+      gcc_assert (opmode == mode || opmode == VOIDmode);
+
+      if (!insn_data[icode].operand[i + nonvoid].predicate (op, mode))
+	op = copy_to_mode_reg (mode, op);
+
+      xop[j] = op;
+    }
+
+  pat = apply_GEN_FCN (icode, xop);
+  if (pat == NULL_RTX)
+    return NULL_RTX;
+
+  emit_insn (pat);
+
+  if (nonvoid)
+    return target;
+  else
+    return const0_rtx;
+}
+
+/* A callback for the hw-doloop pass.  Called when a loop we have discovered
+   turns out not to be optimizable; we have to split the loop_end pattern into
+   a subtract and a test.  */
+
+static void
+hwloop_fail (hwloop_info loop)
+{
+  rtx test;
+  rtx insn;
+
+  emit_insn_before (gen_adddi_cmp0 (loop->iter_reg,
+				    loop->iter_reg,
+				    constm1_rtx),
+		    loop->loop_end);
+  test = gen_rtx_NE (VOIDmode, gen_rtx_REG (CC_ZNmode, CC_REGNUM), const0_rtx);
+  test = gen_rtx_IF_THEN_ELSE (VOIDmode, test,
+			       gen_rtx_LABEL_REF (Pmode, loop->start_label),
+			       pc_rtx);
+  insn = emit_jump_insn_before (gen_rtx_SET (pc_rtx, test),
+				loop->loop_end);
+
+  JUMP_LABEL (insn) = loop->start_label;
+  LABEL_NUSES (loop->start_label)++;
+  delete_insn (loop->loop_end);
+}
+
+/* Optimize LOOP.  We just are checking that the loop isn't too long,
+   returns true if so.  Return true if successful, false if the loop
+   should be marked bad.  If it returns false, the FAIL function is
+   called.  */
+
+static bool
+hwloop_optimize (hwloop_info loop)
+{
+  unsigned int length;
+
+  /* Call shorten_branches to calculate the insn lengths.  */
+  shorten_branches (get_insns());
+
+  if (!INSN_ADDRESSES_SET_P ())
+    {
+      fprintf (dump_file, ";; loop %d has an unknown length\n", loop->loop_no);
+      return false;
+    }
+
+  length = INSN_ADDRESSES (INSN_UID (loop->loop_end))
+    - INSN_ADDRESSES (INSN_UID (loop->start_label));
+  loop->length = length;
+  if (dump_file)
+    fprintf (dump_file, ";; loop %d with lenght %d\n", loop->loop_no,
+	     loop->length);
+  if (loop->length > MAX_LOOP_LENGTH
+      || loop->length < MIN_LOOP_LENGTH)
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; loop %d is too long\n", loop->loop_no);
+      return false;
+    }
+  if (loop->length == 0)
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; loop %d is empty\n", loop->loop_no);
+      return false;
+    }
+
+  return true;
+}
+
+/* A callback for the hw-doloop pass.  This function examines INSN; if
+   it is a loop_end pattern we recognize, return the reg rtx for the
+   loop counter.  Otherwise, return NULL_RTX.  */
+
+static rtx
+hwloop_pattern_reg (rtx_insn *insn)
+{
+  rtx reg;
+
+  if (!JUMP_P (insn) || recog_memoized (insn) != CODE_FOR_dbnz)
+    return NULL_RTX;
+
+  reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 1));
+  if (!REG_P (reg))
+    return NULL_RTX;
+  return reg;
+}
+
+static struct hw_doloop_hooks arc64_doloop_hooks =
+{
+  hwloop_pattern_reg,
+  hwloop_optimize,
+  hwloop_fail
+};
+
+/* Machine specific reorg step.  */
+static void
+arc64_reorg (void)
+{
+  compute_bb_for_insn ();
+  df_analyze ();
+  reorg_loops (true, &arc64_doloop_hooks);
+}
+
+/* Expand a compare and swap pattern.  */
+
+static void
+emit_unlikely_jump (rtx insn)
+{
+  rtx_insn *jump = emit_jump_insn (insn);
+  add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
+}
+
+/* Emit a (pre) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_pre_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, true))
+    emit_insn (gen_memory_barrier ());
+}
+
+/* Emit a (post) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+static void
+arc64_post_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, false))
+    emit_insn (gen_memory_barrier ());
+}
+
+/* Expand code to perform a 8 or 16-bit compare and swap by doing
+   32-bit compare and swap on the word containing the byte or
+   half-word.  The difference between a weak and a strong CAS is that
+   the weak version may simply fail.  The strong version relies on two
+   loops, one checks if the SCOND op is succsfully or not, the other
+   checks if the 32 bit accessed location which contains the 8 or 16
+   bit datum is not changed by other thread.  The first loop is
+   implemented by the atomic_compare_and_swapsdi_1 pattern.  The second
+   loops is implemented by this routine.  */
+
+static void
+arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
+				rtx oldval, rtx newval, rtx weak,
+				rtx mod_s, rtx mod_f)
+{
+  rtx addr1 = force_reg (Pmode, XEXP (mem, 0));
+  rtx addr = gen_reg_rtx (Pmode);
+  rtx off = gen_reg_rtx (SImode);
+  rtx oldv = gen_reg_rtx (SImode);
+  rtx newv = gen_reg_rtx (SImode);
+  rtx oldvalue = gen_reg_rtx (SImode);
+  rtx newvalue = gen_reg_rtx (SImode);
+  rtx res = gen_reg_rtx (SImode);
+  rtx resv = gen_reg_rtx (SImode);
+  rtx memsi, val, mask, end_label, loop_label, cc, x;
+  machine_mode mode;
+  bool is_weak = (weak != const0_rtx);
+
+  /* Truncate the address.  */
+  emit_insn (gen_rtx_SET (addr,
+			  gen_rtx_AND (Pmode, addr1, GEN_INT (-4))));
+
+  /* Compute the datum offset.  */
+
+  emit_insn (gen_rtx_SET (off, gen_rtx_AND (SImode,
+					    gen_lowpart(SImode, addr1),
+					    GEN_INT (3))));
+
+  /* Normal read from truncated address.  */
+  memsi = gen_rtx_MEM (SImode, addr);
+  set_mem_alias_set (memsi, ALIAS_SET_MEMORY_BARRIER);
+  MEM_VOLATILE_P (memsi) = MEM_VOLATILE_P (mem);
+
+  val = copy_to_reg (memsi);
+
+  /* Convert the offset in bits.  */
+  emit_insn (gen_rtx_SET (off,
+			  gen_rtx_ASHIFT (SImode, off, GEN_INT (3))));
+
+  /* Get the proper mask.  */
+  if (GET_MODE (mem) == QImode)
+    mask = force_reg (SImode, GEN_INT (0xff));
+  else
+    mask = force_reg (SImode, GEN_INT (0xffff));
+
+  emit_insn (gen_rtx_SET (mask,
+			  gen_rtx_ASHIFT (SImode, mask, off)));
+
+  /* Prepare the old and new values.  */
+  emit_insn (gen_rtx_SET (val,
+			  gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
+				       val)));
+
+  oldval = gen_lowpart (SImode, oldval);
+  emit_insn (gen_rtx_SET (oldv,
+			  gen_rtx_ASHIFT (SImode, oldval, off)));
+
+  newval = gen_lowpart_common (SImode, newval);
+  emit_insn (gen_rtx_SET (newv,
+			  gen_rtx_ASHIFT (SImode, newval, off)));
+
+  emit_insn (gen_rtx_SET (oldv,
+			  gen_rtx_AND (SImode, oldv, mask)));
+
+  emit_insn (gen_rtx_SET (newv,
+			  gen_rtx_AND (SImode, newv, mask)));
+
+  if (!is_weak)
+    {
+      end_label = gen_label_rtx ();
+      loop_label = gen_label_rtx ();
+      emit_label (loop_label);
+    }
+
+  /* Make the old and new values.  */
+  emit_insn (gen_rtx_SET (oldvalue,
+			  gen_rtx_IOR (SImode, oldv, val)));
+
+  emit_insn (gen_rtx_SET (newvalue,
+			  gen_rtx_IOR (SImode, newv, val)));
+
+  /* Try an 32bit atomic compare and swap.  It clobbers the CC
+     register.  */
+  if (GET_MODE (mem) == SImode)
+    emit_insn (gen_atomic_compare_and_swapsi_1 (res, memsi, oldvalue, newvalue,
+						weak, mod_s, mod_f));
+  else /* DImode */
+    emit_insn (gen_atomic_compare_and_swapdi_1 (res, memsi, oldvalue, newvalue,
+						weak, mod_s, mod_f));
+
+  /* Regardless of the weakness of the operation, a proper boolean
+     result needs to be provided.  */
+  x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+  x = gen_rtx_EQ (SImode, x, const0_rtx);
+  emit_insn (gen_rtx_SET (bool_result, x));
+
+  if (!is_weak)
+    {
+      /* Check the results: if the atomic op is successfully the goto
+	 to end label.  */
+      x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
+      x = gen_rtx_EQ (VOIDmode, x, const0_rtx);
+      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+				gen_rtx_LABEL_REF (Pmode, end_label), pc_rtx);
+      emit_jump_insn (gen_rtx_SET (pc_rtx, x));
+
+      /* Wait for the right moment when the accessed 32-bit location
+	 is stable.  */
+      emit_insn (gen_rtx_SET (resv,
+			      gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
+					   res)));
+      mode = SELECT_CC_MODE (NE, resv, val);
+      cc = gen_rtx_REG (mode, CC_REGNUM);
+      emit_insn (gen_rtx_SET (cc, gen_rtx_COMPARE (mode, resv, val)));
+
+      /* Set the new value of the 32 bit location, proper masked.  */
+      emit_insn (gen_rtx_SET (val, resv));
+
+      /* Try again if location is unstable.  Fall through if only
+	 scond op failed.  */
+      x = gen_rtx_NE (VOIDmode, cc, const0_rtx);
+      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+				gen_rtx_LABEL_REF (Pmode, loop_label), pc_rtx);
+      emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+
+      emit_label (end_label);
+    }
+
+  /* End: proper return the result for the given mode.  */
+  emit_insn (gen_rtx_SET (res,
+			  gen_rtx_AND (SImode, res, mask)));
+
+  emit_insn (gen_rtx_SET (res,
+			  gen_rtx_LSHIFTRT (SImode, res, off)));
+
+  emit_move_insn (result, gen_lowpart (GET_MODE (result), res));
+}
+
 /*
   Global functions.
 */
@@ -2254,13 +2763,8 @@ arc64_initial_elimination_offset (unsigned from, unsigned to)
   gcc_unreachable ();
 }
 
-static struct machine_function *
-arc64_init_machine_status (void)
-{
-  struct machine_function *machine;
-  machine = ggc_cleared_alloc<machine_function> ();
-  return machine;
-}
+/* Helper for INIT_EXPANDERS macro called to initialize any target
+   specific information.  */
 
 void arc64_init_expanders (void)
 {
@@ -2368,356 +2872,6 @@ arc64_limm_addr_p (rtx op)
       break;
     }
   return false;
-}
-
-/* IDs for all the ARC builtins.  */
-
-enum arc64_builtin_id
-  {
-#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)	\
-    ARC64_BUILTIN_ ## NAME,
-#include "builtins.def"
-#undef DEF_BUILTIN
-
-    ARC64_BUILTIN_COUNT
-  };
-
-struct GTY(()) arc64_builtin_description
-{
-  enum insn_code icode;
-  int n_args;
-  tree fndecl;
-};
-
-static GTY(()) struct arc64_builtin_description
-arc_bdesc[ARC64_BUILTIN_COUNT] =
-{
-#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)		\
-  { (enum insn_code) CODE_FOR_ ## ICODE, N_ARGS, NULL_TREE },
-#include "builtins.def"
-#undef DEF_BUILTIN
-};
-
-static tree
-arc64_builtin_decl (unsigned id, bool initialize_p ATTRIBUTE_UNUSED)
-{
-  if (id < ARC64_BUILTIN_COUNT)
-    return arc_bdesc[id].fndecl;
-
-  return error_mark_node;
-}
-
-/* Transform UP into lowercase and write the result to LO.
-   You must provide enough space for LO.  Return LO.  */
-
-static char*
-arc64_tolower (char *lo, const char *up)
-{
-  char *lo0 = lo;
-
-  for (; *up; up++, lo++)
-    *lo = TOLOWER (*up);
-
-  *lo = '\0';
-
-  return lo0;
-}
-
-static void
-arc64_init_builtins (void)
-{
-  tree void_ftype_usint_usint
-    = build_function_type_list (void_type_node, unsigned_type_node,
-				unsigned_type_node, NULL_TREE);
-  tree usint_ftype_usint
-    = build_function_type_list  (long_unsigned_type_node,
-				 unsigned_type_node, NULL_TREE);
-  tree void_ftype_void
-    = build_function_type_list (void_type_node, NULL_TREE);
-  tree void_ftype_usint
-    = build_function_type_list (void_type_node, unsigned_type_node,
-				NULL_TREE);
-
-  /* Add the builtins.  */
-#define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)			\
-  {									\
-    int id = ARC64_BUILTIN_ ## NAME;					\
-    const char *Name = "__builtin_arc_" #NAME;				\
-    char *name = (char*) alloca (1 + strlen (Name));			\
-									\
-    gcc_assert (id < ARC64_BUILTIN_COUNT);				\
-    if (MASK)								\
-      arc_bdesc[id].fndecl						\
-	= add_builtin_function (arc64_tolower(name, Name), TYPE, id,	\
-				BUILT_IN_MD, NULL, NULL_TREE);		\
-  }
-#include "builtins.def"
-#undef DEF_BUILTIN
-}
-
-/* Helper arc_expand_builtin, generates a pattern for the given icode
-   and arguments.  */
-
-static rtx_insn *
-apply_GEN_FCN (enum insn_code icode, rtx *arg)
-{
-  switch (insn_data[icode].n_generator_args)
-    {
-    case 0:
-      return GEN_FCN (icode) ();
-    case 1:
-      return GEN_FCN (icode) (arg[0]);
-    case 2:
-      return GEN_FCN (icode) (arg[0], arg[1]);
-    case 3:
-      return GEN_FCN (icode) (arg[0], arg[1], arg[2]);
-    case 4:
-      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3]);
-    case 5:
-      return GEN_FCN (icode) (arg[0], arg[1], arg[2], arg[3], arg[4]);
-    default:
-      gcc_unreachable ();
-    }
-}
-
-/* Expand an expression EXP that calls a built-in function,
-   with result going to TARGET if that's convenient
-   (and in mode MODE if that's convenient).
-   SUBTARGET may be used as the target for computing one of EXP's operands.
-   IGNORE is nonzero if the value is to be ignored.  */
-
-static rtx
-arc64_expand_builtin (tree exp,
-		      rtx target,
-		      rtx subtarget ATTRIBUTE_UNUSED,
-		      machine_mode mode ATTRIBUTE_UNUSED,
-		      int ignore ATTRIBUTE_UNUSED)
-{
-  tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
-  unsigned int id = DECL_FUNCTION_CODE (fndecl);
-  const struct arc64_builtin_description *d = &arc_bdesc[id];
-  int i, j, n_args = call_expr_nargs (exp);
-  rtx pat = NULL_RTX;
-  rtx xop[5];
-  enum insn_code icode = d->icode;
-  machine_mode tmode = insn_data[icode].operand[0].mode;
-  int nonvoid;
-  tree arg0;
-  rtx op0;
-
-  if (id >= ARC64_BUILTIN_COUNT)
-    internal_error ("bad builtin fcode");
-
-  /* 1st part: Expand special builtins.  */
-  switch (id)
-    {
-    case ARC64_BUILTIN_NOP:
-      emit_insn (gen_nopv ());
-      return NULL_RTX;
-
-    case ARC64_BUILTIN_BRK:
-      gcc_assert (icode != 0);
-      emit_insn (GEN_FCN (icode) (const1_rtx));
-      return NULL_RTX;
-
-    case ARC64_BUILTIN_TRAP_S:
-      arg0 = CALL_EXPR_ARG (exp, 0);
-      fold (arg0);
-      op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
-
-      gcc_assert (icode != 0);
-      emit_insn (GEN_FCN (icode) (op0));
-      return NULL_RTX;
-    default:
-      break;
-    }
-
-  /* 2nd part: Expand regular builtins.  */
-  if (icode == 0)
-    internal_error ("bad builtin fcode");
-
-  nonvoid = TREE_TYPE (TREE_TYPE (fndecl)) != void_type_node;
-  j = 0;
-
-  if (nonvoid)
-    {
-      if (target == NULL_RTX
-	  || GET_MODE (target) != tmode
-	  || !insn_data[icode].operand[0].predicate (target, tmode))
-	{
-	  target = gen_reg_rtx (tmode);
-	}
-      xop[j++] = target;
-    }
-
-  gcc_assert (n_args <= 4);
-  for (i = 0; i < n_args; i++, j++)
-    {
-      tree arg = CALL_EXPR_ARG (exp, i);
-      machine_mode mode = insn_data[icode].operand[j].mode;
-      rtx op = expand_expr (arg, NULL_RTX, mode, EXPAND_NORMAL);
-      machine_mode opmode = GET_MODE (op);
-
-      if (CONST_INT_P (op))
-	opmode = mode;
-
-      if ((opmode == SImode) && (mode == HImode))
-	{
-	  opmode = HImode;
-	  op = gen_lowpart (HImode, op);
-	}
-
-      /* In case the insn wants input operands in modes different from
-	 the result, abort.  */
-      gcc_assert (opmode == mode || opmode == VOIDmode);
-
-      if (!insn_data[icode].operand[i + nonvoid].predicate (op, mode))
-	op = copy_to_mode_reg (mode, op);
-
-      xop[j] = op;
-    }
-
-  pat = apply_GEN_FCN (icode, xop);
-  if (pat == NULL_RTX)
-    return NULL_RTX;
-
-  emit_insn (pat);
-
-  if (nonvoid)
-    return target;
-  else
-    return const0_rtx;
-}
-
-/* A callback for the hw-doloop pass.  Called when a loop we have discovered
-   turns out not to be optimizable; we have to split the loop_end pattern into
-   a subtract and a test.  */
-
-static void
-hwloop_fail (hwloop_info loop)
-{
-  rtx test;
-  rtx insn;
-
-  emit_insn_before (gen_adddi_cmp0 (loop->iter_reg,
-				    loop->iter_reg,
-				    constm1_rtx),
-		    loop->loop_end);
-  test = gen_rtx_NE (VOIDmode, gen_rtx_REG (CC_ZNmode, CC_REGNUM), const0_rtx);
-  test = gen_rtx_IF_THEN_ELSE (VOIDmode, test,
-			       gen_rtx_LABEL_REF (Pmode, loop->start_label),
-			       pc_rtx);
-  insn = emit_jump_insn_before (gen_rtx_SET (pc_rtx, test),
-				loop->loop_end);
-
-  JUMP_LABEL (insn) = loop->start_label;
-  LABEL_NUSES (loop->start_label)++;
-  delete_insn (loop->loop_end);
-}
-
-/* Optimize LOOP.  We just are checking that the loop isn't too long,
-   returns true if so.  Return true if successful, false if the loop
-   should be marked bad.  If it returns false, the FAIL function is
-   called.  */
-
-static bool
-hwloop_optimize (hwloop_info loop)
-{
-  unsigned int length;
-
-  /* Call shorten_branches to calculate the insn lengths.  */
-  shorten_branches (get_insns());
-
-  if (!INSN_ADDRESSES_SET_P ())
-    {
-      fprintf (dump_file, ";; loop %d has an unknown length\n", loop->loop_no);
-      return false;
-    }
-
-  length = INSN_ADDRESSES (INSN_UID (loop->loop_end))
-    - INSN_ADDRESSES (INSN_UID (loop->start_label));
-  loop->length = length;
-  if (dump_file)
-    fprintf (dump_file, ";; loop %d with lenght %d\n", loop->loop_no,
-	     loop->length);
-  if (loop->length > MAX_LOOP_LENGTH
-      || loop->length < MIN_LOOP_LENGTH)
-    {
-      if (dump_file)
-	fprintf (dump_file, ";; loop %d is too long\n", loop->loop_no);
-      return false;
-    }
-  if (loop->length == 0)
-    {
-      if (dump_file)
-	fprintf (dump_file, ";; loop %d is empty\n", loop->loop_no);
-      return false;
-    }
-
-  return true;
-}
-
-/* A callback for the hw-doloop pass.  This function examines INSN; if
-   it is a loop_end pattern we recognize, return the reg rtx for the
-   loop counter.  Otherwise, return NULL_RTX.  */
-
-static rtx
-hwloop_pattern_reg (rtx_insn *insn)
-{
-  rtx reg;
-
-  if (!JUMP_P (insn) || recog_memoized (insn) != CODE_FOR_dbnz)
-    return NULL_RTX;
-
-  reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 1));
-  if (!REG_P (reg))
-    return NULL_RTX;
-  return reg;
-}
-
-static struct hw_doloop_hooks arc64_doloop_hooks =
-{
-  hwloop_pattern_reg,
-  hwloop_optimize,
-  hwloop_fail
-};
-
-/* Machine specific reorg step.  */
-static void
-arc64_reorg (void)
-{
-  compute_bb_for_insn ();
-  df_analyze ();
-  reorg_loops (true, &arc64_doloop_hooks);
-}
-
-/* Expand a compare and swap pattern.  */
-
-static void
-emit_unlikely_jump (rtx insn)
-{
-  rtx_insn *jump = emit_jump_insn (insn);
-  add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
-}
-
-/* Emit a (pre) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_pre_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, true))
-    emit_insn (gen_memory_barrier ());
-}
-
-/* Emit a (post) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_post_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, false))
-    emit_insn (gen_memory_barrier ());
 }
 
 /* Used by move_dest_operand predicate.  */
@@ -2914,154 +3068,6 @@ arc64_expand_atomic_op (enum rtx_code code, rtx mem, rtx val,
   emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
 
   arc64_post_atomic_barrier (model);
-}
-
-/* Expand code to perform a 8 or 16-bit compare and swap by doing
-   32-bit compare and swap on the word containing the byte or
-   half-word.  The difference between a weak and a strong CAS is that
-   the weak version may simply fail.  The strong version relies on two
-   loops, one checks if the SCOND op is succsfully or not, the other
-   checks if the 32 bit accessed location which contains the 8 or 16
-   bit datum is not changed by other thread.  The first loop is
-   implemented by the atomic_compare_and_swapsdi_1 pattern.  The second
-   loops is implemented by this routine.  */
-
-static void
-arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
-				rtx oldval, rtx newval, rtx weak,
-				rtx mod_s, rtx mod_f)
-{
-  rtx addr1 = force_reg (Pmode, XEXP (mem, 0));
-  rtx addr = gen_reg_rtx (Pmode);
-  rtx off = gen_reg_rtx (SImode);
-  rtx oldv = gen_reg_rtx (SImode);
-  rtx newv = gen_reg_rtx (SImode);
-  rtx oldvalue = gen_reg_rtx (SImode);
-  rtx newvalue = gen_reg_rtx (SImode);
-  rtx res = gen_reg_rtx (SImode);
-  rtx resv = gen_reg_rtx (SImode);
-  rtx memsi, val, mask, end_label, loop_label, cc, x;
-  machine_mode mode;
-  bool is_weak = (weak != const0_rtx);
-
-  /* Truncate the address.  */
-  emit_insn (gen_rtx_SET (addr,
-			  gen_rtx_AND (Pmode, addr1, GEN_INT (-4))));
-
-  /* Compute the datum offset.  */
-
-  emit_insn (gen_rtx_SET (off, gen_rtx_AND (SImode,
-					    gen_lowpart(SImode, addr1),
-					    GEN_INT (3))));
-
-  /* Normal read from truncated address.  */
-  memsi = gen_rtx_MEM (SImode, addr);
-  set_mem_alias_set (memsi, ALIAS_SET_MEMORY_BARRIER);
-  MEM_VOLATILE_P (memsi) = MEM_VOLATILE_P (mem);
-
-  val = copy_to_reg (memsi);
-
-  /* Convert the offset in bits.  */
-  emit_insn (gen_rtx_SET (off,
-			  gen_rtx_ASHIFT (SImode, off, GEN_INT (3))));
-
-  /* Get the proper mask.  */
-  if (GET_MODE (mem) == QImode)
-    mask = force_reg (SImode, GEN_INT (0xff));
-  else
-    mask = force_reg (SImode, GEN_INT (0xffff));
-
-  emit_insn (gen_rtx_SET (mask,
-			  gen_rtx_ASHIFT (SImode, mask, off)));
-
-  /* Prepare the old and new values.  */
-  emit_insn (gen_rtx_SET (val,
-			  gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
-				       val)));
-
-  oldval = gen_lowpart (SImode, oldval);
-  emit_insn (gen_rtx_SET (oldv,
-			  gen_rtx_ASHIFT (SImode, oldval, off)));
-
-  newval = gen_lowpart_common (SImode, newval);
-  emit_insn (gen_rtx_SET (newv,
-			  gen_rtx_ASHIFT (SImode, newval, off)));
-
-  emit_insn (gen_rtx_SET (oldv,
-			  gen_rtx_AND (SImode, oldv, mask)));
-
-  emit_insn (gen_rtx_SET (newv,
-			  gen_rtx_AND (SImode, newv, mask)));
-
-  if (!is_weak)
-    {
-      end_label = gen_label_rtx ();
-      loop_label = gen_label_rtx ();
-      emit_label (loop_label);
-    }
-
-  /* Make the old and new values.  */
-  emit_insn (gen_rtx_SET (oldvalue,
-			  gen_rtx_IOR (SImode, oldv, val)));
-
-  emit_insn (gen_rtx_SET (newvalue,
-			  gen_rtx_IOR (SImode, newv, val)));
-
-  /* Try an 32bit atomic compare and swap.  It clobbers the CC
-     register.  */
-  if (GET_MODE (mem) == SImode)
-    emit_insn (gen_atomic_compare_and_swapsi_1 (res, memsi, oldvalue, newvalue,
-						weak, mod_s, mod_f));
-  else /* DImode */
-    emit_insn (gen_atomic_compare_and_swapdi_1 (res, memsi, oldvalue, newvalue,
-						weak, mod_s, mod_f));
-
-  /* Regardless of the weakness of the operation, a proper boolean
-     result needs to be provided.  */
-  x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
-  x = gen_rtx_EQ (SImode, x, const0_rtx);
-  emit_insn (gen_rtx_SET (bool_result, x));
-
-  if (!is_weak)
-    {
-      /* Check the results: if the atomic op is successfully the goto
-	 to end label.  */
-      x = gen_rtx_REG (CC_Zmode, CC_REGNUM);
-      x = gen_rtx_EQ (VOIDmode, x, const0_rtx);
-      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
-				gen_rtx_LABEL_REF (Pmode, end_label), pc_rtx);
-      emit_jump_insn (gen_rtx_SET (pc_rtx, x));
-
-      /* Wait for the right moment when the accessed 32-bit location
-	 is stable.  */
-      emit_insn (gen_rtx_SET (resv,
-			      gen_rtx_AND (SImode, gen_rtx_NOT (SImode, mask),
-					   res)));
-      mode = SELECT_CC_MODE (NE, resv, val);
-      cc = gen_rtx_REG (mode, CC_REGNUM);
-      emit_insn (gen_rtx_SET (cc, gen_rtx_COMPARE (mode, resv, val)));
-
-      /* Set the new value of the 32 bit location, proper masked.  */
-      emit_insn (gen_rtx_SET (val, resv));
-
-      /* Try again if location is unstable.  Fall through if only
-	 scond op failed.  */
-      x = gen_rtx_NE (VOIDmode, cc, const0_rtx);
-      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
-				gen_rtx_LABEL_REF (Pmode, loop_label), pc_rtx);
-      emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
-
-      emit_label (end_label);
-    }
-
-  /* End: proper return the result for the given mode.  */
-  emit_insn (gen_rtx_SET (res,
-			  gen_rtx_AND (SImode, res, mask)));
-
-  emit_insn (gen_rtx_SET (res,
-			  gen_rtx_LSHIFTRT (SImode, res, off)));
-
-  emit_move_insn (result, gen_lowpart (GET_MODE (result), res));
 }
 
 /* Helper function used by "atomic_compare_and_swap" expand
