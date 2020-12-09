@@ -18,7 +18,7 @@
 ;; <http://www.gnu.org/licenses/>.
 
 ;; Operations which can be used with atomic loads and stores.
-(define_code_iterator ATOMICOP [plus minus ior xor and])
+(define_code_iterator ATOPS [plus minus ior xor and])
 
 (define_expand "memory_barrier"
   [(set (match_dup 0)
@@ -29,12 +29,6 @@
   MEM_VOLATILE_P (operands[0]) = 1;
 })
 
-;; A compiler-only memory barrier for ARC700.  Generic code, when
-;; checking for the existence of various named patterns, uses
-;; asm("":::"memory") when we don't need an actual instruction.  For
-;; ARCHS, we use a hardware data memory barrier that waits for
-;; completion of current data memory operations before initiating
-;; similar data memory operations.
 (define_insn "*memory_barrier"
   [(set (match_operand:BLK 0 "" "")
 	(unspec:BLK [(match_dup 0)] ARC64_UNSPEC_MEMBAR))]
@@ -134,10 +128,10 @@
    (set_attr "predicable" "no")
    (set_attr "length" "*")])
 
-(define_expand "atomic_<optab>si"
-  [(match_operand:SI 0 "mem_noofs_operand" "")  ;; memory
-   (ATOMICOP:SI (match_dup 0)
-		(match_operand:SI 1 "register_operand" "")) ;; operand
+(define_expand "atomic_<optab><mode>"
+  [(match_operand:GPI 0 "mem_noofs_operand" "")  ;; memory
+   (ATOPS:GPI (match_dup 0)
+	      (match_operand:GPI 1 "register_operand" "")) ;; operand
    (match_operand:SI 2 "const_int_operand" "")] ;; model
   "ARC64_HAS_ATOMIC_1"
 {
@@ -160,8 +154,8 @@
 (define_expand "atomic_fetch_<optab><mode>"
   [(match_operand:GPI 0 "register_operand" "")	;; output
    (match_operand:GPI 1 "mem_noofs_operand" "")	;; memory
-   (ATOMICOP:SI (match_dup 1)
-		(match_operand:GPI 2 "register_operand" "")) ;; operand
+   (ATOPS:GPI (match_dup 1)
+	      (match_operand:GPI 2 "register_operand" "")) ;; operand
    (match_operand:SI 3 "const_int_operand" "")]	;; model
   "ARC64_HAS_ATOMIC_1"
 {
@@ -174,7 +168,7 @@
   [(match_operand:GPI 0 "register_operand" "")	;; output
    (match_operand:GPI 1 "mem_noofs_operand" "")	;; memory
    (match_operand:GPI 2 "register_operand" "")	;; operand
-   (match_operand:GPI 3 "const_int_operand" "")]	;; model
+   (match_operand:SI  3 "const_int_operand" "")]	;; model
   "ARC64_HAS_ATOMIC_1"
 {
   arc64_expand_atomic_op (NOT, operands[1], operands[2],
@@ -185,9 +179,9 @@
 (define_expand "atomic_<optab>_fetch<mode>"
   [(match_operand:GPI 0 "register_operand" "")	;; output
    (match_operand:GPI 1 "mem_noofs_operand" "")	;; memory
-   (ATOMICOP:GPI (match_dup 1)
-		(match_operand:GPI 2 "register_operand" "")) ;; operand
-   (match_operand:GPI 3 "const_int_operand" "")]	;; model
+   (ATOPS:GPI (match_dup 1)
+	      (match_operand:GPI 2 "register_operand" "")) ;; operand
+   (match_operand:SI 3 "const_int_operand" "")]	;; model
   "ARC64_HAS_ATOMIC_1"
 {
   arc64_expand_atomic_op (<CODE>, operands[1], operands[2],
@@ -199,7 +193,7 @@
   [(match_operand:GPI 0 "register_operand" "")		;; output
    (match_operand:GPI 1 "mem_noofs_operand" "")		;; memory
    (match_operand:GPI 2 "register_operand" "")		;; operand
-   (match_operand:GPI 3 "const_int_operand" "")]	;; model
+   (match_operand:SI 3 "const_int_operand" "")]	;; model
   "ARC64_HAS_ATOMIC_1"
 {
   arc64_expand_atomic_op (NOT, operands[1], operands[2],
