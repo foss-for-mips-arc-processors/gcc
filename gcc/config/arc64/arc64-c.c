@@ -56,9 +56,6 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
   builtin_define ("__LITTLE_ENDIAN__");
   builtin_define ("__ARCV3__");
 
-  if (arc64_atomic_option)
-    builtin_define_with_int_value ("__ARC64_ATOMIC__", arc64_atomic_option);
-
   if (arc64_cmodel_var == ARC64_CMODEL_SMALL)
     builtin_define ("__ARC64_CMODEL_SMALL__");
   else if (arc64_cmodel_var == ARC64_CMODEL_MEDIUM)
