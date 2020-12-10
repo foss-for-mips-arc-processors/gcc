@@ -20,6 +20,9 @@
 ;; Operations which can be used with atomic loads and stores.
 (define_code_iterator ATOPS [plus minus ior xor and])
 
+;; Operations which are supported by hardware.
+(define_code_iterator ATHWOPS [plus ior xor and])
+
 (define_expand "memory_barrier"
   [(set (match_dup 0)
 	(unspec:BLK [(match_dup 0)] ARC64_UNSPEC_MEMBAR))]
@@ -82,7 +85,7 @@
 	  [(match_operand:GPI 1 "mem_noofs_operand" "ATOMC")]
 	  ARC64_VUNSPEC_LL))]
   "ARC64_HAS_ATOMIC_1"
-  "llock<mcctab> %0,%1"
+  "llock<mcctab>\\t%0,%1"
   [(set_attr "type" "llock")
    (set_attr "iscompact" "no")
    (set_attr "predicable" "no")
@@ -94,7 +97,7 @@
 			   ARC64_VUNSPEC_SC))
    (clobber (reg:CC_Z CC_REGNUM))]
   "ARC64_HAS_ATOMIC_1"
-  "scond<mcctab> %1,%0"
+  "scond<mcctab>\\t%1,%0"
   [(set_attr "type" "scond")
    (set_attr "iscompact" "no")
    (set_attr "predicable" "no")
@@ -122,11 +125,34 @@
    (set (match_dup 1)
 	(match_operand:GPI 2 "register_operand" "0"))]
   ""
-  "ex<mcctab> %0,%1"
+  "ex<mcctab>\\t%0,%1"
   [(set_attr "type" "ex")
    (set_attr "iscompact" "no")
    (set_attr "predicable" "no")
    (set_attr "length" "*")])
+
+;; New Atomic options enabled by option 2
+(define_insn_and_split "atld_<optab><mode>"
+  [(set (match_operand:GPI 0 "register_operand" "=&r,r")
+	(match_operand:GPI 1 "mem_noofs_operand" "+ATOMC,ATOMC"))
+   (set (match_dup 1)
+	(unspec_volatile:GPI
+	 [(ATHWOPS:GPI (match_dup 0)
+		       (match_operand:GPI 2 "register_operand" "0,r"))
+	  (match_operand:SI 3 "const_int_operand")]
+	 ARC64_VUNSPEC_ATOOPS))]
+  "ARC64_HAS_ATOMIC_2"
+  "@
+   atld<sfxtab>.<optab>\\t%0,%1
+   #"
+  "&& reload_completed && !operands_match_p (operands[0], operands[2])"
+  [(const_int 0)]
+  {
+   emit_insn (gen_rtx_SET (operands[0], operands[2]));
+   emit_insn (gen_atld_<optab><mode> (operands[0], operands[1], operands[0], operands[3]));
+   DONE;
+  }
+  [(set_attr "type" "atld<sfxtab>op")])
 
 (define_expand "atomic_<optab><mode>"
   [(match_operand:GPI 0 "mem_noofs_operand" "")  ;; memory
@@ -152,17 +178,46 @@
 })
 
 (define_expand "atomic_fetch_<optab><mode>"
-  [(match_operand:GPI 0 "register_operand" "")	;; output
-   (match_operand:GPI 1 "mem_noofs_operand" "")	;; memory
-   (ATOPS:GPI (match_dup 1)
-	      (match_operand:GPI 2 "register_operand" "")) ;; operand
-   (match_operand:SI 3 "const_int_operand" "")]	;; model
+  [(set (match_operand:GPI 0 "register_operand")	;; output
+	(match_operand:GPI 1 "mem_noofs_operand"))	;; memory
+   (set (match_dup 1)
+	(unspec_volatile:GPI
+	 [(ATHWOPS:GPI (match_dup 1)
+		     (match_operand:GPI 2 "register_operand")) ;; operand
+	  (match_operand:SI 3 "const_int_operand")]	;; model
+	 ARC64_VUNSPEC_ATOOPS))]
   "ARC64_HAS_ATOMIC_1"
-{
-  arc64_expand_atomic_op (<CODE>, operands[1], operands[2],
-				operands[0], NULL_RTX, operands[3]);
-  DONE;
-})
+  {
+   if (!ARC64_HAS_ATOMIC_2)
+     {
+       arc64_expand_atomic_op (<CODE>, operands[1], operands[2],
+			       operands[0], NULL_RTX, operands[3]);
+       DONE;
+     }
+    if (!ARC64_HAS_ATOMIC_3)
+      arc64_pre_atomic_barrier ((enum memmodel) INTVAL (operands[3]));
+    emit_insn (gen_atld_<optab><mode> (operands[0], operands[1], operands[2], operands[3]));
+    if (!ARC64_HAS_ATOMIC_3)
+      arc64_post_atomic_barrier ((enum memmodel) INTVAL (operands[3]));
+    DONE;
+   })
+
+;; ARCv3 doesn't have a MINUS atomic memory operation.
+(define_expand "atomic_fetch_sub<mode>"
+  [(set (match_operand:GPI 0 "register_operand")	;; output
+	(match_operand:GPI 1 "mem_noofs_operand"))	;; memory
+   (set (match_dup 1)
+	(unspec_volatile:GPI
+	 [(minus:GPI (match_dup 1)
+		     (match_operand:GPI 2 "register_operand")) ;; operand
+	  (match_operand:SI 3 "const_int_operand")]	;; model
+	 ARC64_VUNSPEC_ATOOPS))]
+  "ARC64_HAS_ATOMIC_1"
+  {
+    arc64_expand_atomic_op (MINUS, operands[1], operands[2],
+			    operands[0], NULL_RTX, operands[3]);
+    DONE;
+  })
 
 (define_expand "atomic_fetch_nand<mode>"
   [(match_operand:GPI 0 "register_operand" "")	;; output
@@ -201,3 +256,13 @@
   DONE;
 })
 
+
+;; mode:emacs-lisp
+;; comment-start: ";; "
+;; eval: (set-syntax-table (caopy-sequence (syntax-table)))
+;; eval: (modify-syntax-entry ?[ "(]")
+;; eval: (modify-syntax-entry ?] ")[")
+;; eval: (modify-syntax-entry ?{ "(}")
+;; eval: (modify-syntax-entry ?} "){")
+;; eval: (setq indent-tabs-mode t)
+;; End:
