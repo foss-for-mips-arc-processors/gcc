@@ -27,6 +27,8 @@ extern rtx arc64_eh_return_handler_rtx (void);
 extern int arc64_asm_preferred_eh_data_format (int, int);
 
 extern void arc64_expand_atomic_op (enum rtx_code, rtx, rtx, rtx, rtx, rtx);
+extern void arc64_pre_atomic_barrier (enum memmodel);
+extern void arc64_post_atomic_barrier (enum memmodel);
 extern void arc64_expand_compare_and_swap (rtx []);
 extern void arc64_split_compare_and_swap (rtx []);
 extern bool arc64_allow_direct_access_p (rtx);

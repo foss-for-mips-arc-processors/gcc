@@ -2240,26 +2240,6 @@ emit_unlikely_jump (rtx insn)
   add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
 }
 
-/* Emit a (pre) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_pre_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, true))
-    emit_insn (gen_memory_barrier ());
-}
-
-/* Emit a (post) memory barrier around an atomic sequence according to
-   MODEL.  */
-
-static void
-arc64_post_atomic_barrier (enum memmodel model)
-{
-  if (need_atomic_barrier_p (model, false))
-    emit_insn (gen_memory_barrier ());
-}
-
 /* Expand code to perform a 8 or 16-bit compare and swap by doing
    32-bit compare and swap on the word containing the byte or
    half-word.  The difference between a weak and a strong CAS is that
@@ -2993,6 +2973,26 @@ arc64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
        break;
      }
    return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
+}
+
+/* Emit a (pre) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+void
+arc64_pre_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, true))
+    emit_insn (gen_memory_barrier ());
+}
+
+/* Emit a (post) memory barrier around an atomic sequence according to
+   MODEL.  */
+
+void
+arc64_post_atomic_barrier (enum memmodel model)
+{
+  if (need_atomic_barrier_p (model, false))
+    emit_insn (gen_memory_barrier ());
 }
 
 /* Expand an atomic fetch-and-operate pattern.  CODE is the binary operation
