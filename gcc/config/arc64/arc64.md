@@ -90,6 +90,7 @@
    ARC64_VUNSPEC_SC
    ARC64_VUNSPEC_LL
    ARC64_VUNSPEC_SYNC
+   ARC64_VUNSPEC_ATOOPS
 
    ARC64_UNSPEC_MEMBAR
    ])
@@ -241,13 +242,14 @@
 ;; this.  For optimizing for size the "length" attribute is used instead.
 (define_attr "cost" "" (const_int 0))
 
-(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl, asll, asr,
-asrl, bic, bl, block, bmsk, branch, branchcc, brk, bset, bsetl, btst, bxor,
-bxorl, compare, dbnz, dmb, ex, div, divl, ext, flag, jl, jump, ld, llock,
-lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl, neg, nop,
-norm, normh, norml, mpy, mpyl, not, notl, or, orl, return, ror,rol, sbcl,
-scond, setcc, sex, sr, st, sub, subl, swape, swapel, sync, trap, udiv,
-udivl, umod, umodl, unknown, xbfu, xor, xorl"
+(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
+asll, asr, asrl, atldop, atldlop, bic, bl, block, bmsk, branch,
+branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex,
+div, divl, ext, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl,
+min, minl, move, movecc, mod, modl, neg, nop, norm, normh, norml, mpy,
+mpyl, not, notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex,
+sr, st, sub, subl, swape, swapel, sync, trap, udiv, udivl, umod,
+umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
