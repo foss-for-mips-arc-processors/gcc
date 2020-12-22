@@ -33,6 +33,16 @@
 		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
 
+;; A restricted version of the above, still accepting symbols and label refs.
+(define_predicate "arc64_regsym_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (ior (match_code "label_ref")
+		 (match_code "symbol_ref"))
+	    (match_test "arc64_allow_direct_access_p (op)"))
+       (and (match_code "const_int")
+	    (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
+		 (match_test "SIGNED_INT32 (INTVAL (op))")))))
+
 (define_predicate "arc64_nonmem_operand"
   (ior (match_operand 0 "register_operand")
        (and (match_code "const_int")
