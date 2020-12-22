@@ -590,10 +590,11 @@ arc64_legitimate_address_1_p (machine_mode mode,
     return true;
 
   /* Scalled addresses.  */
-  if (load_p
-      && GET_CODE (x) == PLUS
+  if (GET_CODE (x) == PLUS
       && GET_CODE (XEXP (x, 0)) == MULT
-      && REG_P (XEXP (x, 1))
+      && ((load_p && REG_P (XEXP (x, 1)))
+	  || (load_p && CONST_INT_P (XEXP (x, 1)))
+	  || ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1), QImode))
       && REG_P (XEXP (XEXP (x, 0), 0))
       && CONST_INT_P (XEXP (XEXP (x, 0), 1)))
     switch (GET_MODE_SIZE (mode))
@@ -602,7 +603,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
       case 4:
       case 8:
 	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
-	  return true;;
+	  return true;
 	break;
       default:
 	break;
