@@ -461,7 +461,7 @@
 	(plus:GPI
 	 (ashift:GPI (match_operand:GPI 1 "register_operand" "q,r,r,r")
 		     (match_operand:GPI 2 "_1_2_3_operand" ""))
-	 (match_operand:GPI 3 "arc64_nonmem_operand"  "0,0,r,S32S0")))]
+	 (match_operand:GPI 3 "arc64_regsym_operand"  "0,0,r,S32S0SymMV")))]
   ""
   "add%2<sfxtab>%?\\t%0,%3,%1"
   [(set_attr "type" "add")
@@ -474,7 +474,7 @@
 	(compare:CC_ZN
 	 (plus:GPI (ashift:GPI (match_operand:GPI 1 "register_operand" "r,r,r")
 			       (match_operand:GPI 2 "_1_2_3_operand" ""))
-		  (match_operand:GPI 3 "arc64_nonmem_operand"  "0,r,S32S0"))
+		  (match_operand:GPI 3 "arc64_regsym_operand"  "0,r,S32S0SymMV"))
 	 (const_int 0)))
    (set (match_operand:GPI 0 "register_operand" "=r,r,r")
 	(plus:GPI (ashift:GPI (match_dup 1) (match_dup 2))
@@ -490,7 +490,7 @@
 	(compare:CC_ZN
 	 (plus:GPI (ashift:GPI (match_operand:GPI 0 "register_operand" "r,r,r")
 			       (match_operand:GPI 1 "_1_2_3_operand" ""))
-		  (match_operand:GPI 2 "arc64_nonmem_operand"  "0,r,S32S0"))
+		  (match_operand:GPI 2 "arc64_regsym_operand"  "0,r,S32S0SymMV"))
 	 (const_int 0)))]
   ""
   "add%1<sfxtab>%?.f\\t0,%2,%1"
@@ -500,7 +500,7 @@
 
 (define_insn "*sub<mode>_shift"
   [(set (match_operand:GPI 0 "register_operand" "=r,r,r")
-	(minus:GPI (match_operand:GPI 1 "arc64_nonmem_operand" "0,r,S32S0")
+	(minus:GPI (match_operand:GPI 1 "arc64_regsym_operand" "0,r,S32S0SymMV")
 		   (ashift:GPI (match_operand:GPI 2 "register_operand" "r,r,r")
 			       (match_operand:GPI 3 "_1_2_3_operand" ""))))]
   ""
