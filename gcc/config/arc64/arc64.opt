@@ -67,3 +67,7 @@ Enable MPY64 multiplication instructions.
 mcpu=
 Target RejectNegative Joined
 -mcpu= Generate code for specific ARCv3 CPU variant.
+
+munaligned-access
+Target Report Var(unaligned_access) Init(UNALIGNED_ACCESS_DEFAULT)
+Enable unaligned accesses to packed data.

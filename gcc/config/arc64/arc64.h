@@ -87,7 +87,12 @@
 
 /* Set this nonzero if move instructions will actually fail to work
    when given unaligned data.  */
-#define STRICT_ALIGNMENT	1
+#define STRICT_ALIGNMENT        (!unaligned_access)
+
+/* Default unaligned accesses.  */
+#ifndef UNALIGNED_ACCESS_DEFAULT
+#define UNALIGNED_ACCESS_DEFAULT 0
+#endif
 
 /* Layout of Source Language Data Types.  */
 #define SHORT_TYPE_SIZE         16
