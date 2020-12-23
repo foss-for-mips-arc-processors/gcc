@@ -20,6 +20,7 @@
 ARC64_C_DEF ("__ARC64_ATOMIC_1__", arc64_atomic_option == 1)
 ARC64_C_DEF ("__ARC64_ATOMIC_2__", arc64_atomic_option == 2)
 ARC64_C_DEF ("__ARC64_ATOMIC_3__", arc64_atomic_option == 3)
+ARC64_C_DEF ("__ARC64_UNALIGNED__", unaligned_access)
 
 /* Local Variables: */
 /* mode: c */
