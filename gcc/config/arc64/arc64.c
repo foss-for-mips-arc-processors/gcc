@@ -1070,6 +1070,11 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  return;
 	}
 
+      /* FIXME! consider volatile accesses as .di accesses, everything
+	 under an option.  */
+      if (MEM_VOLATILE_P (x) && TARGET_VOLATILE_DI)
+	fputs (".di", file);
+
       switch (GET_CODE (XEXP (x, 0)))
 	{
 	case PRE_INC:
@@ -2874,6 +2879,10 @@ arc64_short_access_p (rtx op, machine_mode mode, bool load_p)
   /* Eliminate non-memory operations.  */
   if (GET_CODE (op) != MEM)
     return 0;
+
+  /* FIXME! remove it when "uncached" attribute is added.  */
+  if (MEM_VOLATILE_P (op) && TARGET_VOLATILE_DI)
+    return false;
 
   if (mode == VOIDmode)
     mode = GET_MODE (op);
