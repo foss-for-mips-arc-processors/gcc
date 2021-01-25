@@ -60,10 +60,6 @@ mdiv-rem
 Target Report Var(TARGET_ARC64_DIVREM) Init(TARGET_ARC64_DIVREM_DEFAULT)
 Enable DIV-REM instructions.
 
-mmpy64
-Target Report Mask(MPY64)
-Enable MPY64 multiplication instructions.
-
 mcpu=
 Target RejectNegative Joined
 -mcpu= Generate code for specific ARCv3 CPU variant.
