@@ -105,10 +105,6 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
-;; Iterator for General Purpose Integer registers (32- and 64-bit
-;; modes) used by MPY instructions
-(define_mode_iterator GPIM [SI (DI "TARGET_ARC64_MPY64")])
-
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
@@ -138,9 +134,6 @@
 
 ;; Three operand arithmetic operations
 (define_code_iterator ARITH [plus minus mult])
-
-;; Three operand 64 bit arithmetic operations
-(define_code_iterator ARITH64 [plus minus (mult "TARGET_ARC64_MPY64")])
 
 ;; Three operand logic operations
 (define_code_iterator LOGIC [and ior xor smin smax])
@@ -1026,8 +1019,8 @@ umodl, unknown, xbfu, xor, xorl"
 
 (define_expand "<optab>di3"
   [(set (match_operand:DI 0 "register_operand")
-	(ARITH64:DI (match_operand:DI 1 "register_operand")
-		    (match_operand:DI 2 "nonmemory_operand")))]
+	(ARITH:DI (match_operand:DI 1 "register_operand")
+		  (match_operand:DI 2 "nonmemory_operand")))]
   ""
   {
    if (!register_operand (operands[2], DImode))
