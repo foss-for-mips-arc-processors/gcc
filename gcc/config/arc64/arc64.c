@@ -2394,6 +2394,18 @@ arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
   emit_move_insn (result, gen_lowpart (GET_MODE (result), res));
 }
 
+/* On some RISC architectures with 64-bit registers, the processor
+   also maintains 32-bit condition codes that make it possible to do
+   real 32-bit arithmetic, although the operations are performed on
+   the full registers.  This hook needs to be define if
+   WORD_REGISTER_OPERATIONS is not defined to 1.  */
+
+static unsigned int
+arc64_min_arithmeric_precision (void)
+{
+  return 32;
+}
+
 /*
   Global functions.
 */
@@ -3399,6 +3411,9 @@ arc64_allow_direct_access_p (rtx op)
 
 #undef  TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG arc64_reorg
+
+#undef TARGET_MIN_ARITHMETIC_PRECISION
+#define TARGET_MIN_ARITHMETIC_PRECISION arc64_min_arithmeric_precision
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
