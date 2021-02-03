@@ -93,6 +93,7 @@
    ARC64_VUNSPEC_ATOOPS
 
    ARC64_UNSPEC_MEMBAR
+   ARC64_UNSPEC_FLS
    ])
 
 (include "constraints.md")
@@ -113,6 +114,9 @@
 
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI DI])
+
+;; Iterator for HI SI and DI modes
+(define_mode_iterator EPI [HI SI DI])
 
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
@@ -238,11 +242,11 @@
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldop, atldlop, bic, bl, block, bmsk, branch,
 branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex,
-div, divl, ext, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl,
-min, minl, move, movecc, mod, modl, neg, nop, norm, normh, norml, mpy,
-mpyl, not, notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex,
-sr, st, sub, subl, swape, swapel, sync, trap, udiv, udivl, umod,
-umodl, unknown, xbfu, xor, xorl"
+div, divl, ext, ffs, fls, flag, jl, jump, ld, llock, lsr, lsrl, lr,
+max, maxl, min, minl, move, movecc, mod, modl, neg, nop, norm, normh,
+norml, mpy, mpyl, not, notl, or, orl, return, ror,rol, sbcl, scond,
+setcc, sex, sr, st, sub, subl, swape, swapel, sync, trap, udiv, udivl,
+umod, umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -1493,6 +1497,47 @@ umodl, unknown, xbfu, xor, xorl"
    (set_attr "iscompact"  "no")
    (set_attr "length"     "4,8")
    (set_attr "predicable" "no")])
+
+;; -------------------------------------------------------------------
+;; Bitscan
+;; -------------------------------------------------------------------
+
+(define_insn "clrsb<mode>2"
+  [(set (match_operand:EPI 0 "register_operand"           "=r")
+	(clrsb:EPI (match_operand:EPI 1 "register_operand" "r")))]
+  "TARGET_BITSCAN"
+  "norm<sfxtab>\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "norm<sfxtab>")])
+
+(define_expand "clz<mode>2"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")]
+  "TARGET_BITSCAN"
+  {
+   rtx tmp = gen_reg_rtx (<MODE>mode);
+   unsigned int size = GET_MODE_SIZE (<MODE>mode) * BITS_PER_UNIT - 1;
+   emit_insn (gen_arc64_fls<sfxtab>2 (tmp, operands[1]));
+   emit_insn (gen_sub<mode>3 (operands[0], GEN_INT (size), tmp));
+   DONE;
+   })
+
+(define_insn "ctz<mode>2"
+  [(set (match_operand:GPI 0 "register_operand"         "=r")
+	(ctz:GPI (match_operand:GPI 1 "register_operand" "r")))]
+  "TARGET_BITSCAN"
+  "ffs<sfxtab>\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "ffs")])
+
+(define_insn "arc64_fls<sfxtab>2"
+  [(set (match_operand:GPI  0 "register_operand"            "=r")
+	(unspec:GPI [(match_operand:GPI 1 "register_operand" "r")]
+		    ARC64_UNSPEC_FLS))]
+  "TARGET_BITSCAN"
+  "fls<sfxtab>\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "fls")])
 
 ;; -------------------------------------------------------------------
 ;; Floating-point intrinsics
