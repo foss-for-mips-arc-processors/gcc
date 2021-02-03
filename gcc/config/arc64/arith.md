@@ -21,8 +21,8 @@
 
 (define_code_iterator COMMUTATIVEF [plus and ior xor])
 
-;; Operations which can be predicated
-(define_code_iterator ARITHP [and ior xor plus minus ashift ashiftrt lshiftrt])
+;; Operations which can be predicated non commutative
+(define_code_iterator ARITHP [minus ashift ashiftrt lshiftrt])
 
 (define_code_iterator BIT [ior xor])
 
@@ -114,7 +114,6 @@
    sub%s2<sfxtab>%?\\t%0,%1,%N2
    add<sfxtab>%?\\t%0,%1,%2"
   [(set_attr "iscompact"  "yes,maybe,maybe,maybe,no,no,no,no,no,no")
-   (set_attr "predicable" "no,no,no,no,yes,yes,no,no,no,no")
    (set_attr "length"     "2,*,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")]
   )
@@ -124,13 +123,31 @@
   [(cond_exec
     (match_operator 3 "ordered_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"            "=     r,r")
-	(ARITHP:GPI (match_operand:GPI 1 "register_operand"  "     0,0")
-		    (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+    (set (match_operand:GPI 0 "register_operand"             "=     r,r")
+	 (ARITHP:GPI (match_operand:GPI 1 "register_operand"  "     0,0")
+		     (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
   ""
   "<arc64_code_map><sfxtab>.%m3\\t%0,%1,%2"
   [(set_attr "iscompact" "no")
    (set_attr "length"     "4,8")
+   (set_attr "type"       "<arc64_code_map>")])
+
+(define_insn "*<optab><mode>_ce"
+  [(cond_exec
+    (match_operator 3 "ordered_comparison_operator"
+		    [(match_operand 4 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPI 0 "register_operand"  "=     r,    r,r")
+	 (COMMUTATIVEF:GPI
+	  (match_operand:GPI 1 "nonmemory_operand" "     0,S32S0,0")
+	  (match_operand:GPI 2 "nonmemory_operand" "rU06S0,    0,S32S0"))))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "@
+   <arc64_code_map><sfxtab>.%m3\\t%0,%1,%2
+   <arc64_code_map><sfxtab>.%m3\\t%0,%2,%1
+   <arc64_code_map><sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "iscompact" "no")
+   (set_attr "length"     "4,8,8")
    (set_attr "type"       "<arc64_code_map>")])
 
 ;; Arithmetic patterns used by the combiner.
