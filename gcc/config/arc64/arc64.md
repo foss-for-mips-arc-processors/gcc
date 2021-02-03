@@ -158,6 +158,9 @@
 ;; Same as above but to be used by mov conditional
 (define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")])
 
+;; Give the number of bits-1 in the mode
+(define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")])
+
 ;; -------------------------------------------------------------------
 ;; Code Attributes
 ;; -------------------------------------------------------------------
@@ -937,10 +940,10 @@ umod, umodl, unknown, xbfu, xor, xorl"
 ;;   ""
 ;; )
 
-(define_insn "*arc64_zero_extend_<mode>_to_si"
-   [(set (match_operand:SI 0 "register_operand"      "=q,r,q,r")
-	 (zero_extend:SI
-	  (match_operand:SHORT 1 "nonimmediate_operand"  "q,r,Uldms,m")))]
+(define_insn "*zero_extend<mode>si2"
+  [(set (match_operand:SI 0 "register_operand"        "=q,r,    q,r")
+	(zero_extend:SI
+	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,Uldms,m")))]
    ""
    "@
    ext<exttab>_s\\t%0,%1
@@ -950,60 +953,41 @@ umod, umodl, unknown, xbfu, xor, xorl"
   [(set_attr "type" "sex,sex,ld,ld")
    (set_attr "length" "2,4,2,*")])
 
-(define_insn "*arc64_zero_extend_si_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,q,r")
-	 (zero_extend:DI
-	  (match_operand:SI 1 "nonimmediate_operand"   "r,Uldms,m")))
-   ]
+(define_insn "*zero_extend<mode>di2"
+  [(set (match_operand:DI 0 "register_operand"      "=r,    q,r")
+	(zero_extend:DI
+	 (match_operand:EXT 1 "nonimmediate_operand" "r,Uldms,m")))]
    ""
    "@
-   bmskl\\t%0,%1,31
-   ld_s\\t%0,%1
-   ld%U1\\t%0,%1"
+   bmskl\\t%0,%1,<sizen>
+   ld<sfxtab>_s\\t%0,%1
+   ld<sfxtab>%U1\\t%0,%1"
   [(set_attr "type" "and,ld,ld")
    (set_attr "length" "4,2,*")]
 )
 
-(define_insn "*arc64_zero_extend_qi_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,    q,r")
-	 (zero_extend:DI
-	  (match_operand:QI 1 "nonimmediate_operand"   "r,Uldms,m")))
-   ]
-   ""
-   "@
-   bmskl\\t%0,%1,7
-   ldb_s\\t%0,%1
-   ldb%U1\\t%0,%1"
-  [(set_attr "type" "and,ld,ld")
-   (set_attr "length" "4,2,*")]
-)
+;; conditional execution for the above two patterns
+(define_insn "*zero_extend<SHORT:mode><GPI:mode>2_ce"
+  [(cond_exec
+    (match_operator 2 "ordered_comparison_operator"
+		    [(match_operand 3 "cc_register" "") (const_int 0)])
+    (set (match_operand:GPI 0"register_operand" "=r")
+	 (zero_extend:GPI (match_operand:SHORT 1 "register_operand" "0"))))]
+  ""
+  "bmsk<GPI:mcctab>.%m2\\t%0,%1,<SHORT:sizen>"
+  [(set_attr "type" "and")
+   (set_attr "length" "4")])
 
-(define_insn "*arc64_zero_extend_hi_to_di"
-   [(set (match_operand:DI 0 "register_operand"       "=r,q,r")
-	 (zero_extend:DI
-	  (match_operand:HI 1 "nonimmediate_operand"   "r,Uldms,m")))
-   ]
-   ""
-   "@
-   bmskl\\t%0,%1,15
-   ldh_s\\t%0,%1
-   ldh%U1\\t%0,%1"
-  [(set_attr "type" "and,ld,ld")
-   (set_attr "length" "4,2,*")]
-)
-
-(define_insn "*arc64_sign_extend_<mode>_to_di"
+(define_insn "*sign_extend<mode>di2"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
 	(sign_extend:DI
-	 (match_operand:EXT 1 "nonimmediate_operand"  "r,m")))
-   ]
+	 (match_operand:EXT 1 "nonimmediate_operand"  "r,m")))]
    ""
    "@
    sex<exttab>l\\t%0,%1
    ld<sfxtab>.x%U1\\t%0,%1"
-  [(set_attr "type" "sex,ld")
-   (set_attr "length" "4,*")]
-)
+   [(set_attr "type" "sex,ld")
+    (set_attr "length" "4,*")])
 
 (define_insn "*sign_extend<mode>si2"
   [(set (match_operand:SI 0 "register_operand" "=q,r,r")
