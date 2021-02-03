@@ -591,34 +591,34 @@
  [(set_attr "length" "4,8")
   (set_attr "type" "mpy<sfxtab>")])
 
-(define_insn "*mul<mode>3_cmp0"
+(define_insn "*mulsi3_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (mult:GPI
-	  (match_operand:GPI 1 "register_operand"  "%     0,     r,    0,    0,    r")
-	  (match_operand:GPI 2 "nonmemory_operand"  "rU06S0,rU06S0,S12S0,S32S0,S32S0"))
+	 (mult:SI
+	  (match_operand:SI 1 "register_operand"  "%     0,     r,    0,    0,    r")
+	  (match_operand:SI 2 "nonmemory_operand"  "rU06S0,rU06S0,S12S0,S32S0,S32S0"))
 	 (const_int 0)))
-   (set (match_operand:GPI 0 "register_operand"   "=     r,     r,    r,    r,    r")
-	(mult:GPI (match_dup 1) (match_dup 2)))]
+   (set (match_operand:SI 0 "register_operand"   "=     r,     r,    r,    r,    r")
+	(mult:SI (match_dup 1) (match_dup 2)))]
  ""
- "mpy<sfxtab>%?.f\\t%0,%1,%2"
+ "mpy%?.f\\t%0,%1,%2"
  [(set_attr "length" "4,4,4,8,8")
   (set_attr "iscompact" "no,no,no,no,no")
-  (set_attr "type" "mpy<sfxtab>")
+  (set_attr "type" "mpy")
   (set_attr "predicable" "yes,no,no,yes,no")])
 
-(define_insn "*mul<mode>3_cmp0_noout"
+(define_insn "*mulsi3_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
-	 (mult:GPI
-	  (match_operand:GPI 0 "register_operand"  "%     r,    r,    r")
-	  (match_operand:GPI 1 "nonmemory_operand"  "rU06S0,S12S0,S32S0"))
+	 (mult:SI
+	  (match_operand:SI 0 "register_operand"  "%     r,    r,    r")
+	  (match_operand:SI 1 "nonmemory_operand"  "rU06S0,S12S0,S32S0"))
 	 (const_int 0)))]
  ""
- "mpy<sfxtab>%?.f\\t0,%0,%1"
+ "mpy%?.f\\t0,%0,%1"
  [(set_attr "length" "4,4,8")
   (set_attr "iscompact" "no,no,no")
-  (set_attr "type" "mpy<sfxtab>")
+  (set_attr "type" "mpy")
   (set_attr "predicable" "no,no,no")])
 
 (define_insn "<su>mulsi3_highpart"
