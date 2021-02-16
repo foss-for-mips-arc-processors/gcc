@@ -80,6 +80,8 @@
 
    ARC64_VUNSPEC_LR
    ARC64_VUNSPEC_SR
+   ARC64_VUNSPEC_LRL
+   ARC64_VUNSPEC_SRL
    ARC64_VUNSPEC_FLAG
    ARC64_VUNSPEC_BRK
    ARC64_VUNSPEC_NOP
@@ -1556,6 +1558,26 @@ umod, umodl, unknown, xbfu, xor, xorl"
     ARC64_VUNSPEC_SR)]
   ""
   "sr\\t%0,[%1]"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "sr")])
+
+(define_insn "lrl"
+  [(set (match_operand:DI  0 "register_operand" "=r,r,r,r")
+	(unspec_volatile:DI
+	 [(match_operand:DI 1 "nonmemory_operand" "U06S0,S12S0,r,i")]
+	 ARC64_VUNSPEC_LRL))]
+  ""
+  "lrl\\t%0,[%1]"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "lr")])
+
+(define_insn "srl"
+  [(unspec_volatile
+    [(match_operand:DI 0 "register_operand"  "    r,    r, r, r")
+     (match_operand:DI 1 "nonmemory_operand" "U06S0,S12S0, i, r")]
+    ARC64_VUNSPEC_SRL)]
+  ""
+  "srl\\t%0,[%1]"
   [(set_attr "length" "4,4,4,8")
    (set_attr "type" "sr")])
 
