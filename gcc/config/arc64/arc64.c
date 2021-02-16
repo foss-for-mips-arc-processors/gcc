@@ -1983,6 +1983,13 @@ arc64_init_builtins (void)
   tree void_ftype_usint
     = build_function_type_list (void_type_node, unsigned_type_node,
 				NULL_TREE);
+  tree long_ftype_long
+    = build_function_type_list (long_long_integer_type_node,
+				long_long_integer_type_node, NULL_TREE);
+
+  tree void_ftype_long_long
+    = build_function_type_list (void_type_node, long_long_integer_type_node,
+				long_long_integer_type_node, NULL_TREE);
 
   /* Add the builtins.  */
 #define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)			\
