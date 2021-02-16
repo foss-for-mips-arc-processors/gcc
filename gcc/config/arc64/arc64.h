@@ -365,8 +365,10 @@ enum reg_class
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
 #define MOVE_MAX (UNITS_PER_WORD)
-
-#define MOVE_RATIO(SPEED) 2
+/* The threshold of number of scalar memory-to-memory move insns which
+   a sequence of insns should be generated instead of a string move
+   insn or a library call.  */
+#define MOVE_RATIO(SPEED) ((SPEED) ? 15 : 3)
 
 #ifndef USED_FOR_TARGET
 extern const enum reg_class arc64_regno_to_regclass[];
