@@ -31,10 +31,12 @@
             is needed to expand the built-in, use `nothing'.
    MASK:    CPU selector mask.  */
 
-DEF_BUILTIN (NOP,        0, void_ftype_void,        nothing,     1)
+DEF_BUILTIN (NOP,        0, void_ftype_void,        nothing,    1)
 DEF_BUILTIN (SR,         2, void_ftype_usint_usint, sr,         1)
 DEF_BUILTIN (LR,         1, usint_ftype_usint,      lr,         1)
 DEF_BUILTIN (BRK,        0, void_ftype_void,        brk,        1)
 DEF_BUILTIN (FLAG,       1, void_ftype_usint,       flag,       1)
+DEF_BUILTIN (SRL,        2, void_ftype_long_long,   srl,        1)
+DEF_BUILTIN (LRL,        1, long_ftype_long,        lrl,        1)
 
 DEF_BUILTIN (TRAP_S,     1, void_ftype_usint,       trap_s,      1)
