@@ -564,7 +564,8 @@ static bool
 arc64_legitimate_address_1_p (machine_mode mode,
 			      rtx x,
 			      bool strict ATTRIBUTE_UNUSED,
-			      bool load_p)
+			      bool load_p,
+			      bool scaling_p)
 {
   if (REG_P (x))
     return true;
@@ -577,7 +578,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
      offset as address.  */
   if (GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
-      && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1), mode)
+      && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1),
+				       scaling_p ? mode : QImode)
 	  || (load_p && CONST_INT_P (XEXP (x, 1))
 	      && !lra_in_progress && !optimize_size)))
       return true;
@@ -590,7 +592,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
     return true;
 
   /* Scalled addresses.  */
-  if (GET_CODE (x) == PLUS
+  if (scaling_p
+      && GET_CODE (x) == PLUS
       && GET_CODE (XEXP (x, 0)) == MULT
       && ((load_p && REG_P (XEXP (x, 1)))
 	  || (load_p && CONST_INT_P (XEXP (x, 1)))
@@ -615,7 +618,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
     return true;
 
   if ((GET_CODE (x) == PRE_MODIFY || GET_CODE (x) == POST_MODIFY))
-    return arc64_legitimate_address_1_p (mode, XEXP (x, 1), strict, load_p);
+    return arc64_legitimate_address_1_p (mode, XEXP (x, 1), strict,
+					 load_p, false);
 
   /* PIC address (LARGE).  */
   if (GET_CODE (x) == LO_SUM
@@ -651,7 +655,7 @@ arc64_legitimate_address_p (machine_mode mode,
 			    bool strict ATTRIBUTE_UNUSED)
 {
   /* Allow all the addresses accepted by load.  */
-  return arc64_legitimate_address_1_p (mode, x, strict, true);
+  return arc64_legitimate_address_1_p (mode, x, strict, true, true);
 }
 
 /* Implement TARGET_LEGITIMATE_CONSTANT_P hook.  Return true for constants
@@ -2519,7 +2523,8 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 
   /* Check and fix unsupported store addresses.  */
   if (MEM_P (op0)
-      && !arc64_legitimate_address_1_p (mode, XEXP (op0, 0), false, false))
+      && !arc64_legitimate_address_1_p (mode, XEXP (op0, 0), false,
+					false, true))
     {
       rtx tmp = gen_reg_rtx (Pmode);
       rtx addr = XEXP (op0, 0);
@@ -2884,7 +2889,7 @@ arc64_limm_addr_p (rtx op)
 bool
 arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
 {
-  return arc64_legitimate_address_1_p (mode, addr, true, false);
+  return arc64_legitimate_address_1_p (mode, addr, true, false, true);
 }
 
 /* Return true if an address fits a short load/store instruction.  */
