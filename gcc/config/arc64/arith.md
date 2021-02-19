@@ -393,7 +393,14 @@
 	(DIVREM:GPI (match_operand:GPI 1 "nonmemory_operand")
 		    (match_operand:GPI 2 "nonmemory_operand")))]
   "TARGET_ARC64_DIVREM"
-  ""
+  {
+   if (<MODE>mode == DImode
+       && !register_operand (operands[2], DImode))
+     operands[2] = force_reg (DImode, operands[2]);
+   if (<MODE>mode == DImode
+       && !register_operand (operands[1], DImode))
+     operands[1] = force_reg (DImode, operands[1]);
+  }
   )
 
 (define_insn "*<optab><mode>3"
