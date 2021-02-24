@@ -91,7 +91,7 @@
 
 /* Default unaligned accesses.  */
 #ifndef UNALIGNED_ACCESS_DEFAULT
-#define UNALIGNED_ACCESS_DEFAULT 1
+#define UNALIGNED_ACCESS_DEFAULT 0
 #endif
 
 /* Layout of Source Language Data Types.  */
