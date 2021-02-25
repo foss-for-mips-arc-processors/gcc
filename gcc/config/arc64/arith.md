@@ -1,22 +1,6 @@
 ;; -------------------------------------------------------------------
 ;; Code Attributes
 ;; -------------------------------------------------------------------
-;; Map rtl objects to arc instuction names
-(define_code_attr arc64_code_map [(ashift   "asl")
-				  (ashiftrt "asr")
-				  (sign_extend "sex")
-				  (zero_extend "ext")
-				  (div      "div")
-				  (udiv     "divu")
-				  (mod      "rem")
-				  (umod     "remu")
-				  (lshiftrt "lsr")
-				  (and      "and")
-				  (ior      "or")
-				  (xor      "xor")
-				  (plus     "add")
-				  (minus    "sub")])
-
 (define_code_iterator COMMUTATIVE [and ior xor])
 
 (define_code_iterator COMMUTATIVEF [plus and ior xor])
@@ -121,7 +105,7 @@
 ; Conditional execution
 (define_insn "*<optab><mode>_ce"
   [(cond_exec
-    (match_operator 3 "ordered_comparison_operator"
+    (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (set (match_operand:GPI 0 "register_operand"             "=     r,r")
 	 (ARITHP:GPI (match_operand:GPI 1 "register_operand"  "     0,0")
@@ -134,7 +118,7 @@
 
 (define_insn "*<optab><mode>_ce"
   [(cond_exec
-    (match_operator 3 "ordered_comparison_operator"
+    (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (set (match_operand:GPI 0 "register_operand"  "=     r,    r,r")
 	 (COMMUTATIVEF:GPI
@@ -563,7 +547,7 @@
 
 (define_insn "*<ANY_EXTEND:su_optab>mulhisi3r_ce"
   [(cond_exec
-    (match_operator 3 "ordered_comparison_operator"
+    (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
    (set (match_operand:SI 0 "register_operand"                         "=r")
 	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "%0"))
@@ -605,7 +589,7 @@
 
 (define_insn "*mul<mode>3_ce"
   [(cond_exec
-    (match_operator 3 "ordered_comparison_operator"
+    (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (set (match_operand:GPI 0 "register_operand"             "=     r,    r")
 	 (mult:GPI (match_operand:GPI 1 "register_operand"  "%     0,    0")

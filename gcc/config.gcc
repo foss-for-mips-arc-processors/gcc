@@ -1353,6 +1353,7 @@ arc-*-linux* | arc[eb]*-*linux*)
 	;;
 arc64-*-elf*)
 	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h ${tm_file}"
+	tmake_file="${tmake_file} arc64/t-multilib arc64/t-arc64"
 	;;
 arc64-*-linux*)
 	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h linux-android.h glibc-stdint.h ${tm_file}"
