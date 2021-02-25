@@ -66,12 +66,15 @@
 
 ; to be used for b{eq/ne/...}_s instructions.
 (define_predicate "ccmode_comparison_operator"
-  (match_code "eq, ne, gt, ge, lt, le, gtu, geu, ltu, leu")
+  (match_code "eq, ne, gt, ge, lt, le, gtu, geu, ltu, leu,
+	       unlt, unle, unge, ungt")
   {
    enum rtx_code code = GET_CODE (op);
 
    switch (GET_MODE (XEXP (op, 0)))
-     {
+   {
+     case E_CC_FPUmode:
+     case E_CC_FPUEmode:
      case E_CCmode:
        return 1;
 
@@ -82,6 +85,12 @@
        return 0;
      }
   })
+
+
+;; True for integer comparisons and for FP comparisons other then LTGT or UNEQ
+(define_special_predicate "arc64_comparison_operator"
+  (match_code "eq, ne, le, lt, ge, gt, geu, gtu, leu, ltu, unordered,
+	       ordered, unlt, unle, unge, ungt"))
 
 (define_special_predicate "cc_register"
   (match_code "reg")

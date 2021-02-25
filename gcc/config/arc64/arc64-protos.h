@@ -32,6 +32,8 @@ extern void arc64_post_atomic_barrier (enum memmodel);
 extern void arc64_expand_compare_and_swap (rtx []);
 extern void arc64_split_compare_and_swap (rtx []);
 extern bool arc64_allow_direct_access_p (rtx);
+extern bool arc64_use_fp_regs (machine_mode);
+extern bool arc64_fp_access_p (rtx, machine_mode);
 
 #endif /* RTX_CODE */
 
