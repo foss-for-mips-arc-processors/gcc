@@ -75,6 +75,15 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
 
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+   FP_REGS, FP_REGS, FP_REGS, FP_REGS,
+
    GENERAL_REGS, GENERAL_REGS, NO_REGS,
   };
 
@@ -220,7 +229,7 @@ arc64_save_reg_p (int regno)
   bool call_saved;
   bool might_clobber;
 
-  gcc_assert (regno <= R59_REGNUM);
+  gcc_assert (regno <= F31_REGNUM);
   gcc_assert (regno >= R0_REGNUM);
 
   switch (regno)
@@ -233,6 +242,11 @@ arc64_save_reg_p (int regno)
 
     case R27_REGNUM:
       if (frame_pointer_needed)
+	return false;
+      break;
+
+    case F0_REGNUM ... F31_REGNUM:
+      if (!ARC64_HAS_FP_BASE)
 	return false;
       break;
 
@@ -263,10 +277,18 @@ arc64_compute_frame_info (void)
 
   /* Find out which GPR need to be saved.  */
   for (regno = R0_REGNUM, offset = 0;
-       regno <= R59_REGNUM;
+       regno <= F31_REGNUM;
        regno++)
     if (arc64_save_reg_p (regno))
       {
+	/* TBI: probably I need to make the saving of the FP registers
+	   separate bulk from GPIs such that I can use latter on
+	   enter/leave instruction seamlessly (i.e. first save
+	   FPregs/latter GPI, the leave return feature will not
+	   work).  */
+	/* TBI: the FPUS only configuration is having only 32bit
+	   registers, thus I can stack 2 FP registers in one stack
+	   slot ;).  */
 	frame->reg_offset[regno] = offset;
 	offset += UNITS_PER_WORD;
       }
@@ -337,10 +359,11 @@ frame_stack_add (HOST_WIDE_INT offset)
 
 /* Helper for prologue: emit frame store with pre_modify or pre_dec to
    save register REG on stack.  An initial offset OFFSET can be passed
-   to the function.  */
+   to the function.  If a DISPLACEMENT is defined, it will be used to
+   generate pre_modify instead of pre_dec.  */
 
 static HOST_WIDE_INT
-frame_save_reg (rtx reg, HOST_WIDE_INT offset)
+frame_save_reg (rtx reg, HOST_WIDE_INT offset, HOST_WIDE_INT displacement)
 {
   rtx addr, tmp;
 
@@ -353,13 +376,22 @@ frame_save_reg (rtx reg, HOST_WIDE_INT offset)
 						stack_pointer_rtx,
 						tmp));
     }
+  else if (displacement)
+    {
+      tmp = plus_constant (Pmode, stack_pointer_rtx, (-displacement));
+      addr = gen_frame_mem (GET_MODE (reg),
+			    gen_rtx_PRE_MODIFY (Pmode,
+						stack_pointer_rtx,
+						tmp));
+    }
   else
     addr = gen_frame_mem (GET_MODE (reg), gen_rtx_PRE_DEC (Pmode,
 							   stack_pointer_rtx));
   tmp = emit_move_insn (addr, reg);
   RTX_FRAME_RELATED_P (tmp) = 1;
 
-  return GET_MODE_SIZE (GET_MODE (reg)) - offset;
+  return (displacement ? displacement : GET_MODE_SIZE (GET_MODE (reg)))
+    - offset;
 }
 
 /* ARC prologue saving regs routine.   */
@@ -374,8 +406,9 @@ arc64_save_callee_saves (void)
   HOST_WIDE_INT frame_allocated = 0;
   rtx reg;
 
-  for (regno = R58_REGNUM; regno >= R0_REGNUM; regno--)
+  for (regno = F31_REGNUM; regno >= R0_REGNUM; regno--)
     {
+      HOST_WIDE_INT disp = 0;
       if (frame->reg_offset[regno] == -1
 	  /* Hard frame pointer is saved in a different place.  */
 	  || (frame_pointer_needed && regno == R27_REGNUM)
@@ -383,8 +416,16 @@ arc64_save_callee_saves (void)
 	  || (regno == BLINK_REGNUM))
 	continue;
 
+      if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
+	{
+	  save_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
+	  disp = UNITS_PER_WORD;
+	}
+      else
+	save_mode = DImode;
+
       reg = gen_rtx_REG (save_mode, regno);
-      frame_allocated += frame_save_reg (reg, offset);
+      frame_allocated += frame_save_reg (reg, offset, disp);
       offset = 0;
     }
 
@@ -392,14 +433,14 @@ arc64_save_callee_saves (void)
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
-      frame_allocated += frame_save_reg (reg, offset);
+      frame_allocated += frame_save_reg (reg, offset, 0);
       offset = 0;
     }
 
   /* Save FP if required.  */
   if (frame_pointer_needed)
     {
-      frame_allocated += frame_save_reg (hard_frame_pointer_rtx, offset);
+      frame_allocated += frame_save_reg (hard_frame_pointer_rtx, offset, 0);
       offset = 0;
     }
 
@@ -418,12 +459,21 @@ arc64_save_callee_saves (void)
    via OFFSET.  */
 
 static HOST_WIDE_INT
-frame_restore_reg (rtx reg)
+frame_restore_reg (rtx reg, HOST_WIDE_INT displacement)
 {
-  rtx addr, insn;
+  rtx addr, insn, tmp;
 
-  addr = gen_frame_mem (GET_MODE (reg),
-			gen_rtx_POST_INC (Pmode, stack_pointer_rtx));
+  if (displacement)
+    {
+      tmp = plus_constant (Pmode, stack_pointer_rtx, displacement);
+      addr = gen_frame_mem (GET_MODE (reg),
+			    gen_rtx_POST_MODIFY (Pmode,
+						 stack_pointer_rtx,
+						 tmp));
+    }
+  else
+    addr = gen_frame_mem (GET_MODE (reg),
+			  gen_rtx_POST_INC (Pmode, stack_pointer_rtx));
   insn = emit_move_insn (reg, addr);
   RTX_FRAME_RELATED_P (insn) = 1;
   add_reg_note (insn, REG_CFA_RESTORE, reg);
@@ -438,7 +488,7 @@ frame_restore_reg (rtx reg)
 			       plus_constant (Pmode, stack_pointer_rtx,
 					      GET_MODE_SIZE (GET_MODE (reg)))));
 
-  return GET_MODE_SIZE (GET_MODE (reg));
+  return displacement ? displacement : GET_MODE_SIZE (GET_MODE (reg));
 }
 
 /* ARC' epilogue restore regs routine.  */
@@ -469,16 +519,17 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
   frame_deallocated += offset;
 
   if (frame_pointer_needed)
-    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx);
+    frame_deallocated += frame_restore_reg (hard_frame_pointer_rtx, 0);
 
   if (frame->reg_offset[BLINK_REGNUM] != -1)
     {
       reg = gen_rtx_REG (Pmode, BLINK_REGNUM);
-      frame_deallocated += frame_restore_reg (reg);
+      frame_deallocated += frame_restore_reg (reg, 0);
     }
 
-  for (regno = R0_REGNUM; regno <= R58_REGNUM; regno++)
+  for (regno = R0_REGNUM; regno <= F31_REGNUM; regno++)
     {
+      HOST_WIDE_INT disp = 0;
       if (frame->reg_offset[regno] == -1
 	  /* Hard frame pointer has been restored.  */
 	  || (frame_pointer_needed && regno == R27_REGNUM)
@@ -486,8 +537,16 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	  || (regno == BLINK_REGNUM))
 	continue;
 
+      if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
+	{
+	  restore_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
+	  disp = UNITS_PER_WORD;
+	}
+      else
+	restore_mode = DImode;
+
       reg = gen_rtx_REG (restore_mode, regno);
-      frame_deallocated += frame_restore_reg (reg);
+      frame_deallocated += frame_restore_reg (reg, disp);
     }
 
   return frame_deallocated;
@@ -667,6 +726,7 @@ arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
 {
   switch (GET_CODE (x))
     {
+    case CONST_DOUBLE:
     case CONST_INT:
     case CONST_WIDE_INT:
     case HIGH:
@@ -691,6 +751,21 @@ arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
     }
 }
 
+/* Giving a mode, return true if we can pass it in fp registers.  */
+
+bool
+arc64_use_fp_regs (machine_mode mode)
+{
+  if (!FLOAT_MODE_P (mode))
+    return false;
+
+  /* FPU unit can have either 32 or 64 bit wide data path.  */
+  if (((ARC64_HAS_FPUS && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 2)))
+       || ARC64_HAS_FPUD))
+    return true;
+  return false;
+}
+
 /* Worker for return_in_memory.  */
 
 static bool
@@ -712,15 +787,12 @@ arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
 }
 
 /* Worker for pass_by_reference.  */
+
 static bool
 arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
 			 const function_arg_info &arg)
 {
   HOST_WIDE_INT size;
-
-  /* Floats are passed by reference.  */
-  if (FLOAT_MODE_P (arg.mode))
-    return true;
 
   /* GET_MODE_SIZE (BLKmode) is useless since it is 0.  */
   if (arg.mode == BLKmode && arg.type)
@@ -747,23 +819,30 @@ arc64_pass_by_reference (cumulative_args_t pcum ATTRIBUTE_UNUSED,
 
 static void
 arc64_layout_arg (cumulative_args_t pcum_v, machine_mode mode,
-		  const_tree type)
+		  const_tree type, bool named)
 {
   CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
   HOST_WIDE_INT size;
   int nregs;
 
-  if (type)
-    size = int_size_in_bytes (type);
-  else
-    size = GET_MODE_SIZE (mode);
+  /* Find out the size of argument.  */
+  size = type ? int_size_in_bytes (type) : GET_MODE_SIZE (mode);
   size = ROUND_UP (size, UNITS_PER_WORD);
-
   nregs = size / UNITS_PER_WORD;
 
-  if (nregs)
-    *pcum = ROUND_ADVANCE_CUM (*pcum, mode, type);
-  *pcum += nregs;
+  if (!nregs)
+    return;
+
+  /* When named, we can pass FP types into FP registers if they
+     exists and they have the right size.  */
+  if (named && arc64_use_fp_regs (mode))
+    {
+      pcum->fregs = ROUND_ADVANCE_CUM (pcum->fregs, mode, type);
+      pcum->fregs += nregs;
+    }
+
+  pcum->iregs = ROUND_ADVANCE_CUM (pcum->iregs, mode, type);
+  pcum->iregs += nregs;
 }
 
 /* The function to update the summarizer variable *CUM to advance past
@@ -776,10 +855,11 @@ static void
 arc64_function_arg_advance (cumulative_args_t pcum_v,
 			    const function_arg_info &arg)
 {
-  arc64_layout_arg (pcum_v, arg.mode, arg.type);
+  arc64_layout_arg (pcum_v, arg.mode, arg.type, arg.named);
 }
 
-/* Implement TARGET_ARG_PARTIAL_BYTES.  */
+/* Implement TARGET_ARG_PARTIAL_BYTES.  FIXME! use arc64_layout_arg
+   function.  */
 
 static int
 arc64_arg_partial_bytes (cumulative_args_t pcum_v,
@@ -790,13 +870,15 @@ arc64_arg_partial_bytes (cumulative_args_t pcum_v,
   HOST_WIDE_INT size;
   int anum, nregs;
 
-  if (arg.type)
-    size = int_size_in_bytes (arg.type);
-  else
-    size = GET_MODE_SIZE (arg.mode);
+  size = arg.type ? int_size_in_bytes (arg.type) : GET_MODE_SIZE (arg.mode);
   nregs = (size + UNITS_PER_WORD - 1) / UNITS_PER_WORD;
 
-  anum = ROUND_ADVANCE_CUM (*pcum, arg.mode, arg.type);
+  if (arg.named && arc64_use_fp_regs (arg.mode))
+    anum = pcum->fregs;
+  else
+    anum = pcum->iregs;
+  anum = ROUND_ADVANCE_CUM (anum, arg.mode, arg.type);
+
   if (anum <= MAX_ARC64_PARM_REGS)
     ret = MAX_ARC64_PARM_REGS - anum;
 
@@ -818,20 +900,32 @@ arc64_arg_partial_bytes (cumulative_args_t pcum_v,
    The returned value should either be a `reg' RTX for the hard
    register in which to pass the argument, or zero to pass the
    argument on the stack.  */
+/* FIXME! use arc64_layout_arg function.  */
 
 static rtx
 arc64_function_arg (cumulative_args_t pcum_v,
 		    const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
-  int narg;
+  int narg, first_reg;
 
   if (arg.mode == VOIDmode)
     return NULL_RTX;
 
-  narg = ROUND_ADVANCE_CUM (*pcum, arg.mode, arg.type);
+  if (arg.named && arc64_use_fp_regs (arg.mode))
+    {
+      narg = pcum->fregs;
+      first_reg = F0_REGNUM;
+    }
+  else
+    {
+      narg = pcum->iregs;
+      first_reg = R0_REGNUM;
+    }
+
+  narg = ROUND_ADVANCE_CUM (narg, arg.mode, arg.type);
   if (narg < MAX_ARC64_PARM_REGS)
-    return gen_rtx_REG (arg.mode, narg);
+    return gen_rtx_REG (arg.mode, first_reg + narg);
 
   return NULL_RTX;
 }
@@ -843,8 +937,8 @@ arc64_function_arg (cumulative_args_t pcum_v,
 
 static rtx
 arc64_function_value (const_tree type,
-		     const_tree func,
-		     bool outgoing ATTRIBUTE_UNUSED)
+		      const_tree func,
+		      bool outgoing ATTRIBUTE_UNUSED)
 {
   machine_mode mode = TYPE_MODE (type);
   int unsignedp;
@@ -852,6 +946,8 @@ arc64_function_value (const_tree type,
   if (INTEGRAL_TYPE_P (type))
     mode = promote_function_mode (type, mode, &unsignedp, func, 1);
 
+  if (arc64_use_fp_regs (mode))
+    return gen_rtx_REG (mode, F0_REGNUM);
   return gen_rtx_REG (mode, R0_REGNUM);
 }
 
@@ -866,13 +962,28 @@ arc64_function_value_regno_p (const unsigned int regno)
      of 16-byte return values are: 128-bit integers and 16-byte small
      structures (excluding homogeneous floating-point aggregates).
 
-     FIXME! We need to implement untyped_call instruction pattern for this.
-     if (regno == R0_REGNUM || regno == R1_REGNUM) */
+     We need to implement untyped_call instruction pattern when
+     returning more than one value.  */
 
   if (regno == R0_REGNUM)
     return true;
 
+  if (regno == F0_REGNUM)
+    return ARC64_HAS_FP_BASE;
+
   return false;
+}
+
+/* Implement TARGET_GET_RAW_RESULT_MODE and TARGET_GET_RAW_ARG_MODE.  */
+
+static fixed_size_mode
+arc64_get_reg_raw_mode (int regno)
+{
+  if (ARC64_HAS_FPUD && FP_REGNUM_P (regno))
+    return as_a <fixed_size_mode> (DFmode);
+  else if (ARC64_HAS_FPUS && FP_REGNUM_P (regno))
+    return as_a <fixed_size_mode> (SFmode);
+  return default_get_reg_raw_mode (regno);
 }
 
 /* Implement TARGET_SETUP_INCOMING_VARARGS.  */
@@ -891,19 +1002,19 @@ arc64_setup_incoming_varargs (cumulative_args_t cum_v,
   arc64_function_arg_advance (pack_cumulative_args (&cum), arg);
 
   cfun->machine->uses_anonymous_args = 1;
-  if (!FUNCTION_ARG_REGNO_P (cum))
+  if (!FUNCTION_ARG_REGNO_P (cum.iregs))
     return;
 
-  gpi_saved = MAX_ARC64_PARM_REGS - cum;
+  gpi_saved = MAX_ARC64_PARM_REGS - cum.iregs;
 
-  if (!no_rtl)
+  if (!no_rtl && gpi_saved > 0)
     {
       rtx ptr, mem;
       ptr = plus_constant (Pmode, arg_pointer_rtx, 0);
       mem = gen_frame_mem (BLKmode, ptr);
       set_mem_alias_set (mem, get_varargs_alias_set ());
 
-      move_block_from_reg (cum, mem, gpi_saved);
+      move_block_from_reg (R0_REGNUM + cum.iregs, mem, gpi_saved);
     }
 
   /* FIXME! do I need to ROUND_UP (pretend, STACK_BOUNDARY /
@@ -940,6 +1051,10 @@ arc64_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
       else if (GET_MODE_SIZE (mode) <= 16)
 	return ((regno & 1) == 0);
     }
+  else if (FLOAT_MODE_P (mode) && FP_REGNUM_P (regno))
+    /* TBI: An idea is to use the FP registers to spill GPI
+       registers.  */
+    return true;
 
   return false;
 }
@@ -1023,6 +1138,29 @@ get_arc64_condition_code (rtx comparison)
 	case GEU : return ARC_CC_NC;
 	default : gcc_unreachable ();
 	}
+    case E_CC_FPUmode:
+    case E_CC_FPUEmode:
+      switch (GET_CODE (comparison))
+	{
+	case EQ: return ARC_CC_EQ;
+	case NE: return ARC_CC_NE;
+	case GT: return ARC_CC_GT;
+	case GE: return ARC_CC_GE;
+	case LT:
+	  /* Equivalent with N, short insn friendly.  */
+	  return ARC_CC_C;
+	case LE: return ARC_CC_LS;
+	case UNORDERED: return ARC_CC_V;
+	case ORDERED: return ARC_CC_NV;
+	case UNGT: return ARC_CC_HI;
+	case UNGE:
+	   /* Equivalent with NV, short insn friendly.  */
+	  return ARC_CC_HS;
+	case UNLT: return ARC_CC_LT;
+	case UNLE: return ARC_CC_LE;
+	default: gcc_unreachable ();
+	}
+      break;
     default : gcc_unreachable ();
     }
   gcc_unreachable ();
@@ -1238,6 +1376,13 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  output_addr_const (asm_out_file, x);
 	  break;
 
+	case CONST_DOUBLE:
+	  {
+	    long l;
+	    REAL_VALUE_TO_TARGET_SINGLE (*CONST_DOUBLE_REAL_VALUE (x), l);
+	    asm_fprintf (file, "0x%08lx", l);
+	    break;
+	  }
 	case CONST_INT:
 	  asm_fprintf (file, "%wd", INTVAL (x));
 	  break;
@@ -1689,7 +1834,7 @@ arc64_output_function_prologue (FILE *f)
   if (crtl->calls_eh_return)
     asm_fprintf (f, "\t# Calls __builtin_eh_return.\n");
 
-  for (regno = R0_REGNUM; regno <= R59_REGNUM; regno++)
+  for (regno = R0_REGNUM; regno <= F31_REGNUM; regno++)
     if (frame->reg_offset[regno] != -1)
       asm_fprintf (f, "\t# regsave[%s] => %ld\n", reg_names[regno],
 		   frame->reg_offset[regno]);
@@ -2417,6 +2562,24 @@ arc64_min_arithmeric_precision (void)
   return 32;
 }
 
+/* This hook may conditionally modify five variables: fixed_regs,
+   call_used_regs, global_regs, reg_names and reg_class_contents.  */
+
+static void
+arc64_conditional_register_usage (void)
+{
+  int regno;
+
+  if (ARC64_HAS_FP_BASE)
+    {
+      for (regno = F0_REGNUM; regno <= F31_REGNUM; regno++)
+	{
+	  fixed_regs[regno] = 0;
+	  call_used_regs[regno] = regno < F0_REGNUM + 14;
+	}
+    }
+}
+
 /*
   Global functions.
 */
@@ -2785,9 +2948,9 @@ void arc64_init_expanders (void)
    COMPARE, return the mode to be used for the comparison.  */
 
 machine_mode
-arc64_select_cc_mode (enum rtx_code op ATTRIBUTE_UNUSED,
+arc64_select_cc_mode (enum rtx_code op,
 		      rtx x ATTRIBUTE_UNUSED,
-		      rtx y ATTRIBUTE_UNUSED)
+		      rtx y)
 {
   machine_mode mode = GET_MODE (x);
 
@@ -2800,6 +2963,35 @@ arc64_select_cc_mode (enum rtx_code op ATTRIBUTE_UNUSED,
       && (op == EQ || op == NE || op == LT || op == GE))
     return CC_ZNmode;
 
+  /* All floating point compares return CC_FPU if it is an equality
+     comparison, and CC_FPUE otherwise.  N.B. LTGT and UNEQ cannot be
+     directly mapped to fcmp instructions.  */
+  if (GET_MODE_CLASS (mode) == MODE_FLOAT)
+    {
+      switch (op)
+	{
+	case EQ:
+	case NE:
+	case UNORDERED:
+	case ORDERED:
+	case UNLT:
+	case UNLE:
+	case UNGT:
+	case UNGE:
+	case UNEQ:
+	  return CC_FPUmode;
+
+	case LT:
+	case LE:
+	case GT:
+	case GE:
+	case LTGT:
+	  return CC_FPUEmode;
+
+	default:
+	  gcc_unreachable ();
+	}
+    }
   return CCmode;
 }
 
@@ -2937,6 +3129,68 @@ arc64_short_access_p (rtx op, machine_mode mode, bool load_p)
 
       if (f0 && f1)
 	return true;
+
+    default:
+      break;
+    }
+  return false;
+}
+
+/* Return true if an address fits a floating point load/store
+   instruction.  The next formats are allowed [b, s9], [b], [s32limm],
+   and scaled [b, s9].  */
+
+bool
+arc64_fp_access_p (rtx op, machine_mode mode)
+{
+  rtx addr, plus0, plus1;
+  bool f0, f1;
+
+  /* Eliminate non-memory operations.  */
+  if (GET_CODE (op) != MEM)
+    return 0;
+
+  /* FIXME! remove it when "uncached" attribute is added.  */
+  if (MEM_VOLATILE_P (op) && TARGET_VOLATILE_DI)
+    return false;
+
+  if (mode == VOIDmode)
+    mode = GET_MODE (op);
+
+  /* Decode the address now.  */
+  addr = XEXP (op, 0);
+  switch (GET_CODE (addr))
+    {
+    case PRE_MODIFY:
+    case POST_MODIFY:
+      addr = XEXP (addr, 1);
+      if (!ARC64_CHECK_SMALL_IMMEDIATE (XEXP (addr, 1), QImode))
+	return false;
+    case PRE_DEC:
+    case PRE_INC:
+    case POST_DEC:
+    case POST_INC:
+      return REG_P (XEXP (addr, 0));
+
+    case REG:
+      return true;
+
+    case PLUS:
+      plus0 = XEXP (addr, 0);
+      plus1 = XEXP (addr, 1);
+
+      f0 = REG_P (plus0);
+      f1 = ARC64_CHECK_SMALL_IMMEDIATE (plus1, mode);
+
+      /* Check for (scaled) [Rb + s9].  */
+      if (f0 && f1)
+	return true;
+
+      break;
+
+    case SYMBOL_REF:
+    case LABEL_REF:
+      return (arc64_get_symbol_type (addr) == ARC64_LO32);
 
     default:
       break;
@@ -3320,6 +3574,13 @@ arc64_allow_direct_access_p (rtx op)
 #undef TARGET_RETURN_IN_MEMORY
 #define TARGET_RETURN_IN_MEMORY arc64_return_in_memory
 
+/* Needed by builtin_apply  */
+#undef TARGET_GET_RAW_RESULT_MODE
+#define TARGET_GET_RAW_RESULT_MODE arc64_get_reg_raw_mode
+
+#undef TARGET_GET_RAW_ARG_MODE
+#define TARGET_GET_RAW_ARG_MODE arc64_get_reg_raw_mode
+
 #undef TARGET_PASS_BY_REFERENCE
 #define TARGET_PASS_BY_REFERENCE arc64_pass_by_reference
 
@@ -3343,6 +3604,9 @@ arc64_allow_direct_access_p (rtx op)
 
 #undef TARGET_ARG_PARTIAL_BYTES
 #define TARGET_ARG_PARTIAL_BYTES arc64_arg_partial_bytes
+
+#undef TARGET_STRICT_ARGUMENT_NAMING
+#define TARGET_STRICT_ARGUMENT_NAMING hook_bool_CUMULATIVE_ARGS_true
 
 #undef TARGET_COMPUTE_FRAME_LAYOUT
 #define TARGET_COMPUTE_FRAME_LAYOUT arc64_compute_frame_info
@@ -3426,6 +3690,9 @@ arc64_allow_direct_access_p (rtx op)
 
 #undef TARGET_MIN_ARITHMETIC_PRECISION
 #define TARGET_MIN_ARITHMETIC_PRECISION arc64_min_arithmeric_precision
+
+#undef TARGET_CONDITIONAL_REGISTER_USAGE
+#define TARGET_CONDITIONAL_REGISTER_USAGE arc64_conditional_register_usage
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

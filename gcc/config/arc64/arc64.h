@@ -136,7 +136,7 @@
    R27      FP (frame pointer)
    R28      SP (stack pointer)
    R29      ILINK (Interrupt link register)
-   R30      GP/TP Global pointer, also is used as thread pointer;
+   R30      GP/TP Global pointer, also it is used as thread pointer;
 	    otherwise can be used  as a temporary register.
    R31      BLINK (return register)
    R32-R57  Extension registers
@@ -147,27 +147,40 @@
    R61      Reserved
    R62      zero extended 32-bit immediate indicator
    R63      PCL (program counter)
-
+   --- Floating point registers ---
+   F0       Parameter/result register
+   F1-F7    Parameter registers
+   F8-F13   Temporary registers
+   F14-F31  Callee-saved registers
    -- Fake registers --
    AP       Argument pointer
    SFP      Soft frame pointer
    CC       Status register.
  */
 
+/* 1 for registers that are not available for the register
+   allocator.  */
 #define FIXED_REGISTERS							\
   {									\
-   0, 0, 0, 0,   0, 0, 0, 0,  /* R0 - R7 */				\
-   0, 0, 0, 0,   0, 0, 0, 0,  /* R8 - R15 */				\
-   0, 0, 0, 0,   0, 0, 0, 0,  /* R16 - R23 */				\
-   0, 0, 0, 0,   1, 1, ARC64_TLS_REGNO, 1,  /* R24 - R26, FP, SP, ILINK, R30, BLINK */ \
+    0, 0, 0, 0,   0, 0, 0, 0,  /* R0 - R7 */				\
+    0, 0, 0, 0,   0, 0, 0, 0,  /* R8 - R15 */				\
+    0, 0, 0, 0,   0, 0, 0, 0,  /* R16 - R23 */				\
+    0, 0, 0, 0,   1, 1, ARC64_TLS_REGNO, 1,  /* R24 - R26, FP, SP, ILINK, R30, BLINK */ \
 									\
-   1, 1, 1, 1,   1, 1, 1, 1,  /* R32 - R39 */				\
-   1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
-   1, 1, 1, 1,   1, 1, 1, 1,  /* R48 - R55 */				\
-   1, 1, 0, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, R59, Specials */	\
-   1, 1, 1,                   /* AP, SFP, CC */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* R32 - R39 */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* R48 - R55 */				\
+    1, 1, 0, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, R59, Specials */	\
+									\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* F0 - F7 */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* F8 - F15 */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* F16 - F23 */				\
+    1, 1, 1, 1,   1, 1, 1, 1,  /* F24 - F31 */				\
+									\
+    1, 1, 1,                   /* AP, SFP, CC */			\
   }
 
+/* 1 for registers not available across function calls.  */
 #define CALL_USED_REGISTERS						\
   {									\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R0 - R7 */				\
@@ -179,6 +192,12 @@
    1, 1, 1, 1,   1, 1, 1, 1,  /* R40 - R47 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R48 - R55 */				\
    1, 1, 1, 1,   1, 1, 1, 1,  /* R56, R57, ACCL, R59, Specials */	\
+									\
+   1, 1, 1, 1,   1, 1, 1, 1,  /* F0 - F7 */				\
+   1, 1, 1, 1,   1, 1, 1, 1,  /* F8 - F15 */				\
+   1, 1, 1, 1,   1, 1, 1, 1,  /* F16 - F23 */				\
+   1, 1, 1, 1,   1, 1, 1, 1,  /* F24 - F31 */				\
+									\
    1, 1, 1,                   /* AP, SFP, CC */				\
   }
 
@@ -192,6 +211,11 @@
    "r40", "r41", "r42", "r43",    "r44",  "r45",   "r46", "r47",	\
    "r48", "r49", "r50", "r51",    "r52",  "r53",   "r54", "r55",	\
    "r56", "r57", "r58", "r59",    "ximm", "rez",   "limm", "pcl",	\
+									\
+   "f0",  "f1",  "f2",  "f3",     "f4",   "f5",    "f6",  "f7",		\
+   "f8",  "f9",  "f10", "f11",    "f12",  "f13",   "f14", "f15",	\
+   "f16", "f17", "f18", "f19",    "f20",  "f21",   "f22", "f23",	\
+   "f24", "f25", "f26", "f27",    "f28",  "f29",   "f30", "f31",	\
    "ap", "sfp", "cc",							\
   }
 
@@ -222,6 +246,7 @@ enum reg_class
    AC16_REGS,
    SIBCALL_REGS,
    GENERAL_REGS,
+   FP_REGS,
    ALL_REGS,
    LIM_REG_CLASSES
 };
@@ -229,22 +254,24 @@ enum reg_class
 #define N_REG_CLASSES	((int) LIM_REG_CLASSES)
 
 #define REG_CLASS_NAMES				\
-  {						\
+{						\
     "NO_REGS",					\
     "AC16_REGS",				\
     "SIBCALL_REGS",				\
     "GENERAL_REGS",				\
+    "FP_REGS",					\
     "ALL_REGS"					\
-   }
+}
 
 #define REG_CLASS_CONTENTS					\
-  {								\
-    { 0x00000000, 0x00000000, 0x00000000 }, /* NO_REGS */	\
-    { 0x0000f00f, 0x00000000, 0x00000000 }, /* AC16_REGS */	\
-    { 0x00001fff, 0x00000000, 0x00000000 }, /* SIBCALL_REGS */	\
-    { 0xdfffffff, 0x0fffffff, 0x00000003 }, /* GENERAL_REGS */	\
-    { 0xffffffff, 0xffffffff, 0x00000007 }, /* ALL_REGS */	\
-   }
+{								\
+  { 0x00000000, 0x00000000, 0x00000000, 0x00000000 }, /* NO_REGS */	\
+  { 0x0000f00f, 0x00000000, 0x00000000, 0x00000000 }, /* AC16_REGS */	\
+  { 0x00001fff, 0x00000000, 0x00000000, 0x00000000 }, /* SIBCALL_REGS */ \
+  { 0xdfffffff, 0x0fffffff, 0x00000000, 0x00000003 }, /* GENERAL_REGS */ \
+  { 0x00000000, 0x00000000, 0xffffffff, 0x00000000 }, /* FP_REGS */	\
+  { 0xffffffff, 0xffffffff, 0xffffffff, 0x00000007 }, /* ALL_REGS */	\
+}
 
 /* A C expression whose value is a register class containing hard
    register REGNO.  In general there is more that one such class;
@@ -275,9 +302,9 @@ enum reg_class
 #define ELIMINABLE_REGS						\
   {								\
     { ARG_POINTER_REGNUM,   STACK_POINTER_REGNUM },		\
-    { ARG_POINTER_REGNUM,   HARD_FRAME_POINTER_REGNUM }, 	\
-    { FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },      	\
-    { FRAME_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM }  	\
+    { ARG_POINTER_REGNUM,   HARD_FRAME_POINTER_REGNUM },	\
+    { FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },		\
+    { FRAME_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM }		\
   }
 
 #define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET)		\
@@ -306,7 +333,8 @@ enum reg_class
 
 /* Define how to find the value returned by a library function
    assuming the value has mode MODE.  */
-#define LIBCALL_VALUE(MODE) gen_rtx_REG (MODE, R0_REGNUM)
+#define LIBCALL_VALUE(MODE)						\
+  gen_rtx_REG (MODE, arc64_use_fp_regs (MODE) ? F0_REGNUM : R0_REGNUM)
 
 /* Tell GCC to use RETURN_IN_MEMORY.  */
 #define DEFAULT_PCC_STRUCT_RETURN 0
@@ -329,7 +357,8 @@ enum reg_class
 /* Conditional info.  */
 #define SELECT_CC_MODE(OP, X, Y) arc64_select_cc_mode (OP, X, Y)
 
-#define REVERSIBLE_CC_MODE(MODE) 1
+/* Restrictions apply to floating-point comparisons.  */
+#define REVERSIBLE_CC_MODE(MODE) ((MODE) != CC_FPUmode && (MODE) != CC_FPUEmode)
 
 /* Returning.  */
 #define INCOMING_RETURN_ADDR_RTX gen_rtx_REG (Pmode, BLINK_REGNUM)
@@ -355,13 +384,18 @@ enum reg_class
    necessary information about the function itself and about the args
    processed so far, enough to enable macros such as FUNCTION_ARG to
    determine where the next arg should go.  */
-#define CUMULATIVE_ARGS int
+#define CUMULATIVE_ARGS struct arc64_args
+struct arc64_args
+{
+  int iregs;
+  int fregs;
+};
 
 /* Initialize a variable CUM of type CUMULATIVE_ARGS
    for a call to a function whose data type is FNTYPE.
    For a library call, FNTYPE is 0.  */
 #define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,INDIRECT,N_NAMED_ARGS) \
-  ((CUM) = 0)
+  ((CUM).iregs = 0, (CUM).fregs = 0)
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
 #define MOVE_MAX (UNITS_PER_WORD)
@@ -427,6 +461,10 @@ extern const enum reg_class arc64_regno_to_regclass[];
    || ((REGNO) == SFP_REGNUM))
 
 #define REGNO_OK_FOR_INDEX_P(REGNO) REGNO_OK_FOR_BASE_P(REGNO)
+
+/* Return true if regno is FP register.  */
+#define FP_REGNUM_P(REGNO)						\
+  (((unsigned) (REGNO - F0_REGNUM)) <= (F31_REGNUM - F0_REGNUM))
 
 /* Length in units of the trampoline for entering a nested function: 3
    insns + 2 pointer-sized entries.  */
@@ -534,6 +572,11 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* DIVREM options.  */
 #undef TARGET_ARC64_DIVREM_DEFAULT
 #define TARGET_ARC64_DIVREM_DEFAULT 1
+
+/* FP options.  */
+#define ARC64_HAS_FP_BASE (arc64_fp_model > 0)
+#define ARC64_HAS_FPUS    (arc64_fp_model > 0)
+#define ARC64_HAS_FPUD    (arc64_fp_model > 1)
 
 /* IFCVT macros.  */
 #define STORE_FLAG_VALUE 1

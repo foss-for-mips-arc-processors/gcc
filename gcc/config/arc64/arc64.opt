@@ -56,6 +56,22 @@ matomic=
 Target RejectNegative Joined Enum(arc64_atomic) Var(arc64_atomic_option) Init(DEFAULT_ARC64_ATOMIC_OPTION)
 -matomic=atomic	Enable atomic instructions: {0, 1, 2, 3}
 
+Enum
+Name(fpmodel) Type(int)
+
+EnumValue
+Enum(fpmodel) String(none) Value(0)
+
+EnumValue
+Enum(fpmodel) String(fpus) Value(1)
+
+EnumValue
+Enum(fpmodel) String(fpud) Value(2)
+
+mfpu=
+Target RejectNegative Joined Enum(fpmodel) Var(arc64_fp_model) Init(0)
+Specify hardware FP model used.
+
 mdiv-rem
 Target Report Var(TARGET_ARC64_DIVREM) Init(TARGET_ARC64_DIVREM_DEFAULT)
 Enable DIV-REM instructions.
