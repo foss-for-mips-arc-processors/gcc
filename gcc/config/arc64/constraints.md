@@ -29,6 +29,9 @@
   "@internal
    Sibling call register")
 
+(define_register_constraint "w" "ARC64_HAS_FP_BASE ? FP_REGS : NO_REGS"
+  "Floating point and SIMD vector registers.")
+
 ;; Register suited for mov_s g,h instructions like.
 ;; FIXME! check if we get better code when it is register_constraint.
 (define_constraint "h"
@@ -39,8 +42,7 @@
 
 ; Usc constant is only used for storing long constants, hence we can
 ; have only [b,s9], and [b] types of addresses.
-(define_memory_constraint "Ucnst"
-  "@internal
+(define_memory_constraint "Ucnst" "@internal
    A valid memory operand for storing constants"
   (and (match_code "mem")
        (match_test "!CONSTANT_P (XEXP (op, 0))")))
@@ -54,6 +56,11 @@
   A valid memory operand for loading using short instructions"
   (and (match_code "mem")
        (match_test "arc64_short_access_p (op, mode, false)")))
+
+(define_memory_constraint "Ufpms" "@internal
+   A valid memory operand for floating point operations"
+  (and (match_code "mem")
+       (match_test "arc64_fp_access_p (op, mode)")))
 
 ;(define_constraint "Us<"
 ;  "@internal
