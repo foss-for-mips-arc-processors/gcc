@@ -91,3 +91,7 @@ Enable unaligned accesses to packed data.
 mvolatile-di
 Target Mask(VOLATILE_DI)
 Enable uncached access for volatile memories.
+
+mcode-density
+Target Report Mask(CODE_DENSITY)
+Enable code-density instructions.
