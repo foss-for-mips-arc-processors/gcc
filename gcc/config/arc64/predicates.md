@@ -129,6 +129,12 @@
        (match_test "INTVAL (op) == 1 || INTVAL (op) == 2 || INTVAL (op) == 3"))
 )
 
+;; Allows only 1,2,3 values.  It is used with add/sub shifted operations.
+(define_predicate "_2_4_8_operand"
+  (and (match_code "const_int")
+       (match_test "INTVAL (op) == 2 || INTVAL (op) == 4 || INTVAL (op) == 8"))
+)
+
 ;; Return TRUE if OP can be used as a destination for any move
 ;; (mov,st,ld) instruction.
 (define_predicate "arc64_dest_operand"
