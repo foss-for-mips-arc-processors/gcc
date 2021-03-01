@@ -133,6 +133,7 @@
    ARC64_UNSPEC_XORSIGN
    ARC64_UNSPEC_ROUND
    ARC64_UNSPEC_BTRUNC
+   ARC64_UNSPEC_CASESI
    ])
 
 (include "constraints.md")
@@ -367,6 +368,20 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
      (const_int 2))
     ]
    (const_int 8)))
+
+;; Select various CPU features.
+(define_attr "cpu_facility" "std,cd,ncd"
+  (const_string "std"))
+
+(define_attr "enabled" "no,yes"
+  (cond [(and (eq_attr "cpu_facility" "cd")
+	      (not (match_test ("TARGET_CODE_DENSITY"))))
+	 (const_string "no")
+	 (and (eq_attr "cpu_facility" "ncd")
+	      (match_test ("TARGET_CODE_DENSITY")))
+	 (const_string "no")
+        ]
+       (const_string "yes")))
 
 ;; -------------------------------------------------------------------
 ;; Pipeline descriptions and scheduling
@@ -1053,6 +1068,63 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(set_attr "type" "return")
    (set_attr "length" "4")])
 
+; Jump tables
+(define_expand "casesi"
+  [(match_operand:SI 0 "register_operand" "")  ; Index
+   (match_operand 1 "const_int_operand" "")    ; Lower bound
+   (match_operand 2 "const_int_operand" "")    ; Total range
+   (match_operand 3 "" "")             ; Table label
+   (match_operand 4 "" "")]            ; Out of range label
+  ""
+ {
+   arc64_expand_casesi (operands);
+   DONE;
+   })
+
+(define_insn "casesi_dispatch"
+  [(set (pc)
+       (unspec:DI [(match_operand:SI 0 "register_operand" "r,q,r")
+                   (label_ref (match_operand 1 "" ""))
+                   (const_int 0)]
+                  ARC64_UNSPEC_CASESI))]
+  ""
+  "@
+  bi\\t[%0]
+  j_s\\t[%0]
+  j\\t[%0]"
+  [(set_attr "type" "jump")
+   (set_attr "length" "4,2,4")
+   (set_attr "cpu_facility" "cd,ncd,ncd")])
+
+(define_insn "casesi_addaddr"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+       (unspec:SI [(match_operand:SI 1 "register_operand" "r")
+                   (label_ref (match_operand 2 "" ""))
+                   (const_int 1)]
+                  ARC64_UNSPEC_CASESI))]
+  ""
+  "add2\\t%0,%l2,%1"
+  [(set_attr "type" "add")
+   (set_attr "length" "8")])
+
+(define_insn "casesi_addaddrdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+       (unspec:DI [(match_operand:SI 1 "register_operand" "r")
+                   (match_operand:DI 2 "register_operand" "r")
+                   (const_int 2)]
+                  ARC64_UNSPEC_CASESI))]
+  ""
+  "add2l\\t%0,%2,%1"
+  [(set_attr "type" "addl")
+   (set_attr "length" "4")])
+
+(define_insn "casesi_dispatchdi"
+  [(set (pc) (match_operand:DI 0 "register_operand" "q,r"))
+   (use (label_ref (match_operand 1 "" "")))]
+  ""
+  "j%?\\t[%0]"
+  [(set_attr "type" "jump")
+   (set_attr "length" "2,4")])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
