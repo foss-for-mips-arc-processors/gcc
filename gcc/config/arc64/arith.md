@@ -517,6 +517,18 @@
    (set_attr "length" "4,4,8")
    (set_attr "predicable" "yes,no,no")])
 
+(define_insn "*add<mode>_mult"
+  [(set (match_operand:GPI 0 "register_operand" "=q,r,r")
+	(plus:GPI
+	 (mult:GPI (match_operand:GPI 1 "register_operand" "q,r,r")
+		   (match_operand:GPI 2 "_2_4_8_operand" ""))
+	 (match_operand:GPI 3 "arc64_regsym_operand"  "0,r,S32S0SymMV")))]
+  ""
+  "add%s2<sfxtab>%?\\t%0,%3,%1"
+  [(set_attr "type" "add")
+   (set_attr "length" "*,4,8")
+   (set_attr "iscompact" "maybe,no,no")])
+
 ;; Multiplications
 
 (define_expand "<ANY_EXTEND:su_optab>mulhisi3"
