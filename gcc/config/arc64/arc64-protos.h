@@ -34,6 +34,7 @@ extern void arc64_split_compare_and_swap (rtx []);
 extern bool arc64_allow_direct_access_p (rtx);
 extern bool arc64_use_fp_regs (machine_mode);
 extern bool arc64_fp_access_p (rtx, machine_mode);
+extern void arc64_expand_casesi (rtx []);
 
 #endif /* RTX_CODE */
 
