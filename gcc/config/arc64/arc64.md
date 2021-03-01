@@ -1935,6 +1935,17 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(set_attr "length" "4")
    (set_attr "type" "fnmsub")])
 
+;; -(op3 - (op1 * op2))
+(define_insn "*nfnms<mode>4"
+  [(set (match_operand:GPF 0 "register_operand" "=w")
+	(neg:GPF (fma:GPF (neg:GPF (match_operand:GPF 1 "register_operand"  "w"))
+			  (match_operand:GPF 2 "register_operand"  "w")
+			  (match_operand:GPF 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "f<sfxtab>nmsub\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmsub")])
+
 ;; F<P>NMADD
 ;; Likewise like above
 (define_insn "fnms<mode>4"
@@ -1943,6 +1954,17 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 		 (match_operand:GPF 2 "register_operand"  "w")
 		 (neg:GPF (match_operand:GPF 3 "register_operand"  "w"))))]
   "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
+  "f<sfxtab>nmadd\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmadd")])
+
+;; -(op3 + (op1 * op2))
+(define_insn "*nfms<mode>4"
+  [(set (match_operand:GPF 0 "register_operand" "=w")
+	(neg:GPF (fma:GPF (match_operand:GPF 1 "register_operand"  "w")
+			  (match_operand:GPF 2 "register_operand"  "w")
+			  (match_operand:GPF 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
   "f<sfxtab>nmadd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
    (set_attr "type" "fnmadd")])
