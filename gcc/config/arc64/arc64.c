@@ -3159,43 +3159,8 @@ arc64_fp_access_p (rtx op, machine_mode mode)
 
   /* Decode the address now.  */
   addr = XEXP (op, 0);
-  switch (GET_CODE (addr))
-    {
-    case PRE_MODIFY:
-    case POST_MODIFY:
-      addr = XEXP (addr, 1);
-      if (!ARC64_CHECK_SMALL_IMMEDIATE (XEXP (addr, 1), QImode))
-	return false;
-    case PRE_DEC:
-    case PRE_INC:
-    case POST_DEC:
-    case POST_INC:
-      return REG_P (XEXP (addr, 0));
 
-    case REG:
-      return true;
-
-    case PLUS:
-      plus0 = XEXP (addr, 0);
-      plus1 = XEXP (addr, 1);
-
-      f0 = REG_P (plus0);
-      f1 = ARC64_CHECK_SMALL_IMMEDIATE (plus1, mode);
-
-      /* Check for (scaled) [Rb + s9].  */
-      if (f0 && f1)
-	return true;
-
-      break;
-
-    case SYMBOL_REF:
-    case LABEL_REF:
-      return (arc64_get_symbol_type (addr) == ARC64_LO32);
-
-    default:
-      break;
-    }
-  return false;
+  return arc64_legitimate_address_1_p (mode, addr, true, false, false);
 }
 
 /* Implement EH_RETURN_HANDLER_RTX.  EH returns need to either return
