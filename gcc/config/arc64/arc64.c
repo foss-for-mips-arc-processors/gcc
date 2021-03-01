@@ -3440,7 +3440,6 @@ arc64_split_compare_and_swap (rtx operands[])
     emit_label (label2);
 }
 
-#if 0
 /* Expander for casesi.  The vector table is always PC-relative, and
    it is made up of branch instructions.  When we have CODE_DENSITY
    option enabled, we use BI instruction, otherwise, depending on the
@@ -3466,12 +3465,11 @@ void arc64_expand_casesi (rtx operands[])
 					       operands[2]),
 				  operands[0], operands[2], operands[4]));
 
-  if (!ARC64_HAS_CODE_DENSITY)
+  if (!TARGET_CODE_DENSITY)
     {
       switch (arc64_cmodel_var)
 	{
 	case ARC64_CMODEL_SMALL:
-	case ARC64_CMODEL_MEDIUM:
 	  if (!flag_pic)
 	    {
 	      reg = gen_reg_rtx (SImode);
@@ -3480,6 +3478,7 @@ void arc64_expand_casesi (rtx operands[])
 	      break;
 	    }
 	  /* Fall through */
+	case ARC64_CMODEL_MEDIUM:
 	case ARC64_CMODEL_LARGE:
 	  {
 	    /* Same code is used for PIC and large memory model.  */
@@ -3501,7 +3500,6 @@ void arc64_expand_casesi (rtx operands[])
 
   emit_jump_insn (gen_casesi_dispatch (operands[0], operands[3]));
 }
-#endif
 
 bool
 arc64_allow_direct_access_p (rtx op)
