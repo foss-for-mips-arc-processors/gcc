@@ -206,7 +206,7 @@
 (define_mode_attr fptab [(SF "") (DF "l")])
 
 ;; Same as above but to be used by mov conditional
-(define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")])
+(define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l") (SF "") (DF "l")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
@@ -322,10 +322,10 @@
 asll, asr, asrl, atldop, atldlop, bclr, bic, bl, block, bmsk, branch,
 branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex,
 div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fmin, fmax, fsgnj,
-fsgnjx, fsgnjn, fmadd, fmsub, fnmadd, fnmsub, fsqrt, frnd, fs2d, fd2s,
-int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl, jump, ld, llock,
-lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl, neg,
-nop, norm, normh, norml, mpy, mpyl, not, notl, or, orl, return,
+fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub, fsqrt, frnd, fs2d,
+fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl, jump, ld,
+llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl,
+neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or, orl, return,
 ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl, swape, swapel,
 sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   (const_string "unknown"))
@@ -544,7 +544,7 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
    mov\\t%0,%1
    ld%U1\\t%0,%1
    st%U0\\t%1,%0"
-  [(set_attr "type" "move,ld,st,move,move,move,move,ld,st")
+  [(set_attr "type" "fmov,ld,st,move,move,move,move,ld,st")
    (set_attr "length" "4,*,*,4,4,4,8,*,*")])
 
 (define_insn "*arc64_push"
@@ -652,6 +652,20 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   "mov<mcctab>.%m3\\t%0,%1"
   [(set_attr "type" "move")
    (set_attr "length" "4,8")])
+
+(define_insn "*mov<mode>_ce"
+  [(cond_exec
+    (match_operator 3 "arc64_comparison_operator"
+		    [(match_operand 2 "cc_register" "") (const_int 0)])
+   (set (match_operand:GPF 0 "register_operand"  "=w,*r,*r")
+	(match_operand:GPF 1 "nonmemory_operand"  "w,*r,*E")))]
+  ""
+  "@
+  f<sfxtab>mov.%m3\\t%0,%1
+  mov<mcctab>.%m3\\t%0,%1
+  mov<mcctab>.%m3\\t%0,%1"
+  [(set_attr "type" "fmov,move,move")
+   (set_attr "length" "4,4,8")])
 
 ;; -------------------------------------------------------------------
 ;; Subroutine calls and sibcalls
@@ -1457,13 +1471,68 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
    (set_attr "type" "setcc")])
 
 
-;;(define_expand "mov<mode>cc"
-;;  [(set (match_operand:ALLI 0 "register_operand")
-;;	(if_then_else:ALLI (match_operator 1 "comparison_operator")
-;;			   (match_operand:ALLI 2 "register_operand")
-;;			   (match_operand:ALLI 3 "register_operand")))]
-;;  ""
-;;  )
+(define_expand "mov<mode>cc"
+  [(set (match_operand:ALLI 0 "register_operand")
+	(if_then_else:ALLI (match_operand 1 "arc64_comparison_operator")
+			   (match_operand:ALLI 2 "register_operand")
+			   (match_operand:ALLI 3 "register_operand")))]
+  ""
+  {
+   rtx tmp;
+   enum rtx_code code = GET_CODE (operands[1]);
+
+   if (code == UNEQ || code == LTGT)
+     FAIL;
+
+   tmp = arc64_gen_compare_reg (code, XEXP (operands[1], 0),
+				XEXP (operands[1], 1));
+   operands[1] = gen_rtx_fmt_ee (code, VOIDmode, tmp, const0_rtx);
+  })
+
+(define_expand "mov<mode>cc"
+  [(set (match_operand:GPF 0 "register_operand")
+	(if_then_else:GPF (match_operand 1 "arc64_comparison_operator")
+			  (match_operand:GPF 2 "register_operand")
+			  (match_operand:GPF 3 "register_operand")))]
+  ""
+  {
+   rtx tmp;
+   enum rtx_code code = GET_CODE (operands[1]);
+
+   if (code == UNEQ || code == LTGT)
+     FAIL;
+
+   tmp = arc64_gen_compare_reg (code, XEXP (operands[1], 0),
+				XEXP (operands[1], 1));
+   operands[1] = gen_rtx_fmt_ee (code, VOIDmode, tmp, const0_rtx);
+  })
+
+(define_insn "*cmov<mode>"
+  [(set (match_operand:ALLI 0 "register_operand" "=r,r")
+	(if_then_else:ALLI
+	 (match_operator 3 "arc64_comparison_operator"
+			 [(match_operand 4 "cc_register" "") (const_int 0)])
+	 (match_operand:ALLI 1 "nonmemory_operand" "rU06S0,S32S0")
+	 (match_operand:ALLI 2 "register_operand"  "0,0")))]
+  ""
+  "mov<mcctab>.%m3\\t%0,%1"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "move")])
+
+(define_insn "*cmov<mode>"
+  [(set (match_operand:GPF 0 "register_operand" "=w,*r,*r")
+	(if_then_else:GPF
+	 (match_operator 3 "arc64_comparison_operator"
+			 [(match_operand 4 "cc_register" "") (const_int 0)])
+	 (match_operand:GPF 1 "nonmemory_operand" "w,*r,*E")
+	 (match_operand:GPF 2 "register_operand"  "0, 0, 0")))]
+  ""
+  "@
+   f<sfxtab>mov.%m3\\t%0,%1
+   mov<mcctab>.%m3\\t%0,%1
+   mov<mcctab>.%m3\\t%0,%1"
+  [(set_attr "length" "4,4,8")
+   (set_attr "type" "fmov,move,move")])
 
 ;; conditional patterns
 ;; Todo: add conditional execution for leu and geu
