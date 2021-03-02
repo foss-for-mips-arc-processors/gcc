@@ -3461,9 +3461,9 @@ void arc64_expand_casesi (rtx operands[])
       emit_insn (gen_addsi3 (reg, operands[0], operands[1]));
       operands[0] = reg;
     }
-  emit_jump_insn (gen_cbranchsi4 (gen_rtx_GTU (SImode, operands[0],
-					       operands[2]),
-				  operands[0], operands[2], operands[4]));
+  emit_unlikely_jump (gen_cbranchsi4 (gen_rtx_GTU (SImode, operands[0],
+						   operands[2]),
+				      operands[0], operands[2], operands[4]));
 
   if (!TARGET_CODE_DENSITY)
     {
