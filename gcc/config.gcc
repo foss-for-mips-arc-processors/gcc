@@ -4327,7 +4327,7 @@ case "${target}" in
 		done
 		;;
 
-	arc*-*-*)
+	arc-*-* | arc[eb]*-*-*)
 		supported_defaults="cpu fpu"
 
 		new_cpu=hs38_linux
@@ -4374,6 +4374,20 @@ case "${target}" in
 			 "--with-fpu=$with_fpu for cpu $new_cpu" 1>&2
 			 exit 1
 		fi
+		;;
+
+	arc64-*-*)
+		supported_defaults="fpu"
+		case "$with_fpu" in
+		"" | fpus)
+			# OK
+			;;
+		*)
+			echo "Unknown floating point type used in "\
+			     "--with-fpu=$with-fpu" 1>&2
+			exit 1
+			;;
+		esac
 		;;
 
 	avr-*-*)

@@ -617,4 +617,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define ASM_PREFERRED_EH_DATA_FORMAT(CODE, GLOBAL) \
   arc64_asm_preferred_eh_data_format ((CODE), (GLOBAL))
 
+/* Specs.  */
+#define OPTION_DEFAULT_SPECS			\
+  { "fpu", "%{!mfpu=*:-mfpu=%(VALUE)}"}
+
 #endif /* GCC_ARC64_H */
