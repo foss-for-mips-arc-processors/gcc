@@ -3143,8 +3143,7 @@ arc64_short_access_p (rtx op, machine_mode mode, bool load_p)
 bool
 arc64_fp_access_p (rtx op, machine_mode mode)
 {
-  rtx addr, plus0, plus1;
-  bool f0, f1;
+  rtx addr;
 
   /* Eliminate non-memory operations.  */
   if (GET_CODE (op) != MEM)
