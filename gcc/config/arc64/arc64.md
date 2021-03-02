@@ -508,6 +508,16 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
     (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
 )
 
+(define_insn "*mov<mode>_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN (match_operand:ALLI 1 "register_operand" "r")
+		       (const_int 0)))
+   (set (match_operand:ALLI 0 "register_operand" "=r") (match_dup 1))]
+  ""
+  "mov<mcctab>.f\\t%0,%1"
+  [(set_attr "type" "move")
+   (set_attr "length" "4")])
+
 ;; Softcore float move.
 ;; FIXME! add short instruction selection
 (define_insn "*movsf_softfp"
