@@ -1095,8 +1095,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ; Jump tables
 (define_expand "casesi"
   [(match_operand:SI 0 "register_operand" "")  ; Index
-   (match_operand 1 "const_int_operand" "")    ; Lower bound
-   (match_operand 2 "const_int_operand" "")    ; Total range
+   (match_operand:SI 1 "const_int_operand" "")    ; Lower bound
+   (match_operand:SI 2 "const_int_operand" "")    ; Total range
    (match_operand 3 "" "")             ; Table label
    (match_operand 4 "" "")]            ; Out of range label
   ""
