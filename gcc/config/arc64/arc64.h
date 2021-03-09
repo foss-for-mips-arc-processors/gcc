@@ -387,7 +387,10 @@ enum reg_class
 #define CUMULATIVE_ARGS struct arc64_args
 struct arc64_args
 {
+  /* Number of integer registers used so far.  */
   int iregs;
+
+  /* Number of floating-point registers used so far.  */
   int fregs;
 };
 
