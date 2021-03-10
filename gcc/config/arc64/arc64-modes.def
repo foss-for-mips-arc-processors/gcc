@@ -22,3 +22,7 @@ CC_MODE (CC_Z);     /* Only Z bit of condition flags is valid.  */
 CC_MODE (CC_C);     /* C represents unsigned overflow of a simple addition.  */
 CC_MODE (CC_FPU);
 CC_MODE (CC_FPUE);
+
+/* Half-precision floating point for __fp16.  */
+FLOAT_MODE (HF, 2, 0);
+ADJUST_FLOAT_FORMAT (HF, &ieee_half_format);

@@ -592,6 +592,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* FP options.  */
 #define ARC64_HAS_FP_BASE (arc64_fp_model > 0)
+#define ARC64_HAS_FPUH    (arc64_fp_model == 1)
 #define ARC64_HAS_FPUS    (arc64_fp_model > 0)
 #define ARC64_HAS_FPUD    (arc64_fp_model > 1)
 
