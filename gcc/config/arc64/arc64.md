@@ -162,6 +162,11 @@
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
 (define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
 
+;; Iterator for General Purpose Floating-point registers (16 -, 32-
+;; and 64-bit modes)
+(define_mode_iterator GPF_HF [(HF "ARC64_HAS_FPUH")
+			      (SF "ARC64_HAS_FPUS") (DF "ARC64_HAS_FPUD")])
+
 ;; Iterator for General Purpose Floating-point registers (32- and 64-bit modes)
 (define_mode_iterator GPF [(SF "ARC64_HAS_FPUS") (DF "ARC64_HAS_FPUD")])
 
@@ -200,17 +205,27 @@
 (define_mode_attr exttab [(QI "b") (HI "h") (SI "w")])
 
 ;; Map rtl mode to ARC mnemonic suffixes
-(define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l") (SF "s") (DF "d")])
+(define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")
+			  (HF "h") (SF "s") (DF "d")])
 
 ;; Used by FPABS patterns.
 (define_mode_attr fptab [(SF "") (DF "l")])
 
 ;; Same as above but to be used by mov conditional
-(define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l") (SF "") (DF "l")])
+(define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")
+			  (HF "") (SF "") (DF "l")])
+
+(define_mode_attr slfp [(HF "h") (SF "") (DF "l")])
+
+(define_mode_attr fmvftab [(HF "s") (SF "s") (DF "d")])
+(define_mode_attr fmvitab [(HF "i") (SF "i") (DF "l")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
-			 (SF "31") (DF "63")])
+			 (HF "15") (SF "31") (DF "63")])
+
+;; Same like above but without -1 used for fp loads/stores
+(define_mode_attr sizef [(HF "16") (SF "32") (DF "64")])
 
 ;; Used by float conv patterns.
 (define_mode_attr f2tab [(SI "int") (DI "l")])
@@ -321,13 +336,14 @@
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldop, atldlop, bclr, bic, bl, block, bmsk, branch,
 branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex,
-div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fmin, fmax, fsgnj,
+div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin, fmax, fsgnj,
 fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub, fsqrt, frnd, fs2d,
-fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl, jump, ld,
-llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc, mod, modl,
-neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or, orl, return,
-ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl, swape, swapel,
-sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
+fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl,
+jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc,
+mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or,
+orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl,
+swape, swapel, sync, trap, udiv, udivl, umod, umodl, unknown, xbfu,
+xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -408,6 +424,15 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   ""
   {
    if (arc64_prepare_move_operands (operands[0], operands[1], SFmode))
+      DONE;
+   })
+
+(define_expand "movhf"
+  [(set (match_operand:HF 0 "nonimmediate_operand" "")
+	(match_operand:HF 1 "general_operand"))]
+  "ARC64_HAS_FPUH"
+  {
+   if (arc64_prepare_move_operands (operands[0], operands[1], HFmode))
       DONE;
    })
 
@@ -538,22 +563,22 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; For a fp move I use FSMOV.<cc> instruction. However, we can also
 ;; use FSSGNJ.
 ;; FIXME! add short instruction selection
-(define_insn "*movsf_hardfp"
-  [(set (match_operand:SF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*m")
-	(match_operand:SF 1 "general_operand"     "w,Ufpms,    w,*w,*r,*r,*E,*m,*r"))]
+(define_insn "*mov<mode>_hardfp"
+  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*m")
+	(match_operand:GPF_HF 1 "general_operand"     "w,Ufpms,    w,*w,*r,*r,*E,*m,*r"))]
   "ARC64_HAS_FP_BASE
-   && (register_operand (operands[0], SFmode)
-       || register_operand (operands[1], SFmode))"
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
   "@
-   fsmov\\t%0,%1
-   fld32%U1\\t%0,%1
-   fst32%U0\\t%1,%0
-   fmvs2i\\t%0,%1
-   fmvi2s\\t%0,%1
-   mov\\t%0,%1
-   mov\\t%0,%1
-   ld%U1\\t%0,%1
-   st%U0\\t%1,%0"
+   f<sfxtab>mov\\t%0,%1
+   fld<sizef>%U1\\t%0,%1
+   fst<sizef>%U0\\t%1,%0
+   fmv<fmvftab>2<fmvitab>\\t%0,%1
+   fmv<fmvitab>2<fmvftab>\\t%0,%1
+   mov<mcctab>\\t%0,%1
+   mov<mcctab>\\t%0,%1
+   ld<slfp>%U1\\t%0,%1
+   st<slfp>%U0\\t%1,%0"
   [(set_attr "type" "fmov,ld,st,move,move,move,move,ld,st")
    (set_attr "length" "4,*,*,4,4,4,8,*,*")])
 
@@ -667,8 +692,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 2 "cc_register" "") (const_int 0)])
-   (set (match_operand:GPF 0 "register_operand"  "=w,*r,*r")
-	(match_operand:GPF 1 "nonmemory_operand"  "w,*r,*E")))]
+   (set (match_operand:GPF_HF 0 "register_operand"  "=w,*r,*r")
+	(match_operand:GPF_HF 1 "nonmemory_operand"  "w,*r,*E")))]
   ""
   "@
   f<sfxtab>mov.%m3\\t%0,%1
@@ -932,8 +957,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_expand "cbranch<mode>4"
   [(set (pc) (if_then_else (match_operator 0 "arc64_comparison_operator"
-			    [(match_operand:GPF 1 "register_operand")
-			     (match_operand:GPF 2 "register_operand")])
+			    [(match_operand:GPF_HF 1 "register_operand")
+			     (match_operand:GPF_HF 2 "register_operand")])
 			   (label_ref (match_operand 3 "" ""))
 			   (pc)))]
   "ARC64_HAS_FP_BASE"
@@ -1353,8 +1378,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_insn "fcmp<mode>"
   [(set (reg:CC_FPU CC_REGNUM)
-	(compare:CC_FPU (match_operand:GPF 0 "register_operand" "w")
-			(match_operand:GPF 1 "register_operand" "w")))]
+	(compare:CC_FPU (match_operand:GPF_HF 0 "register_operand" "w")
+			(match_operand:GPF_HF 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>cmp\\t%0,%1"
   [(set_attr "length" "4")
@@ -1362,8 +1387,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 (define_insn "fcmpf<mode>"
   [(set (reg:CC_FPUE CC_REGNUM)
-	(compare:CC_FPUE (match_operand:GPF 0 "register_operand" "w")
-			 (match_operand:GPF 1 "register_operand" "w")))]
+	(compare:CC_FPUE (match_operand:GPF_HF 0 "register_operand" "w")
+			 (match_operand:GPF_HF 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>cmpf\\t%0,%1"
   [(set_attr "length" "4")
@@ -1389,8 +1414,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 (define_expand "cstore<mode>4"
   [(set (match_operand:SI 0 "register_operand")
 	(match_operator:SI 1 "arc64_comparison_operator"
-	 [(match_operand:GPF 2 "register_operand")
-	  (match_operand:GPF 3 "register_operand")]))]
+	 [(match_operand:GPF_HF 2 "register_operand")
+	  (match_operand:GPF_HF 3 "register_operand")]))]
   "ARC64_HAS_FP_BASE"
   "
   operands[2] = arc64_gen_compare_reg (GET_CODE (operands[1]), operands[2],
@@ -1878,12 +1903,24 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(set_attr "length" "4")
    (set_attr "type" "fs2d")])
 
-;;(define_insn "extendhfsf2"
-;;  [(set (match_operand:SF 0 "register_operand" "=w")
-;;        (float_extend:SF (match_operand:HF 1 "register_operand" "w")))]
-;;  ""
-;;  "fh2s\\t%0,%1"
-;;)
+(define_insn "extendhfsf2"
+  [(set (match_operand:SF 0 "register_operand" "=w")
+        (float_extend:SF (match_operand:HF 1 "register_operand" "w")))]
+  "ARC64_HAS_FPUH"
+  "fh2s\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "fh2s")])
+
+;;(define_expand "extendhfdf2"
+;;  [(match_operand:DF 0 "register_operand")
+;;   (match_operand:HF 1 "register_operand")]
+;;  "ARC64_HAS_FPUH"
+;;  {
+;;    rtx tmp = gen_reg_rtx (SFmode);
+;;    emit_insn (gen_extendhfsf2 (tmp, operands[1]));
+;;    emit_insn (gen_extendsfdf2 (operands[0], tmp));
+;;    DONE;
+;;  })
 
 (define_insn "truncdfsf2"
   [(set (match_operand:SF 0 "register_operand" "=w")
@@ -1893,12 +1930,24 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   [(set_attr "length" "4")
    (set_attr "type" "fd2s")])
 
-;;(define_insn "truncsfhf2"
-;;  [(set (match_operand:HF 0 "register_operand" "=w")
-;;        (float_truncate:HF (match_operand:SF 1 "register_operand" "w")))]
-;;  ""
-;;  "fs2h\\t%0,%1"
-;;)
+(define_insn "truncsfhf2"
+  [(set (match_operand:HF 0 "register_operand" "=w")
+        (float_truncate:HF (match_operand:SF 1 "register_operand" "w")))]
+  "ARC64_HAS_FPUH"
+  "fs2h\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "fs2h")])
+
+;;(define_expand "truncdfhf2"
+;;  [(match_operand:HF 0 "register_operand")
+;;   (match_operand:DF 1 "register_operand")]
+;;  "ARC64_HAS_FPUH"
+;;  {
+;;    rtx tmp = gen_reg_rtx (SFmode);
+;;    emit_insn (gen_truncdfsf2 (tmp, operands[1]));
+;;    emit_insn (gen_truncsfhf2 (operands[0], tmp));
+;;    DONE;
+;;  })
 
 ;; SI->SF SI->DF DI->SF DI->DF
 ;; FINT2S FINT2D FL2S FL2D
@@ -1909,6 +1958,28 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
   "f<GPI:f2tab>2<GPF:sfxtab>\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "int2fp")])
+
+(define_expand "floatsihf2"
+  [(match_operand:HF 0 "register_operand")
+   (match_operand:SI 1 "register_operand")]
+  "ARC64_HAS_FPUH"
+  {
+    rtx tmp = gen_reg_rtx (SFmode);
+    emit_insn (gen_floatsisf2 (tmp, operands[1]));
+    emit_insn (gen_truncsfhf2 (operands[0], tmp));
+    DONE;
+  })
+
+(define_expand "floatdihf2"
+  [(match_operand:HF 0 "register_operand")
+   (match_operand:DI 1 "register_operand")]
+  "ARC64_HAS_FPUH"
+  {
+    rtx tmp = gen_reg_rtx (SFmode);
+    emit_insn (gen_floatdisf2 (tmp, operands[1]));
+    emit_insn (gen_truncsfhf2 (operands[0], tmp));
+    DONE;
+    })
 
 ;; uSI->SF uSI->DF uDI->SF uDI->DF
 ;; FUINT2S FUINT2D FUL2S FUL2D
@@ -1946,9 +2017,9 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>ADD F<P>SUB F<P>MUL F<P>DIV F<P>MIN F<P>MAX
 (define_insn "<optab><mode>3"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(DOPF:GPF (match_operand:GPF 1 "register_operand" "w")
-		  (match_operand:GPF 2 "register_operand" "w")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(DOPF:GPF_HF (match_operand:GPF_HF 1 "register_operand" "w")
+		     (match_operand:GPF_HF 2 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab><arc64_code_map>\\t%0,%1,%2"
   [(set_attr "length" "4")
@@ -1957,8 +2028,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; F<P>ABS
 ;; FIXME! bclr can be short. Also we can predicate it
 (define_insn "abs<mode>2"
-  [(set (match_operand:GPF 0 "register_operand" "=w,*r")
-	(abs:GPF (match_operand:GPF 1 "register_operand" "w,*r")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w,*r")
+	(abs:GPF_HF (match_operand:GPF_HF 1 "register_operand" "w,*r")))]
   ""
   "@
   f<sfxtab>sgnjx\\t%0,%1,%1
@@ -1969,8 +2040,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; F<P>NEG
 ;; FIXME! bxor can be predicated
 (define_insn "neg<mode>2"
-  [(set (match_operand:GPF 0 "register_operand" "=w,*r")
-	(neg:GPF (match_operand:GPF 1 "register_operand" "w,*r")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w,*r")
+	(neg:GPF_HF (match_operand:GPF_HF 1 "register_operand" "w,*r")))]
   ""
   "@
   f<sfxtab>sgnjn\\t%0,%1,%1
@@ -1980,10 +2051,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>MADD
 (define_insn "fma<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(fma:GPF (match_operand:GPF 1 "register_operand"  "w")
-		 (match_operand:GPF 2 "register_operand"  "w")
-		 (match_operand:GPF 3 "register_operand"  "w")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(fma:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w")
+		    (match_operand:GPF_HF 2 "register_operand"  "w")
+		    (match_operand:GPF_HF 3 "register_operand"  "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>madd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1991,10 +2062,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>MSUB
 (define_insn "fnma<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(fma:GPF (neg:GPF (match_operand:GPF 1 "register_operand"  "w"))
-		 (match_operand:GPF 2 "register_operand"  "w")
-		 (match_operand:GPF 3 "register_operand"  "w")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(fma:GPF_HF (neg:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w"))
+		    (match_operand:GPF_HF 2 "register_operand"  "w")
+		    (match_operand:GPF_HF 3 "register_operand"  "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>msub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2005,10 +2076,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; operand 3 subtracted from the product instead of added to the
 ;; product. However, fnmsub does -(s3 - (s1 * s2))
 (define_insn "fms<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(fma:GPF (match_operand:GPF 1 "register_operand"  "w")
-		 (match_operand:GPF 2 "register_operand"  "w")
-		 (neg:GPF (match_operand:GPF 3 "register_operand"  "w"))))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(fma:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w")
+		    (match_operand:GPF_HF 2 "register_operand"  "w")
+		    (neg:GPF_HF (match_operand:GPF_HF 3 "register_operand"  "w"))))]
   "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
   "f<sfxtab>nmsub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2016,10 +2087,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; -(op3 - (op1 * op2))
 (define_insn "*nfnms<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(neg:GPF (fma:GPF (neg:GPF (match_operand:GPF 1 "register_operand"  "w"))
-			  (match_operand:GPF 2 "register_operand"  "w")
-			  (match_operand:GPF 3 "register_operand"  "w"))))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(neg:GPF_HF (fma:GPF_HF (neg:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w"))
+			  (match_operand:GPF_HF 2 "register_operand"  "w")
+			  (match_operand:GPF_HF 3 "register_operand"  "w"))))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>nmsub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2028,10 +2099,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 ;; F<P>NMADD
 ;; Likewise like above
 (define_insn "fnms<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(fma:GPF (neg:GPF (match_operand:GPF 1 "register_operand"  "w"))
-		 (match_operand:GPF 2 "register_operand"  "w")
-		 (neg:GPF (match_operand:GPF 3 "register_operand"  "w"))))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(fma:GPF_HF (neg:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w"))
+		    (match_operand:GPF_HF 2 "register_operand"  "w")
+		    (neg:GPF_HF (match_operand:GPF_HF 3 "register_operand"  "w"))))]
   "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
   "f<sfxtab>nmadd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2039,10 +2110,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; -(op3 + (op1 * op2))
 (define_insn "*nfms<mode>4"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(neg:GPF (fma:GPF (match_operand:GPF 1 "register_operand"  "w")
-			  (match_operand:GPF 2 "register_operand"  "w")
-			  (match_operand:GPF 3 "register_operand"  "w"))))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(neg:GPF_HF (fma:GPF_HF (match_operand:GPF_HF 1 "register_operand"  "w")
+				(match_operand:GPF_HF 2 "register_operand"  "w")
+				(match_operand:GPF_HF 3 "register_operand"  "w"))))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>nmadd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2050,8 +2121,8 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>SQRT
 (define_insn "sqrt<mode>2"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(sqrt:GPF (match_operand:GPF 1 "register_operand" "w")))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(sqrt:GPF_HF (match_operand:GPF_HF 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sqrt\\t%0,%1"
   [(set_attr "length" "4")
@@ -2059,10 +2130,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>SGNJ
 (define_insn "copysign<mode>3"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(unspec:GPF [(match_operand 1 "register_operand" "w")
-		     (match_operand 2 "register_operand" "w")]
-		    ARC64_UNSPEC_COPYSIGN))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(unspec:GPF_HF [(match_operand 1 "register_operand" "w")
+			(match_operand 2 "register_operand" "w")]
+		       ARC64_UNSPEC_COPYSIGN))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnj\\t%0,%1,%2"
   [(set_attr "length" "4")
@@ -2070,10 +2141,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>SGNJX
 (define_insn "xorsign<mode>3"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(unspec:GPF [(match_operand 1 "register_operand" "w")
-		     (match_operand 2 "register_operand" "w")]
-		    ARC64_UNSPEC_XORSIGN))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(unspec:GPF_HF [(match_operand 1 "register_operand" "w")
+			(match_operand 2 "register_operand" "w")]
+		       ARC64_UNSPEC_XORSIGN))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnjx\\t%0,%1,%2"
   [(set_attr "length" "4")
@@ -2081,10 +2152,10 @@ sync, trap, udiv, udivl, umod, umodl, unknown, xbfu, xor, xorl"
 
 ;; F<P>SGNJN
 (define_insn "*ncopysign<mode>3"
-  [(set (match_operand:GPF 0 "register_operand" "=w")
-	(neg:GPF (unspec:GPF [(match_operand 1 "register_operand" "w")
-			      (match_operand 2 "register_operand" "w")]
-			     ARC64_UNSPEC_COPYSIGN)))]
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+	(neg:GPF_HF (unspec:GPF_HF [(match_operand 1 "register_operand" "w")
+				    (match_operand 2 "register_operand" "w")]
+				   ARC64_UNSPEC_COPYSIGN)))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnjn\\t%0,%1,%2"
   [(set_attr "length" "4")

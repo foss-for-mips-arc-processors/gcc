@@ -769,10 +769,28 @@ arc64_use_fp_regs (machine_mode mode)
     return false;
 
   /* FPU unit can have either 32 or 64 bit wide data path.  */
-  if (((ARC64_HAS_FPUS && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 2)))
-       || ARC64_HAS_FPUD))
+  if ((ARC64_HAS_FPUS && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 2)))
+      || (ARC64_HAS_FPUH && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 4)))
+      || ARC64_HAS_FPUD)
     return true;
   return false;
+}
+
+static rtx
+arc64_gen_fp_pair (machine_mode mode, unsigned regno1,
+		 machine_mode mode1, HOST_WIDE_INT offset1,
+		 unsigned regno2, machine_mode mode2,
+		 HOST_WIDE_INT offset2)
+{
+  return gen_rtx_PARALLEL
+    (mode,
+     gen_rtvec (2,
+		gen_rtx_EXPR_LIST (VOIDmode,
+				   gen_rtx_REG (mode1, regno1),
+				   GEN_INT (offset1)),
+		gen_rtx_EXPR_LIST (VOIDmode,
+				   gen_rtx_REG (mode2, regno2),
+				   GEN_INT (offset2))));
 }
 
 static rtx
@@ -797,8 +815,21 @@ arc64_layout_arg (struct arc64_arg_info *info, cumulative_args_t pcum_v,
   if (named && arc64_use_fp_regs (mode)
       && (info->off_fpr + nregs < MAX_ARC64_PARM_REGS))
     {
+      int fregno = F0_REGNUM + info->off_fpr;
       info->nfpr = nregs;
-      return gen_rtx_REG (mode, F0_REGNUM + info->off_fpr);
+      switch (GET_MODE_CLASS (mode))
+	{
+	case MODE_FLOAT:
+	  return gen_rtx_REG (mode, fregno);
+
+	case MODE_COMPLEX_FLOAT:
+	  return arc64_gen_fp_pair (mode, fregno, GET_MODE_INNER (mode), 0,
+				    fregno + 1, GET_MODE_INNER (mode),
+				    GET_MODE_UNIT_SIZE (mode));
+
+	default:
+	  gcc_unreachable ();
+	}
     }
 
   /* Partition the argument between register and stack.  */
@@ -927,13 +958,28 @@ arc64_function_value (const_tree type,
 		      bool outgoing ATTRIBUTE_UNUSED)
 {
   machine_mode mode = TYPE_MODE (type);
-  int unsignedp;
+  int unsignedp = TYPE_UNSIGNED (type);
 
   if (INTEGRAL_TYPE_P (type))
     mode = promote_function_mode (type, mode, &unsignedp, func, 1);
 
   if (arc64_use_fp_regs (mode))
-    return gen_rtx_REG (mode, F0_REGNUM);
+    {
+      switch (GET_MODE_CLASS (mode))
+	{
+	case MODE_FLOAT:
+	  return gen_rtx_REG (mode, F0_REGNUM);
+
+	case MODE_COMPLEX_FLOAT:
+	  return arc64_gen_fp_pair (mode, F0_REGNUM, GET_MODE_INNER (mode), 0,
+				    F1_REGNUM, GET_MODE_INNER (mode),
+				    GET_MODE_UNIT_SIZE (mode));
+
+	default:
+	  gcc_unreachable ();
+	}
+
+    }
   return gen_rtx_REG (mode, R0_REGNUM);
 }
 
@@ -958,6 +1004,12 @@ arc64_function_value_regno_p (const unsigned int regno)
     return ARC64_HAS_FP_BASE;
 
   return false;
+}
+
+static bool
+arc64_split_complex_arg (const_tree)
+{
+  return true;
 }
 
 /* Implement TARGET_GET_RAW_RESULT_MODE and TARGET_GET_RAW_ARG_MODE.  */
@@ -1365,12 +1417,22 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	case CONST_DOUBLE:
 	  {
 	    long l;
-	    REAL_VALUE_TO_TARGET_SINGLE (*CONST_DOUBLE_REAL_VALUE (x), l);
+	    int msize;
+	    machine_mode mode = GET_MODE (x);
+	    /* Maybe I need to define TARGET_SUPPORTS_WIDE_INT.  */
+	    gcc_assert (mode != VOIDmode);
+	    /* GET_MODE_BITSIZE BITS_PER_WORD */
+	    msize = GET_MODE_SIZE (mode);
+	    if (msize > (UNITS_PER_WORD / 2))
+	      msize = UNITS_PER_WORD / 2;
+	    msize *= 8;
+	    l = real_to_target (NULL, CONST_DOUBLE_REAL_VALUE (x),
+				float_mode_for_size (msize).require ());
 	    asm_fprintf (file, "0x%08lx", l);
 	    break;
 	  }
 	case CONST_INT:
-	  asm_fprintf (file, "%wd", INTVAL (x));
+	  asm_fprintf (file, HOST_WIDE_INT_PRINT_DEC, INTVAL (x));
 	  break;
 
 	default:
@@ -2566,6 +2628,28 @@ arc64_conditional_register_usage (void)
     }
 }
 
+/* Implement TARGET_LIBGCC_FLOATING_POINT_MODE_SUPPORTED_P - return TRUE
+   if MODE is HFmode, and punt to the generic implementation otherwise.  */
+
+static bool
+arc64_libgcc_floating_mode_supported_p (scalar_float_mode mode)
+{
+  return (mode == HFmode
+	  ? ARC64_HAS_FPUH
+	  : default_libgcc_floating_mode_supported_p (mode));
+}
+
+/* Implement TARGET_SCALAR_MODE_SUPPORTED_P - return TRUE
+   if MODE is HFmode, and punt to the generic implementation otherwise.  */
+
+static bool
+arc64_scalar_mode_supported_p (scalar_mode mode)
+{
+  return (mode == HFmode
+	  ? ARC64_HAS_FPUH
+	  : default_scalar_mode_supported_p (mode));
+}
+
 /*
   Global functions.
 */
@@ -3642,6 +3726,16 @@ arc64_allow_direct_access_p (rtx op)
 
 #undef TARGET_CONDITIONAL_REGISTER_USAGE
 #define TARGET_CONDITIONAL_REGISTER_USAGE arc64_conditional_register_usage
+
+#undef TARGET_LIBGCC_FLOATING_MODE_SUPPORTED_P
+#define TARGET_LIBGCC_FLOATING_MODE_SUPPORTED_P \
+arc64_libgcc_floating_mode_supported_p
+
+#undef TARGET_SCALAR_MODE_SUPPORTED_P
+#define TARGET_SCALAR_MODE_SUPPORTED_P arc64_scalar_mode_supported_p
+
+#undef TARGET_SPLIT_COMPLEX_ARG
+#define TARGET_SPLIT_COMPLEX_ARG arc64_split_complex_arg
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
