@@ -70,9 +70,10 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
+
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
-   NO_REGS, NO_REGS, NO_REGS, NO_REGS,
+   NO_REGS, NO_REGS, GENERAL_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
 
    FP_REGS, FP_REGS, FP_REGS, FP_REGS,
@@ -2650,6 +2651,58 @@ arc64_scalar_mode_supported_p (scalar_mode mode)
 	  : default_scalar_mode_supported_p (mode));
 }
 
+/* Implements target hook vector_mode_supported_p.  */
+
+static bool
+arc64_vector_mode_supported_p (machine_mode mode)
+{
+  switch (mode)
+    {
+      /* 32-bit fp SIMD vectors.  */
+    case E_V2HFmode:
+      /* 32-bit SIMD vectors.  */
+    case E_V2HImode:
+      /* 64-bit SIMD vectors.  */
+    case E_V4HImode:
+    case E_V2SImode:
+      return true;
+
+    default:
+      return false;
+    }
+}
+
+/* Implements target hook TARGET_VECTORIZE_PREFERRED_SIMD_MODE.  */
+
+static machine_mode
+arc64_preferred_simd_mode (scalar_mode mode)
+{
+  switch (mode)
+    {
+    case E_HFmode:
+      return V2HFmode;
+    case E_HImode:
+      return V4HImode;
+    case E_SImode:
+      return V2SImode;
+
+    default:
+      return word_mode;
+    }
+}
+
+/* Implements target hook
+   TARGET_VECTORIZE_AUTOVECTORIZE_VECTOR_MODES.  */
+
+static unsigned int
+arc64_autovectorize_vector_modes (vector_modes *modes, bool)
+{
+  modes->quick_push (V2HFmode);
+  modes->quick_push (V4HImode);
+  modes->quick_push (V2HImode);
+  return 0;
+}
+
 /*
   Global functions.
 */
@@ -3736,6 +3789,17 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_SPLIT_COMPLEX_ARG
 #define TARGET_SPLIT_COMPLEX_ARG arc64_split_complex_arg
+
+/* Vectors.  */
+#undef TARGET_VECTOR_MODE_SUPPORTED_P
+#define TARGET_VECTOR_MODE_SUPPORTED_P arc64_vector_mode_supported_p
+
+#undef TARGET_VECTORIZE_PREFERRED_SIMD_MODE
+#define TARGET_VECTORIZE_PREFERRED_SIMD_MODE arc64_preferred_simd_mode
+
+#undef TARGET_VECTORIZE_AUTOVECTORIZE_VECTOR_MODES
+#define TARGET_VECTORIZE_AUTOVECTORIZE_VECTOR_MODES	\
+  arc64_autovectorize_vector_modes
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
