@@ -716,3 +716,241 @@
   "mpymsul\t%0,%2,%1"
   [(set_attr "type" "mpyl")
    (set_attr "length" "4")])
+
+;; -------------------------------------------------------------------
+;; Integer SIMD instructions
+;; -------------------------------------------------------------------
+
+(define_expand "mov<mode>"
+  [(set (match_operand:VALL 0 "nonimmediate_operand")
+	(match_operand:VALL 1 "general_operand"))]
+  ""
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
+
+(define_expand "movmisalign<mode>"
+  [(set (match_operand:VALL 0 "nonimmediate_operand")
+	(match_operand:VALL 1 "general_operand"))]
+  "!STRICT_ALIGNMENT"
+  {
+   if (!register_operand (operands[0], <MODE>mode)
+       && !register_operand (operands[1], <MODE>mode))
+    operands[1] = force_reg (<MODE>mode, operands[1]);
+  })
+
+(define_insn "*mov<mode>_insn"
+  [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,m")
+	(match_operand:VALL 1 "nonimmediate_operand" "r,m,r"))]
+  "(register_operand (operands[0], <MODE>mode)
+    || register_operand (operands[1], <MODE>mode))"
+  "@
+   mov<mcctab>\\t%0,%1
+   ld<mcctab>%U1\\t%0,%1
+   st<mcctab>%U0\\t%1,%0"
+  [(set_attr "type" "move,ld,st")])
+
+(define_insn "<optab><mode>3"
+  [(set (match_operand:VALL 0 "register_operand"           "=r")
+	(ADDSUB:VALL (match_operand:VALL 1 "register_operand" "r")
+		     (match_operand:VALL 2 "register_operand" "r")))]
+  ""
+  "v<arc64_code_map><sfxtab>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "v<arc64_code_map>")])
+
+(define_expand "vec_widen_<su>mult_lo_v4hi"
+ [(match_operand:V2SI 0 "register_operand")
+  (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
+  (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))]
+  ""
+  {
+    emit_insn (gen_arc64_<su>vmpy2h (operands[0],
+				     operands[1],
+				     operands[2]));
+    DONE;
+  })
+
+(define_expand "vec_widen_<su>mult_hi_v4hi"
+ [(match_operand:V2SI 0 "register_operand")
+  (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
+  (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))]
+  ""
+  {
+   rtx tmp1 = gen_reg_rtx (V4HImode);
+   rtx tmp2 = gen_reg_rtx (V4HImode);
+   emit_insn (gen_arc64_swapl (tmp1, operands[1]));
+   emit_insn (gen_arc64_swapl (tmp2, operands[2]));
+   emit_insn (gen_arc64_<su>vmpy2h (operands[0], tmp1, tmp2));
+   DONE;
+  })
+
+ (define_insn "arc64_<su>vmpy2h"
+   [(set (match_operand:V2SI 0 "register_operand"  "=r")
+	 (mult:V2SI
+	  (ANY_EXTEND:V2SI
+	   (vec_select:V2HI
+	    (match_operand:V4HI 1 "register_operand" "r")
+	    (parallel [(const_int 0) (const_int 1)])))
+	  (ANY_EXTEND:V2SI
+	   (vec_select:V2HI
+	    (match_operand:V4HI 2 "register_operand" "r")
+	    (parallel [(const_int 0) (const_int 1)])))))
+    (clobber (reg:V2SI R58_REGNUM))]
+   ""
+   "vmpy2h<su_optab>\\t%0,%1,%2"
+   [(set_attr "length" "4")
+    (set_attr "type" "vmpy2h")])
+
+(define_insn "arc64_swapl"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	 (vec_select:V2HI (match_operand:V4HI 1 "register_operand" "r")
+			  (parallel [(const_int 2) (const_int 3)]))
+	 (vec_select:V2HI (match_dup 1) (parallel [(const_int 0) (const_int 1)]))))]
+  ""
+  "swapl\\t%0,%1"
+   [(set_attr "length" "4")
+    (set_attr "type" "swapl")])
+
+(define_expand "<su>dot_prodv4hi"
+  [(match_operand:V2SI 0 "register_operand")
+   (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
+   (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))
+   (match_operand:V2SI 3 "register_operand")]
+  ""
+{
+ rtx acc_reg  = gen_rtx_REG  (V2SImode, R58_REGNUM);
+ rtx op1_high = gen_reg_rtx (V4HImode);
+ rtx op2_high = gen_reg_rtx (V4HImode);
+
+ emit_move_insn (acc_reg, operands[3]);
+ emit_insn (gen_arc64_swapl (op1_high, operands[1]));
+ emit_insn (gen_arc64_swapl (op2_high, operands[2]));
+ emit_insn (gen_arc64_<su>vmach_zero (operands[1], operands[2]));
+ emit_insn (gen_arc64_<su>vmach (operands[0], op1_high, op2_high));
+ DONE;
+})
+
+(define_insn "arc64_<su>vmach"
+ [(set (match_operand:V2SI 0 "register_operand" "=r")
+       (plus:V2SI
+	(mult:V2SI
+	 (ANY_EXTEND:V2SI
+	  (vec_select:V2HI (match_operand:V4HI 1 "register_operand" "r")
+			   (parallel [(const_int 0) (const_int 1)])))
+	 (ANY_EXTEND:V2SI
+	  (vec_select:V2HI (match_operand:V4HI 2 "register_operand" "r")
+			   (parallel [(const_int 0) (const_int 1)]))))
+	(reg:V2SI R58_REGNUM)))
+  (clobber (reg:V2SI R58_REGNUM))]
+  ""
+  "vmac2h<su_optab>%?\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vmac2h")])
+
+(define_insn "arc64_<su>vmach_zero"
+ [(set (reg:V2SI R58_REGNUM)
+       (plus:V2SI
+	(mult:V2SI
+	 (ANY_EXTEND:V2SI
+	  (vec_select:V2HI (match_operand:V4HI 0 "register_operand" "r")
+			   (parallel [(const_int 0) (const_int 1)])))
+	 (ANY_EXTEND:V2SI
+	  (vec_select:V2HI (match_operand:V4HI 1 "register_operand" "r")
+			   (parallel [(const_int 0) (const_int 1)]))))
+	(reg:V2SI R58_REGNUM)))]
+  ""
+  "vmac2h<su_optab>%?\\t0,%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vmac2h")])
+
+(define_insn "reduc_plus_scal_v4hi"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+	(unspec:HI [(match_operand:V4HI 1 "register_operand" "r")]
+		   ARC64_UNSPEC_QMPYH))
+   (clobber (reg:DI R58_REGNUM))]
+  ""
+  "qmpyh\\t%0,%1,1"
+  [(set_attr "length" "4")
+   (set_attr "type" "qmpyh")])
+
+;; -------------------------------------------------------------------
+;; FP SIMD instructions
+;; -------------------------------------------------------------------
+
+(define_expand "mov<mode>"
+  [(set (match_operand:VALLF 0 "nonimmediate_operand")
+	(match_operand:VALLF 1 "general_operand"))]
+  "ARC64_HAS_FP_BASE"
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
+
+(define_expand "movmisalign<mode>"
+  [(set (match_operand:VALLF 0 "nonimmediate_operand")
+	(match_operand:VALLF 1 "general_operand"))]
+  "ARC64_HAS_FP_BASE && !STRICT_ALIGNMENT"
+  {
+   if (!register_operand (operands[0], <MODE>mode)
+       && !register_operand (operands[1], <MODE>mode))
+    operands[1] = force_reg (<MODE>mode, operands[1]);
+  })
+
+(define_insn "*mov<mode>"
+  [(set (match_operand:VALLF 0 "arc64_dest_operand"  "=w,    w,Ufpms,*r,*w,*r,*r,*m")
+	(match_operand:VALLF 1 "nonimmediate_operand" "w,Ufpms,    w,*w,*r,*r,*m,*r"))]
+  "ARC64_HAS_FP_BASE
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
+  "@
+   vf<sfxtab>mov\\t%0,%1
+   fld<sizef>%U1\\t%0,%1
+   fst<sizef>%U0\\t%1,%0
+   fmv<fmvftab>2<fmvitab>\\t%0,%1
+   fmv<fmvitab>2<fmvftab>\\t%0,%1
+   mov<mcctab>\\t%0,%1
+   ld<slfp>%U1\\t%0,%1
+   st<slfp>%U0\\t%1,%0"
+  [(set_attr "type" "fmov,ld,st,move,move,move,ld,st")
+   (set_attr "length" "4,*,*,4,4,4,*,*")])
+
+(define_insn "<optab><mode>3"
+  [(set (match_operand:VALLF 0 "register_operand"            "=r")
+	(VOPS:VALLF (match_operand:VALLF 1 "register_operand" "r")
+		    (match_operand:VALLF 2 "register_operand" "r")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<arc64_code_map><sfxtab>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<arc64_code_map>")])
+
+(define_insn "vec_duplicate<mode>"
+  [(set (match_operand:VALLF 0 "register_operand" "=r")
+	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand" "r")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>rep\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfrep")])
+
+(define_insn "vec_set<mode>"
+  [(set (match_operand:VALLF 0 "register_operand" "=r")
+	(vec_merge:VALLF
+	 (vec_duplicate:VALLF
+	  (match_operand:<VEL> 1 "register_operand" "r"))
+	 (match_dup 0)
+	 (match_operand:SI 2 "nonmemory_operand" "rU05S0")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>ins\\t%0[%2],%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfins")])
+
+(define_insn "vec_extract<mode>"
+  [(set (match_operand:<VEL> 0 "register_operand" "=r")
+	(vec_select:<VEL> (match_operand:VALLF 1 "register_operand" "r")
+			  (parallel [(match_operand:SI 2 "nonmemory_operand" "rU05S0")])))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>ext\\t%0,%1[%2]"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfext")])
