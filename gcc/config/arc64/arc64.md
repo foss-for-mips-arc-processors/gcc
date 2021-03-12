@@ -134,6 +134,8 @@
    ARC64_UNSPEC_ROUND
    ARC64_UNSPEC_BTRUNC
    ARC64_UNSPEC_CASESI
+   ARC64_UNSPEC_VECINIT
+   ARC64_UNSPEC_QMPYH
    ])
 
 (include "constraints.md")
@@ -170,6 +172,12 @@
 ;; Iterator for General Purpose Floating-point registers (32- and 64-bit modes)
 (define_mode_iterator GPF [(SF "ARC64_HAS_FPUS") (DF "ARC64_HAS_FPUD")])
 
+;; All int vectors
+(define_mode_iterator VALL [V2HI V4HI V2SI])
+
+;; All fp vectors
+(define_mode_iterator VALLF [V2HF])
+
 ;; -------------------------------------------------------------------
 ;; Code Iterators
 ;; -------------------------------------------------------------------
@@ -196,6 +204,9 @@
 ;; Three operand floating point arithmetic instructions
 (define_code_iterator DOPF [plus minus mult div smin smax])
 
+;; Vector operations
+(define_code_iterator VOPS [plus minus mult div])
+
 ;; -------------------------------------------------------------------
 ;; Mode Attributes
 ;; -------------------------------------------------------------------
@@ -206,29 +217,40 @@
 
 ;; Map rtl mode to ARC mnemonic suffixes
 (define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")
-			  (HF "h") (SF "s") (DF "d")])
+			  (HF "h") (SF "s") (DF "d")
+			  (V2HI "2h") (V4HI "4h") (V2SI "2")
+			  (V2HF "h")])
 
 ;; Used by FPABS patterns.
 (define_mode_attr fptab [(SF "") (DF "l")])
 
 ;; Same as above but to be used by mov conditional
 (define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")
-			  (HF "") (SF "") (DF "l")])
+			  (HF "") (SF "") (DF "l")
+			  (V2HI "") (V4HI "l") (V2SI "l")
+			  (V2HF "")])
 
-(define_mode_attr slfp [(HF "h") (SF "") (DF "l")])
+(define_mode_attr slfp [(HF "h") (SF "") (DF "l")
+			(V2HF "") ])
 
-(define_mode_attr fmvftab [(HF "s") (SF "s") (DF "d")])
-(define_mode_attr fmvitab [(HF "i") (SF "i") (DF "l")])
+(define_mode_attr fmvftab [(HF "s") (SF "s") (DF "d")
+			   (V2HF "s")])
+(define_mode_attr fmvitab [(HF "i") (SF "i") (DF "l")
+			   (V2HF "i")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
 			 (HF "15") (SF "31") (DF "63")])
 
 ;; Same like above but without -1 used for fp loads/stores
-(define_mode_attr sizef [(HF "16") (SF "32") (DF "64")])
+(define_mode_attr sizef [(HF "16") (SF "32") (DF "64")
+			 (V2HF "32")])
 
 ;; Used by float conv patterns.
 (define_mode_attr f2tab [(SI "int") (DI "l")])
+
+;; Define element mode for each vector mode.
+(define_mode_attr VEL [(V2HF "HF")])
 
 ;; -------------------------------------------------------------------
 ;; Code Attributes
@@ -342,8 +364,9 @@ fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl,
 jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc,
 mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or,
 orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl,
-swape, swapel, sync, trap, udiv, udivl, umod, umodl, unknown, xbfu,
-xor, xorl"
+swap, swapl, swape, swapel, sync, trap, qmpyh, udiv, udivl, umod,
+umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext, vfins,
+vfsub, vfmul, vfdiv, vfrep, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
