@@ -442,7 +442,7 @@
 
 (define_expand "<optab>ti3"
   [(set (match_operand:TI 0 "register_operand")
-        (ADDSUB:TI (match_operand:TI 1 "register_operand")
+	(ADDSUB:TI (match_operand:TI 1 "register_operand")
 		   (match_operand:TI 2 "nonmemory_operand")))]
   ""
 {
@@ -456,9 +456,9 @@
   op2_low = gen_lowpart (DImode, operands[2]);
 
   emit_insn (gen_<optab>di3_cmp (low_dest, op1_low,
-                                 force_reg (DImode, op2_low)));
+				 force_reg (DImode, op2_low)));
   emit_insn (gen_<optab>di3_carry (high_dest, op1_high,
-                                   force_reg (DImode, op2_high)));
+				   force_reg (DImode, op2_high)));
 
   DONE;
 })
@@ -875,6 +875,168 @@
   "qmpyh\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "qmpyh")])
+
+(define_expand "mulv2hi3"
+  [(set (match_operand:V2HI 0 "register_operand")
+	(mult:V2HI (match_operand:V2HI 1 "register_operand")
+		   (match_operand:V2HI 2 "register_operand")))]
+  ""
+  {
+    rtx tmp = gen_reg_rtx (V2SImode);
+    emit_insn (gen_arc64_svmpy2h_lo (tmp, operands[1], operands[2]));
+    emit_insn (gen_arc64_packv2hi_lo (operands[0], tmp));
+    DONE;
+  })
+
+(define_insn "arc64_packv2hi_lo"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(unspec:V2HI [(match_operand:V2SI 1 "register_operand" "r")
+		      (const_int 0)]
+		     ARC64_UNSPEC_VPACK4HL))]
+  ""
+  "vpack4hl\\t%0,%1,0"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_expand "<su>mulv2hi3_highpart"
+  [(match_operand:V2HI 0 "register_operand")
+   (ANY_EXTEND:SI (match_operand:V2HI 1 "register_operand"))
+   (ANY_EXTEND:SI (match_operand:V2HI 2 "register_operand"))]
+  ""
+  {
+    rtx tmp = gen_reg_rtx (V2SImode);
+    emit_insn (gen_arc64_<su>vmpy2h_lo (tmp, operands[1], operands[2]));
+    emit_insn (gen_arc64_packv2hi_hi (operands[0], tmp));
+    DONE;
+  })
+
+(define_insn "arc64_packv2hi_hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(unspec:V2HI [(match_operand:V2SI 1 "register_operand" "r")
+		      (const_int 1)]
+		     ARC64_UNSPEC_VPACK4HM))]
+  ""
+  "vpack4hm\\t%0,%1,0"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+ (define_insn "arc64_<su>vmpy2h_lo"
+   [(set (match_operand:V2SI 0 "register_operand"  "=r")
+	 (mult:V2SI
+	  (ANY_EXTEND:V2SI
+	    (match_operand:V2HI 1 "register_operand" "r"))
+	  (ANY_EXTEND:V2SI
+	    (match_operand:V2HI 2 "register_operand" "r"))))
+    (clobber (reg:V2SI R58_REGNUM))]
+   ""
+   "vmpy2h<su_optab>\\t%0,%1,%2"
+   [(set_attr "length" "4")
+    (set_attr "type" "vmpy2h")])
+
+(define_expand "mulv4hi3"
+  [(match_operand:V4HI 0 "register_operand")
+   (match_operand:V4HI 1 "register_operand")
+   (match_operand:V4HI 2 "register_operand")]
+  ""
+  {
+    rtx tmpA = gen_reg_rtx (V2SImode);
+    rtx tmpB = gen_reg_rtx (V2SImode);
+    rtx tmp1 = gen_reg_rtx (V4HImode);
+    rtx tmp2 = gen_reg_rtx (V4HImode);
+    emit_insn (gen_arc64_swapl (tmp1, operands[1]));
+    emit_insn (gen_arc64_swapl (tmp2, operands[2]));
+    emit_insn (gen_arc64_svmpy2h (tmpA, operands[1], operands[2]));
+    emit_insn (gen_arc64_svmpy2h (tmpB, tmp1, tmp2));
+    emit_insn (gen_arc64_pack4hi (operands[0], tmpA, tmpB));
+    DONE;
+    })
+
+(define_insn "arc64_pack4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(unspec:V4HI [(match_operand:V2SI 1 "register_operand" "r")
+		      (match_operand:V2SI 2 "register_operand" "r")]
+		     ARC64_UNSPEC_VPACK4HL))]
+  ""
+  "vpack4hl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "bswap<mode>2"
+  [(set (match_operand:VALL 0 "register_operand" "=r")
+	(bswap:VALL (match_operand:VALL 1 "register_operand" "r")))]
+  ""
+  "swap<mcctab>e\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "swap")])
+
+(define_insn "vec_extract<mode>"
+  [(set (match_operand:<VEL> 0 "register_operand" "=r")
+	(vec_select:<VEL> (match_operand:VALL 1 "register_operand" "r")
+			  (parallel [(match_operand:SI 2 "const_int_operand" "n")])))]
+  ""
+  {
+    HOST_WIDE_INT elem = INTVAL (operands[2]);
+    gcc_assert (elem < 4);
+    elem = (((<vextrsz> - 1) & <vextrmsk>) << <vextrsh>)
+      | ((elem * <vextrsz>) & <vextrmsk>);
+    operands[2] = GEN_INT (elem);
+    return "xbfu<mcctab>\\t%0,%1,%2";
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "xbfu")])
+
+;; Alternative
+;;   emit_insn (gen_arc64_swap (tmpA, operands[1])); swap tmpA op1
+;;   emit_insn (gen_arc64_sel_lo (tmpB, operands[1])); bmask tmpB,15
+;;   emit_insn (gen_arc64_pack2si (operands[0], tmpB, tmpA)); vpack4hl op0,tmpB,tmpA
+(define_expand "vec_unpacku_lo_v4hi"
+  [(set (match_operand:V2SI 0 "register_operand")
+        (zero_extend:V2SI
+         (vec_select:V2HI
+          (match_operand:V4HI 1 "register_operand")
+          (parallel [(const_int 0)(const_int 1)]))))]
+  ""
+ {
+   rtx tmpA = gen_reg_rtx (HImode);
+   rtx tmpB = gen_reg_rtx (HImode);
+
+   emit_insn (gen_vec_extractv4hi (tmpA, operands[1], GEN_INT (0)));
+   emit_insn (gen_vec_extractv4hi (tmpB, operands[1], GEN_INT (1)));
+   emit_insn (gen_arc64_vec_concat (operands[0], tmpA, tmpB));
+   DONE;
+ })
+
+;; Alternative
+;;   emit_insn (gen_arc64_swapl (tmp0, operands[1]));
+;;   emit_insn (gen_arc64_swap (tmpA, tmp0));
+;;   emit_insn (gen_arc64_sel_lo (tmpB, tmp0));
+;;   emit_insn (gen_arc64_pack2si (operands[0], tmpB, tmpA));
+(define_expand "vec_unpacku_hi_v4hi"
+  [(set (match_operand:V2SI 0 "register_operand")
+        (zero_extend:V2SI
+         (vec_select:V2HI
+          (match_operand:V4HI 1 "register_operand")
+          (parallel [(const_int 2)(const_int 3)]))))]
+  ""
+ {
+   rtx tmpA = gen_reg_rtx (HImode);
+   rtx tmpB = gen_reg_rtx (HImode);
+
+   emit_insn (gen_vec_extractv4hi (tmpA, operands[1], GEN_INT (2)));
+   emit_insn (gen_vec_extractv4hi (tmpB, operands[1], GEN_INT (3)));
+   emit_insn (gen_arc64_vec_concat (operands[0], tmpA, tmpB));
+   DONE;
+ })
+
+(define_insn "arc64_vec_concat"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(unspec:V2SI [(match_operand:HI 1 "register_operand" "r")
+		      (match_operand:HI 2 "register_operand" "r")]
+		     ARC64_UNSPEC_VPACK2WL))]
+  ""
+  "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
 
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
