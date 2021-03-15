@@ -136,6 +136,9 @@
    ARC64_UNSPEC_CASESI
    ARC64_UNSPEC_VECINIT
    ARC64_UNSPEC_QMPYH
+   ARC64_UNSPEC_VPACK4HL
+   ARC64_UNSPEC_VPACK4HM
+   ARC64_UNSPEC_VPACK2WL
    ])
 
 (include "constraints.md")
@@ -250,7 +253,13 @@
 (define_mode_attr f2tab [(SI "int") (DI "l")])
 
 ;; Define element mode for each vector mode.
-(define_mode_attr VEL [(V2HF "HF")])
+(define_mode_attr VEL [(V2HI "HI") (V4HI "HI") (V2SI "SI")
+		       (V2HF "HF")])
+
+;; Used by vector extract pattern
+(define_mode_attr vextrsz [(V2HI "16") (V4HI "16") (V2SI "32")])
+(define_mode_attr vextrmsk [(V2HI "0x1f") (V4HI "0x3f") (V2SI "0x3f")])
+(define_mode_attr vextrsh [(V2HI "5") (V4HI "6") (V2SI "6")])
 
 ;; -------------------------------------------------------------------
 ;; Code Attributes
@@ -366,7 +375,7 @@ mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or,
 orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl,
 swap, swapl, swape, swapel, sync, trap, qmpyh, udiv, udivl, umod,
 umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext, vfins,
-vfsub, vfmul, vfdiv, vfrep, xbfu, xor, xorl"
+vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
