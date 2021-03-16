@@ -1080,27 +1080,50 @@
    (set_attr "length" "4,*,*,4,4,4,*,*")])
 
 (define_insn "<optab><mode>3"
-  [(set (match_operand:VALLF 0 "register_operand"            "=r")
-	(VOPS:VALLF (match_operand:VALLF 1 "register_operand" "r")
-		    (match_operand:VALLF 2 "register_operand" "r")))]
+  [(set (match_operand:VALLF 0 "register_operand"            "=w")
+	(VOPS:VALLF (match_operand:VALLF 1 "register_operand" "w")
+		    (match_operand:VALLF 2 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
-  "vf<arc64_code_map><sfxtab>\\t%0,%1,%2"
+  "vf<sfxtab><arc64_code_map>\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vf<arc64_code_map>")])
 
 (define_insn "vec_duplicate<mode>"
-  [(set (match_operand:VALLF 0 "register_operand" "=r")
-	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand" "r")))]
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>rep\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "vfrep")])
 
+(define_insn "<optab><mode>3_rep"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(VOPS:VALLF
+	 (match_operand:VALLF 1 "register_operand" "w")
+	 (vec_duplicate:VALLF
+	  (match_operand:<VEL> 2 "register_operand" "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab><arc64_code_map>s\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<arc64_code_map>")])
+
+;; Canonical of the above (selected) patterns.
+(define_insn "<optab><mode>3_rep2"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(VCOP:VALLF
+	 (vec_duplicate:VALLF
+	  (match_operand:<VEL> 1 "register_operand" "w"))
+	 (match_operand:VALLF 2 "register_operand" "w")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab><arc64_code_map>s\\t%0,%2,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<arc64_code_map>")])
+
 (define_insn "vec_set<mode>"
-  [(set (match_operand:VALLF 0 "register_operand" "=r")
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
 	(vec_merge:VALLF
 	 (vec_duplicate:VALLF
-	  (match_operand:<VEL> 1 "register_operand" "r"))
+	  (match_operand:<VEL> 1 "register_operand" "w"))
 	 (match_dup 0)
 	 (match_operand:SI 2 "nonmemory_operand" "rU05S0")))]
   "ARC64_HAS_FP_BASE"
@@ -1109,10 +1132,136 @@
    (set_attr "type" "vfins")])
 
 (define_insn "vec_extract<mode>"
-  [(set (match_operand:<VEL> 0 "register_operand" "=r")
-	(vec_select:<VEL> (match_operand:VALLF 1 "register_operand" "r")
+  [(set (match_operand:<VEL> 0 "register_operand" "=w")
+	(vec_select:<VEL> (match_operand:VALLF 1 "register_operand" "w")
 			  (parallel [(match_operand:SI 2 "nonmemory_operand" "rU05S0")])))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>ext\\t%0,%1[%2]"
   [(set_attr "length" "4")
    (set_attr "type" "vfext")])
+
+;; FV<P>MADD
+(define_insn "fma<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (match_operand:VALLF 3 "register_operand"  "w")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>madd\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fmadd")])
+
+;; FV<P>MSUB
+(define_insn "fnma<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (match_operand:VALLF 3 "register_operand"  "w")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>msub\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fmsub")])
+
+(define_insn "fms<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (neg:VALLF (match_operand:VALLF 3 "register_operand"  "w"))))]
+  "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmsub\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmsub")])
+
+;; -(op3 - (op1 * op2))
+(define_insn "*nfnms<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(neg:VALLF (fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
+			      (match_operand:VALLF 2 "register_operand"  "w")
+			      (match_operand:VALLF 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmsub\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmsub")])
+
+;; FV<P>NMADD
+(define_insn "fnms<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (neg:VALLF (match_operand:VALLF 3 "register_operand"  "w"))))]
+  "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmadd\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmadd")])
+
+;; -(op3 + (op1 * op2))
+(define_insn "*nfms<mode>4"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(neg:VALLF (fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
+			      (match_operand:VALLF 2 "register_operand"  "w")
+			      (match_operand:VALLF 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmadd\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmadd")])
+
+;; FV<P>SQRT
+(define_insn "sqrt<mode>2"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(sqrt:VALLF (match_operand:VALLF 1 "register_operand" "w")))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>sqrt\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "fsqrt")])
+
+;; FV<P>MADDS
+(define_insn "fma<mode>4_rep"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (vec_duplicate:VALLF
+		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>madds\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fmadd")])
+
+(define_peephole2
+  [(set (match_operand:VALLF 0 "register_operand" "")
+	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand"  "")))
+   (set (match_operand:VALLF 2 "register_operand" "")
+	(fma:VALLF (match_operand:VALLF 3 "register_operand" "")
+		   (match_dup 0)
+		   (match_operand:VALLF 4 "register_operand" "")))]
+  "ARC64_HAS_FP_BASE
+   && peep2_reg_dead_p (2, operands[0])"
+  [(set (match_dup 2)
+	(fma:VALLF (match_dup 3) (match_dup 4)
+		   (vec_duplicate:VALLF (match_dup 1))))]
+  "")
+
+;; FV<P>MSUBS
+(define_insn "fnma<mode>4_rep"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
+		   (match_operand:VALLF 2 "register_operand"  "w")
+		   (vec_duplicate:VALLF
+		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>msubs\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fmsub")])
+
+(define_peephole2
+  [(set (match_operand:VALLF 0 "register_operand" "")
+	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand"  "")))
+   (set (match_operand:VALLF 2 "register_operand" "")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 3 "register_operand" ""))
+		   (match_dup 0)
+		   (match_operand:VALLF 4 "register_operand" "")))]
+  "ARC64_HAS_FP_BASE
+   && peep2_reg_dead_p (2, operands[0])"
+  [(set (match_dup 2)
+	(fma:VALLF (neg:VALLF (match_dup 3)) (match_dup 4)
+		   (vec_duplicate:VALLF (match_dup 1))))]
+  "")
