@@ -210,6 +210,9 @@
 ;; Vector operations
 (define_code_iterator VOPS [plus minus mult div])
 
+;; Comutative VF operations
+(define_code_iterator VCOP [plus mult])
+
 ;; -------------------------------------------------------------------
 ;; Mode Attributes
 ;; -------------------------------------------------------------------
