@@ -760,6 +760,14 @@
   [(set_attr "length" "4")
    (set_attr "type" "v<arc64_code_map>")])
 
+(define_insn "neg<mode>2"
+  [(set (match_operand:VALL 0 "register_operand" "=r")
+	(neg:VALL (match_operand 1 "register_operand" "r")))]
+  ""
+  "vsub<sfxtab>\\t%0,0,%1"
+  [(set_attr "length" "8")
+   (set_attr "type" "vsub")])
+
 (define_expand "vec_widen_<su>mult_lo_v4hi"
  [(match_operand:V2SI 0 "register_operand")
   (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
@@ -866,6 +874,7 @@
   [(set_attr "length" "4")
    (set_attr "type" "vmac2h")])
 
+;; FIXME! for v2hi -> dmpyh
 (define_insn "reduc_plus_scal_v4hi"
   [(set (match_operand:HI 0 "register_operand" "=r")
 	(unspec:HI [(match_operand:V4HI 1 "register_operand" "r")]
@@ -875,6 +884,31 @@
   "qmpyh\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "qmpyh")])
+
+;; FIXME! for v2hi -> dmach
+(define_expand "fold_left_plus_v4hi"
+  [(set (match_operand:HI 0 "register_operand")
+        (unspec:HI [(match_operand:HI 1 "register_operand")
+                    (match_operand:V4HI 2 "register_operand")]
+                   ARC64_UNSPEC_QMACH))
+   (clobber (reg:DI R58_REGNUM))]
+  ""
+  {
+    rtx acc_reg = gen_rtx_REG (HImode, R58_REGNUM);
+    emit_move_insn (acc_reg, operands[1]);
+    operands[1] = acc_reg;
+  })
+
+(define_insn "*qmach"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+        (unspec:HI [(reg:HI R58_REGNUM)
+                    (match_operand:V4HI 1 "register_operand" "r")]
+                   ARC64_UNSPEC_QMACH))
+   (clobber (reg:DI R58_REGNUM))]
+  ""
+  "qmach\\t%0,%1,1"
+  [(set_attr "length" "4")
+   (set_attr "type" "qmach")])
 
 (define_expand "mulv2hi3"
   [(set (match_operand:V2HI 0 "register_operand")
@@ -1035,6 +1069,35 @@
 		     ARC64_UNSPEC_VPACK2WL))]
   ""
   "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_expand "vec_duplicatev4hi"
+  [(set (match_operand:V4HI 0 "register_operand")
+	(vec_duplicate:V4HI (match_operand:HI 1 "register_operand")))]
+ ""
+ {
+   rtx tmp = gen_reg_rtx (V2SImode);
+   emit_insn (gen_arc64_duplicate_v2hi(tmp, operands[1]));
+   emit_insn (gen_arc64_pack4hi(operands[0], tmp, tmp));
+   DONE;
+ })
+
+(define_insn "arc64_duplicate_v2hi"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(unspec:V2SI [(match_operand:HI 1 "register_operand" "r")
+		      (const_int 0)]
+		     ARC64_UNSPEC_VPACK4HL))]
+  ""
+  "vpack4hl\\t%0,%1,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "vec_duplicatev2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(vec_duplicate:V2SI (match_operand:SI 1 "register_operand" "r")))]
+  ""
+  "vpack2wl\\t%0,%1,%1"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
 
