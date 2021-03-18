@@ -165,6 +165,12 @@
   (and (match_code "const_int")
        (match_test "(ival >= -1) && (ival <= 6)")))
 
+(define_constraint "Z"
+  "Match single precision and a floating-point zero"
+  (and (match_code "const_double")
+       (ior (match_test "op == CONST0_RTX (DFmode)
+                         || op == CONST0_RTX (SFmode)"))))
+
 ;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal
