@@ -259,6 +259,8 @@
 ;; Define element mode for each vector mode.
 (define_mode_attr VEL [(V2HI "HI") (V4HI "HI") (V2SI "SI")
 		       (V2HF "HF")])
+(define_mode_attr vel [(V2HI "hi") (V4HI "hi") (V2SI "si")
+		       (V2HF "hf")])
 
 ;; Used by vector extract pattern
 (define_mode_attr vextrsz [(V2HI "16") (V4HI "16") (V2SI "32")])
@@ -580,21 +582,24 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set_attr "length" "4")])
 
 ;; Softcore float move.
-;; FIXME! add short instruction selection
 (define_insn "*movsf_softfp"
-   [(set (match_operand:SF 0 "arc64_dest_operand" "=r,r,r,m")
-	 (match_operand:SF 1 "general_operand"    " r,E,m,r"))
+   [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,Ustms,r,m")
+	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,    q,m,r"))
    ]
    "!ARC64_HAS_FP_BASE
    && (register_operand (operands[0], SFmode)
        || register_operand (operands[1], SFmode))"
    "@
+    mov_s\\t%0,%1
     mov\\t%0,%1
+    mov_s\\t%0,%1
     mov\\t%0,%1
+    ld_s\\t%0,%1
+    st_s\\t%1,%0
     ld%U1\\t%0,%1
     st%U0\\t%1,%0"
-   [(set_attr "type" "move,move,ld,st")
-    (set_attr "length" "4,8,*,*")])
+   [(set_attr "type" "move,move,move,move,ld,st,ld,st")
+    (set_attr "length" "2,4,6,8,2,2,*,*")])
 
 ;; For a fp move I use FSMOV.<cc> instruction. However, we can also
 ;; use FSSGNJ.
@@ -2167,8 +2172,8 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 ;; F<P>SGNJ
 (define_insn "copysign<mode>3"
   [(set (match_operand:GPF_HF 0 "register_operand" "=w")
-	(unspec:GPF_HF [(match_operand 1 "register_operand" "w")
-			(match_operand 2 "register_operand" "w")]
+	(unspec:GPF_HF [(match_operand:GPF_HF 1 "register_operand" "w")
+			(match_operand:GPF_HF 2 "register_operand" "w")]
 		       ARC64_UNSPEC_COPYSIGN))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnj\\t%0,%1,%2"
@@ -2178,8 +2183,8 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 ;; F<P>SGNJX
 (define_insn "xorsign<mode>3"
   [(set (match_operand:GPF_HF 0 "register_operand" "=w")
-	(unspec:GPF_HF [(match_operand 1 "register_operand" "w")
-			(match_operand 2 "register_operand" "w")]
+	(unspec:GPF_HF [(match_operand:GPF_HF 1 "register_operand" "w")
+			(match_operand:GPF_HF 2 "register_operand" "w")]
 		       ARC64_UNSPEC_XORSIGN))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnjx\\t%0,%1,%2"
@@ -2189,9 +2194,10 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 ;; F<P>SGNJN
 (define_insn "*ncopysign<mode>3"
   [(set (match_operand:GPF_HF 0 "register_operand" "=w")
-	(neg:GPF_HF (unspec:GPF_HF [(match_operand 1 "register_operand" "w")
-				    (match_operand 2 "register_operand" "w")]
-				   ARC64_UNSPEC_COPYSIGN)))]
+	(neg:GPF_HF (unspec:GPF_HF
+		     [(match_operand:GPF_HF 1 "register_operand" "w")
+		      (match_operand:GPF_HF 2 "register_operand" "w")]
+		     ARC64_UNSPEC_COPYSIGN)))]
   "ARC64_HAS_FP_BASE"
   "f<sfxtab>sgnjn\\t%0,%1,%2"
   [(set_attr "length" "4")
