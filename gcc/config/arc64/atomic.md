@@ -63,7 +63,7 @@
    (set (match_operand:GPI 0 "register_operand"      "=&r")		;; val out
 	(match_operand:GPI 1 "mem_noofs_operand"      "+ATOMC"))	;; memory
    (set (match_dup 1)
-	(unspec_volatile:GPI
+	(unspec_volatile
 	  [(match_operand:GPI 2 "register_operand"     "r") ;; expect
 	   (match_operand:GPI 3 "register_operand"     "r") ;; desired
 	   (match_operand:SI 4 "const_int_operand")	;; is_weak
