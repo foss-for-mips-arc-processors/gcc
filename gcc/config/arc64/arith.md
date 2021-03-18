@@ -762,7 +762,7 @@
 
 (define_insn "neg<mode>2"
   [(set (match_operand:VALL 0 "register_operand" "=r")
-	(neg:VALL (match_operand 1 "register_operand" "r")))]
+	(neg:VALL (match_operand:VALL 1 "register_operand" "r")))]
   ""
   "vsub<sfxtab>\\t%0,0,%1"
   [(set_attr "length" "8")
@@ -1328,3 +1328,16 @@
 	(fma:VALLF (neg:VALLF (match_dup 3)) (match_dup 4)
 		   (vec_duplicate:VALLF (match_dup 1))))]
   "")
+
+(define_expand "reduc_plus_scal_<mode>"
+  [(match_operand:<VEL> 0 "register_operand")
+   (match_operand:VALLF 1 "register_operand")]
+  ""
+  {
+    rtx low = gen_lowpart (<VEL>mode, operands[1]);
+    rtx high = gen_reg_rtx (<VEL>mode);
+
+    emit_insn (gen_vec_extract<mode> (high, operands[1], GEN_INT (1)));
+    emit_insn (gen_add<vel>3 (operands[0], high, low));
+    DONE;
+  })
