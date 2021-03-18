@@ -2703,6 +2703,69 @@ arc64_autovectorize_vector_modes (vector_modes *modes, bool)
   return 0;
 }
 
+/* Vectorization costs.  */
+static int
+arc64_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
+				  tree vectype,
+				  int misalign ATTRIBUTE_UNUSED)
+{
+  unsigned elements;
+
+  switch (type_of_cost)
+    {
+    case scalar_stmt:
+      return 1;
+
+    case scalar_load:
+      return 1;
+
+    case scalar_store:
+      return 1;
+
+    case vector_stmt:
+      return 1; /* fp operations are more efficient than int.  */
+
+    case vector_load:
+      return 1;
+
+    case vector_store:
+      return 1;
+
+    case vec_to_scalar:
+      return 1; /* We have extract instructions.  */
+
+    case scalar_to_vec:
+      return 1; /* fp is more efficient than int.  */
+
+    case unaligned_load:
+    case vector_gather_load:
+      return 1; /* Maybe I need to reflect unaligned flag here.  */
+
+    case unaligned_store:
+    case vector_scatter_store:
+      return 1; /* Likewise.  */
+
+    case cond_branch_taken:
+      return 3; /* A jump is always expensive.  */
+
+    case cond_branch_not_taken:
+      return 1;
+
+    case vec_perm:
+      return 3; /* We don't really have vec_perm.  */
+
+    case vec_promote_demote:
+      return 1;
+
+    case vec_construct:
+      elements = estimated_poly_value (TYPE_VECTOR_SUBPARTS (vectype));
+      return elements / 2;
+
+    default:
+      gcc_unreachable ();
+    }
+}
+
 /*
   Global functions.
 */
@@ -3800,6 +3863,10 @@ arc64_libgcc_floating_mode_supported_p
 #undef TARGET_VECTORIZE_AUTOVECTORIZE_VECTOR_MODES
 #define TARGET_VECTORIZE_AUTOVECTORIZE_VECTOR_MODES	\
   arc64_autovectorize_vector_modes
+
+#undef TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST
+#define TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST \
+  arc64_builtin_vectorization_cost
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
