@@ -33,6 +33,14 @@
 		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
 
+(define_predicate "arc64_movf_operand"
+  (and (match_code "reg, subreg, mem, const, const_double")
+       (ior (match_operand 0 "register_operand")
+	    (match_operand 0 "memory_operand")
+	    (and (match_code "const_double")
+		 (ior (match_test "GET_MODE_SIZE (GET_MODE (op)) <= 4")
+		      (match_test "op == CONST0_RTX (DFmode)"))))))
+
 ;; A restricted version of the above, still accepting symbols and label refs.
 (define_predicate "arc64_regsym_operand"
   (ior (match_operand 0 "register_operand")

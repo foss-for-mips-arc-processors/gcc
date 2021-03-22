@@ -1182,15 +1182,33 @@
   [(set_attr "length" "4")
    (set_attr "type" "vf<arc64_code_map>")])
 
-(define_insn "vec_set<mode>"
+(define_expand "vec_set<mode>"
+  [(set (match_operand:VALLF 0 "register_operand")
+	(vec_merge:VALLF
+	 (vec_duplicate:VALLF
+	  (match_operand:<VEL> 1 "register_operand"))
+	 (match_dup 0)
+	 (match_operand:SI 2 "immediate_operand")))]
+  "ARC64_HAS_FP_BASE"
+  {
+   HOST_WIDE_INT elem = (HOST_WIDE_INT) 1 << INTVAL (operands[2]);
+   operands[2] = GEN_INT (elem);
+  })
+
+(define_insn "*vec_set<mode>"
   [(set (match_operand:VALLF 0 "register_operand" "=w")
 	(vec_merge:VALLF
 	 (vec_duplicate:VALLF
 	  (match_operand:<VEL> 1 "register_operand" "w"))
-	 (match_dup 0)
-	 (match_operand:SI 2 "nonmemory_operand" "rU05S0")))]
+	 (match_operand:VALLF 3 "register_operand" "0")
+	 (match_operand:SI 2 "immediate_operand" "i")))]
   "ARC64_HAS_FP_BASE"
-  "vf<sfxtab>ins\\t%0[%2],%1"
+ {
+   int elt = exact_log2 (INTVAL (operands[2]));
+   gcc_assert (UNSIGNED_INT5 (elt));
+   operands[2] = GEN_INT (elt);
+   return  "vf<sfxtab>ins\\t%0[%2],%1";
+ }
   [(set_attr "length" "4")
    (set_attr "type" "vfins")])
 
@@ -1331,7 +1349,7 @@
 
 (define_expand "reduc_plus_scal_<mode>"
   [(match_operand:<VEL> 0 "register_operand")
-   (match_operand:VALLF 1 "register_operand")]
+   (match_operand:V2xF 1 "register_operand")]
   ""
   {
     rtx low = gen_lowpart (<VEL>mode, operands[1]);
@@ -1339,5 +1357,28 @@
 
     emit_insn (gen_vec_extract<mode> (high, operands[1], GEN_INT (1)));
     emit_insn (gen_add<vel>3 (operands[0], high, low));
+    DONE;
+  })
+
+(define_expand "reduc_plus_scal_<mode>"
+  [(match_operand:<VEL> 0 "register_operand")
+   (match_operand:V4xF 1 "register_operand")]
+  ""
+  {
+    rtx op0 = gen_lowpart (<VEL>mode, operands[1]);
+    rtx op1 = gen_reg_rtx (<VEL>mode);
+    rtx op2 = gen_reg_rtx (<VEL>mode);
+    rtx op3 = gen_reg_rtx (<VEL>mode);
+    rtx tmp1 = gen_reg_rtx (<VEL>mode);
+    rtx tmp2 = gen_reg_rtx (<VEL>mode);
+
+    emit_insn (gen_vec_extract<mode> (op1, operands[1], GEN_INT (1)));
+    emit_insn (gen_add<vel>3 (tmp1, op1, op0));
+
+    emit_insn (gen_vec_extract<mode> (op2, operands[1], GEN_INT (2)));
+    emit_insn (gen_vec_extract<mode> (op3, operands[1], GEN_INT (3)));
+    emit_insn (gen_add<vel>3 (tmp2, op2, op3));
+
+    emit_insn (gen_add<vel>3 (operands[0], tmp1, tmp2));
     DONE;
   })
