@@ -4379,7 +4379,7 @@ case "${target}" in
 	arc64-*-*)
 		supported_defaults="fpu"
 		case "$with_fpu" in
-		"" | fpus)
+		"" | fpus | fpud)
 			# OK
 			;;
 		*)
