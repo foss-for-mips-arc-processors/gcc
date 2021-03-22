@@ -180,7 +180,14 @@
 (define_mode_iterator VALL [V2HI V4HI V2SI])
 
 ;; All fp vectors
-(define_mode_iterator VALLF [V2HF])
+(define_mode_iterator VALLF [(V2HF "ARC64_VFP_32") (V4HF "ARC64_VFP_64")
+			     (V2SF "ARC64_VFP_64")])
+
+;; All 2xfp Vectors
+(define_mode_iterator V2xF [(V2HF "ARC64_VFP_32") (V2SF "ARC64_VFP_64")])
+
+;; All 4xfp Vectors
+(define_mode_iterator V4xF [(V4HF "ARC64_VFP_64")])
 
 ;; -------------------------------------------------------------------
 ;; Code Iterators
@@ -226,7 +233,7 @@
 (define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")
 			  (HF "h") (SF "s") (DF "d")
 			  (V2HI "2h") (V4HI "4h") (V2SI "2")
-			  (V2HF "h")])
+			  (V2HF "h") (V4HF "h") (V2SF "s")])
 
 ;; Used by FPABS patterns.
 (define_mode_attr fptab [(SF "") (DF "l")])
@@ -235,15 +242,15 @@
 (define_mode_attr mcctab [(QI "") (HI "") (SI "") (DI "l")
 			  (HF "") (SF "") (DF "l")
 			  (V2HI "") (V4HI "l") (V2SI "l")
-			  (V2HF "")])
+			  (V2HF "") (V4HF "l") (V2SF "l")])
 
 (define_mode_attr slfp [(HF "h") (SF "") (DF "l")
-			(V2HF "") ])
+			(V2HF "") (V4HF "l") (V2SF "l")])
 
 (define_mode_attr fmvftab [(HF "s") (SF "s") (DF "d")
-			   (V2HF "s")])
+			   (V2HF "s") (V4HF "d") (V2SF "d")])
 (define_mode_attr fmvitab [(HF "i") (SF "i") (DF "l")
-			   (V2HF "i")])
+			   (V2HF "i") (V4HF "l") (V2SF "l")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
@@ -251,16 +258,16 @@
 
 ;; Same like above but without -1 used for fp loads/stores
 (define_mode_attr sizef [(HF "16") (SF "32") (DF "64")
-			 (V2HF "32")])
+			 (V2HF "32") (V4HF "64") (V2SF "64")])
 
 ;; Used by float conv patterns.
 (define_mode_attr f2tab [(SI "int") (DI "l")])
 
 ;; Define element mode for each vector mode.
 (define_mode_attr VEL [(V2HI "HI") (V4HI "HI") (V2SI "SI")
-		       (V2HF "HF")])
+		       (V2HF "HF") (V4HF "HF") (V2SF "SF")])
 (define_mode_attr vel [(V2HI "hi") (V4HI "hi") (V2SI "si")
-		       (V2HF "hf")])
+		       (V2HF "hf") (V4HF "hf") (V2SF "sf")])
 
 ;; Used by vector extract pattern
 (define_mode_attr vextrsz [(V2HI "16") (V4HI "16") (V2SI "32")])
@@ -474,6 +481,15 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
       DONE;
    })
 
+(define_expand "movdf"
+  [(set (match_operand:DF 0 "nonimmediate_operand" "")
+	(match_operand:DF 1 "general_operand"))]
+  "ARC64_HAS_FPUD"
+  {
+   if (arc64_prepare_move_operands (operands[0], operands[1], DFmode))
+      DONE;
+   })
+
 ;; mov<.f>        b, c
 ;; mov<.f>        b, s12
 ;; mov_s          b, u8
@@ -606,7 +622,7 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 ;; FIXME! add short instruction selection
 (define_insn "*mov<mode>_hardfp"
   [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*m")
-	(match_operand:GPF_HF 1 "general_operand"     "w,Ufpms,    w,*w,*r,*r,*E,*m,*r"))]
+	(match_operand:GPF_HF 1 "arc64_movf_operand"     "w,Ufpms,    w,*w,*r,*r,*G,*m,*r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
@@ -667,7 +683,6 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand"   "=   r,   qh,    r,r")
 	(high:DI
 	 (match_operand:DI 1 "arc64_immediate_or_pic" "S12S0,SymIm,SymIm,SyPic")))]
-
   ""
   "@
    movhl\\t%0,%h1
@@ -696,7 +711,11 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 	(lo_sum:DI (match_operand:DI 1 "register_operand"  "0,    0,    0,    r")
 		   (match_operand:DI 2 "immediate_operand" "q,U10S0,SymIm,SymIm")))]
   ""
-  "orl%?\\t%0,%1,%L2"
+  "@
+   orl%?\\t%0,%1,%2
+   orl%?\\t%0,%1,%L2
+   orl%?\\t%0,%1,%L2
+   orl%?\\t%0,%1,%L2"
   [(set_attr "type" "or")
    (set_attr "iscompact" "yes,no,yes,no")
    (set_attr "length" "2,4,6,8")])
