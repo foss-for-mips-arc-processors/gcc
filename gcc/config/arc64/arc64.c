@@ -820,6 +820,9 @@ arc64_layout_arg (struct arc64_arg_info *info, cumulative_args_t pcum_v,
       info->nfpr = nregs;
       switch (GET_MODE_CLASS (mode))
 	{
+	case MODE_VECTOR_FLOAT:
+	  /* FIXME! for double-sized vectors, we may need to use double
+	     register.  */
 	case MODE_FLOAT:
 	  return gen_rtx_REG (mode, fregno);
 
@@ -968,6 +971,9 @@ arc64_function_value (const_tree type,
     {
       switch (GET_MODE_CLASS (mode))
 	{
+	case MODE_VECTOR_FLOAT:
+	  /* FIXME! for double-sized vectors, we may need to use double
+	     register.  */
 	case MODE_FLOAT:
 	  return gen_rtx_REG (mode, F0_REGNUM);
 
@@ -1013,18 +1019,6 @@ arc64_split_complex_arg (const_tree)
   return true;
 }
 
-/* Implement TARGET_GET_RAW_RESULT_MODE and TARGET_GET_RAW_ARG_MODE.  */
-
-static fixed_size_mode
-arc64_get_reg_raw_mode (int regno)
-{
-  if (ARC64_HAS_FPUD && FP_REGNUM_P (regno))
-    return as_a <fixed_size_mode> (DFmode);
-  else if (ARC64_HAS_FPUS && FP_REGNUM_P (regno))
-    return as_a <fixed_size_mode> (SFmode);
-  return default_get_reg_raw_mode (regno);
-}
-
 /* Implement TARGET_SETUP_INCOMING_VARARGS.  */
 
 static void
@@ -1064,9 +1058,11 @@ arc64_setup_incoming_varargs (cumulative_args_t cum_v,
 /* Implement TARGET_HARD_REGNO_NREGS.  */
 
 static unsigned int
-arc64_hard_regno_nregs (unsigned int regno ATTRIBUTE_UNUSED,
+arc64_hard_regno_nregs (unsigned int regno,
 			machine_mode mode)
 {
+  if (FP_REGNUM_P (regno))
+    return CEIL (GET_MODE_SIZE (mode), UNITS_PER_FP_REG);
   return CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
 }
 
@@ -2660,6 +2656,12 @@ arc64_vector_mode_supported_p (machine_mode mode)
     {
       /* 32-bit fp SIMD vectors.  */
     case E_V2HFmode:
+      return (arc64_fp_model == 1);
+      /* 64-bit fp SIMD vectors.  */
+    case E_V4HFmode:
+    case E_V2SFmode:
+      return (arc64_fp_model == 2);
+
       /* 32-bit SIMD vectors.  */
     case E_V2HImode:
       /* 64-bit SIMD vectors.  */
@@ -2680,7 +2682,10 @@ arc64_preferred_simd_mode (scalar_mode mode)
   switch (mode)
     {
     case E_HFmode:
-      return V2HFmode;
+      return (arc64_fp_model == 1) ? V2HFmode : V4HFmode;
+    case E_SFmode:
+      return (arc64_fp_model == 2) ? V2SFmode : word_mode;
+
     case E_HImode:
       return V4HImode;
     case E_SImode:
@@ -2697,7 +2702,20 @@ arc64_preferred_simd_mode (scalar_mode mode)
 static unsigned int
 arc64_autovectorize_vector_modes (vector_modes *modes, bool)
 {
-  modes->quick_push (V2HFmode);
+  switch (arc64_fp_model)
+    {
+    case 1:
+      modes->quick_push (V2HFmode);
+      break;
+    case 2:
+      modes->quick_push (V4HFmode);
+      modes->quick_push (V2SFmode);
+      break;
+
+    default:
+      break;
+    }
+
   modes->quick_push (V4HImode);
   modes->quick_push (V2HImode);
   return 0;
@@ -2827,30 +2845,37 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	  || !satisfies_constraint_S06S0 (op1))
 	op1 = force_reg (mode, op1);
     }
-  else if (mode == E_DImode)
+  else if (GET_MODE_SIZE (mode) == UNITS_PER_WORD
+	   && CONSTANT_P (op1))
     {
+      unsigned HOST_WIDE_INT lo;
+      unsigned HOST_WIDE_INT hi;
+      rtx tmp;
+
       switch (GET_CODE (op1))
 	{
 	case CONST_INT:
+	  gcc_assert (mode == DImode);
 	  if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
 	    {
+	      HOST_WIDE_INT val;
 	      /* We have a large 64bit immediate:
 		 movhl rA, (val64 >> 32)
 		 orl   rA,rA, (val64 & 0xffffffff)
 		 FIXME! add strategies to minimize the size.  */
 
-	      HOST_WIDE_INT val = INTVAL (op1);
-	      unsigned HOST_WIDE_INT lo = sext_hwi (val, 32);
-	      unsigned HOST_WIDE_INT hi = sext_hwi (val >> 32, 32);
-	      rtx tmp = op0;
+	      val = INTVAL (op1);
+	      lo = zext_hwi (val, 32);
+	      hi = zext_hwi (val >> 32, 32);
+	      tmp = op0;
 
 	      if (can_create_pseudo_p ())
-		tmp = gen_reg_rtx (DImode);
+		tmp = gen_reg_rtx (mode);
 
 	      /* Maybe do first a move cnst to movsi to get the
 		 constants minimized.  */
 	      emit_insn (gen_rtx_SET (tmp,
-				      gen_rtx_ASHIFT (DImode, GEN_INT (hi),
+				      gen_rtx_ASHIFT (mode, GEN_INT (hi),
 						      GEN_INT (32))));
 	      emit_insn (gen_rtx_SET (op0,
 				      gen_rtx_LO_SUM (mode, tmp,
@@ -2858,6 +2883,29 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	      return true;
 	    }
 	  break;
+
+	case CONST_WIDE_INT:
+	  gcc_unreachable ();
+
+	case CONST_DOUBLE:
+	  {
+	    long res[2];
+	    unsigned HOST_WIDE_INT ival;
+	    scalar_int_mode imode = int_mode_for_mode (mode).require ();
+
+	    gcc_assert (mode == DFmode);
+
+	    real_to_target (res, CONST_DOUBLE_REAL_VALUE (op1),
+			    REAL_MODE_FORMAT (mode));
+	    lo = zext_hwi (res[0], 32);
+	    hi = zext_hwi (res[1], 32);
+
+	    ival = lo | (hi << 32);
+	    tmp = gen_reg_rtx (imode);
+	    emit_move_insn (tmp, gen_int_mode (ival, imode));
+	    emit_move_insn (op0, gen_lowpart (mode, tmp));
+	    return true;
+	  }
 
 	case CONST:
 	case SYMBOL_REF:
@@ -3722,13 +3770,6 @@ arc64_allow_direct_access_p (rtx op)
 #undef TARGET_RETURN_IN_MEMORY
 #define TARGET_RETURN_IN_MEMORY arc64_return_in_memory
 
-/* Needed by builtin_apply  */
-#undef TARGET_GET_RAW_RESULT_MODE
-#define TARGET_GET_RAW_RESULT_MODE arc64_get_reg_raw_mode
-
-#undef TARGET_GET_RAW_ARG_MODE
-#define TARGET_GET_RAW_ARG_MODE arc64_get_reg_raw_mode
-
 /* Passing arguments.  */
 #undef TARGET_PASS_BY_REFERENCE
 #define TARGET_PASS_BY_REFERENCE arc64_pass_by_reference
@@ -3865,7 +3906,7 @@ arc64_libgcc_floating_mode_supported_p
   arc64_autovectorize_vector_modes
 
 #undef TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST
-#define TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST \
+#define TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST	\
   arc64_builtin_vectorization_cost
 
 struct gcc_target targetm = TARGET_INITIALIZER;

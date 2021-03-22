@@ -171,6 +171,11 @@
        (ior (match_test "op == CONST0_RTX (DFmode)
                          || op == CONST0_RTX (SFmode)"))))
 
+(define_constraint "G" "@internal
+  Match single precision and a floating-point zero"
+  (and (match_code "const_double")
+       (ior (match_test "op == CONST0_RTX (DFmode)")
+	    (match_test "GET_MODE_SIZE (GET_MODE (op)) <= 4"))))
 ;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal

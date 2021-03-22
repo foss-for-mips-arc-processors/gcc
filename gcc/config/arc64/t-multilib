@@ -16,6 +16,6 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-MULTILIB_OPTIONS = mfpu=fpus
+MULTILIB_OPTIONS = mfpu=fpus/mfpu=fpud
 
-MULTILIB_DIRNAMES = fpus
+MULTILIB_DIRNAMES = fpus fpud

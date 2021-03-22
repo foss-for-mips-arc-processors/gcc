@@ -33,6 +33,9 @@
 /* Width of a word, in units (bytes).  */
 #define UNITS_PER_WORD  8
 
+/* Width of a fp register, in bytes.  */
+#define UNITS_PER_FP_REG ((ARC64_VFP_64) ? 8 : 4)
+
 /* Maximum number of registers that can appear in a valid memory
    address.  N.B. The ld insn allows 2, but the st insn only allows
    1.  */
@@ -592,9 +595,14 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* FP options.  */
 #define ARC64_HAS_FP_BASE (arc64_fp_model > 0)
-#define ARC64_HAS_FPUH    (arc64_fp_model == 1)
+#define ARC64_HAS_FPUH    (arc64_fp_model > 0)
 #define ARC64_HAS_FPUS    (arc64_fp_model > 0)
 #define ARC64_HAS_FPUD    (arc64_fp_model > 1)
+
+/* Vector SIMD length.  */
+#define ARC64_VFP_32    (arc64_fp_model == 1)
+#define ARC64_VFP_64    (arc64_fp_model == 2)
+#define ARC64_VFP_128   (arc64_fp_model > 2)
 
 /* IFCVT macros.  */
 #define STORE_FLAG_VALUE 1
