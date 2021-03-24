@@ -633,4 +633,18 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define OPTION_DEFAULT_SPECS			\
   { "fpu", "%{!mfpu=*:-mfpu=%(VALUE)}"}
 
+#define CPP_SPEC "%(subtarget_cpp_spec)"
+
+#define EXTRA_SPECS				      \
+  { "subtarget_cpp_spec",	SUBTARGET_CPP_SPEC }, \
+  SUBTARGET_EXTRA_SPECS
+
+#ifndef SUBTARGET_EXTRA_SPECS
+#define SUBTARGET_EXTRA_SPECS
+#endif
+
+#ifndef SUBTARGET_CPP_SPEC
+#define SUBTARGET_CPP_SPEC ""
+#endif
+
 #endif /* GCC_ARC64_H */

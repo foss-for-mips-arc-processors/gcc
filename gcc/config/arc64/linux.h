@@ -77,11 +77,6 @@ along with GCC; see the file COPYING3.  If not see
 #define LINK_EH_SPEC "--eh-frame-hdr "
 #endif
 
-#undef SUBTARGET_CPP_SPEC
-#define SUBTARGET_CPP_SPEC "\
-   %{pthread:-D_REENTRANT} \
-"
-
 /* Clear the instruction cache from `beg' to `end'.  This makes an
    inline system call to SYS_cacheflush.  */
 #undef CLEAR_INSN_CACHE
