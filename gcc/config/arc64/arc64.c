@@ -660,13 +660,19 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && REG_P (XEXP (x, 1)))
     return true;
 
-  /* Scalled addresses.  */
+  /* Scalled addresses.  Permitted variants:
+     ld.as rx, [rb,ri]         addr = rb + ri * scaling
+     ld.as rx, [offset32, ri]  addr = offset32 + ri * scalling
+
+     The store address can have only immediate operands scalled.  This
+     case toghether with its load variant are handled by above
+     code.  */
   if (scaling_p
+      && load_p
       && GET_CODE (x) == PLUS
+      && (REG_P (XEXP (x, 1)) || CONST_INT_P (XEXP (x, 1)))
+      /* Check multiplication.  */
       && GET_CODE (XEXP (x, 0)) == MULT
-      && ((load_p && REG_P (XEXP (x, 1)))
-	  || (load_p && CONST_INT_P (XEXP (x, 1)))
-	  || ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1), QImode))
       && REG_P (XEXP (XEXP (x, 0), 0))
       && CONST_INT_P (XEXP (XEXP (x, 0), 1)))
     switch (GET_MODE_SIZE (mode))
