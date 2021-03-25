@@ -95,3 +95,7 @@ Enable uncached access for volatile memories.
 mcode-density
 Target Report Mask(CODE_DENSITY)
 Enable code-density instructions.
+
+msimd
+Target Report Mask(SIMD)
+Enable integer SIMD instructions.
