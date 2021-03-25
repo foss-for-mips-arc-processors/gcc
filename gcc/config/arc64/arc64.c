@@ -2673,7 +2673,7 @@ arc64_vector_mode_supported_p (machine_mode mode)
       /* 64-bit SIMD vectors.  */
     case E_V4HImode:
     case E_V2SImode:
-      return true;
+      return TARGET_SIMD;
 
     default:
       return false;
@@ -2693,9 +2693,9 @@ arc64_preferred_simd_mode (scalar_mode mode)
       return (arc64_fp_model == 2) ? V2SFmode : word_mode;
 
     case E_HImode:
-      return V4HImode;
+      return TARGET_SIMD ? V4HImode : word_mode;
     case E_SImode:
-      return V2SImode;
+      return TARGET_SIMD ? V2SImode : word_mode;
 
     default:
       return word_mode;
@@ -2722,8 +2722,11 @@ arc64_autovectorize_vector_modes (vector_modes *modes, bool)
       break;
     }
 
-  modes->quick_push (V4HImode);
-  modes->quick_push (V2HImode);
+  if (TARGET_SIMD)
+    {
+      modes->quick_push (V4HImode);
+      modes->quick_push (V2HImode);
+    }
   return 0;
 }
 
