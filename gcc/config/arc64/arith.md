@@ -724,7 +724,7 @@
 (define_expand "mov<mode>"
   [(set (match_operand:VALL 0 "nonimmediate_operand")
 	(match_operand:VALL 1 "general_operand"))]
-  ""
+  "TARGET_SIMD"
   "
    if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
     DONE;
@@ -733,7 +733,7 @@
 (define_expand "movmisalign<mode>"
   [(set (match_operand:VALL 0 "nonimmediate_operand")
 	(match_operand:VALL 1 "general_operand"))]
-  "!STRICT_ALIGNMENT"
+  "TARGET_SIMD && !STRICT_ALIGNMENT"
   {
    if (!register_operand (operands[0], <MODE>mode)
        && !register_operand (operands[1], <MODE>mode))
@@ -743,8 +743,9 @@
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,m")
 	(match_operand:VALL 1 "nonimmediate_operand" "r,m,r"))]
-  "(register_operand (operands[0], <MODE>mode)
-    || register_operand (operands[1], <MODE>mode))"
+  "TARGET_SIMD
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
   "@
    mov<mcctab>\\t%0,%1
    ld<mcctab>%U1\\t%0,%1
@@ -755,7 +756,7 @@
   [(set (match_operand:VALL 0 "register_operand"           "=r")
 	(ADDSUB:VALL (match_operand:VALL 1 "register_operand" "r")
 		     (match_operand:VALL 2 "register_operand" "r")))]
-  ""
+  "TARGET_SIMD"
   "v<arc64_code_map><sfxtab>\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "v<arc64_code_map>")])
@@ -763,7 +764,7 @@
 (define_insn "neg<mode>2"
   [(set (match_operand:VALL 0 "register_operand" "=r")
 	(neg:VALL (match_operand:VALL 1 "register_operand" "r")))]
-  ""
+  "TARGET_SIMD"
   "vsub<sfxtab>\\t%0,0,%1"
   [(set_attr "length" "8")
    (set_attr "type" "vsub")])
@@ -772,7 +773,7 @@
  [(match_operand:V2SI 0 "register_operand")
   (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
   (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))]
-  ""
+  "TARGET_SIMD"
   {
     emit_insn (gen_arc64_<su>vmpy2h (operands[0],
 				     operands[1],
@@ -784,7 +785,7 @@
  [(match_operand:V2SI 0 "register_operand")
   (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
   (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))]
-  ""
+  "TARGET_SIMD"
   {
    rtx tmp1 = gen_reg_rtx (V4HImode);
    rtx tmp2 = gen_reg_rtx (V4HImode);
@@ -806,7 +807,7 @@
 	    (match_operand:V4HI 2 "register_operand" "r")
 	    (parallel [(const_int 0) (const_int 1)])))))
     (clobber (reg:V2SI R58_REGNUM))]
-   ""
+   "TARGET_SIMD"
    "vmpy2h<su_optab>\\t%0,%1,%2"
    [(set_attr "length" "4")
     (set_attr "type" "vmpy2h")])
@@ -817,7 +818,7 @@
 	 (vec_select:V2HI (match_operand:V4HI 1 "register_operand" "r")
 			  (parallel [(const_int 2) (const_int 3)]))
 	 (vec_select:V2HI (match_dup 1) (parallel [(const_int 0) (const_int 1)]))))]
-  ""
+  "TARGET_SIMD"
   "swapl\\t%0,%1"
    [(set_attr "length" "4")
     (set_attr "type" "swapl")])
@@ -827,7 +828,7 @@
    (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
    (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))
    (match_operand:V2SI 3 "register_operand")]
-  ""
+  "TARGET_SIMD"
 {
  rtx acc_reg  = gen_rtx_REG  (V2SImode, R58_REGNUM);
  rtx op1_high = gen_reg_rtx (V4HImode);
@@ -853,7 +854,7 @@
 			   (parallel [(const_int 0) (const_int 1)]))))
 	(reg:V2SI R58_REGNUM)))
   (clobber (reg:V2SI R58_REGNUM))]
-  ""
+  "TARGET_SIMD"
   "vmac2h<su_optab>%?\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vmac2h")])
@@ -869,7 +870,7 @@
 	  (vec_select:V2HI (match_operand:V4HI 1 "register_operand" "r")
 			   (parallel [(const_int 0) (const_int 1)]))))
 	(reg:V2SI R58_REGNUM)))]
-  ""
+  "TARGET_SIMD"
   "vmac2h<su_optab>%?\\t0,%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "vmac2h")])
@@ -880,7 +881,7 @@
 	(unspec:HI [(match_operand:V4HI 1 "register_operand" "r")]
 		   ARC64_UNSPEC_QMPYH))
    (clobber (reg:DI R58_REGNUM))]
-  ""
+  "TARGET_SIMD"
   "qmpyh\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "qmpyh")])
@@ -892,7 +893,7 @@
                     (match_operand:V4HI 2 "register_operand")]
                    ARC64_UNSPEC_QMACH))
    (clobber (reg:DI R58_REGNUM))]
-  ""
+  "TARGET_SIMD"
   {
     rtx acc_reg = gen_rtx_REG (HImode, R58_REGNUM);
     emit_move_insn (acc_reg, operands[1]);
@@ -905,7 +906,7 @@
                     (match_operand:V4HI 1 "register_operand" "r")]
                    ARC64_UNSPEC_QMACH))
    (clobber (reg:DI R58_REGNUM))]
-  ""
+  "TARGET_SIMD"
   "qmach\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "qmach")])
@@ -914,7 +915,7 @@
   [(set (match_operand:V2HI 0 "register_operand")
 	(mult:V2HI (match_operand:V2HI 1 "register_operand")
 		   (match_operand:V2HI 2 "register_operand")))]
-  ""
+  "TARGET_SIMD"
   {
     rtx tmp = gen_reg_rtx (V2SImode);
     emit_insn (gen_arc64_svmpy2h_lo (tmp, operands[1], operands[2]));
@@ -927,7 +928,7 @@
 	(unspec:V2HI [(match_operand:V2SI 1 "register_operand" "r")
 		      (const_int 0)]
 		     ARC64_UNSPEC_VPACK4HL))]
-  ""
+  "TARGET_SIMD"
   "vpack4hl\\t%0,%1,0"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -936,7 +937,7 @@
   [(match_operand:V2HI 0 "register_operand")
    (ANY_EXTEND:SI (match_operand:V2HI 1 "register_operand"))
    (ANY_EXTEND:SI (match_operand:V2HI 2 "register_operand"))]
-  ""
+  "TARGET_SIMD"
   {
     rtx tmp = gen_reg_rtx (V2SImode);
     emit_insn (gen_arc64_<su>vmpy2h_lo (tmp, operands[1], operands[2]));
@@ -949,7 +950,7 @@
 	(unspec:V2HI [(match_operand:V2SI 1 "register_operand" "r")
 		      (const_int 1)]
 		     ARC64_UNSPEC_VPACK4HM))]
-  ""
+  "TARGET_SIMD"
   "vpack4hm\\t%0,%1,0"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -962,7 +963,7 @@
 	  (ANY_EXTEND:V2SI
 	    (match_operand:V2HI 2 "register_operand" "r"))))
     (clobber (reg:V2SI R58_REGNUM))]
-   ""
+   "TARGET_SIMD"
    "vmpy2h<su_optab>\\t%0,%1,%2"
    [(set_attr "length" "4")
     (set_attr "type" "vmpy2h")])
@@ -971,7 +972,7 @@
   [(match_operand:V4HI 0 "register_operand")
    (match_operand:V4HI 1 "register_operand")
    (match_operand:V4HI 2 "register_operand")]
-  ""
+  "TARGET_SIMD"
   {
     rtx tmpA = gen_reg_rtx (V2SImode);
     rtx tmpB = gen_reg_rtx (V2SImode);
@@ -990,7 +991,7 @@
 	(unspec:V4HI [(match_operand:V2SI 1 "register_operand" "r")
 		      (match_operand:V2SI 2 "register_operand" "r")]
 		     ARC64_UNSPEC_VPACK4HL))]
-  ""
+  "TARGET_SIMD"
   "vpack4hl\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -998,7 +999,7 @@
 (define_insn "bswap<mode>2"
   [(set (match_operand:VALL 0 "register_operand" "=r")
 	(bswap:VALL (match_operand:VALL 1 "register_operand" "r")))]
-  ""
+  "TARGET_SIMD"
   "swap<mcctab>e\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "swap")])
@@ -1007,7 +1008,7 @@
   [(set (match_operand:<VEL> 0 "register_operand" "=r")
 	(vec_select:<VEL> (match_operand:VALL 1 "register_operand" "r")
 			  (parallel [(match_operand:SI 2 "const_int_operand" "n")])))]
-  ""
+  "TARGET_SIMD"
   {
     HOST_WIDE_INT elem = INTVAL (operands[2]);
     gcc_assert (elem < 4);
@@ -1029,7 +1030,7 @@
          (vec_select:V2HI
           (match_operand:V4HI 1 "register_operand")
           (parallel [(const_int 0)(const_int 1)]))))]
-  ""
+  "TARGET_SIMD"
  {
    rtx tmpA = gen_reg_rtx (HImode);
    rtx tmpB = gen_reg_rtx (HImode);
@@ -1051,7 +1052,7 @@
          (vec_select:V2HI
           (match_operand:V4HI 1 "register_operand")
           (parallel [(const_int 2)(const_int 3)]))))]
-  ""
+  "TARGET_SIMD"
  {
    rtx tmpA = gen_reg_rtx (HImode);
    rtx tmpB = gen_reg_rtx (HImode);
@@ -1067,7 +1068,7 @@
 	(unspec:V2SI [(match_operand:HI 1 "register_operand" "r")
 		      (match_operand:HI 2 "register_operand" "r")]
 		     ARC64_UNSPEC_VPACK2WL))]
-  ""
+  "TARGET_SIMD"
   "vpack2wl\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -1075,7 +1076,7 @@
 (define_expand "vec_duplicatev4hi"
   [(set (match_operand:V4HI 0 "register_operand")
 	(vec_duplicate:V4HI (match_operand:HI 1 "register_operand")))]
- ""
+ "TARGET_SIMD"
  {
    rtx tmp = gen_reg_rtx (V2SImode);
    emit_insn (gen_arc64_duplicate_v2hi(tmp, operands[1]));
@@ -1088,7 +1089,7 @@
 	(unspec:V2SI [(match_operand:HI 1 "register_operand" "r")
 		      (const_int 0)]
 		     ARC64_UNSPEC_VPACK4HL))]
-  ""
+  "TARGET_SIMD"
   "vpack4hl\\t%0,%1,%1"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -1096,7 +1097,7 @@
 (define_insn "vec_duplicatev2si"
   [(set (match_operand:V2SI 0 "register_operand" "=r")
 	(vec_duplicate:V2SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
+  "TARGET_SIMD"
   "vpack2wl\\t%0,%1,%1"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
