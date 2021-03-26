@@ -2626,7 +2626,7 @@ arc64_conditional_register_usage (void)
       for (regno = F0_REGNUM; regno <= F31_REGNUM; regno++)
 	{
 	  fixed_regs[regno] = 0;
-	  call_used_regs[regno] = regno < F0_REGNUM + 14;
+	  call_used_regs[regno] = (regno < (F0_REGNUM + 14)) ? 1 : 0;
 	}
     }
 }

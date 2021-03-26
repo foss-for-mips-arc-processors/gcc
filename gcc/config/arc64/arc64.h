@@ -57,8 +57,10 @@
 
 /* 1 if N is a possible register number for function argument
    passing.  */
-#define FUNCTION_ARG_REGNO_P(N)			\
-  ((unsigned) (N) < MAX_ARC64_PARM_REGS)
+/* Hard floats: r0-r7, and f0-f7.  */
+#define FUNCTION_ARG_REGNO_P(N)						\
+  (IN_RANGE ((N), R0_REGNUM, R7_REGNUM)					\
+   || (ARC64_HAS_FP_BASE && IN_RANGE ((N), F0_REGNUM, F7_REGNUM)))
 
 /* Boundaries.  */
 #define PARM_BOUNDARY		64
