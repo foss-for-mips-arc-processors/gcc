@@ -34,7 +34,7 @@
 #define UNITS_PER_WORD  8
 
 /* Width of a fp register, in bytes.  */
-#define UNITS_PER_FP_REG ((ARC64_VFP_64) ? 8 : 4)
+#define UNITS_PER_FP_REG ((ARC64_VFP_64 || ARC64_VFP_128) ? 8 : 4)
 
 /* Maximum number of registers that can appear in a valid memory
    address.  N.B. The ld insn allows 2, but the st insn only allows
@@ -474,6 +474,9 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define FP_REGNUM_P(REGNO)						\
   (((unsigned) (REGNO - F0_REGNUM)) <= (F31_REGNUM - F0_REGNUM))
 
+#define GP_REGNUM_P(REGNO)						\
+  (((unsigned) (REGNO - R0_REGNUM)) <= (BLINK_REGNUM - R0_REGNUM))
+
 /* Length in units of the trampoline for entering a nested function: 3
    insns + 2 pointer-sized entries.  */
 #define TRAMPOLINE_SIZE (16+16)
@@ -603,8 +606,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* Vector SIMD length.  */
 #define ARC64_VFP_32    (arc64_fp_model == 1)
-#define ARC64_VFP_64    (arc64_fp_model == 2)
-#define ARC64_VFP_128   (arc64_fp_model > 2)
+#define ARC64_VFP_64    ((arc64_fp_model == 2) && !TARGET_WIDE_SIMD)
+#define ARC64_VFP_128   ((arc64_fp_model == 2) && TARGET_WIDE_SIMD)
 
 /* IFCVT macros.  */
 #define STORE_FLAG_VALUE 1
