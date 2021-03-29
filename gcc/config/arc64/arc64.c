@@ -185,7 +185,7 @@ static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
 			      3, 0, 0, 0, 0, 0, 0, 0 };
 
 /* Safe access lut log2 table.  */
-#define ARC64LOG2(X) lutlog2[((X) & 0x0f)]
+#define ARC64LOG2(X) (((X) > 15) ? 3 : lutlog2[((X) & 0x0f)])
 
 /* Check if an offset fits in signed 8 bit immediate field.  */
 #define ARC64_CHECK_SMALL_IMMEDIATE(indx, mode)				\
@@ -639,6 +639,24 @@ arc64_legitimate_address_1_p (machine_mode mode,
   if (REG_P (x))
     return true;
 
+  if (CONST_INT_P (x))
+    return true;
+
+  if (CONSTANT_P (x))
+    {
+      /* Don't allow constant + offset when we don't have native
+	 ld/st, as the compiler may use very large offsets.  These
+	 memory accesses are splited anyhow.  */
+      if (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2)
+	  && !TARGET_WIDE_LDST)
+	return false;
+      if (GET_CODE (XEXP (x, 0)) == PLUS
+	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+	  /* Reloc addendum is only 32bit.   */
+	  && UNSIGNED_INT32 (XEXP (XEXP (x, 0), 1)))
+	x = XEXP (XEXP (x, 0), 0);
+    }
+
   if (GET_CODE (x) == SYMBOL_REF
       || GET_CODE (x) == LABEL_REF)
     return (arc64_get_symbol_type (x) == ARC64_LO32);
@@ -682,6 +700,10 @@ arc64_legitimate_address_1_p (machine_mode mode,
       case 8:
 	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
 	  return true;
+	break;
+      case 16:
+	if (INTVAL (XEXP (XEXP (x, 0), 1)) == UNITS_PER_WORD)
+	  return TARGET_WIDE_LDST;
 	break;
       default:
 	break;
@@ -868,8 +890,15 @@ arc64_return_in_memory (const_tree type, const_tree fndecl ATTRIBUTE_UNUSED)
   if (AGGREGATE_TYPE_P (type) || TREE_ADDRESSABLE (type))
     return true;
 
-  /* Types larger than 2 registers returned in memory.  */
   size = int_size_in_bytes (type);
+
+  /* Double sized float vectors are mapped into even-odd register
+     pair, hence use the stack when someone wants to pass them to
+     the caller.  */
+  if (VECTOR_FLOAT_TYPE_P (type) && size > UNITS_PER_WORD)
+    return true;
+
+  /* Types larger than 2 registers returned in memory.  */
   return ((size < 0) || (size > 2 * UNITS_PER_WORD));
 }
 
@@ -882,6 +911,11 @@ arc64_pass_by_reference (cumulative_args_t cum_v,
   HOST_WIDE_INT size = arg.type_size_in_bytes ();
   struct arc64_arg_info info;
   CUMULATIVE_ARGS *pcum = get_cumulative_args (cum_v);
+
+  /* Double sized fp-vectors are passed on the stack.  */
+  if (arg.type
+      && VECTOR_FLOAT_TYPE_P (arg.type) && size > UNITS_PER_WORD)
+    return true;
 
   /* N.B. std_gimplify_va_arg_expr passes NULL for cum.  However, we
      do not use variadic arguments in fp-regs.  */
@@ -1087,15 +1121,21 @@ arc64_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
 
   if (regno <= R58_REGNUM)
     {
-      if (GET_MODE_SIZE (mode) <= 8)
+      if (GET_MODE_SIZE (mode) <= UNITS_PER_WORD)
 	return true;
-      else if (GET_MODE_SIZE (mode) <= 16)
+      else if (GET_MODE_SIZE (mode) <= (UNITS_PER_WORD * 2))
 	return ((regno & 1) == 0);
     }
   else if (FLOAT_MODE_P (mode) && FP_REGNUM_P (regno))
-    /* TBI: An idea is to use the FP registers to spill GPI
-       registers.  */
-    return true;
+    {
+      /* FIXME! I should make the decision base on the WIDE option
+	 alone, if we need double regs or not.  */
+      if (ARC64_VFP_128
+	  && (GET_MODE_SIZE (mode) <= (UNITS_PER_FP_REG * 2))
+	  && (GET_MODE_CLASS (mode) == MODE_VECTOR_FLOAT))
+	return ((regno & 1) == 0);
+      return true;
+    }
 
   return false;
 }
@@ -1460,6 +1500,10 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
     {
     case REG :
       fputs (reg_names[REGNO (addr)], file);
+      break;
+
+    case CONST:
+      output_address (mode, XEXP (addr, 0));
       break;
 
     case PLUS :
@@ -2662,11 +2706,16 @@ arc64_vector_mode_supported_p (machine_mode mode)
     {
       /* 32-bit fp SIMD vectors.  */
     case E_V2HFmode:
-      return (arc64_fp_model == 1);
+      return ARC64_VFP_32;
       /* 64-bit fp SIMD vectors.  */
     case E_V4HFmode:
     case E_V2SFmode:
-      return (arc64_fp_model == 2);
+      return ARC64_VFP_64;
+      /* 128-bit fp SIMD vectors.  */
+    case E_V8HFmode:
+    case E_V4SFmode:
+    case E_V2DFmode:
+      return ARC64_VFP_128;
 
       /* 32-bit SIMD vectors.  */
     case E_V2HImode:
@@ -2688,9 +2737,25 @@ arc64_preferred_simd_mode (scalar_mode mode)
   switch (mode)
     {
     case E_HFmode:
-      return (arc64_fp_model == 1) ? V2HFmode : V4HFmode;
+      if (ARC64_VFP_128)
+	return V8HFmode;
+      if (ARC64_VFP_64)
+	return V4HFmode;
+      if (ARC64_VFP_32)
+	return V2HFmode;
+      return word_mode;
+
     case E_SFmode:
-      return (arc64_fp_model == 2) ? V2SFmode : word_mode;
+      if (ARC64_VFP_128)
+	return V4SFmode;
+      if (ARC64_VFP_64)
+	return V2SFmode;
+      return word_mode;
+
+    case E_DFmode:
+      if (ARC64_VFP_128)
+	return V2DFmode;
+      return word_mode;
 
     case E_HImode:
       return TARGET_SIMD ? V4HImode : word_mode;
@@ -2708,19 +2773,19 @@ arc64_preferred_simd_mode (scalar_mode mode)
 static unsigned int
 arc64_autovectorize_vector_modes (vector_modes *modes, bool)
 {
-  switch (arc64_fp_model)
+  if (ARC64_VFP_128)
     {
-    case 1:
-      modes->quick_push (V2HFmode);
-      break;
-    case 2:
+      modes->quick_push (V8HFmode);
+      modes->quick_push (V4SFmode);
+      modes->quick_push (V2DFmode);
+    }
+  else if (ARC64_VFP_64)
+    {
       modes->quick_push (V4HFmode);
       modes->quick_push (V2SFmode);
-      break;
-
-    default:
-      break;
     }
+  else if (ARC64_VFP_32)
+    modes->quick_push (V2HFmode);
 
   if (TARGET_SIMD)
     {
@@ -2791,6 +2856,29 @@ arc64_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
     default:
       gcc_unreachable ();
     }
+}
+
+/* Return a new RTX holding the result of moving POINTER forward by
+   AMOUNT bytes.  */
+
+static rtx
+arc64_move_pointer (rtx pointer, poly_int64 amount)
+{
+  rtx next = plus_constant (Pmode, XEXP (pointer, 0), amount);
+
+  return adjust_automodify_address (pointer, GET_MODE (pointer),
+				    next, amount);
+}
+
+/* Moving f regs to r regs is not a very good idea. */
+static int
+arc64_register_move_cost (machine_mode,
+			  reg_class_t from_class, reg_class_t to_class)
+{
+  if ((from_class == FP_REGS && to_class == GENERAL_REGS)
+      || (to_class == FP_REGS && from_class == GENERAL_REGS))
+    return 200;
+  return 2;
 }
 
 /*
@@ -3085,7 +3173,7 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
   gcc_assert (MEM_P (mem));
   callee = XEXP (mem, 0);
   mode = GET_MODE (callee);
-  gcc_assert (mode == Pmode);
+  gcc_assert (mode == Pmode || CONST_INT_P (callee));
 
   /* Decide if we should generate indirect calls by loading the
      address of the callee into a register before performing the
@@ -3749,6 +3837,187 @@ arc64_allow_direct_access_p (rtx op)
   return (arc64_get_symbol_type (op) == ARC64_LO32);
 }
 
+/* Decide if mov simd instruction needs to be split.  Return TRUE if
+   so.  This procedure is required when the vector length is larger
+   than 64 bit.  */
+bool
+arc64_simd64x_split_move_p (rtx *operands, machine_mode mode)
+{
+  rtx op0 = operands[0];
+  rtx op1 = operands[1];
+
+  if (register_operand (op0, mode) && register_operand (op1, mode))
+    {
+      /* Check for r-reg to f-reg moves.  */
+      if (GP_REGNUM_P (REGNO (op0)) || GP_REGNUM_P (REGNO (op1)))
+	return true;
+
+      /* Sanity check for vfmov instruction.  */
+      gcc_assert (arc64_fsimd_register (op0, mode)
+		  && arc64_fsimd_register (op1, mode));
+      return false;
+    }
+
+  /* Check if we have 128bit moves.  */
+  if (TARGET_WIDE_LDST
+      && (GET_MODE_SIZE (mode) <= (UNITS_PER_WORD * 2))
+      && ((memory_operand (op0, mode) && REG_P (op1)
+	   /* FIXME! Remove the next condition when lddl/stddl are
+	      supported.  Add variant in split pattern.  */
+	   && FP_REGNUM_P (REGNO (op1)))
+	  || (memory_operand (op1, mode) && REG_P (op0)
+	      /* FIXME! Remove the next condition when lddl/stddl are
+		 supported.  Add variant in split pattern.  */
+	      && FP_REGNUM_P (REGNO (op0)))))
+    {
+      /* Sanity check for wide st/ld instructions.  */
+      if (REG_P (op0))
+	gcc_assert ((REGNO (op0) & 0x01) == 0);
+      if (REG_P (op1))
+	gcc_assert ((REGNO (op1) & 0x01) == 0);
+      return false;
+    }
+
+  /* Evereything else is going for a split.  */
+  return true;
+}
+
+/* This is the actual routine which splits a move simd to smaller
+   bits.  */
+void
+arc64_simd128_split_move (rtx *operands, machine_mode mode)
+{
+  rtx op0 = operands[0];
+  rtx op1 = operands[1];
+  rtx lo, hi, mem_lo, mem_hi, src, dst;
+  unsigned int rdst, rsrc, i;
+  unsigned iregs = CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
+  bool swap_p = false;
+
+  /* Maximum size handled is 256b.  */
+  gcc_assert (iregs <= 2);
+
+  /* This procedure works as long as the width of the fp regs is the
+     same as the width of r regs.  */
+  gcc_assert (UNITS_PER_WORD == UNITS_PER_FP_REG);
+
+  /* Split reg-reg move.  */
+  if (REG_P (op0) && REG_P (op1))
+    {
+      rdst = REGNO (op0);
+      rsrc = REGNO (op1);
+
+      if (!reg_overlap_mentioned_p (op0, op1)
+	  || rdst < rsrc)
+	/* The fp regs will never overlap r-regs.  However, this
+	   procedure can be used also for r-reg to r-regs splits.  */
+	for (i = 0; i < iregs; i++)
+	  emit_move_insn (gen_rtx_REG (DFmode, rdst + i),
+			  gen_rtx_REG (DFmode, rsrc + i));
+      else
+	for (i = 0; i < iregs; i++)
+	  emit_move_insn (gen_rtx_REG (DFmode, rdst + iregs - i - 1),
+			  gen_rtx_REG (DFmode, rsrc + iregs - i - 1));
+      return;
+    }
+
+  /* Split mem-reg moves.  */
+  gcc_assert (REG_P (op0) || REG_P (op1));
+
+  if (REG_P (op1))
+    {
+      src = op1;
+      dst = op0;
+    }
+  else
+    {
+      src = op0;
+      dst = op1;
+    }
+
+  lo = gen_lowpart (DFmode, src);
+  hi = gen_highpart_mode (DFmode, mode, src);
+
+  if (auto_inc_p (XEXP (dst, 0)))
+    {
+      rtx offset, reg, next, addr = XEXP (dst, 0);
+      enum rtx_code code = GET_CODE (addr);
+
+      switch (code)
+	{
+	case PRE_INC:
+	  offset = GEN_INT (GET_MODE_SIZE (mode));
+	  code = PRE_MODIFY;
+	  break;
+	case PRE_DEC:
+	  offset = GEN_INT (-GET_MODE_SIZE (mode));
+	  code = PRE_MODIFY;
+	  break;
+	case POST_MODIFY:
+	case PRE_MODIFY:
+	  offset =  XEXP (XEXP (addr, 1), 1);
+	  break;
+	case POST_INC:
+	  offset = GEN_INT (GET_MODE_SIZE (mode));
+	  code = POST_MODIFY;
+	  break;
+	case POST_DEC:
+	  offset = GEN_INT (-GET_MODE_SIZE (mode));
+	  code = POST_MODIFY;
+	  break;
+	default:
+	  gcc_unreachable ();
+	}
+
+      reg = XEXP (addr, 0);
+      next = gen_rtx_fmt_ee (code, Pmode, reg,
+			     gen_rtx_PLUS (Pmode, reg, offset));
+
+      switch (code)
+	{
+	case POST_MODIFY:
+	  /* We need to swap lo/hi order such that we emit first the
+	     hi-load with an offset, and last the post modify
+	     instruction.  Thus the code can handle any type of auto
+	     increment address.  */
+	  mem_lo = adjust_automodify_address (dst, DFmode, next, 0);
+	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (DFmode));
+	  mem_hi = adjust_automodify_address (dst, DFmode, next,
+					      GET_MODE_SIZE (DFmode));
+	  swap_p = true;
+	  break;
+	case PRE_MODIFY:
+	  mem_lo = adjust_automodify_address (dst, DFmode, next, 0);
+	  mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (DFmode));
+	  /* fall through */
+	default:
+	  gcc_unreachable ();
+	}
+    }
+  else
+    {
+      mem_lo = adjust_address (dst, DFmode, 0);
+      mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (DFmode));
+    }
+
+  if (REG_P (op1))
+    {
+      if (!swap_p)
+	emit_move_insn (mem_lo, lo);
+      emit_move_insn (mem_hi, hi);
+      if (swap_p)
+	emit_move_insn (mem_lo, lo);
+    }
+  else
+    {
+      if (!swap_p)
+	emit_move_insn (lo, mem_lo);
+      emit_move_insn (hi, mem_hi);
+      if (swap_p)
+	emit_move_insn (lo, mem_lo);
+    }
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
@@ -3917,6 +4186,9 @@ arc64_libgcc_floating_mode_supported_p
 #undef TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST
 #define TARGET_VECTORIZE_BUILTIN_VECTORIZATION_COST	\
   arc64_builtin_vectorization_cost
+
+#undef TARGET_REGISTER_MOVE_COST
+#define TARGET_REGISTER_MOVE_COST arc64_register_move_cost
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
