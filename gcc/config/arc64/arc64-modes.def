@@ -34,3 +34,4 @@ VECTOR_MODES (INT, 8);        /* V4HI V2SI */
 /* FP vector modes.  */
 VECTOR_MODE (FLOAT, HF, 2);   /* V2HF */
 VECTOR_MODES (FLOAT, 8);      /* V4HF V2SF */
+VECTOR_MODES (FLOAT, 16);     /* V8HF V4SF V2DF */
