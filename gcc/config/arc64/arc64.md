@@ -180,14 +180,29 @@
 (define_mode_iterator VALL [V2HI V4HI V2SI])
 
 ;; All fp vectors
-(define_mode_iterator VALLF [(V2HF "ARC64_VFP_32") (V4HF "ARC64_VFP_64")
-			     (V2SF "ARC64_VFP_64")])
+(define_mode_iterator VALLF [(V2HF "ARC64_VFP_32")
+			     (V4HF "ARC64_VFP_64") (V2SF "ARC64_VFP_64")
+			     (V8HF "ARC64_VFP_128") (V4SF "ARC64_VFP_128")
+			     (V2DF "ARC64_VFP_128")])
+
+;; ALl fp vectors up to 64bit
+(define_mode_iterator VALLF_64 [(V2HF "ARC64_VFP_32")
+				(V4HF "ARC64_VFP_64") (V2SF "ARC64_VFP_64")])
+
+;; All 128b fp vectos
+(define_mode_iterator VALLF_128 [(V8HF "ARC64_VFP_128") (V4SF "ARC64_VFP_128")
+				 (V2DF "ARC64_VFP_128")])
 
 ;; All 2xfp Vectors
-(define_mode_iterator V2xF [(V2HF "ARC64_VFP_32") (V2SF "ARC64_VFP_64")])
+(define_mode_iterator V2xF [(V2HF "ARC64_VFP_32") (V2SF "ARC64_VFP_64")
+			    (V2DF "ARC64_VFP_128")])
 
 ;; All 4xfp Vectors
-(define_mode_iterator V4xF [(V4HF "ARC64_VFP_64")])
+(define_mode_iterator V4xF [(V4HF "ARC64_VFP_64") (V4SF "ARC64_VFP_128")])
+
+;; All 2xreg wide vectors
+;; All 2xfp Vectors
+(define_mode_iterator W2xF [(V2DF "ARC64_VFP_128")])
 
 ;; -------------------------------------------------------------------
 ;; Code Iterators
@@ -221,6 +236,12 @@
 ;; Comutative VF operations
 (define_code_iterator VCOP [plus mult])
 
+;; Emulated 2 operand vector operations
+(define_code_iterator EV2OP [smin smax])
+
+;; Emulated 1 operand vector operations
+(define_code_iterator EV1OP [abs neg])
+
 ;; -------------------------------------------------------------------
 ;; Mode Attributes
 ;; -------------------------------------------------------------------
@@ -233,7 +254,8 @@
 (define_mode_attr sfxtab [(QI "b") (HI "h") (SI "") (DI "l")
 			  (HF "h") (SF "s") (DF "d")
 			  (V2HI "2h") (V4HI "4h") (V2SI "2")
-			  (V2HF "h") (V4HF "h") (V2SF "s")])
+			  (V2HF "h") (V4HF "h") (V2SF "s")
+			  (V8HF "h") (V4SF "s") (V2DF "d")])
 
 ;; Used by FPABS patterns.
 (define_mode_attr fptab [(SF "") (DF "l")])
@@ -258,16 +280,19 @@
 
 ;; Same like above but without -1 used for fp loads/stores
 (define_mode_attr sizef [(HF "16") (SF "32") (DF "64")
-			 (V2HF "32") (V4HF "64") (V2SF "64")])
+			 (V2HF "32") (V4HF "64") (V2SF "64")
+			 (V8HF "128") (V4SF "128") (V2DF "128")])
 
 ;; Used by float conv patterns.
 (define_mode_attr f2tab [(SI "int") (DI "l")])
 
 ;; Define element mode for each vector mode.
 (define_mode_attr VEL [(V2HI "HI") (V4HI "HI") (V2SI "SI")
-		       (V2HF "HF") (V4HF "HF") (V2SF "SF")])
+		       (V2HF "HF") (V4HF "HF") (V2SF "SF")
+		       (V8HF "HF") (V4SF "SF") (V2DF "DF")])
 (define_mode_attr vel [(V2HI "hi") (V4HI "hi") (V2SI "si")
-		       (V2HF "hf") (V4HF "hf") (V2SF "sf")])
+		       (V2HF "hf") (V4HF "hf") (V2SF "sf")
+		       (V8HF "hf") (V4SF "sf") (V2DF "df")])
 
 ;; Used by vector extract pattern
 (define_mode_attr vextrsz [(V2HI "16") (V4HI "16") (V2SI "32")])
@@ -779,17 +804,18 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 )
 
 (define_insn "*call_insn"
-  [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "q,r,BLsym"))
+  [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "q,r,BLsym,S12S0,S32S0"))
 	 (match_operand 1 "" ""))
    (clobber (reg:DI BLINK_REGNUM))]
   ""
   "@
    jl_s\\t[%0]
    jl\\t[%0]
-   bl\\t%C0"
-  [(set_attr "type" "jl,jl,bl")
-   (set_attr "predicable" "no,yes,yes")
-   (set_attr "length" "2,4,4")])
+   bl\\t%C0
+   jl\\t%0
+   jl\\t%0"
+  [(set_attr "type" "jl,jl,bl,jl,jl")
+   (set_attr "length" "2,4,4,4,8")])
 
 (define_expand "call_value"
   [(parallel [(set (match_operand 0 "" "")
@@ -808,17 +834,18 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 (define_insn "*call_value_insn"
   [(set (match_operand 0 "" "")
 	(call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand"
-					"q,r,BLsym"))
+					"q,r,BLsym,S12S0,S32S0"))
 	      (match_operand 2 "" "")))
    (clobber (reg:DI BLINK_REGNUM))]
   ""
   "@
    jl_s\\t[%1]
    jl\\t[%1]
-   bl\\t%C1"
-  [(set_attr "type" "jl,jl,bl")
-   (set_attr "predicable" "no,yes,yes")
-   (set_attr "length" "2,4,4")])
+   bl\\t%C1
+   jl\\t%1
+   jl\\t%1"
+  [(set_attr "type" "jl,jl,bl,jl,jl")
+   (set_attr "length" "2,4,4,4,8")])
 
 (define_expand "sibcall"
   [(parallel [(call (match_operand 0 "memory_operand")
@@ -847,29 +874,37 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 
 ;FIXME! add short variant for jump
 (define_insn "*sibcall_insn"
- [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym"))
-	(match_operand 1 "" ""))
+  [(call
+    (mem:DI
+     (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
+    (match_operand 1 "" ""))
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
    j\\t[%0]
-   b\\t%C0"
-  [(set_attr "type" "jump,branch")
-   (set_attr "length" "4")]
+   b\\t%C0
+   j\\t%0
+   j\\t%0"
+  [(set_attr "type" "jump,branch,jump,jump")
+   (set_attr "length" "4,4,4,8")]
 )
 
 ;FIXME! add short variant for jump
 (define_insn "*sibcall_value_insn"
  [(set (match_operand 0 "" "")
-       (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
-	     (match_operand 2 "" "")))
+       (call
+	(mem:DI
+	 (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
+	(match_operand 2 "" "")))
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
    j\\t[%1]
-   b\\t%C1"
-  [(set_attr "type" "jump,branch")
-   (set_attr "length" "4")]
+   b\\t%C1
+   j\\t%1
+   j\\t%1"
+  [(set_attr "type" "jump,branch,jump,jump")
+   (set_attr "length" "4,4,4,8")]
 )
 
 ; conditional execution patterns
@@ -878,15 +913,17 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 2 "cc_register" "") (const_int 0)])
     (parallel
-     [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "r,BLsym"))
+     [(call (mem:DI
+	     (match_operand:DI 0 "arc64_call_insn_operand" "r,BLsym,U06S0"))
 	    (match_operand 1 "" ""))
       (clobber (reg:DI BLINK_REGNUM))]))]
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[0], Pmode)"
   "@
    jl%m3\\t[%0]
-   bl%m3\\t%C0"
-  [(set_attr "type" "jl,bl")
+   bl%m3\\t%C0
+   jl%m3\\t%0"
+  [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
 (define_insn "*callv_ce"
@@ -896,15 +933,16 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
     (parallel
      [(set (match_operand 0 "" "")
 	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand"
-					   "r,BLsym"))
+					   "r,BLsym,U06S0"))
 		 (match_operand 2 "" "")))
       (clobber (reg:DI BLINK_REGNUM))]))]
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[1], Pmode)"
   "@
    jl%m3\\t[%1]
-   bl%m3\\t%C1"
-  [(set_attr "type" "jl,bl")
+   bl%m3\\t%C1
+   jl%m3\\t%1"
+  [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
 (define_insn "*sibcall_insn_ce"
@@ -912,7 +950,8 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 2 "cc_register" "") (const_int 0)])
     (parallel
-     [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym"))
+     [(call (mem:DI
+	     (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
 	    (match_operand 1 "" ""))
       (return)]))]
   "SIBLING_CALL_P (insn)
@@ -920,8 +959,9 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
        || register_operand (operands[0], Pmode))"
   "@
    j%m3\\t[%0]
-   b%m3\\t%C0"
-  [(set_attr "type" "jump,branch")
+   b%m3\\t%C0
+   j%m3\\t%0"
+  [(set_attr "type" "jump,branch,jump")
    (set_attr "length" "4")])
 
 (define_insn "*sibcall_value_insn_ce"
@@ -930,16 +970,19 @@ vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (parallel
      [(set (match_operand 0 "" "")
-	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym"))
-		 (match_operand 2 "" "")))
+	   (call
+	    (mem:DI
+	     (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
+	    (match_operand 2 "" "")))
       (return)]))]
   "SIBLING_CALL_P (insn)
    && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
        || register_operand (operands[1], Pmode))"
   "@
    j%m3\\t[%1]
-   b%m3\\t%C1"
-  [(set_attr "type" "jump,branch")
+   b%m3\\t%C1
+   j%m3\\t%1"
+  [(set_attr "type" "jump,branch,jump")
    (set_attr "length" "4")])
 
 (define_expand "untyped_call"

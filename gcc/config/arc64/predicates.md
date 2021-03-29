@@ -66,7 +66,7 @@
 (define_predicate "arc64_call_insn_operand"
   (ior (and (match_code "symbol_ref")
 	    (match_test "!arc64_is_long_call_p (op)"))
-       (match_operand 0 "register_operand")))
+       (match_operand 0 "nonmemory_operand")))
 
 ; to be used for b{eq/ne}_s instructions.
 (define_predicate "equality_comparison_operator"
@@ -157,3 +157,42 @@
   (and (match_code "mem")
        (match_code "reg" "0")))
 
+;; Used by vector floating point instructions.
+(define_predicate "arc64_fsimd_register"
+  (match_code "reg,subreg")
+  {
+    if (GET_CODE (op) == SUBREG)
+      op = SUBREG_REG (op);
+
+    if (REGNO (op) >= FIRST_PSEUDO_REGISTER)
+      return 1;
+
+    /* Check if it is a register. */
+    if (!REG_P (op))
+      return 0;
+
+    /* FIXME! check: REGNO_REG_CLASS (REGNO (op)) != FP_REGS */
+
+    /* Return true/false depending on the SIMD length.  */
+    switch (mode)
+      {
+	/* All vector modes equal with the size of a fp-register.  */
+      case E_V2SFmode:
+      case E_V4HFmode:
+      case E_V2HFmode:
+	return 1;
+
+	/* All vector modes double the size of a fp-register.  */
+      case E_V8HFmode:
+      case E_V4SFmode:
+      case E_V2DFmode:
+	return (ARC64_VFP_128 && ((REGNO (op) & 0x01) == 0));
+
+      default:
+	gcc_unreachable ();
+      }
+  })
+
+(define_predicate "arc64_fsimd_moperand"
+  (ior (match_operand 0 "arc64_fsimd_register")
+       (match_operand 0 "memory_operand")))

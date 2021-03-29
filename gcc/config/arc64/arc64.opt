@@ -99,3 +99,11 @@ Enable code-density instructions.
 msimd
 Target Report Mask(SIMD)
 Enable integer SIMD instructions.
+
+mwide
+Target Report Mask(WIDE_SIMD)
+Enable wide floating point SIMD support.
+
+m128
+Target Report Mask(WIDE_LDST)
+Enable wide data transfer support.

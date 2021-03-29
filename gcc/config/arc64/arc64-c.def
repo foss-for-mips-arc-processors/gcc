@@ -22,6 +22,10 @@ ARC64_C_DEF ("__ARC64_ATOMIC_2__", arc64_atomic_option == 2)
 ARC64_C_DEF ("__ARC64_ATOMIC_3__", arc64_atomic_option == 3)
 ARC64_C_DEF ("__ARC64_UNALIGNED__", unaligned_access)
 ARC64_C_DEF ("__ARC64_FPUS__", ARC64_HAS_FPUS)
+ARC64_C_DEF ("__ARC64_FPUD__", ARC64_HAS_FPUD)
+ARC64_C_DEF ("__ARC64_M128__", TARGET_WIDE_LDST)
+ARC64_C_DEF ("__ARC64_WIDE_VECTOR__", TARGET_WIDE_SIMD)
+
 
 /* Local Variables: */
 /* mode: c */
