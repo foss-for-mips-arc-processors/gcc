@@ -35,6 +35,8 @@ extern bool arc64_allow_direct_access_p (rtx);
 extern bool arc64_use_fp_regs (machine_mode);
 extern bool arc64_fp_access_p (rtx, machine_mode);
 extern void arc64_expand_casesi (rtx []);
+extern bool arc64_simd64x_split_move_p (rtx *, machine_mode);
+extern void arc64_simd128_split_move (rtx *, machine_mode);
 
 #endif /* RTX_CODE */
 

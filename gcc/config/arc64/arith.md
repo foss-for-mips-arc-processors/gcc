@@ -1126,8 +1126,8 @@
   })
 
 (define_insn "*mov<mode>"
-  [(set (match_operand:VALLF 0 "arc64_dest_operand"  "=w,    w,Ufpms,*r,*w,*r,*r,*m")
-	(match_operand:VALLF 1 "nonimmediate_operand" "w,Ufpms,    w,*w,*r,*r,*m,*r"))]
+  [(set (match_operand:VALLF_64 0 "arc64_dest_operand"  "=w,    w,Ufpms,*r,*w,*r,*r,*m")
+	(match_operand:VALLF_64 1 "nonimmediate_operand" "w,Ufpms,    w,*w,*r,*r,*m,*r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
@@ -1143,17 +1143,40 @@
   [(set_attr "type" "fmov,ld,st,move,move,move,ld,st")
    (set_attr "length" "4,*,*,4,4,4,*,*")])
 
+;; The 128 bit moves need special care.
+(define_insn_and_split "*mov<mode>"
+  [(set (match_operand:VALLF_128 0 "arc64_fsimd_moperand" "=w,    w,Ufpms,*r,*w")
+	(match_operand:VALLF_128 1 "arc64_fsimd_moperand"  "w,Ufpms,    w,*w,*r"))]
+  "ARC64_HAS_FP_BASE
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
+  "@
+   vf<sfxtab>mov\\t%0,%1
+   fld<sizef>%U1\\t%0,%1
+   fst<sizef>%U0\\t%1,%0
+   #
+   #"
+  "&& reload_completed
+   && arc64_simd64x_split_move_p (operands, <MODE>mode)"
+  [(const_int 0)]
+  {
+   arc64_simd128_split_move (operands, <MODE>mode);
+   DONE;
+  }
+  [(set_attr "type" "fmov,ld,st,move,move")
+   (set_attr "length" "4,*,*,8,8")])
+
 (define_insn "<optab><mode>3"
-  [(set (match_operand:VALLF 0 "register_operand"            "=w")
-	(VOPS:VALLF (match_operand:VALLF 1 "register_operand" "w")
-		    (match_operand:VALLF 2 "register_operand" "w")))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register"            "=w")
+	(VOPS:VALLF (match_operand:VALLF 1 "arc64_fsimd_register" "w")
+		    (match_operand:VALLF 2 "arc64_fsimd_register" "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab><arc64_code_map>\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vf<arc64_code_map>")])
 
 (define_insn "vec_duplicate<mode>"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>rep\\t%0,%1"
@@ -1161,9 +1184,9 @@
    (set_attr "type" "vfrep")])
 
 (define_insn "<optab><mode>3_rep"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(VOPS:VALLF
-	 (match_operand:VALLF 1 "register_operand" "w")
+	 (match_operand:VALLF 1 "arc64_fsimd_register" "w")
 	 (vec_duplicate:VALLF
 	  (match_operand:<VEL> 2 "register_operand" "w"))))]
   "ARC64_HAS_FP_BASE"
@@ -1173,11 +1196,11 @@
 
 ;; Canonical of the above (selected) patterns.
 (define_insn "<optab><mode>3_rep2"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(VCOP:VALLF
 	 (vec_duplicate:VALLF
 	  (match_operand:<VEL> 1 "register_operand" "w"))
-	 (match_operand:VALLF 2 "register_operand" "w")))]
+	 (match_operand:VALLF 2 "arc64_fsimd_register" "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab><arc64_code_map>s\\t%0,%2,%1"
   [(set_attr "length" "4")
@@ -1197,11 +1220,11 @@
   })
 
 (define_insn "*vec_set<mode>"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(vec_merge:VALLF
 	 (vec_duplicate:VALLF
 	  (match_operand:<VEL> 1 "register_operand" "w"))
-	 (match_operand:VALLF 3 "register_operand" "0")
+	 (match_operand:VALLF 3 "arc64_fsimd_register" "0")
 	 (match_operand:SI 2 "immediate_operand" "i")))]
   "ARC64_HAS_FP_BASE"
  {
@@ -1215,7 +1238,7 @@
 
 (define_insn "vec_extract<mode>"
   [(set (match_operand:<VEL> 0 "register_operand" "=w")
-	(vec_select:<VEL> (match_operand:VALLF 1 "register_operand" "w")
+	(vec_select:<VEL> (match_operand:VALLF 1 "arc64_fsimd_register" "w")
 			  (parallel [(match_operand:SI 2 "nonmemory_operand" "rU05S0")])))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>ext\\t%0,%1[%2]"
@@ -1224,10 +1247,10 @@
 
 ;; FV<P>MADD
 (define_insn "fma<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
-		   (match_operand:VALLF 2 "register_operand"  "w")
-		   (match_operand:VALLF 3 "register_operand"  "w")))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+		   (match_operand:VALLF 3 "arc64_fsimd_register"  "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>madd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1235,20 +1258,20 @@
 
 ;; FV<P>MSUB
 (define_insn "fnma<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
-		   (match_operand:VALLF 2 "register_operand"  "w")
-		   (match_operand:VALLF 3 "register_operand"  "w")))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+		   (match_operand:VALLF 3 "arc64_fsimd_register"  "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>msub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
    (set_attr "type" "fmsub")])
 
 (define_insn "fms<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
-		   (match_operand:VALLF 2 "register_operand"  "w")
-		   (neg:VALLF (match_operand:VALLF 3 "register_operand"  "w"))))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+		   (neg:VALLF (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
   "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
   "vf<sfxtab>nmsub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1256,10 +1279,10 @@
 
 ;; -(op3 - (op1 * op2))
 (define_insn "*nfnms<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(neg:VALLF (fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
-			      (match_operand:VALLF 2 "register_operand"  "w")
-			      (match_operand:VALLF 3 "register_operand"  "w"))))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(neg:VALLF (fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
+			      (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+			      (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>nmsub\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1267,10 +1290,10 @@
 
 ;; FV<P>NMADD
 (define_insn "fnms<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
-		   (match_operand:VALLF 2 "register_operand"  "w")
-		   (neg:VALLF (match_operand:VALLF 3 "register_operand"  "w"))))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+		   (neg:VALLF (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
   "!HONOR_SIGNED_ZEROS (<MODE>mode) && ARC64_HAS_FP_BASE"
   "vf<sfxtab>nmadd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1278,10 +1301,10 @@
 
 ;; -(op3 + (op1 * op2))
 (define_insn "*nfms<mode>4"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(neg:VALLF (fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
-			      (match_operand:VALLF 2 "register_operand"  "w")
-			      (match_operand:VALLF 3 "register_operand"  "w"))))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(neg:VALLF (fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
+			      (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
+			      (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>nmadd\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -1289,8 +1312,8 @@
 
 ;; FV<P>SQRT
 (define_insn "sqrt<mode>2"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(sqrt:VALLF (match_operand:VALLF 1 "register_operand" "w")))]
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(sqrt:VALLF (match_operand:VALLF 1 "arc64_fsimd_register" "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>sqrt\\t%0,%1"
   [(set_attr "length" "4")
@@ -1298,9 +1321,9 @@
 
 ;; FV<P>MADDS
 (define_insn "fma<mode>4_rep"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (match_operand:VALLF 1 "register_operand"  "w")
-		   (match_operand:VALLF 2 "register_operand"  "w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
 		   (vec_duplicate:VALLF
 		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
   "ARC64_HAS_FP_BASE"
@@ -1309,12 +1332,12 @@
    (set_attr "type" "fmadd")])
 
 (define_peephole2
-  [(set (match_operand:VALLF 0 "register_operand" "")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "")
 	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand"  "")))
-   (set (match_operand:VALLF 2 "register_operand" "")
-	(fma:VALLF (match_operand:VALLF 3 "register_operand" "")
+   (set (match_operand:VALLF 2 "arc64_fsimd_register" "")
+	(fma:VALLF (match_operand:VALLF 3 "arc64_fsimd_register" "")
 		   (match_dup 0)
-		   (match_operand:VALLF 4 "register_operand" "")))]
+		   (match_operand:VALLF 4 "arc64_fsimd_register" "")))]
   "ARC64_HAS_FP_BASE
    && peep2_reg_dead_p (2, operands[0])"
   [(set (match_dup 2)
@@ -1324,9 +1347,9 @@
 
 ;; FV<P>MSUBS
 (define_insn "fnma<mode>4_rep"
-  [(set (match_operand:VALLF 0 "register_operand" "=w")
-	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "register_operand"  "w"))
-		   (match_operand:VALLF 2 "register_operand"  "w")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
+		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
 		   (vec_duplicate:VALLF
 		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
   "ARC64_HAS_FP_BASE"
@@ -1335,12 +1358,12 @@
    (set_attr "type" "fmsub")])
 
 (define_peephole2
-  [(set (match_operand:VALLF 0 "register_operand" "")
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "")
 	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand"  "")))
-   (set (match_operand:VALLF 2 "register_operand" "")
-	(fma:VALLF (neg:VALLF (match_operand:VALLF 3 "register_operand" ""))
+   (set (match_operand:VALLF 2 "arc64_fsimd_register" "")
+	(fma:VALLF (neg:VALLF (match_operand:VALLF 3 "arc64_fsimd_register" ""))
 		   (match_dup 0)
-		   (match_operand:VALLF 4 "register_operand" "")))]
+		   (match_operand:VALLF 4 "arc64_fsimd_register" "")))]
   "ARC64_HAS_FP_BASE
    && peep2_reg_dead_p (2, operands[0])"
   [(set (match_dup 2)
@@ -1348,6 +1371,7 @@
 		   (vec_duplicate:VALLF (match_dup 1))))]
   "")
 
+;; Vector reduction instructions (emulated)
 (define_expand "reduc_plus_scal_<mode>"
   [(match_operand:<VEL> 0 "register_operand")
    (match_operand:V2xF 1 "register_operand")]
@@ -1376,10 +1400,113 @@
     emit_insn (gen_vec_extract<mode> (op1, operands[1], GEN_INT (1)));
     emit_insn (gen_add<vel>3 (tmp1, op1, op0));
 
-    emit_insn (gen_vec_extract<mode> (op2, operands[1], GEN_INT (2)));
+    if (<MODE>mode == V4SFmode)
+      op2 = gen_lowpart (SFmode, gen_highpart (DFmode, operands[1]));
+    else
+      emit_insn (gen_vec_extract<mode> (op2, operands[1], GEN_INT (2)));
+
     emit_insn (gen_vec_extract<mode> (op3, operands[1], GEN_INT (3)));
     emit_insn (gen_add<vel>3 (tmp2, op2, op3));
 
     emit_insn (gen_add<vel>3 (operands[0], tmp1, tmp2));
     DONE;
   })
+
+;; Emulated vector ops using scalar function, only for double width vectors.
+;; MAX/MIN
+(define_insn_and_split "<optab><mode>3"
+  [(set (match_operand:W2xF 0 "arc64_fsimd_register" "=w")
+	(EV2OP:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")
+		    (match_operand:W2xF 2 "arc64_fsimd_register" "w")))]
+  "ARC64_VFP_128"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  {
+   rtx high_dest = gen_highpart (<VEL>mode, operands[0]);
+   rtx low_dest = gen_lowpart (<VEL>mode, operands[0]);
+   rtx high_op1 = gen_highpart (<VEL>mode, operands[1]);
+   rtx low_op1 = gen_lowpart (<VEL>mode, operands[1]);
+   rtx high_op2 = gen_highpart (<VEL>mode, operands[2]);
+   rtx low_op2 = gen_lowpart (<VEL>mode, operands[2]);
+   emit_insn (gen_<optab><vel>3 (low_dest, low_op1,  low_op2));
+   emit_insn (gen_<optab><vel>3 (high_dest, high_op1,  high_op2));
+   DONE;
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "f<arc64_code_map>")])
+
+;; NEG/ABS
+(define_insn_and_split "<optab><mode>2"
+  [(set (match_operand:W2xF 0 "arc64_fsimd_register" "=w")
+	(EV1OP:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")))]
+  "ARC64_VFP_128"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  {
+   rtx high_dest = gen_highpart (<VEL>mode, operands[0]);
+   rtx low_dest = gen_lowpart (<VEL>mode, operands[0]);
+   rtx high_op1 = gen_highpart (<VEL>mode, operands[1]);
+   rtx low_op1 = gen_lowpart (<VEL>mode, operands[1]);
+   emit_insn (gen_<optab><vel>2 (low_dest, low_op1));
+   emit_insn (gen_<optab><vel>2 (high_dest, high_op1));
+   DONE;
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "fsgnjn")])
+
+;; Conversions.
+(define_expand "vec_pack_trunc_v2df"
+  [(set (match_operand:V4SF 0 "register_operand")
+      (vec_concat:V4SF
+	(float_truncate:V2SF
+	    (match_operand:V2DF 1 "register_operand"))
+	(float_truncate:V2SF
+	    (match_operand:V2DF 2 "register_operand"))
+	  ))]
+  "ARC64_VFP_128"
+  {
+    rtx high_dest = gen_lowpart (SFmode,
+				 gen_highpart (DFmode,
+					      operands[0]));
+    rtx low_dest = gen_lowpart (SFmode, operands[0]);
+
+    rtx high_op1 = gen_highpart (DFmode, operands[1]);
+    rtx low_op1 = gen_lowpart (DFmode, operands[1]);
+    rtx high_op2 = gen_highpart (DFmode, operands[2]);
+    rtx low_op2 = gen_lowpart (DFmode, operands[2]);
+    rtx tmp1 = gen_reg_rtx (SFmode);
+    rtx tmp3 = gen_reg_rtx (SFmode);
+
+    emit_insn (gen_truncdfsf2 (tmp3, high_op1));
+    emit_insn (gen_truncdfsf2 (high_dest, low_op1));
+    emit_insn (gen_truncdfsf2 (tmp1, high_op2));
+    emit_insn (gen_truncdfsf2 (low_dest, low_op2));
+
+    emit_insn (gen_vec_setv4sf (operands[0], tmp1, GEN_INT (1)));
+    emit_insn (gen_vec_setv4sf (operands[0], tmp3, GEN_INT (3)));
+    DONE;
+  })
+
+(define_expand "vec_pack_trunc_df"
+  [(set (match_operand:V2SF 0 "register_operand")
+      (vec_concat:V2SF
+	(float_truncate:SF
+	    (match_operand:DF 1 "register_operand"))
+	(float_truncate:SF
+	    (match_operand:DF 2 "register_operand"))
+	  ))]
+ "ARC64_VFP_64"
+ {
+    rtx low_dest = gen_lowpart (SFmode, operands[0]);
+    rtx tmp1 = gen_reg_rtx (SFmode);
+
+    emit_insn (gen_truncdfsf2 (low_dest, operands[2]));
+    emit_insn (gen_truncdfsf2 (tmp1, operands[1]));
+    emit_insn (gen_vec_setv2sf (operands[0], tmp1, GEN_INT (1)));
+    DONE;
+ })
+
+;; vec_load_lanes used when wide_simd is off and wide_ldst is
+;; on. Hence the simd lengthis 64bit
