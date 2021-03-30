@@ -2790,7 +2790,7 @@ arc64_autovectorize_vector_modes (vector_modes *modes, bool)
   if (TARGET_SIMD)
     {
       modes->quick_push (V4HImode);
-      modes->quick_push (V2HImode);
+      modes->quick_push (V2SImode);
     }
   return 0;
 }

@@ -137,6 +137,7 @@
    ARC64_UNSPEC_VECINIT
    ARC64_UNSPEC_QMPYH
    ARC64_UNSPEC_QMACH
+   ARC64_UNSPEC_DMPYWH
    ARC64_UNSPEC_VPACK4HL
    ARC64_UNSPEC_VPACK4HM
    ARC64_UNSPEC_VPACK2WL
@@ -404,16 +405,16 @@
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldop, atldlop, bclr, bic, bl, block, bmsk, branch,
-branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb, ex,
-div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin, fmax, fsgnj,
-fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub, fsqrt, frnd, fs2d,
-fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls, flag, jl,
-jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move, movecc,
-mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not, notl, or,
-orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub, subl,
-swap, swapl, swape, swapel, sync, trap, qmach, qmpyh, udiv, udivl,
-umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext, vfins,
-vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
+branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb,
+dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin,
+fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub,
+fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs,
+fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl,
+move, movecc, mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not,
+notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub,
+subl, swap, swapl, swape, swapel, sync, trap, qmach, qmpyh, udiv,
+udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext,
+vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
