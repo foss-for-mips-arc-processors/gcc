@@ -717,6 +717,17 @@
   [(set_attr "type" "mpyl")
    (set_attr "length" "4")])
 
+;; 16bit operations using SIMD instructions
+(define_insn "<optab>hi3"
+  [(set (match_operand:HI 0 "register_operand"       "=r,    r,r")
+	(ADDSUB:HI
+	 (match_operand:HI 1 "register_operand"       "r,    0,r")
+	 (match_operand:HI 2 "nonmemory_operand" "rU06S0,S12S0,i")))]
+  "TARGET_SIMD"
+  "v<optab>2h\\t%0,%1,%2"
+   [(set_attr "length"     "4,4,8")
+   (set_attr "type"       "v<optab>")])
+
 ;; -------------------------------------------------------------------
 ;; Integer SIMD instructions
 ;; -------------------------------------------------------------------
@@ -885,6 +896,16 @@
   "qmpyh\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "qmpyh")])
+
+(define_insn "reduc_plus_scal_v2si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(unspec:SI [(match_operand:V2SI 1 "register_operand" "r")]
+		   ARC64_UNSPEC_DMPYWH))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "dmpywh\\t%0,%1,1"
+  [(set_attr "length" "4")
+   (set_attr "type" "dmpywh")])
 
 ;; FIXME! for v2hi -> dmach
 (define_expand "fold_left_plus_v4hi"
