@@ -228,6 +228,13 @@
 ;; Two operand logic operations
 (define_code_iterator LOGIC2 [not abs])
 
+;; Two operand logic operations extended, used for zero_extend
+;; patterns
+(define_code_iterator LOP2EX [not abs neg])
+
+;; Min/Max iterator
+(define_code_iterator MINMAX [smin smax])
+
 ;; Three operand floating point arithmetic instructions
 (define_code_iterator DOPF [plus minus mult div smin smax])
 
@@ -352,10 +359,8 @@
 			 (abs "abs")
 			 (sqrt "sqrt")])
 
-;; map rtl to ARC mnemonic names, slightly different than above.
-(define_code_attr cctab [(abs "abs")
-			 (not "not")
-			 (eq "eq")
+;; map rtl to ARC's cc-mnemonic names, slightly different than above.
+(define_code_attr cctab [(eq "eq")
 			 (ne "ne")
 			 (lt "lt")
 			 (ge "ge")
@@ -373,23 +378,26 @@
 (define_code_attr su_optab [(sign_extend "") (zero_extend "u")])
 
 ;; Map rtl objects to arc instuction names
-(define_code_attr arc64_code_map [(ashift   "asl")
-				  (ashiftrt "asr")
-				  (sign_extend "sex")
-				  (zero_extend "ext")
-				  (div      "div")
-				  (udiv     "divu")
-				  (mult     "mul")
-				  (mod      "rem")
-				  (umod     "remu")
-				  (lshiftrt "lsr")
-				  (and      "and")
-				  (ior      "or")
-				  (xor      "xor")
-				  (plus     "add")
-				  (minus    "sub")
-				  (smax      "max")
-				  (smin      "min")])
+(define_code_attr mntab [(abs "abs")
+			 (not "not")
+			 (neg "neg")
+			 (ashift   "asl")
+			 (ashiftrt "asr")
+			 (sign_extend "sex")
+			 (zero_extend "ext")
+			 (div      "div")
+			 (udiv     "divu")
+			 (mult     "mul")
+			 (mod      "rem")
+			 (umod     "remu")
+			 (lshiftrt "lsr")
+			 (and      "and")
+			 (ior      "or")
+			 (xor      "xor")
+			 (plus     "add")
+			 (minus    "sub")
+			 (smax      "max")
+			 (smin      "min")])
 
 ;; -------------------------------------------------------------------
 ;; Int Iterators.
@@ -1159,6 +1167,16 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set_attr "type" "block")]
   )
 
+;; Don't need initialization instructions.
+(define_expand "doloop_begin"
+ [(use (match_operand 0 "" ""))        ; loop pseudo
+  (use (match_operand 1 "" ""))]       ; doloop_end pattern
+  ""
+  {
+    FAIL;
+  }
+)
+
 ; operand 0 is the loop count pseudo register
 ; operand 1 is the label to jump to at the top of the loop
 (define_expand "doloop_end"
@@ -1721,57 +1739,57 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   [(set (match_operand:GPI 0 "register_operand" "=q,r")
 	(LOGIC2:GPI (match_operand:GPI 1 "register_operand" "q,r")))]
   ""
-  "<cctab><sfxtab>%?\\t%0,%1"
-  [(set_attr "type" "<cctab>")
+  "<mntab><sfxtab>%?\\t%0,%1"
+  [(set_attr "type" "<mntab>")
    (set_attr "iscompact" "maybe,no")
    (set_attr "length" "*,4")])
 
-(define_insn "*smax<mode>3"
-   [(set (match_operand:GPI 0 "register_operand"                "=r,    r,     r,r")
-	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,    0,     r,r")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0")))]
+(define_insn "*<optab><mode>3"
+   [(set (match_operand:GPI 0 "register_operand"                  "=r,    r,     r,r")
+	 (MINMAX:GPI (match_operand:GPI 1 "register_operand"      "%0,    0,     r,r")
+		     (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0")))]
   ""
-  "max<sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "type" "max")
-   (set_attr "length" "4,4,4,8")
-   (set_attr "predicable" "yes,no,no,no")]
-)
-
-(define_insn "*smin<mode>3"
-   [(set (match_operand:GPI 0 "register_operand"                "=r,    r,     r,r")
-	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,    0,     r,r")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0")))]
-  ""
-  "min<sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "type" "min")
+  "<mntab><sfxtab>%?\\t%0,%1,%2"
+  [(set_attr "type" "<mntab>")
    (set_attr "length" "4,4,4,8")
    (set_attr "predicable" "yes,no,no,no")]
 )
 
 ;; Conditional execution
-(define_insn "*smax<mode>_ce"
+(define_insn "*<optab><mode>_ce"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"                "=r,r")
-	 (smax:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+    (set (match_operand:GPI 0 "register_operand"                  "=r,r")
+	 (MINMAX:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
+		     (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
   ""
-  "max<sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "type" "max")
+  "<mntab><sfxtab>.%m3\\t%0,%1,%2"
+  [(set_attr "type" "<mntab>")
    (set_attr "length" "4,8")])
 
-(define_insn "*smin<mode>_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"                "=r,r")
-	 (smin:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
-		   (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
+;; Zero-extend pattern
+(define_insn "*<optab>si_zextend"
+  [(set (match_operand:DI 0 "register_operand" "=q,r")
+	(zero_extend:DI
+	 (LOP2EX:SI (match_operand:SI 1 "register_operand" "q,r"))))]
   ""
-  "min<sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "type" "min")
-   (set_attr "length" "4,8")])
+  "<mntab>%?\\t%0,%1"
+  [(set_attr "type" "<mntab>")
+   (set_attr "iscompact" "yes,no")
+   (set_attr "length" "*,4")])
+
+(define_insn "*<optab>3_zextend"
+  [(set (match_operand:DI 0 "register_operand"        "=r,    r,     r,r")
+	(zero_extend:DI
+	 (MINMAX:SI
+	  (match_operand:SI 1 "register_operand"      "%0,    0,     r,r")
+	  (match_operand:SI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0"))))]
+  ""
+  "<mntab>%?\\t%0,%1,%2"
+  [(set_attr "type" "max")
+   (set_attr "length" "4,4,4,8")
+   (set_attr "predicable" "yes,no,no,no")])
 
 ;; -------------------------------------------------------------------
 ;; Shifts
@@ -2125,9 +2143,9 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 	(DOPF:GPF_HF (match_operand:GPF_HF 1 "register_operand" "w")
 		     (match_operand:GPF_HF 2 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
-  "f<sfxtab><arc64_code_map>\\t%0,%1,%2"
+  "f<sfxtab><mntab>\\t%0,%1,%2"
   [(set_attr "length" "4")
-   (set_attr "type" "f<arc64_code_map>")])
+   (set_attr "type" "f<mntab>")])
 
 ;; F<P>ABS
 ;; FIXME! bclr can be short. Also we can predicate it
