@@ -137,7 +137,7 @@
        (match_test "INTVAL (op) == 1 || INTVAL (op) == 2 || INTVAL (op) == 3"))
 )
 
-;; Allows only 1,2,3 values.  It is used with add/sub shifted operations.
+;; Allows only 2,4,8 values.  It is used with add/sub shifted operations.
 (define_predicate "_2_4_8_operand"
   (and (match_code "const_int")
        (match_test "INTVAL (op) == 2 || INTVAL (op) == 4 || INTVAL (op) == 8"))
