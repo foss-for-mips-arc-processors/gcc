@@ -4018,6 +4018,20 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
     }
 }
 
+/* Provide a mapping from gcc register numbers to dwarf register numbers.  */
+unsigned
+arc64_dbx_register_number (unsigned regno)
+{
+  if (GP_REGNUM_P (regno))
+    return regno;
+  else if (FP_REGNUM_P (regno))
+    return 128 + regno;
+
+  /* Return values >= DWARF_FRAME_REGISTERS indicate that there is no
+     equivalent DWARF register.  */
+   return DWARF_FRAME_REGISTERS;
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
