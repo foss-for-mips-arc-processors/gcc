@@ -4025,7 +4025,7 @@ arc64_dbx_register_number (unsigned regno)
   if (GP_REGNUM_P (regno))
     return regno;
   else if (FP_REGNUM_P (regno))
-    return 128 + regno;
+    return 128 + regno - F0_REGNUM;
 
   /* Return values >= DWARF_FRAME_REGISTERS indicate that there is no
      equivalent DWARF register.  */
