@@ -1242,6 +1242,140 @@
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
 
+;; Patterns used by vect_perm
+(define_insn "arc64_dup_lane0v2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(vec_duplicate:V2SI
+	 (vec_select:SI
+	  (match_operand:V2SI 1 "register_operand" "r")
+	  (parallel [(const_int 0)])
+	  )))]
+  "TARGET_SIMD"
+  "vpack2wl\\t%0,%1,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_dup_lane1v2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(vec_duplicate:V2SI
+	 (vec_select:SI
+	  (match_operand:V2SI 1 "register_operand" "r")
+	  (parallel [(const_int 1)])
+	  )))]
+  "TARGET_SIMD"
+  "vpack2wm\\t%0,%1,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_sel_lane0_v2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(vec_concat:V2SI
+	 (vec_select:SI
+	  (match_operand:V2SI 1 "register_operand" "r")
+	  (parallel [(const_int 0)]))
+	 (vec_select:SI
+	  (match_operand:V2SI 2 "register_operand" "r")
+	  (parallel [(const_int 0)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_sel_lane1_v2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(vec_concat:V2SI
+	 (vec_select:SI
+	  (match_operand:V2SI 1 "register_operand" "r")
+	  (parallel [(const_int 1)]))
+	 (vec_select:SI
+	  (match_operand:V2SI 2 "register_operand" "r")
+	  (parallel [(const_int 1)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2wm\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_sel_lane2_0v4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	  (vec_select:V2HI
+	   (match_operand:V4HI 1 "register_operand" "r")
+	   (parallel [(const_int 0) (const_int 2)]))
+	  (vec_select:V2HI
+	   (match_operand:V4HI 2 "register_operand" "r")
+	   (parallel [(const_int 0) (const_int 2)]))))]
+  "TARGET_SIMD"
+  "vpack4hl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_sel_lane3_1v4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	  (vec_select:V2HI
+	   (match_operand:V4HI 1 "register_operand" "r")
+	   (parallel [(const_int 1) (const_int 3)]))
+	  (vec_select:V2HI
+	   (match_operand:V4HI 2 "register_operand" "r")
+	   (parallel [(const_int 1) (const_int 3)]))))]
+  "TARGET_SIMD"
+  "vpack4hm\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_swaplv2si"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+        (unspec:V2SI
+          [(match_operand:V2SI 1 "register_operand" "r")]
+          ARC64_UNSPEC_SWAPL))]
+  ""
+  "swapl\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "swapl")])
+
+(define_insn "arc64_swapv4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+        (unspec:V4HI
+         [(match_operand:V4HI 1 "register_operand" "r")]
+          ARC64_UNSPEC_SWAP))]
+  ""
+  "swap\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "swap")])
+
+(define_insn "arc64_swp_lane0_v4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	 (vec_select:V2HI
+	  (match_operand:V4HI 1 "register_operand" "r")
+	  (parallel [(const_int 0) (const_int 1)]))
+	 (vec_select:V2HI
+	  (match_operand:V4HI 2 "register_operand" "r")
+	  (parallel [(const_int 0) (const_int 1)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_swp_lane1_v4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	 (vec_select:V2HI
+	  (match_operand:V4HI 1 "register_operand" "r")
+	  (parallel [(const_int 2) (const_int 3)]))
+	 (vec_select:V2HI
+	  (match_operand:V4HI 2 "register_operand" "r")
+	  (parallel [(const_int 2) (const_int 3)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2wm\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
 ;; -------------------------------------------------------------------
@@ -1650,3 +1784,31 @@
 
 ;; vec_load_lanes used when wide_simd is off and wide_ldst is
 ;; on. Hence the simd lengthis 64bit
+
+;; Patterns used to vect permutate.
+
+;; This one pattern is only used when we don't want to make
+;; dup_permutations using vec_dup (see arc64_simd_dup).
+(define_insn "arc64_dup_lane0<mode>"
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(vec_duplicate:VALLF
+	 (vec_select:<VEL>
+	  (match_operand:VALLF 1 "arc64_fsimd_register" "w")
+	  (parallel [(const_int 0)])
+	  )))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>rep\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfrep")])
+
+(define_insn "arc64_dup_lane1<mode>"
+  [(set (match_operand:W2xF 0 "arc64_fsimd_register" "=w")
+	(vec_duplicate:W2xF
+	 (vec_select:<VEL>
+	  (match_operand:W2xF 1 "arc64_fsimd_register" "w")
+	  (parallel [(const_int 1)])
+	  )))]
+  "ARC64_VFP_128"
+  "vf<sfxtab>rep\\t%0,%h1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfrep")])

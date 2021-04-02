@@ -178,6 +178,16 @@ arc_bdesc[ARC64_BUILTIN_COUNT] =
 #undef DEF_BUILTIN
 };
 
+/* vec_perm support.  */
+struct e_vec_perm_d
+{
+  rtx target, op0, op1;
+  vec_perm_indices perm;
+  machine_mode vmode;
+  bool one_vector_p;
+  bool testing_p;
+};
+
 /* Local variable true if we output scalled address.  */
 static bool scalled_p = false;
 /* Simple LUT for log2.  */
@@ -1258,7 +1268,7 @@ get_arc64_condition_code (rtx comparison)
      'm': output condition code without 'dot'.
      '?': Short instruction suffix.
      'L': Lower 32bit of immediate or symbol.
-     'h': Higher 32bit of an immediate or symbol.
+     'h': Higher 32bit of an immediate, 64b-register or symbol.
      'C': Constant address, switches on/off @plt.
      's': Scalled immediate.
      'S': Scalled immediate, to be used in pair with 's'.
@@ -1354,14 +1364,19 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  output_addr_const (asm_out_file, x);
 	  break;
 	}
-      else if (!CONST_INT_P (x))
+      else if (CONST_INT_P (x))
+	{
+	  ival = INTVAL (x);
+	  ival >>= 32;
+	  fprintf (file, "%d", (int32_t) ival);
+	}
+      else if (REG_P (x))
+	asm_fprintf (file, "%s", reg_names [REGNO (x) + 1]);
+      else
 	{
 	  output_operand_lossage ("invalid operand for %%h code");
 	  return;
 	}
-      ival = INTVAL (x);
-      ival >>= 32;
-      fprintf (file, "%d", (int32_t) ival);
       break;
 
     case 'm':
@@ -2881,6 +2896,330 @@ arc64_register_move_cost (machine_mode,
   return 2;
 }
 
+/* Check/emit vector duplicate instructions.  */
+
+static bool
+arc64_simd_dup (struct e_vec_perm_d *d)
+{
+  machine_mode vmode = d->vmode;
+  HOST_WIDE_INT elt;
+  rtx t0, parallel, select;
+  rtx in0 = d->op0;
+  rtx out = d->target;
+
+  if (!d->one_vector_p)
+    return false;
+
+  if (d->perm.encoding ().encoded_nelts () != 1
+      || !d->perm[0].is_constant (&elt))
+    return false;
+  /* elt is zero, then the vec_dup pattern does as good as we do
+     here.  */
+  if (elt == 0)
+    return false;
+
+  if (d->testing_p)
+    return true;
+
+  switch (vmode)
+    {
+    case E_V8HFmode:
+    case E_V4HFmode:
+    case E_V2HFmode:
+    case E_V2SFmode:
+    case E_V4SFmode:
+      if (elt != 0)
+	{
+	  t0 = gen_reg_rtx (GET_MODE_INNER (vmode));
+	  parallel = gen_rtx_PARALLEL (vmode, gen_rtvec (1, GEN_INT (elt)));
+	  select = gen_rtx_VEC_SELECT (GET_MODE_INNER (vmode), in0, parallel);
+	  emit_set_insn (t0, select);
+	  emit_set_insn (out, gen_rtx_VEC_DUPLICATE (vmode, t0));
+	  return true;
+	}
+
+      /* FALLTHRU */
+    case E_V2DFmode:
+    case E_V2SImode:
+      parallel = gen_rtx_PARALLEL (vmode, gen_rtvec (1, GEN_INT (elt)));
+      select = gen_rtx_VEC_SELECT (GET_MODE_INNER (vmode), in0, parallel);
+      emit_set_insn (out, gen_rtx_VEC_DUPLICATE (vmode, select));
+      return true;
+
+    case E_V4HImode:
+      if (elt == 0)
+	{
+	  t0 = gen_reg_rtx (vmode);
+	  emit_insn (gen_arc64_sel_lane2_0v4hi (t0, in0, in0));
+	  emit_insn (gen_arc64_sel_lane2_0v4hi (out, t0, t0));
+	  return true;
+	}
+      else if (elt == 1)
+	{
+	  t0 = gen_reg_rtx (vmode);
+	  emit_insn (gen_arc64_sel_lane3_1v4hi (t0, in0, in0));
+	  emit_insn (gen_arc64_sel_lane2_0v4hi (out, t0, t0));
+	  return true;
+	}
+      else if (elt == 2)
+	{
+	  t0 = gen_reg_rtx (vmode);
+	  emit_insn (gen_arc64_sel_lane2_0v4hi (t0, in0, in0));
+	  emit_insn (gen_arc64_sel_lane3_1v4hi (out, t0, t0));
+	  return true;
+	}
+      else if (elt == 3)
+	{
+	  t0 = gen_reg_rtx (vmode);
+	  emit_insn (gen_arc64_sel_lane3_1v4hi (t0, in0, in0));
+	  emit_insn (gen_arc64_sel_lane3_1v4hi (out, t0, t0));
+	  return true;
+	}
+      break;
+    default:
+      gcc_unreachable ();
+    }
+  gcc_unreachable ();
+}
+
+/* Recognize VPACK instructions.  */
+
+static bool
+arc64_simd_vpack (struct e_vec_perm_d *d)
+{
+  HOST_WIDE_INT odd;
+  poly_uint64 nelt = d->perm.length ();
+  rtx out, in0, in1;
+  machine_mode vmode = d->vmode;
+
+  if (GET_MODE_UNIT_SIZE (vmode) > 4
+      || FLOAT_MODE_P (vmode))
+    return false;
+
+  if (!d->perm[0].is_constant (&odd)
+      || (odd != 0 && odd != 1)
+      || !d->perm.series_p (0, 1, odd, 2)
+      || !d->perm.series_p (2, 1, nelt + odd, 2))
+    return false;
+
+  /* Success!  */
+  if (d->testing_p)
+    return true;
+
+  in0 = d->op0;
+  in1 = d->op1;
+  out = d->target;
+  switch (vmode)
+    {
+    case E_V4HImode:
+      if (odd)
+	emit_insn (gen_arc64_sel_lane3_1v4hi (out, in0, in1));
+      else
+	emit_insn (gen_arc64_sel_lane2_0v4hi (out, in0, in1));
+      break;
+
+    case E_V2SImode:
+      if (odd)
+	emit_insn (gen_arc64_sel_lane1_v2si (out, in0, in1));
+      else
+	emit_insn (gen_arc64_sel_lane0_v2si (out, in0, in1));
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+  return true;
+}
+
+/* Reverse vector, recognize swapl instruction.  */
+
+static bool
+arc64_simd_swapl (struct e_vec_perm_d *d)
+{
+  poly_uint64 nelt = d->perm.length ();
+  machine_mode vmode = d->vmode;
+  rtx t0, t1, t2, out, in0;
+
+  if (GET_MODE_UNIT_SIZE (vmode) > 4
+      || FLOAT_MODE_P (vmode))
+    return false;
+
+  if (!d->one_vector_p)
+    return false;
+
+  if (!d->perm.series_p (0, 1, nelt - 1, -1))
+    return false;
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  in0 = d->op0;
+  out = d->target;
+
+  switch (vmode)
+    {
+    case E_V4HImode:
+      t0 = gen_reg_rtx (vmode);
+      t1 = gen_reg_rtx (vmode);
+      t2 = gen_reg_rtx (vmode);
+      emit_insn (gen_arc64_swapl (t0, in0));
+      emit_insn (gen_arc64_swapv4hi (t1, in0));
+      emit_insn (gen_arc64_swapv4hi (t2, t0));
+      emit_insn (gen_arc64_swp_lane0_v4hi (out, t2, t1));
+      break;
+
+    case E_V2SImode:
+      emit_insn (gen_arc64_swaplv2si (out, in0));
+      break;
+
+    default:
+      gcc_unreachable ();
+    }
+  return true;
+}
+
+/* Detect cases when we can use swap instruction.  */
+
+static bool
+arc64_simd_swap (struct e_vec_perm_d *d)
+{
+  rtx t0, t1, t2, out, in0;
+  machine_mode vmode = d->vmode;
+
+  if (vmode != E_V4HImode)
+    return false;
+
+  if (!d->one_vector_p)
+    return false;
+
+  if (!d->perm.series_p (0, 2, 1, 2)
+      || !d->perm.series_p (1, 2, 0, 2))
+    return false;
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  in0 = d->op0;
+  out = d->target;
+
+  t0 = gen_reg_rtx (vmode);
+  t1 = gen_reg_rtx (vmode);
+  t2 = gen_reg_rtx (vmode);
+  emit_insn (gen_arc64_swapl (t0, in0));
+  emit_insn (gen_arc64_swapv4hi (t1, in0));
+  emit_insn (gen_arc64_swapv4hi (t2, t0));
+  emit_insn (gen_arc64_swp_lane0_v4hi (out, t1, t2));
+  return true;
+}
+
+/* Detect cases when we can use vapck2wl for 4xVectors.  */
+
+static bool
+arc64_simd_vpack2wl (struct e_vec_perm_d *d)
+{
+  machine_mode vmode = d->vmode;
+
+  if (vmode != E_V4HImode)
+    return false;
+
+  if (d->perm[0] != 0
+      || d->perm[1] != 1
+      || (d->perm[2] != 4 && d->perm[2] != 0)
+      || (d->perm[3] != 5 && d->perm[3] != 1))
+    return false;
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  emit_insn (gen_arc64_swp_lane0_v4hi (d->target, d->op0, d->op1));
+  return true;
+}
+
+static bool
+arc64_simd_vpack2wm (struct e_vec_perm_d *d)
+{
+  machine_mode vmode = d->vmode;
+
+  if (vmode != E_V4HImode)
+    return false;
+
+  if (d->perm[0] != 2
+      || d->perm[1] != 3
+      || (d->perm[2] != 6 && d->perm[2] != 2)
+      || (d->perm[3] != 7 && d->perm[3] != 3))
+    return false;
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  emit_insn (gen_arc64_swp_lane1_v4hi (d->target, d->op0, d->op1));
+  return true;
+}
+
+/* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
+
+static bool
+arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
+				rtx op1, const vec_perm_indices &sel)
+{
+  struct e_vec_perm_d d;
+
+  /* Check whether the mask can be applied to a single vector.  */
+  if (sel.ninputs () == 1
+      || (op0 && rtx_equal_p (op0, op1)))
+    d.one_vector_p = true;
+  else if (sel.all_from_input_p (0))
+    {
+      d.one_vector_p = true;
+      op1 = op0;
+    }
+  else if (sel.all_from_input_p (1))
+    {
+      d.one_vector_p = true;
+      op0 = op1;
+    }
+  else
+    d.one_vector_p = false;
+
+  d.perm.new_vector (sel.encoding (), d.one_vector_p ? 1 : 2,
+		     sel.nelts_per_input ());
+  d.vmode = vmode;
+  d.target = target;
+  d.op0 = op0;
+  d.op1 = op1;
+  d.testing_p = !target;
+
+  /* The pattern matching functions above are written to look for a small
+     number to begin the sequence (0, 1, N/2).  If we begin with an index
+     from the second operand, we can swap the operands.  */
+  poly_int64 nelt = d.perm.length ();
+  if (known_ge (d.perm[0], nelt))
+    {
+      d.perm.rotate_inputs (1);
+      std::swap (d.op0, d.op1);
+    }
+  if (known_gt (nelt, 1))
+    {
+      if (arc64_simd_dup (&d))
+	return true;
+      else if (arc64_simd_vpack (&d))
+	return true;
+      else if (arc64_simd_swapl (&d))
+	return true;
+      else if (arc64_simd_swap (&d))
+	return true;
+      else if (arc64_simd_vpack2wl (&d))
+	return true;
+      else if (arc64_simd_vpack2wm (&d))
+	return true;
+    }
+  return false;
+}
+
 /*
   Global functions.
 */
@@ -4203,6 +4542,9 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_REGISTER_MOVE_COST
 #define TARGET_REGISTER_MOVE_COST arc64_register_move_cost
+
+#undef TARGET_VECTORIZE_VEC_PERM_CONST
+#define TARGET_VECTORIZE_VEC_PERM_CONST arc64_vectorize_vec_perm_const
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
