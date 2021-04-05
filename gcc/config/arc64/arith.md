@@ -1242,6 +1242,26 @@
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
 
+(define_insn "vec_shr_<mode>"
+  [(set (match_operand:V64I 0 "register_operand" "=r,r")
+	(unspec:V64I [(match_operand:V64I 1 "register_operand"  "0,r")
+		      (match_operand:SI 2 "immediate_operand" "S12S0,i")]
+		     ARC64_UNSPEC_VEC_SHR))]
+  "TARGET_SIMD"
+  "asrl\\t%0,%1,%2"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "asl")])
+
+(define_insn "vec_shl_<mode>"
+  [(set (match_operand:V64I 0 "register_operand" "=r,r")
+	(unspec:V64I [(match_operand:V64I 1 "register_operand"  "0,r")
+		      (match_operand:SI 2 "immediate_operand" "S12S0,i")]
+		     ARC64_UNSPEC_VEC_SHL))]
+  "TARGET_SIMD"
+  "asll\\t%0,%1,%2"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "asl")])
+
 ;; Patterns used by vect_perm
 (define_insn "arc64_dup_lane0v2si"
   [(set (match_operand:V2SI 0 "register_operand" "=r")
@@ -1510,10 +1530,10 @@
   [(set_attr "length" "4")
    (set_attr "type" "vfins")])
 
-(define_insn "vec_extract<mode>"
+(define_insn "vec_extract<mode><vel>"
   [(set (match_operand:<VEL> 0 "register_operand" "=w")
 	(vec_select:<VEL> (match_operand:VALLF 1 "arc64_fsimd_register" "w")
-			  (parallel [(match_operand:SI 2 "nonmemory_operand" "rU05S0")])))]
+			  (parallel [(match_operand:SI 2 "const_int_operand" "U05S0")])))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>ext\\t%0,%1[%2]"
   [(set_attr "length" "4")
@@ -1654,7 +1674,7 @@
     rtx low = gen_lowpart (<VEL>mode, operands[1]);
     rtx high = gen_reg_rtx (<VEL>mode);
 
-    emit_insn (gen_vec_extract<mode> (high, operands[1], GEN_INT (1)));
+    emit_insn (gen_vec_extract<mode><vel> (high, operands[1], GEN_INT (1)));
     emit_insn (gen_add<vel>3 (operands[0], high, low));
     DONE;
   })
@@ -1671,15 +1691,15 @@
     rtx tmp1 = gen_reg_rtx (<VEL>mode);
     rtx tmp2 = gen_reg_rtx (<VEL>mode);
 
-    emit_insn (gen_vec_extract<mode> (op1, operands[1], GEN_INT (1)));
+    emit_insn (gen_vec_extract<mode><vel> (op1, operands[1], GEN_INT (1)));
     emit_insn (gen_add<vel>3 (tmp1, op1, op0));
 
     if (<MODE>mode == V4SFmode)
       op2 = gen_lowpart (SFmode, gen_highpart (DFmode, operands[1]));
     else
-      emit_insn (gen_vec_extract<mode> (op2, operands[1], GEN_INT (2)));
+      emit_insn (gen_vec_extract<mode><vel> (op2, operands[1], GEN_INT (2)));
 
-    emit_insn (gen_vec_extract<mode> (op3, operands[1], GEN_INT (3)));
+    emit_insn (gen_vec_extract<mode><vel> (op3, operands[1], GEN_INT (3)));
     emit_insn (gen_add<vel>3 (tmp2, op2, op3));
 
     emit_insn (gen_add<vel>3 (operands[0], tmp1, tmp2));
@@ -1812,3 +1832,25 @@
   "vf<sfxtab>rep\\t%0,%h1"
   [(set_attr "length" "4")
    (set_attr "type" "vfrep")])
+
+;; Required pattern needed for vector reduction operations.
+;;(define_expand "vec_shr_<mode>"
+;;  [(match_operand:VALLF 0 "register_operand")
+;;   (match_operand:VALLF 1 "register_operand")
+;;   (match_operand:SI 2 "immediate_operand")]
+;;  "ARC64_HAS_FP_BASE"
+;;  {
+;;   if (arc64_expand_fvect_shr (operands))
+;;      DONE;
+;;   FAIL;
+;;  })
+
+;;(define_insn "vec_shr_<mode>"
+;;  [(set (match_operand:VALLF 0 "arc64_fsimd_moperand" "=w")
+;;	(unspec:VALLF [(match_operand:VALLF 1 "arc64_fsimd_moperand" "w")
+;;		       (match_operand:SI 2 "immediate_operand")]
+;;		      ARC64_UNSPEC_VEC_SHR))]
+;;  "ARC64_HAS_FP_BASE"
+;;  "vfasrl\\t%0,%1,%2"
+;;  [(set_attr "length" "4")
+;;   (set_attr "type" "asl")])
