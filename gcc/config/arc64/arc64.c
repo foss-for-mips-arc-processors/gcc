@@ -4371,6 +4371,64 @@ arc64_dbx_register_number (unsigned regno)
    return DWARF_FRAME_REGISTERS;
 }
 
+#if 0
+/* Expand fp vector shift right pattern.  Can handle maximum 128bit
+   SIMD vectors.
+
+   +----+----+----+----+----+----+----+----+
+   | h7 | h6 | h5 | h4 | h3 | h2 | h1 | h0 |
+   |    s3   |    s2   |    s1   |    s0   |
+   |         d1        |         d0        |
+   +----+----+----+----+----+----+----+----+
+
+ */
+
+bool
+arc64_expand_fvect_shr (rtx *operands)
+{
+  rtx op0 = operands[0];
+  rtx op1 = operands[1];
+  rtx op2 = operands[2];
+  rtx t0;
+  machine_mode mode = GET_MODE (op0);
+  scalar_int_mode imode = int_mode_for_mode (mode).require ();
+  unsigned int ival = INTVAL (op2);
+
+  if (ARC64_VFP_128 && (ival == 64))
+    {
+      emit_move_insn (gen_lowpart (DFmode, op0), gen_highpart (DFmode, op1));
+      return true;
+    }
+  else if (ARC64_VFP_64 && (ival == 32))
+    {
+      t0 = gen_reg_rtx (SFmode);
+
+      emit_insn (gen_vec_extractv2sfsf (t0,
+				      gen_lowpart (V2SFmode, op1),
+				      GEN_INT (1)));
+      emit_insn (gen_vec_setv2sf (gen_lowpart (V2SFmode, op0),
+				  t0, GEN_INT (0)));
+      return true;
+    }
+  else if (ARC64_VFP_32 && (ival == 16))
+    {
+      t0 = gen_reg_rtx (HFmode);
+
+      emit_insn (gen_vec_extractv2hfhf (t0, op1, GEN_INT (1)));
+      emit_insn (gen_vec_setv2hf (op0, t0, GEN_INT (0)));
+      return true;
+    }
+
+  t0 = gen_reg_rtx (imode);
+  rtx shift = expand_binop (imode, lshr_optab,
+			    gen_lowpart (imode, op1), op2,
+			    NULL_RTX, true, OPTAB_DIRECT);
+  emit_move_insn (t0, shift);
+  emit_move_insn (op0, gen_lowpart (mode, t0));
+  return true;
+}
+#endif
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
