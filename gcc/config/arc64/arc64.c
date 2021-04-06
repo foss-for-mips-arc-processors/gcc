@@ -441,6 +441,15 @@ arc64_save_callee_saves (void)
 	  save_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
 	}
+      else if (TARGET_WIDE_LDST
+	       /* Use 128bit stores for context saving.  */
+	       && (regno > 1)
+	       && (((regno - 1) % 2) == 0)
+	       && (frame->reg_offset[regno - 1] != -1))
+	{
+	  save_mode = TImode;
+	  --regno;
+	}
       else
 	save_mode = DImode;
 
@@ -562,11 +571,22 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	  restore_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
 	}
+      else if (TARGET_WIDE_LDST
+	       /* Use 128bit loads for context restoring.  */
+	       && ((regno % 2) == 0)
+	       && (!frame_pointer_needed || ((regno + 1) != R27_REGNUM))
+	       && (frame->reg_offset[regno + 1] != -1))
+	{
+	  restore_mode = TImode;
+	}
       else
 	restore_mode = DImode;
 
       reg = gen_rtx_REG (restore_mode, regno);
       frame_deallocated += frame_restore_reg (reg, disp);
+
+      if (restore_mode == TImode)
+	regno ++;
     }
 
   return frame_deallocated;
@@ -663,7 +683,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
       if (GET_CODE (XEXP (x, 0)) == PLUS
 	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
 	  /* Reloc addendum is only 32bit.   */
-	  && UNSIGNED_INT32 (XEXP (XEXP (x, 0), 1)))
+	  && UNSIGNED_INT32 (INTVAL (XEXP (XEXP (x, 0), 1))))
 	x = XEXP (XEXP (x, 0), 0);
     }
 
@@ -769,8 +789,7 @@ arc64_legitimate_address_p (machine_mode mode,
    that should be rematerialized rather than spilled.  */
 
 static bool
-arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
-			     rtx x)
+arc64_legitimate_constant_p (machine_mode mode, rtx x)
 {
   switch (GET_CODE (x))
     {
@@ -778,6 +797,8 @@ arc64_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED,
     case CONST_INT:
     case CONST_WIDE_INT:
     case HIGH:
+      if (GET_MODE_SIZE (mode) > UNITS_PER_WORD)
+	return false;
       return true;
 
     case SYMBOL_REF:
@@ -4200,20 +4221,14 @@ arc64_simd64x_split_move_p (rtx *operands, machine_mode mode)
   /* Check if we have 128bit moves.  */
   if (TARGET_WIDE_LDST
       && (GET_MODE_SIZE (mode) <= (UNITS_PER_WORD * 2))
-      && ((memory_operand (op0, mode) && REG_P (op1)
-	   /* FIXME! Remove the next condition when lddl/stddl are
-	      supported.  Add variant in split pattern.  */
-	   && FP_REGNUM_P (REGNO (op1)))
-	  || (memory_operand (op1, mode) && REG_P (op0)
-	      /* FIXME! Remove the next condition when lddl/stddl are
-		 supported.  Add variant in split pattern.  */
-	      && FP_REGNUM_P (REGNO (op0)))))
+      && ((memory_operand (op0, mode) && REG_P (op1))
+	  || (memory_operand (op1, mode) && REG_P (op0))))
     {
       /* Sanity check for wide st/ld instructions.  */
-      if (REG_P (op0))
-	gcc_assert ((REGNO (op0) & 0x01) == 0);
-      if (REG_P (op1))
-	gcc_assert ((REGNO (op1) & 0x01) == 0);
+      if (REG_P (op0) && ((REGNO (op0) & 0x01) != 0))
+	return true;
+      if (REG_P (op1) && ((REGNO (op1) & 0x01) != 0))
+	return true;
       return false;
     }
 
@@ -4238,7 +4253,8 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 
   /* This procedure works as long as the width of the fp regs is the
      same as the width of r regs.  */
-  gcc_assert (UNITS_PER_WORD == UNITS_PER_FP_REG);
+  if (FLOAT_MODE_P (mode))
+      gcc_assert (UNITS_PER_WORD == UNITS_PER_FP_REG);
 
   /* Split reg-reg move.  */
   if (REG_P (op0) && REG_P (op1))
