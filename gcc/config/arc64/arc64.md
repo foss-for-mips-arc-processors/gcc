@@ -503,6 +503,16 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   "
   )
 
+(define_expand "movti"
+  [(set (match_operand:TI 0 "nonimmediate_operand")
+	(match_operand:TI 1 "general_operand"))]
+  "TARGET_WIDE_LDST"
+  "
+  if (arc64_prepare_move_operands (operands[0], operands[1], TImode))
+    DONE;
+  "
+  )
+
 ;; We use movsf for soft and hard floats.
 (define_expand "movsf"
   [(set (match_operand:SF 0 "nonimmediate_operand" "")
@@ -696,6 +706,26 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   [(set_attr "type" "ld")
    (set_attr "length" "2")])
 
+;; move 128bit
+(define_insn_and_split "*arc64_movti"
+  [(set (match_operand:TI 0 "arc64_dest_operand"  "=r,r,m")
+	(match_operand:TI 1 "nonimmediate_operand" "r,m,r"))]
+  "TARGET_WIDE_LDST
+   && (register_operand (operands[0], TImode)
+       || register_operand (operands[1], TImode))"
+  "@
+   #
+   lddl%U1\\t%0,%1
+   stdl%U0\\t%1,%0"
+   "&& reload_completed
+    && arc64_simd64x_split_move_p (operands, TImode)"
+   [(const_int 0)]
+   {
+    arc64_simd128_split_move (operands, TImode);
+    DONE;
+   }
+  [(set_attr "type" "move,ld,st")
+   (set_attr "length" "8,*,*")])
 ;;
 ;; Short insns: movl_s g,h; movl_s b,u8
 ;; Long insns: movl, stl, ldl
