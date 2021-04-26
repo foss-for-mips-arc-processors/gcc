@@ -3241,6 +3241,200 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
   return false;
 }
 
+/* Provide the costs of an addressing mode that contains ADDR.
+   LOAD_P is true when address is used to load a value.  */
+
+static int
+arc64_address_cost (rtx addr, machine_mode mode,
+		    addr_space_t as  ATTRIBUTE_UNUSED,
+		    bool speed)
+{
+  const int cost_limm = speed ? 0 : COSTS_N_INSNS (1);
+
+  if (CONSTANT_P (addr))
+    return cost_limm;
+
+  /* The cheapest construct are the addresses which fit a store
+     instruction (or a fp load/store instruction).  */
+  if (arc64_legitimate_address_1_p (mode, addr, true, false, true))
+    return 0;
+
+  /* Anything else has a limm.  */
+  return cost_limm + 1;
+}
+
+/* Compute the rtx cost.  */
+
+static bool
+arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
+                int opno ATTRIBUTE_UNUSED, int *cost, bool speed)
+{
+  rtx op0, op1;
+  const int cost_limm = speed ? 0 : COSTS_N_INSNS (1);
+
+  /* Everything cost 1, unless specified.  */
+  *cost = COSTS_N_INSNS (1);
+
+  switch (GET_CODE (x))
+    {
+    case SET:
+      op0 = SET_DEST (x);
+      op1 = SET_SRC (x);
+
+      switch (GET_CODE (op0))
+	{
+	case MEM:
+	  /* Store instruction.  */
+	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed);
+	  if (CONST_INT_P (op1))
+	    {
+	      *cost += speed ? 0 :
+		satisfies_constraint_S06S0 (op1) ? 0 : cost_limm;
+	      return true;
+	    }
+
+	  *cost += rtx_cost (op1, mode, SET, 1, speed);
+	  return true;
+
+	case SUBREG:
+	  if (!REG_P (SUBREG_REG (op0)))
+	    *cost += rtx_cost (SUBREG_REG (op0), VOIDmode, SET, 0, speed);
+
+	  /* Fall through.  */
+	case REG:
+	  /* Cost is just the cost of the RHS of the set.  */
+	  *cost += rtx_cost (op1, mode, SET, 1, speed);
+	  return true;
+
+	default:
+	  break;
+	}
+      return false;
+
+    case MEM:
+      /* Generic/loads.  */
+      *cost += arc64_address_cost (XEXP (x, 0), mode, 0, speed);
+      return true;
+
+    case MINUS:
+    case PLUS:
+      op0 = XEXP (x, 0);
+      op1 = XEXP (x, 1);
+
+      /* Check if we have add{1,2,3} instruction.  */
+      if ((GET_CODE (op0) == ASHIFT
+	   && _1_2_3_operand (XEXP (op0, 1), VOIDmode))
+	  || (GET_CODE (op0) == MULT
+	      && _2_4_8_operand (XEXP (op0, 1), VOIDmode)))
+	{
+	  /* Check if 2nd instruction operand is constant int.  This
+	     always goes as limm.  */
+	  if (CONST_INT_P (op1))
+	    *cost += cost_limm ;
+	}
+      return true;
+      break;
+
+    case COMPARE:
+      op0 = XEXP (x, 0);
+      op1 = XEXP (x, 1);
+
+      /* Vitually, any instruction can do compare with zero.  */
+      if (op1 == const0_rtx)
+	*cost = 0;
+      return true;
+
+    case ZERO_EXTEND:
+      op0 = XEXP (x, 0);
+
+      /* Zero extending from an SI operation is cheap.  */
+      if (mode == DImode
+	  && GET_MODE (op0) == SImode
+	  && outer == SET)
+	{
+	  int op_cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
+	  if (op_cost)
+	    *cost = op_cost;
+	  return true;
+	}
+      else if (MEM_P (op0))
+	{
+	  /* All loads can zero extend to any size for free.  */
+	  *cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
+	  return true;
+	}
+      break;
+
+    case SIGN_EXTEND:
+      op0 = XEXP (x, 0);
+      if (MEM_P (op0))
+	{
+	  /* All loads can sign extend to any size for free.  */
+	  *cost = rtx_cost (op0, VOIDmode, SIGN_EXTEND, 0, speed);
+	  return true;
+	}
+      break;
+
+    case CONST_INT:
+      {
+	bool limm_p = true;
+	HOST_WIDE_INT imm = INTVAL (x);
+
+	/* In general any 32bit constant can be loaded immediately,
+	   however, when we compile for speed, we try to avoid
+	   them.  */
+	if (UNSIGNED_INT6 (imm))
+	  limm_p = false;
+	else
+	  switch (outer)
+	    {
+	    case SET:
+	      if (SIGNED_INT12 (imm))
+		limm_p = false;
+	      break;
+
+	    default:
+	      break;
+	    }
+
+	*cost = limm_p ? cost_limm : 0;
+	return true;
+      }
+
+    case ASHIFT:
+    case ASHIFTRT:
+    case LSHIFTRT:
+    case DIV:
+    case UDIV:
+    case MULT:
+      return true;
+
+    default:
+      break;
+    }
+  return false;
+}
+
+/* Wrapper around arc64_rtx_costs, dumps the partial, or total cost
+   calculated for X.  This cost is stored in *COST.  Returns true
+   if the total cost of X was calculated.  */
+static bool
+arc64_rtx_costs_wrapper (rtx x, machine_mode mode, int outer,
+			 int param, int *cost, bool speed)
+{
+  bool result = arc64_rtx_costs (x, mode, (rtx_code) outer, param, cost, speed);
+
+  if (dump_file)
+    {
+      print_rtl_single (dump_file, x);
+      fprintf (dump_file, "\nARC: %s cost: %d (%s)\n",
+	       speed ? "Speed" : "Size",
+	       *cost, result ? "final" : "partial");
+    }
+
+  return result;
+}
+
 /*
   Global functions.
 */
@@ -4619,6 +4813,12 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_VECTORIZE_VEC_PERM_CONST
 #define TARGET_VECTORIZE_VEC_PERM_CONST arc64_vectorize_vec_perm_const
+
+#undef TARGET_RTX_COSTS
+#define TARGET_RTX_COSTS arc64_rtx_costs_wrapper
+
+#undef TARGET_ADDRESS_COST
+#define TARGET_ADDRESS_COST arc64_address_cost
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
