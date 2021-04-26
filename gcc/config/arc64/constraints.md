@@ -316,6 +316,18 @@
     (match_code "const_int")
     (match_test "UNSIGNED_INT9 (ival)")))
 
+(define_constraint "U16S0" "@internal
+  A 16-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
+    (match_test "UNSIGNED_INT16 (ival)")))
+
+(define_constraint "S16S0" "@internal
+  A 16-bit signed integer constant"
+  (and
+    (match_code "const_int")
+    (match_test "SIGNED_INT16 (ival)")))
+
 
 ; TODO: Below this line definition should be corrected
 (define_constraint "SR_R0"
