@@ -657,28 +657,41 @@
    (set_attr "type" "mpy")
    ])
 
-(define_insn "<ANY_EXTEND:su_optab>mulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"              "=r,    r,    r,r,r")
-	(mult:SI (ANY_EXTEND:SI
-		  (match_operand:HI 1 "register_operand"    "%0,    r,    0,0,r"))
-		 (match_operand:HI 2 "immediate_operand" "U06S0,U06S0,S12S0,i,i")))]
+(define_insn "mulhisi3i"
+  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,r,r")
+	(mult:SI
+	 (sign_extend:SI
+	  (match_operand:HI 1 "register_operand"          "%0,    r,    0,0,r"))
+	 (match_operand:HI 2 "short_immediate_operand" "U06S0,U06S0,S12S0,S16S0,S16S0")))]
   ""
-  "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
+  "mpyw%?\\t%0,%1,%2"
   [(set_attr "length" "4,4,4,8,8")
    (set_attr "type" "mpy")
    (set_attr "predicable" "yes,no,no,yes,no")])
 
-(define_insn "<ANY_EXTEND:su_optab>mulhisi3ize"
-  [(set (match_operand:DI 0 "register_operand"              "=r,    r,    r,r,r")
-	(zero_extend:DI
-	 (mult:SI (ANY_EXTEND:SI
-		   (match_operand:HI 1 "register_operand"    "%0,    r,    0,0,r"))
-		  (match_operand:HI 2 "immediate_operand" "U06S0,U06S0,S12S0,i,i"))))]
+(define_insn "umulhisi3i"
+  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,r,r")
+	(mult:SI
+	 (zero_extend:SI
+	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,0,r"))
+	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,S12S0,U16S0,U16S0")))]
   ""
-  "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
+  "mpyuw%?\\t%0,%1,%2"
   [(set_attr "length" "4,4,4,8,8")
    (set_attr "type" "mpy")
    (set_attr "predicable" "yes,no,no,yes,no")])
+
+;faulty;(define_insn "<ANY_EXTEND:su_optab>mulhisi3ize"
+;faulty;  [(set (match_operand:DI 0 "register_operand"              "=r,    r,    r,r,r")
+;faulty;	(zero_extend:DI
+;faulty;	 (mult:SI (ANY_EXTEND:SI
+;faulty;		   (match_operand:HI 1 "register_operand"    "%0,    r,    0,0,r"))
+;faulty;		  (match_operand:HI 2 "immediate_operand" "U06S0,U06S0,S12S0,i,i"))))]
+;faulty;  ""
+;faulty;  "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
+;faulty;  [(set_attr "length" "4,4,4,8,8")
+;faulty;   (set_attr "type" "mpy")
+;faulty;   (set_attr "predicable" "yes,no,no,yes,no")])
 
 (define_insn "*mul<mode>3"
  [(set (match_operand:GPI 0 "register_operand"             "=q,q,     r,     r,    r,    r,    r")

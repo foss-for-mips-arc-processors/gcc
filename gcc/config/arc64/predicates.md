@@ -196,3 +196,11 @@
 (define_predicate "arc64_fsimd_moperand"
   (ior (match_operand 0 "arc64_fsimd_register")
        (match_operand 0 "memory_operand")))
+
+(define_predicate "short_immediate_operand"
+  (and (match_code "const_int")
+       (match_test "SIGNED_INT16 (INTVAL (op))")))
+
+(define_predicate "unsign_immediate_operand"
+  (and (match_code "const_int")
+       (match_test "UNSIGNED_INT16 (INTVAL (op))")))
