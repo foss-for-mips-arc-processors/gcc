@@ -4537,8 +4537,10 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	  break;
 	case PRE_MODIFY:
 	  mem_lo = adjust_automodify_address (dst, DFmode, next, 0);
-	  mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (DFmode));
-	  /* fall through */
+	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (DFmode));
+	  mem_hi = adjust_automodify_address (dst, DFmode, next,
+					      GET_MODE_SIZE (DFmode));
+	  break;
 	default:
 	  gcc_unreachable ();
 	}
