@@ -613,8 +613,7 @@
    "
     if (CONSTANT_P (operands[2]))
     {
-      emit_insn (gen_<ANY_EXTEND:su_optab>mulhisi3i (operands[0], operands[1], operands[2]));
-      DONE;
+      operands[2] = force_reg (HImode, operands[2]);
     }
    "
   )
@@ -670,11 +669,11 @@
    (set_attr "predicable" "yes,no,no,yes,no")])
 
 (define_insn "umulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,r,r")
+  [(set (match_operand:SI 0 "register_operand"            "=r,     r,    r,r,r")
 	(mult:SI
 	 (zero_extend:SI
 	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,0,r"))
-	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,S12S0,U16S0,U16S0")))]
+	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,U12S0,U16S0,U16S0")))]
   ""
   "mpyuw%?\\t%0,%1,%2"
   [(set_attr "length" "4,4,4,8,8")
