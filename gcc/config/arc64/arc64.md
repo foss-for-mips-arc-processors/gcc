@@ -594,7 +594,9 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
    || (satisfies_constraint_S06S0 (operands[1])
-       && memory_operand (operands[0], HImode))"
+       && memory_operand (operands[0], HImode))
+   || (CONST_INT_P (operands[1])
+       && satisfies_constraint_Ucnst (operands[0]))"
    "@
     mov_s\\t%0,%1
     mov\\t%0,%1
@@ -620,7 +622,9 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
    || (satisfies_constraint_S06S0 (operands[1])
-       && memory_operand (operands[0], SImode))"
+       && memory_operand (operands[0], SImode))
+   || (CONST_INT_P (operands[1])
+       && satisfies_constraint_Ucnst (operands[0]))"
    "@
     mov_s\\t%0,%1
     mov\\t%0,%1
@@ -731,10 +735,12 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,r, m")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,m, r"))]
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,r, m")
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,m, r"))]
    "register_operand (operands[0], DImode)
-    || register_operand (operands[1], DImode)"
+    || register_operand (operands[1], DImode)
+    || (CONST_INT_P (operands[1])
+        && satisfies_constraint_Ucnst (operands[0]))"
    "@
     movl_s\\t%0,%1
     movl_s\\t%0,%1
@@ -742,10 +748,11 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
     movl\\t%0,%1
     movl\\t%0,%1
     addl\\t%0,pcl,%1
+    stl%U0\\t%1,%0
     ldl%U1\\t%0,%1
     stl%U0\\t%1,%0"
-   [(set_attr "type" "move,move,move,move,move,addl,ld,st")
-    (set_attr "length" "2,2,4,4,8,8,*,*")]
+   [(set_attr "type" "move,move,move,move,move,addl,st,ld,st")
+    (set_attr "length" "2,2,4,4,8,8,*,*,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
