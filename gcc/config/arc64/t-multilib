@@ -19,3 +19,7 @@
 MULTILIB_OPTIONS = mfpu=fpus/mfpu=fpud/m128
 
 MULTILIB_DIRNAMES = fpus fpud m128
+
+# Using m128 will default to standard implementation of memcpy/memset
+MULTILIB_REUSE = mfpu.fpud=mfpu.fpud/m128
+MULTILIB_REUSE += mfpu.fpus=mfpu.fpus/m128
