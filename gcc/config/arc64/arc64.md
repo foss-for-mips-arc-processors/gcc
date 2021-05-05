@@ -1091,7 +1091,8 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
-	      (le (minus (match_dup 0) (pc)) (const_int 506)))
+	      (le (minus (match_dup 0) (pc)) (const_int 506))
+	      (match_test "!CROSSING_JUMP_P (insn)"))
 	 (const_int 2)
 	 (const_int 4)))]
 )
