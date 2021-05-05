@@ -1436,7 +1436,8 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 		  (match_operand:DI 2 "nonmemory_operand")))]
   ""
   {
-   if (!register_operand (operands[2], DImode))
+   if (!register_operand (operands[2], DImode)
+       && !satisfies_constraint_S32S0 (operands[2]))
       operands[2] = force_reg (DImode, operands[2]);
   })
 
