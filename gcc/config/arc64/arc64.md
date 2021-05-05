@@ -752,7 +752,7 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
     ldl%U1\\t%0,%1
     stl%U0\\t%1,%0"
    [(set_attr "type" "move,move,move,move,move,addl,st,ld,st")
-    (set_attr "length" "2,2,4,4,8,8,*,*,*")]
+    (set_attr "length" "2,2,4,4,8,8,8,*,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
