@@ -40,6 +40,17 @@
   (and (match_code "reg")
        (match_test "REGNO (op) < ILINK_REGNUM")))
 
+(define_constraint "accum"
+  "@internal"
+  (and (match_code "reg")
+       (match_test "REGNO (op) == R58_REGNUM")))
+
+(define_constraint "accsi"
+  "@internal"
+  (and (match_code "reg")
+       (match_test "mode == SImode")
+       (match_test "REGNO (op) == R58_REGNUM")))
+
 ; Usc constant is only used for storing long constants, hence we can
 ; have only [b,s9], and [b] types of addresses.
 (define_memory_constraint "Ucnst" "@internal

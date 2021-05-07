@@ -2522,6 +2522,97 @@ arc64_reorg (void)
   compute_bb_for_insn ();
   df_analyze ();
   reorg_loops (true, &arc64_doloop_hooks);
+
+  /* Search MAC instructions and remove the super-flu move from
+     accumulator to a register.  Hence, we try to repair what we do in
+     madd expands or in mac* splits.  */
+  for (rtx_insn *insn = get_insns (); insn; insn = next_real_insn (insn))
+    {
+      rtx op0, op1, op2, tmp;
+      enum insn_code icode = CODE_FOR_nothing;
+      machine_mode mode = E_VOIDmode;
+
+      if (!INSN_P (insn))
+	continue;
+
+      /* 1st find the MAC instruction with null (accumulator)
+	 output.  */
+      switch (INSN_CODE (insn))
+	{
+	case CODE_FOR_umachi0:
+	  icode = CODE_FOR_umachi;
+	  mode = E_SImode;
+	  break;
+
+	case CODE_FOR_machi0:
+	  icode = CODE_FOR_machi;
+	  mode = E_SImode;
+	  break;
+
+	case CODE_FOR_umacd0:
+	  icode = CODE_FOR_umacd;
+	  mode = E_DImode;
+	  break;
+
+	case CODE_FOR_macd0:
+	  icode = CODE_FOR_macd;
+	  mode = E_DImode;
+	  break;
+
+	case CODE_FOR_macsi0:
+	  icode = CODE_FOR_macsi;
+	  mode = E_SImode;
+	  break;
+
+	default:
+	  continue;
+	}
+
+      gcc_assert (REGNO (SET_DEST (PATTERN (insn))) == R58_REGNUM);
+      rtx_insn *nxt = next_real_insn (insn);
+
+      /* 2nd Check if it is a move instruction.  */
+      tmp = PATTERN (nxt);
+      if (GET_CODE (tmp) != SET
+	  || (GET_CODE (SET_SRC (tmp)) != REG)
+	  || (GET_CODE (SET_DEST (tmp)) != REG))
+	continue;
+
+      op0 = SET_DEST (tmp);
+      op1 = SET_SRC (tmp);
+      if (REGNO (op1) != R58_REGNUM)
+	continue;
+
+      /* Make the new MAC instruction.  */
+      switch (INSN_CODE (insn))
+	{
+	case CODE_FOR_umachi0:
+	case CODE_FOR_umacd0:
+	case CODE_FOR_machi0:
+	case CODE_FOR_macd0:
+	  tmp = SET_SRC (PATTERN (insn));
+	  op1 = XEXP (XEXP (XEXP (tmp, 0), 0), 0);
+	  op2 = XEXP (XEXP (XEXP (tmp, 0), 1), 0);
+	  break;
+
+	case CODE_FOR_macsi0:
+	  tmp = SET_SRC (PATTERN (insn));
+	  op1 = XEXP (XEXP (tmp, 0), 0);
+	  op2 = XEXP (XEXP (tmp, 0), 1);
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+
+      emit_insn_before (GEN_FCN (icode) (op0, op1, op2,
+					 gen_rtx_REG (mode, R58_REGNUM)),
+			insn);
+
+      /* Remove the old MAC and MOV instruction.  */
+      set_insn_deleted (insn);
+      set_insn_deleted (nxt);
+    }
 }
 
 /* Expand a compare and swap pattern.  */
