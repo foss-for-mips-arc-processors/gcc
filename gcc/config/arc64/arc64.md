@@ -425,9 +425,9 @@ dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin,
 fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub,
 fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs,
 fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl,
-move, movecc, mod, modl, neg, nop, norm, normh, norml, mpy, mpyl, not,
-notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st, sub,
-subl, swap, swapl, swape, swapel, sync, trap, qmach, qmpyh, udiv,
+move, movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl,
+not, notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st,
+sub, subl, swap, swapl, swape, swapel, sync, trap, qmach, qmpyh, udiv,
 udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext,
 vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
