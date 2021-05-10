@@ -3495,9 +3495,12 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
     case ASHIFT:
     case ASHIFTRT:
     case LSHIFTRT:
+    case MULT:
+      return true;
+
     case DIV:
     case UDIV:
-    case MULT:
+      *cost = COSTS_N_INSNS (12);
       return true;
 
     default:
