@@ -862,7 +862,7 @@
    (set_attr "length" "4")])
 
 
-;; 32 x 32 -> 64 (signed/unsigned)
+;; 32 x 32 -> 64 (signed/unsigned) Triggers FAIL: c-c++-common/torture/builtin-arith-overflow-12.c
 ;worse results;(define_expand "<ANY_EXTEND:su_optab>mulsidi3"
 ;worse results;  [(parallel [(set (match_operand:DI 0 "register_operand")
 ;worse results;		   (mult:DI
@@ -900,6 +900,7 @@
 ;worse results;  "mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
 ;worse results;  [(set_attr "length" "4,4,8")
 ;worse results;   (set_attr "type" "mpy")])
+
 
 ;; 16bit operations using SIMD instructions
 (define_insn "<optab>hi3"
