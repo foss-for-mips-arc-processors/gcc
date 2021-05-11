@@ -420,14 +420,14 @@
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldop, atldlop, bclr, bic, bl, block, bmsk, branch,
-branchcc, brk, bset, bsetl, btst, bxor, bxorl, compare, dbnz, dmb,
-dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin,
-fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub,
-fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs,
-fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl,
-move, movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl,
-not, notl, or, orl, return, ror,rol, sbcl, scond, setcc, sex, sr, st,
-sub, subl, swap, swapl, swape, swapel, sync, trap, qmach, qmpyh, udiv,
+branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp, dbnz, dmb, dmpywh,
+ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin, fmax,
+fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub, fsqrt,
+frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls,
+flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move,
+movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl, not,
+notl, or, orl, return, ror, rol, sbcl, scond, setcc, sex, sr, st, sub,
+subl, swap, swapl, swape, swapel, sync, tst, trap, qmach, qmpyh, udiv,
 udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext,
 vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
@@ -1519,7 +1519,7 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    rcmp<sfxtab>%?\\t%1,%0
    rcmp<sfxtab>%?\\t%1,%0
    cmp<sfxtab>%?\\t%0,%1"
-  [(set_attr "type" "compare")
+  [(set_attr "type" "cmp")
    (set_attr "iscompact" "maybe,maybe,no,no,no,no,no,no,no")
    (set_attr "predicable" "no,no,yes,yes,no,yes,no,no,no")
    (set_attr "length" "*,*,4,4,4,4,4,8,8")])
@@ -1530,7 +1530,7 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 		       (const_int 0)))]
   ""
   "tst%?\\t%0,%0"
-  [(set_attr "type" "compare")
+  [(set_attr "type" "tst")
    (set_attr "iscompact" "yes,no")
    (set_attr "length" "2,4")])
 
@@ -1540,7 +1540,7 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 		       (const_int 0)))]
   ""
   "tstl\\t%0,%0"
-  [(set_attr "type" "compare")
+  [(set_attr "type" "tst")
    (set_attr "iscompact" "no")
    (set_attr "length" "4")])
 
