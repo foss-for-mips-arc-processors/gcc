@@ -3388,7 +3388,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	{
 	case MEM:
 	  /* Store instruction.  */
-	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed));
+	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed);
 	  if (CONST_INT_P (op1))
 	    {
 	      *cost += speed ? 0 :
