@@ -3348,10 +3348,22 @@ arc64_address_cost (rtx addr, machine_mode mode,
   /* The cheapest construct are the addresses which fit a store
      instruction (or a fp load/store instruction).  */
   if (arc64_legitimate_address_1_p (mode, addr, true, false, true))
-    return 0;
+    switch (GET_CODE (addr))
+      {
+      case PRE_DEC:
+      case PRE_INC:
+      case POST_DEC:
+      case POST_INC:
+      case PRE_MODIFY:
+      case POST_MODIFY:
+	return 0;
+
+      default:
+	return 1;
+      }
 
   /* Anything else has a limm.  */
-  return cost_limm + 1;
+  return cost_limm + 2;
 }
 
 /* Compute the rtx cost.  */
@@ -3376,7 +3388,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	{
 	case MEM:
 	  /* Store instruction.  */
-	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed);
+	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed));
 	  if (CONST_INT_P (op1))
 	    {
 	      *cost += speed ? 0 :
@@ -3464,6 +3476,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	  *cost = rtx_cost (op0, VOIDmode, SIGN_EXTEND, 0, speed);
 	  return true;
 	}
+      *cost += COSTS_N_INSNS (2);
       break;
 
     case CONST_INT:
@@ -3495,11 +3508,17 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
     case ASHIFT:
     case ASHIFTRT:
     case LSHIFTRT:
+      return true;
+
     case MULT:
+      /* Multiplication has large latencys, try if we can use adds and
+	 shifts.  */
+      *cost = COSTS_N_INSNS (2);
       return true;
 
     case DIV:
     case UDIV:
+      /* Fav synthetic divs. */
       *cost = COSTS_N_INSNS (12);
       return true;
 
