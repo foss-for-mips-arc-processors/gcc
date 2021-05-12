@@ -1996,6 +1996,46 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set_attr "length"     "8,8")
    (set_attr "predicable" "no")])
 
+(define_insn "*extzvsi_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (zero_extract:SI
+	  (match_operand:SI 1 "register_operand"  "0,r")
+	  (match_operand 2    "const_int_operand" "n,n")
+	  (match_operand 3    "const_int_operand" "n,n"))
+	 (const_int 0)))
+   (set (match_operand:SI 0 "register_operand"   "=r,r")
+	(zero_extract:SI (match_dup 1)
+			 (match_dup 2)
+			 (match_dup 3)))]
+  ""
+  {
+   int assemble_op2 = (((INTVAL (operands[2]) - 1) & 0x1f) << 5)
+                       | (INTVAL (operands[3]) & 0x1f);
+   operands[2] = GEN_INT (assemble_op2);
+   return "xbfu.f\\t%0,%1,%2";
+  }
+  [(set_attr "type"       "xbfu")
+   (set_attr "length"     "4,8")])
+
+(define_insn "*extzvsi_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (zero_extract:SI
+	  (match_operand:SI 0 "register_operand"  "r")
+	  (match_operand 1    "const_int_operand" "n")
+	  (match_operand 2    "const_int_operand" "n"))
+	 (const_int 0)))]
+  ""
+  {
+   int assemble_op2 = (((INTVAL (operands[1]) - 1) & 0x1f) << 5)
+                       | (INTVAL (operands[2]) & 0x1f);
+   operands[2] = GEN_INT (assemble_op2);
+   return "xbfu.f\\t0,%1,%2";
+  }
+  [(set_attr "type"       "xbfu")
+   (set_attr "length"     "8")])
+
 ;; -------------------------------------------------------------------
 ;; Bitscan
 ;; -------------------------------------------------------------------
