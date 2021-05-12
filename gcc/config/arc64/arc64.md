@@ -2030,8 +2030,8 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   {
    int assemble_op2 = (((INTVAL (operands[1]) - 1) & 0x1f) << 5)
                        | (INTVAL (operands[2]) & 0x1f);
-   operands[2] = GEN_INT (assemble_op2);
-   return "xbfu.f\\t0,%1,%2";
+   operands[1] = GEN_INT (assemble_op2);
+   return "xbfu.f\\t0,%0,%1";
   }
   [(set_attr "type"       "xbfu")
    (set_attr "length"     "8")])
