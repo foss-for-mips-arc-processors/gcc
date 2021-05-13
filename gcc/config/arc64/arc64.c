@@ -1303,6 +1303,7 @@ get_arc64_condition_code (rtx comparison)
      's': Scalled immediate.
      'S': Scalled immediate, to be used in pair with 's'.
      'N': Negative immediate, to be used in pair with 's'.
+     'H': 2x16b vector immediate, hi lane is zero.
 */
 
 static void
@@ -1407,6 +1408,17 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  output_operand_lossage ("invalid operand for %%h code");
 	  return;
 	}
+      break;
+
+    case 'H':
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%H code");
+	  return;
+	}
+      ival = INTVAL (x);
+      ival &= 0xffffULL;
+      fprintf (file, "0x%08" PRIx32, (uint32_t) ival);
       break;
 
     case 'm':
@@ -2573,6 +2585,11 @@ arc64_reorg (void)
 	  mode = E_SImode;
 	  break;
 
+	case CODE_FOR_dmach0:
+	  icode = CODE_FOR_dmach;
+	  mode = E_HImode;
+	  break;
+
 	default:
 	  continue;
 	}
@@ -2604,6 +2621,7 @@ arc64_reorg (void)
 	  op2 = XEXP (XEXP (XEXP (tmp, 0), 1), 0);
 	  break;
 
+	case CODE_FOR_dmach0:
 	case CODE_FOR_macsi0:
 	  tmp = SET_SRC (PATTERN (insn));
 	  op1 = XEXP (XEXP (tmp, 0), 0);
