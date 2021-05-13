@@ -1093,6 +1093,206 @@
   [(set (reg:SI R58_REGNUM)
 	(mult:SI (ANY_EXTEND:SI (match_dup 1)) (match_dup 2)))])
 
+;; Another combiner pattern (observed in rgbyiq01)
+(define_insn_and_split "dmpywhu"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	 (mult:SI (match_operand:SI 1 "register_operand" "r")
+		  (match_operand 2 "unsign_immediate_operand" "i"))
+	 (mult:SI (match_operand:SI 3"register_operand" "r")
+		  (match_operand 4 "unsign_immediate_operand" "i"))))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "#"
+  "&& reload_completed"
+  [(parallel [(set (match_dup 0)
+		   (unspec:SI [(match_dup 5) (match_dup 2)]
+			      ARC64_UNSPEC_DMPYWHU))
+	      (clobber (reg:DI R58_REGNUM))])]
+  {
+   operands[5] = gen_lowpart (DImode, operands[0]);
+   emit_insn (gen_pack2silo (operands[5], operands[3], operands[1]));
+   operands[2] = GEN_INT ((INTVAL (operands[2]) << 16) + INTVAL (operands[4]));
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "dmpywh")])
+
+(define_insn "dmpywhu0"
+  [(set (match_operand:SI 0 "register_operand" "=accum,r")
+	(unspec:SI [(match_operand:DI 1 "register_operand" "r,r")
+		    (match_operand 2 "immediate_operand"   "i,i")]
+		   ARC64_UNSPEC_DMPYWHU))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "@
+   dmpywhu\\t0,%1,%2@u32
+   dmpywhu\\t%0,%1,%2@u32"
+  [(set_attr "length" "8")
+   (set_attr "type" "dmpywh")])
+
+(define_insn_and_split "dmpywh"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	 (mult:SI (match_operand:SI 1 "register_operand" "r")
+		  (match_operand 2 "short_immediate_operand" "i"))
+	 (mult:SI (match_operand:SI 3"register_operand" "r")
+		  (match_operand 4 "short_immediate_operand" "i"))))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "#"
+  "&& reload_completed"
+  [(parallel [(set (match_dup 0)
+		   (unspec:SI [(match_dup 5) (match_dup 2)]
+			      ARC64_UNSPEC_DMPYWH))
+	      (clobber (reg:SI R58_REGNUM))])]
+  {
+   operands[5] = gen_lowpart (DImode, operands[0]);
+   emit_insn (gen_pack2silo (operands[5], operands[3], operands[1]));
+   operands[2] = GEN_INT ((INTVAL (operands[2]) << 16) +
+			  (INTVAL (operands[4]) & 0xffff));
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "dmpywh")])
+
+(define_insn "dmpywh0"
+  [(set (match_operand:SI 2 "register_operand" "=accum,r")
+	(unspec:SI [(match_operand:DI 0 "register_operand" "r,r")
+		    (match_operand 1 "immediate_operand"   "i,i")]
+		   ARC64_UNSPEC_DMPYWH))
+   (clobber (reg:SI R58_REGNUM))]
+  "TARGET_SIMD"
+  "@
+   dmpywh\\t0,%0,%1@u32
+   dmpywh\\t%2,%0,%1@u32"
+  [(set_attr "length" "8")
+   (set_attr "type" "dmpywh")])
+
+;; dmach combine pattern used to implement 16b MAC patterns.  Extra
+;; care needs to be taken when dealing with immediates which needs to
+;; set the higher 16b to zero.  I.e. we cannot use safely U6 or S12
+;; instruction variants.
+(define_insn_and_split "dmach"
+  [(set (match_operand:HI 0 "register_operand" "=r,r,r")
+	(plus:HI
+	 (mult:HI (match_operand:HI 1 "register_operand" "%r,r,r")
+		  (match_operand:HI 2 "nonmemory_operand" "r,i,*ri"))
+	 (match_operand:HI 3 "nonmemory_operand" "accum,accum,*ri")))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "@
+   dmach\\t%0,%1,%2
+   dmach\\t%0,%1,%H2@u32
+   #"
+  "&& reload_completed
+   && (CONST_INT_P (operands[3]) || (REGNO (operands[3]) != R58_REGNUM))"
+  [(set (reg:HI R58_REGNUM) (match_dup 3))
+   (set (reg:HI R58_REGNUM)
+	(plus:HI (mult:HI (match_dup 1) (match_dup 2)) (reg:HI R58_REGNUM)))
+   (set (match_dup 0) (reg:HI R58_REGNUM))]
+  ""
+ [(set_attr "length" "4,8,8")
+  (set_attr "type" "mac")])
+
+(define_insn "dmach0"
+ [(set (reg:HI R58_REGNUM)
+       (plus:HI (mult:HI (match_operand:HI 0 "register_operand" "%r,r")
+			 (match_operand:HI 1 "nonmemory_operand" "r,i"))
+		(reg:HI R58_REGNUM)))]
+ "TARGET_SIMD"
+ "@
+  dmach\\t0,%0,%1
+  dmach\\t0,%0,%H1@u32"
+ [(set_attr "length" "4,8")
+  (set_attr "type" "mac")])
+
+;; macwh combine pattern
+;; FIXME! the last move instruction needs to be combined back
+;; into dmacwh(u) insn
+(define_insn_and_split "dmacwh"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	 (plus:SI
+	  (mult:SI (match_operand:SI 1 "register_operand"     "r")
+		   (match_operand 2 "short_immediate_operand" "i"))
+	  (mult:SI (match_operand:SI 3 "register_operand"     "r")
+		   (match_operand 4 "short_immediate_operand" "i")))
+	 (match_operand:SI 5 "nonmemory_operand"  "ri")))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "#"
+  "&& reload_completed"
+  [(set (reg:SI R58_REGNUM)
+	(unspec:SI [(match_dup 6) (match_dup 2) (reg:SI R58_REGNUM)]
+		    ARC64_UNSPEC_DMACWH))
+   (set (match_dup 0) (reg:SI R58_REGNUM))]
+  {
+   emit_move_insn (gen_rtx_REG (SImode, R58_REGNUM), operands[5]);
+   operands[6] = gen_lowpart (DImode, operands[0]);
+   emit_insn (gen_pack2silo (operands[6], operands[3], operands[1]));
+   operands[2] = GEN_INT ((INTVAL (operands[2]) << 16)
+			  + (INTVAL (operands[4]) & 0xffff));
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
+(define_insn "pack2silo"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(unspec:DI [(match_operand:SI 1 "register_operand" "r")
+		    (match_operand:SI 2 "register_operand" "r")]
+		   ARC64_UNSPEC_VPACK2WL))]
+  ""
+  "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "dmacwh0"
+  [(set (reg:SI R58_REGNUM)
+	(unspec:SI [(match_operand:DI 0 "register_operand"  "r")
+		    (match_operand 1 "immediate_operand" "i")
+		    (reg:SI R58_REGNUM)]
+		   ARC64_UNSPEC_DMACWH))]
+  "TARGET_SIMD"
+  "dmacwh\\t0,%0,%1@u32"
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
+(define_insn_and_split "dmacwhu"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	 (plus:SI
+	  (mult:SI (match_operand:SI 1 "register_operand"      "r")
+		   (match_operand 2 "unsign_immediate_operand" "i"))
+	  (mult:SI (match_operand:SI 3 "register_operand"      "r")
+		   (match_operand 4 "unsign_immediate_operand" "i")))
+	 (match_operand:SI 5 "nonmemory_operand"  "ri")))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "#"
+  "&& reload_completed"
+  [(set (reg:SI R58_REGNUM)
+	(unspec:SI [(match_dup 6) (match_dup 2) (reg:SI R58_REGNUM)]
+		    ARC64_UNSPEC_DMACWHU))
+   (set (match_dup 0) (reg:SI R58_REGNUM))]
+  {
+   emit_move_insn (gen_rtx_REG (SImode, R58_REGNUM), operands[5]);
+   operands[6] = gen_lowpart (DImode, operands[0]);
+   emit_insn (gen_pack2silo (operands[6], operands[3], operands[1]));
+   operands[2] = GEN_INT ((INTVAL (operands[2]) << 16) + INTVAL (operands[4]));
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
+(define_insn "dmacwhu0"
+  [(set (reg:SI R58_REGNUM)
+	(unspec:SI [(match_operand:DI 0 "register_operand"  "r")
+		    (match_operand 1 "immediate_operand" "i")
+		    (reg:SI R58_REGNUM)]
+		   ARC64_UNSPEC_DMACWHU))]
+  "TARGET_SIMD"
+  "dmacwhu\\t0,%0,%1@u32"
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
 ;; -------------------------------------------------------------------
 ;; Integer SIMD instructions
 ;; -------------------------------------------------------------------
