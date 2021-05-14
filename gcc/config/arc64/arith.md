@@ -78,8 +78,36 @@
   [(set_attr "iscompact" "maybe,no,no,no,no,no")
    (set_attr "predicable" "no,yes,no,no,no,no")
    (set_attr "length"     "*,4,4,4,8,8")
-   (set_attr "type"       "<mntab>")]
-  )
+   (set_attr "type"       "<mntab>")])
+
+(define_insn "*<optab><mode>_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (ASHIFT:GPI
+	  (match_operand:GPI 1 "register_operand"  "     0,0")
+	  (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))
+	 (const_int 0)))
+    (set (match_operand:GPI 0 "register_operand"   "=     r,r")
+	 (ASHIFT:GPI (match_dup 1) (match_dup 2)))]
+  ""
+  "<mntab><sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "iscompact" "no")
+   (set_attr "length"     "4,8")
+   (set_attr "type"       "<mntab>")])
+
+(define_insn "*<optab><mode>_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (ASHIFT:GPI
+	  (match_operand:GPI 0 "register_operand"  "     r,r")
+	  (match_operand:GPI 1 "nonmemory_operand" "rU06S0,S32S0"))
+	 (const_int 0)))]
+  ""
+  "<mntab><sfxtab>.f\\t0,%0,%1"
+  [(set_attr "iscompact" "no")
+   (set_attr "length"     "4,8")
+   (set_attr "type"       "<mntab>")])
+
 
 (define_insn "*sub<mode>_insn"
   [(set (           match_operand:GPI 0 "register_operand"  "=q,    q,    q,     r,     r,    r,     r,    r,    r,    r,r")
@@ -163,6 +191,24 @@
   [(set_attr "iscompact"  "yes,maybe,maybe,maybe,no,no,no,no,no,no")
    (set_attr "length"     "2,*,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")])
+
+;; This pattern is needed because the GT (pnz) is not reversible and I
+;; cannot convert CCmode to CC_ZNmode.
+(define_insn "*<ADDSUB:optab><GPI:mode>3_f"
+  [(set (reg:CC CC_REGNUM)
+	(compare:CC
+	 (ADDSUB:GPI
+	  (match_operand:GPI 1 "arc64_nonmem_operand" "0,    0,    0,    r,r,S32S0,    r")
+	  (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06S0,S12S0,U06S0,r,    r,S32S0"))
+	 (const_int 0)))
+   (set (match_operand:GPI 0 "register_operand"      "=r,    r,    r,    r,r,    r,    r")
+	(ADDSUB:GPI (match_dup 1) (match_dup 2)))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "<ADDSUB:optab><GPI:sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
+   (set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<ADDSUB:optab><GPI:sfxtab>")])
 
 ; Conditional execution
 (define_insn "*<optab><mode>_ce"
@@ -315,6 +361,8 @@
    (set_attr "type"       "<mntab>")]
   )
 
+;; It may be worth to have a separate pattern for AND to take
+;; advantage of TST_S instruction.
 (define_insn "*<optab><mode>_cmp0_noout"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN
@@ -461,6 +509,37 @@
    (set_attr "length"     "4,4,4,4,4,8,8")
    (set_attr "type"       "<optab><sfxtab>")]
   )
+
+(define_insn "*<optab><mode>3_cmp0"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (DIVREM:GPI
+	  (match_operand:GPI 1 "arc64_nonmem_operand" " 0,r,S32S0,    r")
+	  (match_operand:GPI 2 "arc64_nonmem_operand" " r,r,    r,S32S0"))
+	(const_int 0)))
+   (set (match_operand:GPI 0 "register_operand"       "=r,r,    r,    r")
+	(DIVREM:GPI (match_dup 1)
+		    (match_dup 2)))]
+  "TARGET_ARC64_DIVREM
+   && (register_operand (operands[1], <MODE>mode)
+       || register_operand (operands[2], <MODE>mode))"
+  "<mntab><sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length"     "4,4,8,8")
+   (set_attr "type"       "<optab><sfxtab>")])
+
+(define_insn "*<optab><mode>3_cmp0_noout"
+  [(set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN
+	 (DIVREM:GPI
+	  (match_operand:GPI 0 "arc64_nonmem_operand" "r,S32S0,    r")
+	  (match_operand:GPI 1 "arc64_nonmem_operand" "r,    r,S32S0"))
+	(const_int 0)))]
+  "TARGET_ARC64_DIVREM
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
+  "<mntab><sfxtab>.f\\t0,%0,%1"
+  [(set_attr "length"     "4,8,8")
+   (set_attr "type"       "<optab><sfxtab>")])
 
 ;; To be merged into adddi3
 (define_insn "*add_tls_off"
