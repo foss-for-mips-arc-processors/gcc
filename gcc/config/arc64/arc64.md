@@ -1527,24 +1527,46 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set_attr "predicable" "no,no,yes,yes,no,yes,no,no,no")
    (set_attr "length" "*,*,4,4,4,4,4,8,8")])
 
-(define_insn "*cmpsi_zn"
-  [(set (reg:CC_ZN CC_REGNUM)
-	(compare:CC_ZN (match_operand:SI 0 "register_operand" "q,r")
-		       (const_int 0)))]
-  ""
-  "tst%?\\t%0,%0"
-  [(set_attr "type" "tst")
-   (set_attr "iscompact" "yes,no")
-   (set_attr "length" "2,4")])
 
-(define_insn "*cmpdi_zn"
+(define_insn "*cmp<mode>_ce"
+  [(cond_exec
+    (match_operator 2 "arc64_comparison_operator"
+		    [(match_operand 3 "cc_register" "") (const_int 0)])
+    (set (reg:CC CC_REGNUM)
+	 (compare:CC
+	  (match_operand:GPI 0 "nonmemory_operand" "r,    r,U06S0,S32S0,r")
+	  (match_operand:GPI 1 "nonmemory_operand" "r,U06S0,    r,    r,S32S0"))))]
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
+  "@
+   cmp<sfxtab>.%m2\\t%0,%1
+   cmp<sfxtab>.%m2\\t%0,%1
+   rcmp<sfxtab>.%m2\\t%1,%0
+   rcmp<sfxtab>.%m2\\t%1,%0
+   cmp<sfxtab>.%m2\\t%0,%1"
+  [(set_attr "type" "cmp")
+   (set_attr "length" "4,4,4,8,8")])
+
+(define_insn "*cmp<mode>_zn"
   [(set (reg:CC_ZN CC_REGNUM)
-	(compare:CC_ZN (match_operand:DI 0 "register_operand" "r")
+	(compare:CC_ZN (match_operand:GPI 0 "register_operand" "q,r")
 		       (const_int 0)))]
   ""
-  "tstl\\t%0,%0"
+  "tst<mcctab>%?\\t%0,%0"
   [(set_attr "type" "tst")
-   (set_attr "iscompact" "no")
+   (set_attr "iscompact" "maybe,no")
+   (set_attr "length" "*,4")])
+
+(define_insn "*cmp<mode>_znce"
+  [(cond_exec
+    (match_operator 2 "arc64_comparison_operator"
+		    [(match_operand 1 "cc_register" "") (const_int 0)])
+   (set (reg:CC_ZN CC_REGNUM)
+	(compare:CC_ZN (match_operand:GPI 0 "register_operand" "r")
+		       (const_int 0))))]
+  ""
+  "tst<mcctab>.%m2\\t%0,%0"
+  [(set_attr "type" "tst")
    (set_attr "length" "4")])
 
 (define_insn "fcmp<mode>"
