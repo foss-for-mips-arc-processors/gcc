@@ -1211,7 +1211,6 @@ get_arc64_condition_code (rtx comparison)
   switch (GET_MODE (XEXP (comparison, 0)))
     {
     case E_CCmode:
-    case E_SImode:
       switch (GET_CODE (comparison))
 	{
 	case EQ : return ARC_CC_EQ;
@@ -1237,6 +1236,8 @@ get_arc64_condition_code (rtx comparison)
 	default : gcc_unreachable ();
 	}
     case E_CC_Zmode:
+    case E_DImode: /* bbit instructions.  */
+    case E_SImode:
       switch (GET_CODE (comparison))
 	{
 	case EQ : return ARC_CC_EQ;
@@ -3499,29 +3500,32 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 
     case CONST_INT:
       {
-	bool limm_p = true;
 	HOST_WIDE_INT imm = INTVAL (x);
 
 	/* In general any 32bit constant can be loaded immediately,
 	   however, when we compile for speed, we try to avoid
 	   them.  */
+	*cost = 0;
 	if (UNSIGNED_INT6 (imm))
-	  limm_p = false;
+	  return true;
 	else
 	  switch (outer)
 	    {
 	    case SET:
 	      if (SIGNED_INT12 (imm))
-		limm_p = false;
+		return true;
 	      break;
 
 	    default:
 	      break;
 	    }
-
-	*cost = limm_p ? cost_limm : 0;
-	return true;
       }
+      /* FALLTHRU */
+    case CONST:
+    case LABEL_REF:
+    case SYMBOL_REF:
+      *cost = cost_limm;
+      return true;
 
     case ASHIFT:
     case ASHIFTRT:
@@ -3539,6 +3543,18 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
       /* Fav synthetic divs. */
       *cost = COSTS_N_INSNS (12);
       return true;
+
+    case EQ:
+    case NE:
+      if (outer == IF_THEN_ELSE
+	  && (GET_CODE (XEXP (x, 0)) == AND
+	      || GET_CODE (XEXP (x, 0)) == ZERO_EXTRACT)
+	  && XEXP (x, 1) == const0_rtx)
+	{
+	  *cost = 0;
+	  return true;
+	}
+      break;
 
     default:
       break;

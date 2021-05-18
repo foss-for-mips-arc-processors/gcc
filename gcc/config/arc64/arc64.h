@@ -457,6 +457,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define SIGNED_INT14_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S))
 #define SIGNED_INT15_SHIFTED(X,S) (VERIFY_SHIFT(X,S) && SIGNED_INT12(X >> S))
 
+#define  IS_POWEROF2_P(X) (! ( (X) & ((X) - 1)) && (X))
 
 /* These assume that REGNO is a hard or pseudo reg number.
    They give nonzero only if REGNO is a hard reg of the suitable class
