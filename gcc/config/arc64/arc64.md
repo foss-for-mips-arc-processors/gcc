@@ -1375,7 +1375,7 @@ vfext, vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
-	      (le (minus (match_dup 0) (pc)) (const_int 250)))
+	      (le (minus (match_dup 0) (pc)) (const_int 248)))
 	 (const_int 4)
 	 (const_int 8)))])
 
@@ -1406,7 +1406,7 @@ vfext, vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
-	      (le (minus (match_dup 0) (pc)) (const_int 250)))
+	      (le (minus (match_dup 0) (pc)) (const_int 248)))
 	 (const_int 4)
 	 (const_int 8)))])
 
