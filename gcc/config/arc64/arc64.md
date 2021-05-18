@@ -422,17 +422,17 @@
 (define_attr "cost" "" (const_int 0))
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
-asll, asr, asrl, atldop, atldlop, bclr, bic, bl, block, bmsk, branch,
-branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp, dbnz, dmb, dmpywh,
-ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin, fmax,
-fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub, fsqrt,
-frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs, fls,
-flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl, move,
-movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl, not,
-notl, or, orl, return, ror, rol, sbcl, scond, setcc, sex, sr, st, sub,
-subl, swap, swapl, swape, swapel, sync, tst, trap, qmach, qmpyh, udiv,
-udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd, vfext,
-vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
+asll, asr, asrl, atldop, atldlop, bbit, bclr, bic, bl, block, bmsk,
+branch, branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp, dbnz, dmb,
+dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin,
+fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub,
+fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs,
+fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl,
+move, movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl,
+not, notl, or, orl, return, ror, rol, sbcl, scond, setcc, sex, sr, st,
+sub, subl, swap, swapl, swape, swapel, sync, tst, trap, qmach, qmpyh,
+udiv, udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd,
+vfext, vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -1344,6 +1344,71 @@ vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
   "j%?\\t[%0]"
   [(set_attr "type" "jump")
    (set_attr "length" "2,4")])
+
+;; combiner patterns used to match bbit0/1 instructions.
+;; Unfortunately, I cannot use splitting for this pattern as the
+;; insn length is know very late during compilation process.
+(define_insn "*bbit_and"
+  [(set (pc)
+	(if_then_else
+	 (match_operator 3 "equality_comparison_operator"
+			 [(and:GPI
+			   (match_operand:GPI 1 "register_operand" "r")
+			   (match_operand 2 "bbitimm_operand" ""))
+			  (const_int 0)])
+	 (label_ref (match_operand 0 "" ""))
+	 (pc)))
+   (clobber (reg:CC_ZN CC_REGNUM))]
+  "!CROSSING_JUMP_P (insn)"
+  {
+   operands[2] = GEN_INT (exact_log2 (INTVAL (operands[2])));
+   switch (get_attr_length (insn))
+     {
+     case 4:
+       return (GET_CODE (operands[3]) == EQ
+	       ? \"bbit0<sfxtab>\\t%1,%2,%l0\" : \"bbit1<sfxtab>\\t%1,%2,%l0\");
+     default:
+       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+     }
+  }
+  [(set_attr "type" "bbit")
+   (set (attr "length")
+	(if_then_else
+	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
+	      (le (minus (match_dup 0) (pc)) (const_int 250)))
+	 (const_int 4)
+	 (const_int 8)))])
+
+(define_insn "*bbit_zext"
+  [(set (pc)
+	(if_then_else
+	 (match_operator 3 "equality_comparison_operator"
+			 [(zero_extract:GPI
+			   (match_operand:GPI 1 "register_operand" "r")
+			   (const_int 1)
+			   (match_operand:GPI 2 "nonmemory_operand" "ir"))
+			  (const_int 0)])
+	 (label_ref (match_operand 0 "" ""))
+	 (pc)))
+   (clobber (reg:CC_ZN CC_REGNUM))]
+  "!CROSSING_JUMP_P (insn)"
+  {
+   switch (get_attr_length (insn))
+     {
+     case 4:
+       return (GET_CODE (operands[3]) == EQ
+	       ? \"bbit0<sfxtab>\\t%1,%2,%l0\" : \"bbit1<sfxtab>\\t%1,%2,%l0\");
+     default:
+       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+     }
+  }
+  [(set_attr "type" "bbit")
+   (set (attr "length")
+	(if_then_else
+	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
+	      (le (minus (match_dup 0) (pc)) (const_int 250)))
+	 (const_int 4)
+	 (const_int 8)))])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
