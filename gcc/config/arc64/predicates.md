@@ -204,3 +204,7 @@
 (define_predicate "unsign_immediate_operand"
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT16 (INTVAL (op))")))
+
+(define_predicate "bbitimm_operand"
+  (and (match_code "const_int")
+       (match_test "IS_POWEROF2_P (INTVAL (op))")))
