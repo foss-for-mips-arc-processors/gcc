@@ -107,3 +107,7 @@ Enable wide floating point SIMD support.
 m128
 Target Report Mask(WIDE_LDST)
 Enable wide data transfer support.
+
+mbrcc
+Target Report Mask(BRCC)
+Generate BRcc instructions during combiner step.
