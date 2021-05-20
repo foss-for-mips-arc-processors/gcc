@@ -1210,6 +1210,8 @@ get_arc64_condition_code (rtx comparison)
 {
   switch (GET_MODE (XEXP (comparison, 0)))
     {
+    case E_DImode: /* brcc/bbit instructions.  */
+    case E_SImode:
     case E_CCmode:
       switch (GET_CODE (comparison))
 	{
@@ -1236,8 +1238,6 @@ get_arc64_condition_code (rtx comparison)
 	default : gcc_unreachable ();
 	}
     case E_CC_Zmode:
-    case E_DImode: /* bbit instructions.  */
-    case E_SImode:
       switch (GET_CODE (comparison))
 	{
 	case EQ : return ARC_CC_EQ;
