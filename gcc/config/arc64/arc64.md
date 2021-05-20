@@ -423,16 +423,17 @@
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldop, atldlop, bbit, bclr, bic, bl, block, bmsk,
-branch, branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp, dbnz, dmb,
-dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv, fh2s, fmin,
-fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd, fnmsub,
-fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int, fp2uint, ffs,
-fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max, maxl, min, minl,
-move, movecc, mod, modl, neg, nop, norm, normh, norml, mac, mpy, mpyl,
-not, notl, or, orl, return, ror, rol, sbcl, scond, setcc, sex, sr, st,
-sub, subl, swap, swapl, swape, swapel, sync, tst, trap, qmach, qmpyh,
-udiv, udivl, umod, umodl, unknown, vadd, vsub, vmac2h, vmpy2h, vfadd,
-vfext, vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
+branch, brcc, branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp,
+dbnz, dmb, dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv,
+fh2s, fmin, fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd,
+fnmsub, fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int,
+fp2uint, ffs, fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max,
+maxl, min, minl, move, movecc, mod, modl, neg, nop, norm, normh,
+norml, mac, mpy, mpyl, not, notl, or, orl, return, ror, rol, sbcl,
+scond, setcc, sex, sr, st, sub, subl, swap, swapl, swape, swapel,
+sync, tst, trap, qmach, qmpyh, udiv, udivl, umod, umodl, unknown,
+vadd, vsub, vmac2h, vmpy2h, vfadd, vfext, vfins, vfsub, vfmul, vfdiv,
+vfrep, vpack, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -1409,6 +1410,47 @@ vfext, vfins, vfsub, vfmul, vfdiv, vfrep, vpack, xbfu, xor, xorl"
 	      (le (minus (match_dup 0) (pc)) (const_int 248)))
 	 (const_int 4)
 	 (const_int 8)))])
+
+;; combiner patterns for BRcc instructions.  We consider all BRcc
+;; supported comparisons but compare with zero. The positive range
+;; needs to take into account the limm size, and the pcl rounding.
+;; This pattern is under an option as it may prohibit further
+;; optimizations like if-conversion.
+(define_insn "*brcc"
+  [(set (pc)
+	(if_then_else
+	 (match_operator 3 "brcc_comparison_operator"
+			 [(match_operand:GPI 1 "register_operand"  "r,r")
+			  (match_operand:GPI 2 "brcc_2ndoperand" "U06S0r,U32S0")])
+	 (label_ref (match_operand 0 "" ""))
+	 (pc)))
+   (clobber (reg:CC_ZN CC_REGNUM))]
+  "!CROSSING_JUMP_P (insn) && TARGET_BRCC"
+  {
+   switch (get_attr_length (insn))
+     {
+     case 4:
+     case 8:
+       return \"br%m3<sfxtab>\\t%1,%2,%l0\";
+     default:
+       return \"cmp<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+     }
+  }
+  [(set_attr "type" "brcc")
+   (set (attr "length")
+	(cond [(and (ge (minus (match_dup 0) (pc)) (const_int -254))
+		    (le (minus (match_dup 0) (pc)) (const_int 248))
+		    (eq (symbol_ref "which_alternative") (const_int 0)))
+	       (const_int 4)
+	       (and (ge (minus (match_dup 0) (pc)) (const_int -254))
+		    (le (minus (match_dup 0) (pc)) (const_int 244))
+		    (eq (symbol_ref "which_alternative") (const_int 1)))
+	       (const_int 8)
+	       ;; This should be variable as well...
+	       (eq (symbol_ref "which_alternative") (const_int 0))
+	       (const_int 12)]
+	      (const_int 12)))
+   ])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
