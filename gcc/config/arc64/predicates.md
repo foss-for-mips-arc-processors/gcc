@@ -208,3 +208,11 @@
 (define_predicate "bbitimm_operand"
   (and (match_code "const_int")
        (match_test "IS_POWEROF2_P (INTVAL (op))")))
+
+(define_special_predicate "brcc_comparison_operator"
+  (match_code "eq, ne, lt, ge, ltu, geu"))
+
+(define_predicate "brcc_2ndoperand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_code "const_int")
+	    (match_test "INTVAL (op) != 0"))))
