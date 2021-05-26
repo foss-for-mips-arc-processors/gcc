@@ -1518,7 +1518,7 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
 	(sign_extend:DI
 	 (match_operand:EXT 1 "nonimmediate_operand"  "r,m")))]
-   ""
+   "(!TARGET_VOLATILE_DI) || (!MEM_VOLATILE_P (operands[1]))"
    "@
    sex<exttab>l\\t%0,%1
    ld<sfxtab>.x%U1\\t%0,%1"

@@ -2791,17 +2791,6 @@ arc_expand_compare_and_swap_qh (rtx bool_result, rtx result, rtx mem,
   emit_move_insn (result, gen_lowpart (GET_MODE (result), res));
 }
 
-/* On some RISC architectures with 64-bit registers, the processor
-   also maintains 32-bit condition codes that make it possible to do
-   real 32-bit arithmetic, although the operations are performed on
-   the full registers.  This hook needs to be define if
-   WORD_REGISTER_OPERATIONS is not defined to 1.  */
-
-static unsigned int
-arc64_min_arithmeric_precision (void)
-{
-  return 32;
-}
 
 /* This hook may conditionally modify five variables: fixed_regs,
    call_used_regs, global_regs, reg_names and reg_class_contents.  */
@@ -3470,6 +3459,12 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
       op0 = XEXP (x, 0);
 
       /* Zero extending from an SI operation is cheap.  */
+      if (MEM_P (op0))
+	{
+	  /* All loads can zero extend to any size for free.  */
+	  *cost += rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
+	  return true;
+	}
       if (mode == DImode
 	  && GET_MODE (op0) == SImode
 	  && outer == SET)
@@ -3477,12 +3472,6 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	  int op_cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
 	  if (op_cost)
 	    *cost = op_cost;
-	  return true;
-	}
-      else if (MEM_P (op0))
-	{
-	  /* All loads can zero extend to any size for free.  */
-	  *cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
 	  return true;
 	}
       break;
@@ -4925,9 +4914,6 @@ arc64_expand_fvect_shr (rtx *operands)
 
 #undef  TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG arc64_reorg
-
-#undef TARGET_MIN_ARITHMETIC_PRECISION
-#define TARGET_MIN_ARITHMETIC_PRECISION arc64_min_arithmeric_precision
 
 #undef TARGET_CONDITIONAL_REGISTER_USAGE
 #define TARGET_CONDITIONAL_REGISTER_USAGE arc64_conditional_register_usage
