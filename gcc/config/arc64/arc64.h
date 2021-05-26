@@ -344,16 +344,15 @@ enum reg_class
 /* Tell GCC to use RETURN_IN_MEMORY.  */
 #define DEFAULT_PCC_STRUCT_RETURN 0
 
-/* WORD_REGISTER_OPERATIONS does not hold for arc64.  The assigned
-   word_mode is DImode but operations narrower than SImode behave as
-   32-bit operations.  */
-#define WORD_REGISTER_OPERATIONS 0
+/* To be check: WORD_REGISTER_OPERATIONS, ARC64 has 32bit
+   opertations.  */
+#define WORD_REGISTER_OPERATIONS 1
 
 /* Define if loading from memory in MODE, an integral mode narrower than
    BITS_PER_WORD will either zero-extend or sign-extend.  The value of this
    macro should be the code that says which one of the two operations is
    implicitly done, or UNKNOWN if none.  */
-#define LOAD_EXTEND_OP(MODE) ZERO_EXTEND
+#define LOAD_EXTEND_OP(MODE) (((MODE) == SImode) ? SIGN_EXTEND : ZERO_EXTEND)
 
 #define SLOW_BYTE_ACCESS 0
 
