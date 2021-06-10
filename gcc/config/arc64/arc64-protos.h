@@ -11,8 +11,6 @@ extern void arc64_cpu_cpp_builtins (cpp_reader *);
 
 extern rtx arc64_return_addr (int, rtx);
 extern machine_mode arc64_select_cc_mode (enum rtx_code, rtx, rtx);
-extern bool arc64_check_mov_const (HOST_WIDE_INT );
-extern bool arc64_split_mov_const (rtx *);
 extern bool arc64_can_use_return_insn_p (void);
 extern void arc64_expand_call (rtx, rtx, bool);
 extern rtx arc64_gen_compare_reg (enum rtx_code, rtx, rtx);
@@ -25,6 +23,10 @@ extern bool arc64_legitimate_store_address_p (machine_mode, rtx);
 extern bool arc64_short_access_p (rtx, machine_mode, bool);
 extern rtx arc64_eh_return_handler_rtx (void);
 extern int arc64_asm_preferred_eh_data_format (int, int);
+
+extern bool arc64_check_mov_const (HOST_WIDE_INT);
+extern bool arc64_split_mov_const (rtx *);
+extern bool arc64_expand_cpymem (rtx *);
 
 extern void arc64_expand_atomic_op (enum rtx_code, rtx, rtx, rtx, rtx, rtx);
 extern void arc64_pre_atomic_barrier (enum memmodel);
