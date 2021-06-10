@@ -850,6 +850,24 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set_attr "type" "fmov,move,move")
    (set_attr "length" "4,4,8")])
 
+;; 0 is dst
+;; 1 is src
+;; 2 is size of copy in bytes
+;; 3 is alignment
+
+(define_expand "cpymemdi"
+  [(match_operand:BLK 0 "memory_operand")
+   (match_operand:BLK 1 "memory_operand")
+   (match_operand:DI 2 "immediate_operand")
+   (match_operand:DI 3 "immediate_operand")]
+   "!STRICT_ALIGNMENT"
+{
+  if (arc64_expand_cpymem (operands))
+    DONE;
+  FAIL;
+}
+)
+
 ;; -------------------------------------------------------------------
 ;; Subroutine calls and sibcalls
 ;; -------------------------------------------------------------------
