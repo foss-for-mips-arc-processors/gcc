@@ -3033,6 +3033,35 @@ arc64_move_pointer (rtx pointer, poly_int64 amount)
 				    next, amount);
 }
 
+/* Return a new RTX holding the result of moving POINTER forward by the
+   size of the mode it points to.  */
+
+static rtx
+arc64_progress_pointer (rtx pointer)
+{
+  return arc64_move_pointer (pointer, GET_MODE_SIZE (GET_MODE (pointer)));
+}
+
+/* Copy one MODE sized block from SRC to DST, then progress SRC and DST by
+   MODE bytes.  */
+
+static void
+arc64_copy_one_block_and_progress_pointers (rtx *src, rtx *dst,
+					    machine_mode mode)
+{
+  rtx reg = gen_reg_rtx (mode);
+
+  /* "Cast" the pointers to the correct mode.  */
+  *src = adjust_address (*src, mode, 0);
+  *dst = adjust_address (*dst, mode, 0);
+  /* Emit the memcpy.  */
+  emit_move_insn (reg, *src);
+  emit_move_insn (*dst, reg);
+  /* Move the pointers forward.  */
+  *src = arc64_progress_pointer (*src);
+  *dst = arc64_progress_pointer (*dst);
+}
+
 /* Moving f regs to r regs is not a very good idea. */
 static int
 arc64_register_move_cost (machine_mode,
@@ -4730,6 +4759,87 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
       if (swap_p)
 	emit_move_insn (lo, mem_lo);
     }
+}
+
+/* Expand cpymem, as if from a __builtin_memcpy.  Return true if
+   we succeed, otherwise return false.  */
+
+bool
+arc64_expand_cpymem (rtx *operands)
+{
+  int n, mode_bits;
+  rtx dst = operands[0];
+  rtx src = operands[1];
+  rtx base;
+  machine_mode cur_mode = BLKmode, next_mode;
+  bool speed_p = !optimize_function_for_size_p (cfun);
+
+  /* When optimizing for size, give a better estimate of the length of a
+     memcpy call, but use the default otherwise.  Moves larger than 8 bytes
+     will always require an even number of instructions to do now.  And each
+     operation requires both a load+store, so devide the max number by 2.  */
+  int max_num_moves = (speed_p ? 16 : ARC64_CALL_RATIO) / 2;
+  /* In case of 128-bit moves, double the threshold.  */
+  if (TARGET_WIDE_LDST)
+    max_num_moves *= 2;
+
+  /* We can't do anything smart if the amount to copy is not constant.  */
+  if (!CONST_INT_P (operands[2]))
+    return false;
+
+  n = INTVAL (operands[2]);
+
+  /* Try to keep the number of instructions low.  For all cases we will do at
+     most two moves for the residual amount, since we'll always overlap the
+     remainder.  */
+  const int divisor = TARGET_WIDE_LDST ? 16 : 8;
+  if (((n / divisor) + (n % divisor ? 2 : 0)) > max_num_moves)
+    return false;
+
+  base = copy_to_mode_reg (Pmode, XEXP (dst, 0));
+  dst = adjust_automodify_address (dst, VOIDmode, base, 0);
+
+  base = copy_to_mode_reg (Pmode, XEXP (src, 0));
+  src = adjust_automodify_address (src, VOIDmode, base, 0);
+
+  /* Convert n to bits to make the rest of the code simpler.  */
+  n = n * BITS_PER_UNIT;
+
+  /* Maximum amount to copy in one go.  */
+  const int copy_limit
+    = TARGET_WIDE_LDST ? GET_MODE_BITSIZE (TImode) : GET_MODE_BITSIZE (DImode);
+
+  while (n > 0)
+    {
+      /* Find the largest mode in which to do the copy in without over reading
+	 or writing.  */
+      opt_scalar_int_mode mode_iter;
+      FOR_EACH_MODE_IN_CLASS (mode_iter, MODE_INT)
+	if (GET_MODE_BITSIZE (mode_iter.require ()) <= MIN (n, copy_limit))
+	  cur_mode = mode_iter.require ();
+
+      gcc_assert (cur_mode != BLKmode);
+
+      mode_bits = GET_MODE_BITSIZE (cur_mode);
+      arc64_copy_one_block_and_progress_pointers (&src, &dst, cur_mode);
+
+      n -= mode_bits;
+
+      /* Do certain trailing copies as overlapping if it's going to be
+	 cheaper.  i.e. less instructions to do so.  For instance doing a 15
+	 byte copy it's more efficient to do two overlapping 8 byte copies than
+	 8 + 6 + 1.  */
+      if (n > 0 && n <= 8 * BITS_PER_UNIT)
+	{
+	  next_mode = smallest_mode_for_size (n, MODE_INT);
+	  int n_bits = GET_MODE_BITSIZE (next_mode);
+	  src = arc64_move_pointer (src, (n - n_bits) / BITS_PER_UNIT);
+	  dst = arc64_move_pointer (dst, (n - n_bits) / BITS_PER_UNIT);
+	  n = n_bits;
+	}
+    }
+
+  return true;
 }
 
 /* Provide a mapping from gcc register numbers to dwarf register numbers.  */
