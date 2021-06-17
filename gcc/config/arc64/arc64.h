@@ -604,6 +604,8 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define ARC64_HAS_FPUS    (arc64_fp_model > 0)
 #define ARC64_HAS_FPUD    (arc64_fp_model > 1)
 
+#define TARGET_HARD_FLOAT ARC64_HAS_FP_BASE
+
 /* Vector SIMD length.  */
 #define ARC64_VFP_32    (arc64_fp_model == 1)
 #define ARC64_VFP_64    ((arc64_fp_model == 2) && !TARGET_WIDE_SIMD)
