@@ -39,6 +39,7 @@ extern bool arc64_simd64x_split_move_p (rtx *, machine_mode);
 extern void arc64_simd128_split_move (rtx *, machine_mode);
 extern unsigned arc64_dbx_register_number (unsigned);
 extern bool arc64_expand_fvect_shr (rtx *);
+extern bool arc64_use_plt34_p (rtx);
 #endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */
