@@ -98,7 +98,8 @@ enum arc_cc_code_index
 
 typedef enum arc64_symb_type
 {
-  ARC64_UNK = 0, ARC64_LO32, ARC64_LARGE, ARC64_PIC, ARC64_LPIC, ARC64_TLS
+  ARC64_UNK = 0, ARC64_LO32, ARC64_LARGE, ARC64_PIC, ARC64_LPIC, ARC64_TLS,
+  ARC64_PCREL
 } arc64_symb;
 
 /* Information about single argument.  */
@@ -645,14 +646,14 @@ arc64_get_symbol_type (rtx x)
       case ARC64_CMODEL_MEDIUM:
 	return ARC64_LO32;
       case ARC64_CMODEL_LARGE:
-	return ARC64_LARGE;
+	return is_local ? ARC64_LO32 : ARC64_LARGE;
       default:
 	gcc_unreachable ();
       }
   else if (flag_pic == 1)
-    return ARC64_PIC;
+    return is_local ? ARC64_PCREL : ARC64_PIC;
   else if (is_local)
-    return ARC64_PIC;
+    return ARC64_PCREL;
   else
     return ARC64_LPIC;
 }
@@ -1296,6 +1297,7 @@ get_arc64_condition_code (rtx comparison)
      'S': Scalled immediate, to be used in pair with 's'.
      'N': Negative immediate, to be used in pair with 's'.
      'H': 2x16b vector immediate, hi lane is zero.
+     'P': Constant address, swithces on/off _s to be used with 'C'
 */
 
 static void
@@ -1425,10 +1427,31 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  return;
 	}
       output_addr_const (asm_out_file, x);
-      if (flag_pic
-	  && GET_CODE (x) == SYMBOL_REF
-	  && !SYMBOL_REF_LOCAL_P (x))
-	fputs ("@plt", file);
+      /* N.B. The instruction is valid, hence any symbol which its
+	 type is LPIC is valid for instruction, see
+	 arc64_is_long_call_p.  */
+      switch (arc64_get_symbol_type (x))
+	{
+	case ARC64_PIC:
+	  fputs ("@plt", file);
+	  break;
+	case ARC64_LPIC:
+	  fputs ("@plt34", file);
+	  break;
+	default:
+	  break;
+	}
+      break;
+
+    case 'P':
+      if (GET_CODE (x) != SYMBOL_REF
+	  && GET_CODE (x) != LABEL_REF)
+	{
+	  output_operand_lossage ("invalid operand for %%P code");
+	  return;
+	}
+      if (arc64_use_plt34_p (x))
+	fputs ("_s", file);
       break;
 
     case 's':
@@ -1907,9 +1930,14 @@ arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 /* Implement FUNCTION_OK_FOR_SIBCALL hook.  */
 
 static bool
-arc64_function_ok_for_sibcall (tree decl ATTRIBUTE_UNUSED,
-			     tree exp ATTRIBUTE_UNUSED)
+arc64_function_ok_for_sibcall (tree decl,
+			       tree exp ATTRIBUTE_UNUSED)
 {
+  if (decl && targetm.binds_local_p (decl))
+    return true;
+  if (flag_pic == 2)
+    return false; /* we don't have an instruction to do what bl_s
+		     sym@plt34 does.  */
   return true;
 }
 
@@ -3581,30 +3609,29 @@ arc64_rtx_costs_wrapper (rtx x, machine_mode mode, int outer,
 bool
 arc64_is_long_call_p (rtx sym)
 {
-  const_tree decl;
+  arc64_symb symb_t = arc64_get_symbol_type (sym);
 
-  if (!SYMBOL_REF_P (sym))
-    return false;
+  switch (symb_t)
+    {
+    case ARC64_UNK:
+    case ARC64_LO32:
+      return false;
 
-  /* If my memory model is small everything can go via usual bl/jl
-     instructions.  */
-  if (arc64_cmodel_var == ARC64_CMODEL_SMALL)
-    return false;
+    case ARC64_PCREL:
+    case ARC64_PIC:
+      return false;
 
-  decl = SYMBOL_REF_DECL (sym);
-  if (flag_pic
-      && decl
-      && !targetm.binds_local_p (decl))
-    return true;
+    case ARC64_LPIC:
+      /* fPIC + Large memory model forces everything in registers.  */
+      return (arc64_cmodel_var == ARC64_CMODEL_LARGE) ? true : false;
 
-  /* If the symbol binds local then it is a short call.  */
-  if (decl && targetm.binds_local_p (decl))
-    return false;
+    case ARC64_LARGE:
+      return true;
 
-  /* If the model is large then make it a long one.  */
-  if (arc64_cmodel_var == ARC64_CMODEL_LARGE)
-    return !SYMBOL_REF_LOCAL_P (sym);
-  return false;
+    case ARC64_TLS:
+    default:
+      gcc_unreachable ();
+    }
 }
 
 /* X and Y are two things to compare using CODE.  Emit the compare insn and
@@ -4776,6 +4803,16 @@ arc64_expand_fvect_shr (rtx *operands)
   return true;
 }
 #endif
+
+/* Return TRUE if SYM requires a PLT34 reloc.  The instruction is
+   valid, hence any symbol which its type is LPIC is valid for
+   instruction, see arc64_is_long_call_p.  */
+
+bool
+arc64_use_plt34_p (rtx sym)
+{
+  return (arc64_get_symbol_type (sym) == ARC64_LPIC);
+}
 
 /* Target hooks.  */
 

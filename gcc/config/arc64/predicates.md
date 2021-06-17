@@ -216,3 +216,8 @@
   (ior (match_operand 0 "register_operand")
        (and (match_code "const_int")
 	    (match_test "INTVAL (op) != 0"))))
+
+;; Return true if the symbol requires a @plt34 reloc
+(define_predicate "plt34_symbol_p"
+  (and (match_code "symbol_ref")
+       (match_test "arc64_use_plt34_p (op)")))
