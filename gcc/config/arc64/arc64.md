@@ -457,6 +457,12 @@ vfrep, vpack, xbfu, xor, xorl"
 	       (match_operand 1 "immediate_operand" "")))
      (const_int 8) (const_int 4))
 
+    (eq_attr "type" "bl")
+    (if_then_else
+     (ior (match_operand 0 "plt34_symbol_p" "")
+	  (match_operand 1 "plt34_symbol_p" ""))
+     (const_int 6) (const_int 4))
+
     (eq_attr "iscompact" "maybe")
     (cond
      [(match_test "GET_CODE (PATTERN (insn)) == COND_EXEC")
@@ -868,11 +874,11 @@ vfrep, vpack, xbfu, xor, xorl"
   "@
    jl_s\\t[%0]
    jl\\t[%0]
-   bl\\t%C0
+   bl%P0\\t%C0
    jl\\t%0
    jl\\t%0"
   [(set_attr "type" "jl,jl,bl,jl,jl")
-   (set_attr "length" "2,4,4,4,8")])
+   (set_attr "length" "2,4,*,4,8")])
 
 (define_expand "call_value"
   [(parallel [(set (match_operand 0 "" "")
@@ -898,11 +904,11 @@ vfrep, vpack, xbfu, xor, xorl"
   "@
    jl_s\\t[%1]
    jl\\t[%1]
-   bl\\t%C1
+   bl%P1\\t%C1
    jl\\t%1
    jl\\t%1"
   [(set_attr "type" "jl,jl,bl,jl,jl")
-   (set_attr "length" "2,4,4,4,8")])
+   (set_attr "length" "2,4,*,4,8")])
 
 (define_expand "sibcall"
   [(parallel [(call (match_operand 0 "memory_operand")
