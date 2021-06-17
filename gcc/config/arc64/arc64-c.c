@@ -63,6 +63,17 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
   else if (arc64_cmodel_var == ARC64_CMODEL_LARGE)
     builtin_define ("__ARC64_CMODEL_LARGE__");
 
+  if (TARGET_HARD_FLOAT)
+    {
+      builtin_define ("__arc_hard_float__");
+      builtin_define ("__ARC_HARD_FLOAT__");
+    }
+  else
+    {
+      builtin_define ("__arc_soft_float__");
+      builtin_define ("__ARC_SOFT_FLOAT__");
+    }
+
 #undef ARC64_C_DEF
 #define ARC64_C_DEF(NAME, CONDITION)		\
   def_or_undef_macro (pfile, NAME, CONDITION);
