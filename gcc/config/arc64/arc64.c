@@ -1315,6 +1315,17 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
   switch (code)
     {
+    case '*':
+      if (final_sequence && final_sequence->len () != 1)
+	{
+	  rtx_insn *delay = final_sequence->insn (1);
+
+	  if (delay->deleted ())
+	    return;
+	  fputs (".d", file);
+	}
+      return;
+
     case '?':
       if (arc64_short_insn_p (current_output_insn))
 	fputs ("_s", file);
@@ -1655,7 +1666,7 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 static bool
 arc64_print_operand_punct_valid_p (unsigned char code)
 {
-  return (code == '?');
+  return (code == '?' || code == '*');
 }
 
 /* Implement TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA.  */

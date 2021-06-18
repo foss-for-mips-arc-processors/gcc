@@ -417,18 +417,19 @@
 ;; Instruction types and attributes
 ;; -------------------------------------------------------------------
 
-;; What is the insn_cost for this insn?  The target hook can still override
-;; this.  For optimizing for size the "length" attribute is used instead.
+;; What is the insn_cost for this insn?  The target hook can still
+;; override this.  For optimizing for size the "length" attribute is
+;; used instead.
 (define_attr "cost" "" (const_int 0))
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
-asll, asr, asrl, atldop, atldlop, bbit, bclr, bic, bl, block, bmsk,
-branch, brcc, branchcc, brk, bset, bsetl, btst, bxor, bxorl, cmp,
-dbnz, dmb, dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul, fdiv,
-fh2s, fmin, fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub, fnmadd,
-fnmsub, fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp, fp2int,
-fp2uint, ffs, fls, flag, jl, jump, ld, llock, lsr, lsrl, lr, max,
-maxl, min, minl, move, movecc, mod, modl, neg, nop, norm, normh,
+asll, asr, asrl, atldop, atldlop, bbit, bclr, bi, bic, bl, block,
+bmsk, branch, brcc, branchcc, brk, bset, bsetl, btst, bxor, bxorl,
+cmp, dbnz, dmb, dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul,
+fdiv, fh2s, fmin, fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub,
+fnmadd, fnmsub, fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp,
+fp2int, fp2uint, ffs, fls, flag, jl, jump, ld, llock, lsr, lsrl, lr,
+max, maxl, min, minl, move, movecc, mod, modl, neg, nop, norm, normh,
 norml, mac, mpy, mpyl, not, notl, or, orl, return, ror, rol, sbcl,
 scond, setcc, sex, sr, st, sub, subl, swap, swapl, swape, swapel,
 sync, tst, trap, qmach, qmpyh, udiv, udivl, umod, umodl, unknown,
@@ -494,6 +495,57 @@ vfrep, vpack, xbfu, xor, xorl"
 	 (const_string "no")
         ]
        (const_string "yes")))
+
+;; -------------------------------------------------------------------
+;; Delay slots
+;; -------------------------------------------------------------------
+
+;; Define what can go in a delay slot, generic.
+(define_attr "slottable" "false,true"
+  (cond
+  [(eq_attr "type" "jump,branch,jl,bl,bi,branchcc,dbnz,return,bbit,brcc")
+   (const_string "false")
+
+   (eq_attr "length" "2,4")
+   (const_string "true")
+   ]
+  (const_string "false")))
+
+;; Define what can go in a call delay slot.
+(define_attr "call_slottable" "false,true"
+  (cond
+   [(eq_attr "slottable" "false")
+    (const_string "false")
+
+    (match_test "regno_clobbered_p (BLINK_REGNUM, insn, Pmode, 1)")
+    (const_string "false")
+    ]
+   (const_string "true")))
+
+;; Calls delay slots
+(define_delay (and (eq_attr "type" "jl,bl,return")
+		   (eq_attr "length" "2,4,8"))
+  [(eq_attr "call_slottable" "true") (nil) (nil)])
+
+;; Jumps delay slots
+(define_delay (eq_attr "type" "jump,branch,branchcc,dbnz,bbit,brcc")
+  [(eq_attr "slottable" "true") (nil) (nil)])
+
+; Is there an instruction that we are actually putting into the delay slot?
+(define_attr "delay_slot_filled" "no,yes"
+  (cond [(match_test "NEXT_INSN (PREV_INSN (insn)) == insn")
+	 (const_string "no")
+	 (match_test "JUMP_P (insn)
+		      && INSN_ANNULLED_BRANCH_P (insn)
+		      && !INSN_FROM_TARGET_P (NEXT_INSN (insn))")
+	 (const_string "no")]
+	(const_string "yes")))
+
+(define_attr "delay_slot_length" ""
+  (cond [(match_test "NEXT_INSN (PREV_INSN (insn)) == insn")
+	 (const_int 0)]
+	(symbol_ref "get_attr_length (NEXT_INSN (PREV_INSN (insn)))
+		     - get_attr_length (insn)")))
 
 ;; -------------------------------------------------------------------
 ;; Pipeline descriptions and scheduling
@@ -890,11 +942,11 @@ vfrep, vpack, xbfu, xor, xorl"
    (clobber (reg:DI BLINK_REGNUM))]
   ""
   "@
-   jl_s\\t[%0]
-   jl\\t[%0]
-   bl%P0\\t%C0
-   jl\\t%0
-   jl\\t%0"
+   jl_s%*\\t[%0]
+   jl%*\\t[%0]
+   bl%P0%*\\t%C0
+   jl%*\\t%0
+   jl%*\\t%0"
   [(set_attr "type" "jl,jl,bl,jl,jl")
    (set_attr "length" "2,4,*,4,8")])
 
@@ -920,11 +972,11 @@ vfrep, vpack, xbfu, xor, xorl"
    (clobber (reg:DI BLINK_REGNUM))]
   ""
   "@
-   jl_s\\t[%1]
-   jl\\t[%1]
-   bl%P1\\t%C1
-   jl\\t%1
-   jl\\t%1"
+   jl_s%*\\t[%1]
+   jl%*\\t[%1]
+   bl%P1%*\\t%C1
+   jl%*\\t%1
+   jl%*\\t%1"
   [(set_attr "type" "jl,jl,bl,jl,jl")
    (set_attr "length" "2,4,*,4,8")])
 
@@ -962,10 +1014,10 @@ vfrep, vpack, xbfu, xor, xorl"
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
-   j\\t[%0]
-   b\\t%C0
-   j\\t%0
-   j\\t%0"
+   j%*\\t[%0]
+   b%*\\t%C0
+   j%*\\t%0
+   j%*\\t%0"
   [(set_attr "type" "jump,branch,jump,jump")
    (set_attr "length" "4,4,4,8")]
 )
@@ -980,10 +1032,10 @@ vfrep, vpack, xbfu, xor, xorl"
   (return)]
   "SIBLING_CALL_P (insn)"
   "@
-   j\\t[%1]
-   b\\t%C1
-   j\\t%1
-   j\\t%1"
+   j%*\\t[%1]
+   b%*\\t%C1
+   j%*\\t%1
+   j%*\\t%1"
   [(set_attr "type" "jump,branch,jump,jump")
    (set_attr "length" "4,4,4,8")]
 )
@@ -1001,9 +1053,9 @@ vfrep, vpack, xbfu, xor, xorl"
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[0], Pmode)"
   "@
-   jl%m3\\t[%0]
-   bl%m3\\t%C0
-   jl%m3\\t%0"
+   jl%m3%*\\t[%0]
+   bl%m3%*\\t%C0
+   jl%m3%*\\t%0"
   [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
@@ -1020,9 +1072,9 @@ vfrep, vpack, xbfu, xor, xorl"
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[1], Pmode)"
   "@
-   jl%m3\\t[%1]
-   bl%m3\\t%C1
-   jl%m3\\t%1"
+   jl%m3%*\\t[%1]
+   bl%m3%*\\t%C1
+   jl%m3%*\\t%1"
   [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
@@ -1039,9 +1091,9 @@ vfrep, vpack, xbfu, xor, xorl"
    && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
        || register_operand (operands[0], Pmode))"
   "@
-   j%m3\\t[%0]
-   b%m3\\t%C0
-   j%m3\\t%0"
+   j%m3%*\\t[%0]
+   b%m3%*\\t%C0
+   j%m3%*\\t%0"
   [(set_attr "type" "jump,branch,jump")
    (set_attr "length" "4")])
 
@@ -1060,9 +1112,9 @@ vfrep, vpack, xbfu, xor, xorl"
    && ((arc64_cmodel_var == ARC64_CMODEL_SMALL)
        || register_operand (operands[1], Pmode))"
   "@
-   j%m3\\t[%1]
-   b%m3\\t%C1
-   j%m3\\t%1"
+   j%m3%*\\t[%1]
+   b%m3%*\\t%C1
+   j%m3%*\\t%1"
   [(set_attr "type" "jump,branch,jump")
    (set_attr "length" "4")])
 
@@ -1106,7 +1158,7 @@ vfrep, vpack, xbfu, xor, xorl"
 (define_insn "indirect_jump<mode>"
   [(set (pc) (match_operand:P 0 "register_operand" "q,r"))]
   ""
-  "j%?\\t[%0]"
+  "j%?%*\\t[%0]"
   [(set_attr "type" "jump")
    (set_attr "length" "2,4")]
 )
@@ -1114,13 +1166,14 @@ vfrep, vpack, xbfu, xor, xorl"
 (define_insn "jump"
   [(set (pc) (label_ref (match_operand 0 "" "")))]
   ""
-  "b%?\\t%l0"
+  "b%?%*\\t%l0"
   [(set_attr "type" "branch")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -512))
 	      (le (minus (match_dup 0) (pc)) (const_int 506))
-	      (match_test "!CROSSING_JUMP_P (insn)"))
+	      (match_test "!CROSSING_JUMP_P (insn)")
+	      (eq_attr "delay_slot_filled" "no"))
 	 (const_int 2)
 	 (const_int 4)))]
 )
@@ -1163,20 +1216,23 @@ vfrep, vpack, xbfu, xor, xorl"
 	      (label_ref (match_operand 2 "" ""))
 	      (pc)))]
   ""
-  "b%m0%?\\t%l2"
+  "b%m0%?%*\\t%l2"
   [(set_attr "type" "branchcc")
    (set (attr "length")
 	(cond
-	  [(and (match_operand 0 "equality_comparison_operator" "")
-		(and (ge (minus (match_dup 2) (pc)) (const_int -512))
-		     (le (minus (match_dup 2) (pc)) (const_int 506))))
+	 [(eq_attr "delay_slot_filled" "yes")
+	  (const_int 4)
+
+	  (and (match_operand 0 "equality_comparison_operator" "")
+	       (and (ge (minus (match_dup 2) (pc)) (const_int -512))
+		    (le (minus (match_dup 2) (pc)) (const_int 506))))
 	   (const_int 2)
 
 	   (and (match_operand 0 "ccmode_comparison_operator" "")
 		(and (ge (minus (match_dup 2) (pc)) (const_int -60))
 		     (le (minus (match_dup 2) (pc)) (const_int 58))))
 	   (const_int 2)]
-	  (const_int 4)))])
+	 (const_int 4)))])
 
 (define_expand "prologue"
   [(clobber (const_int 0))]
@@ -1213,7 +1269,7 @@ vfrep, vpack, xbfu, xor, xorl"
 (define_insn "simple_return"
   [(simple_return)]
   ""
-  "j_s\\t[blink]"
+  "j_s%*\\t[blink]"
   [(set_attr "type" "return")
    (set_attr "length" "2")])
 
@@ -1282,7 +1338,7 @@ vfrep, vpack, xbfu, xor, xorl"
    (clobber (match_scratch:DI 2 "=X,r"))]
   ""
   "@
-   dbnz\\t%0,%l1
+   dbnz%*\\t%0,%l1
    #"
   "reload_completed && memory_operand (operands[0], DImode)"
   [(set (match_dup 2) (match_dup 0))
@@ -1308,7 +1364,7 @@ vfrep, vpack, xbfu, xor, xorl"
 				      [(reg CC_REGNUM) (const_int 0)])
 		      (simple_return) (pc)))]
   ""
-  "j%m0\\t[blink]"
+  "j%m0%*\\t[blink]"
   [(set_attr "type" "return")
    (set_attr "length" "4")])
 
@@ -1334,9 +1390,9 @@ vfrep, vpack, xbfu, xor, xorl"
   ""
   "@
   bi\\t[%0]
-  j_s\\t[%0]
-  j\\t[%0]"
-  [(set_attr "type" "jump")
+  j_s%*\\t[%0]
+  j%*\\t[%0]"
+  [(set_attr "type" "bi,jump,jump")
    (set_attr "length" "4,2,4")
    (set_attr "cpu_facility" "cd,ncd,ncd")])
 
@@ -1366,7 +1422,7 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set (pc) (match_operand:DI 0 "register_operand" "q,r"))
    (use (label_ref (match_operand 1 "" "")))]
   ""
-  "j%?\\t[%0]"
+  "j%?%*\\t[%0]"
   [(set_attr "type" "jump")
    (set_attr "length" "2,4")])
 
@@ -1391,16 +1447,18 @@ vfrep, vpack, xbfu, xor, xorl"
      {
      case 4:
        return (GET_CODE (operands[3]) == EQ
-	       ? \"bbit0<sfxtab>\\t%1,%2,%l0\" : \"bbit1<sfxtab>\\t%1,%2,%l0\");
+	       ? \"bbit0<sfxtab>%*\\t%1,%2,%l0\" : \"bbit1<sfxtab>%*\\t%1,%2,%l0\");
      default:
-       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3%*\\t%l0\";
      }
   }
   [(set_attr "type" "bbit")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
-	      (le (minus (match_dup 0) (pc)) (const_int 248)))
+	      (le (minus (match_dup 0) (pc))
+		  (minus (const_int 248)
+			 (symbol_ref "get_attr_delay_slot_length (insn)"))))
 	 (const_int 4)
 	 (const_int 8)))])
 
@@ -1422,16 +1480,18 @@ vfrep, vpack, xbfu, xor, xorl"
      {
      case 4:
        return (GET_CODE (operands[3]) == EQ
-	       ? \"bbit0<sfxtab>\\t%1,%2,%l0\" : \"bbit1<sfxtab>\\t%1,%2,%l0\");
+	       ? \"bbit0<sfxtab>%*\\t%1,%2,%l0\" : \"bbit1<sfxtab>%*\\t%1,%2,%l0\");
      default:
-       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+       return \"btst<sfxtab>\\t%1,%2\\n\\tb%m3%*\\t%l0\";
      }
   }
   [(set_attr "type" "bbit")
    (set (attr "length")
 	(if_then_else
 	 (and (ge (minus (match_dup 0) (pc)) (const_int -254))
-	      (le (minus (match_dup 0) (pc)) (const_int 248)))
+	      (le (minus (match_dup 0) (pc))
+		  (minus (const_int 248)
+			 (symbol_ref "get_attr_delay_slot_length (insn)"))))
 	 (const_int 4)
 	 (const_int 8)))])
 
@@ -1455,9 +1515,9 @@ vfrep, vpack, xbfu, xor, xorl"
      {
      case 4:
      case 8:
-       return \"br%m3<sfxtab>\\t%1,%2,%l0\";
+       return \"br%m3<sfxtab>%*\\t%1,%2,%l0\";
      default:
-       return \"cmp<sfxtab>\\t%1,%2\\n\\tb%m3\\t%l0\";
+       return \"cmp<sfxtab>\\t%1,%2\\n\\tb%m3%*\\t%l0\";
      }
   }
   [(set_attr "type" "brcc")
