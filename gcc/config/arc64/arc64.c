@@ -198,11 +198,17 @@ static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
 /* Safe access lut log2 table.  */
 #define ARC64LOG2(X) (((X) > 15) ? 3 : lutlog2[((X) & 0x0f)])
 
-/* Check if an offset fits in signed 8 bit immediate field.  */
+/* Check if an offset is scalled.  */
+#define ARC64_CHECK_SCALLED_IMMEDIATE(offset, mode)			\
+  (ARC64LOG2 (GET_MODE_SIZE (mode))					\
+   && VERIFY_SHIFT (INTVAL (offset), ARC64LOG2 (GET_MODE_SIZE (mode)))	\
+   && SIGNED_INT9 (INTVAL (offset) >> ARC64LOG2 (GET_MODE_SIZE (mode))))
+
+/* Check if an offset fits in signed 9 bit immediate field.  */
 #define ARC64_CHECK_SMALL_IMMEDIATE(indx, mode)				\
   (CONST_INT_P (indx)							\
-   && VERIFY_SHIFT (INTVAL (indx), ARC64LOG2 (GET_MODE_SIZE (mode)))	\
-   && SIGNED_INT9 (INTVAL (indx) >> ARC64LOG2 (GET_MODE_SIZE (mode))))
+   && (ARC64_CHECK_SCALLED_IMMEDIATE (indx, mode)			\
+       || SIGNED_INT9 (INTVAL (indx))))
 
 /* ALIGN FRAMES on word boundaries.  */
 #define ARC64_STACK_ALIGN(LOC)						\
@@ -1362,9 +1368,9 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  if (GET_CODE (XEXP (XEXP (x, 0), 0)) == MULT)
 	    fputs (".as", file);
 	  else if (REG_P (XEXP (XEXP (x, 0), 0))
-		   && ARC64LOG2 (GET_MODE_SIZE (GET_MODE (x)))
-		   && ARC64_CHECK_SMALL_IMMEDIATE (XEXP (XEXP (x, 0), 1),
-						   GET_MODE (x)))
+		   && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+		   && ARC64_CHECK_SCALLED_IMMEDIATE (XEXP (XEXP (x, 0), 1),
+						     GET_MODE (x)))
 	    {
 	      fputs (".as", file);
 	      scalled_p = true;
@@ -1600,8 +1606,8 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
       gcc_assert (OBJECT_P (base));
       if (REG_P (base)
 	  && scalled_p
-	  && ARC64LOG2 (GET_MODE_SIZE (mode))
-	  && ARC64_CHECK_SMALL_IMMEDIATE (index, mode))
+	  && CONST_INT_P (index)
+	  && ARC64_CHECK_SCALLED_IMMEDIATE (index, mode))
 	index = GEN_INT (INTVAL (index) >> ARC64LOG2 (GET_MODE_SIZE (mode)));
       scalled_p = false;
 
