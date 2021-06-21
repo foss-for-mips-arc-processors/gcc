@@ -1389,11 +1389,10 @@
   [(set (match_operand:VALL 0 "nonimmediate_operand")
 	(match_operand:VALL 1 "general_operand"))]
   "TARGET_SIMD && !STRICT_ALIGNMENT"
-  {
-   if (!register_operand (operands[0], <MODE>mode)
-       && !register_operand (operands[1], <MODE>mode))
-    operands[1] = force_reg (<MODE>mode, operands[1]);
-  })
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
 
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,m")
@@ -1938,11 +1937,10 @@
   [(set (match_operand:VALLF 0 "nonimmediate_operand")
 	(match_operand:VALLF 1 "general_operand"))]
   "ARC64_HAS_FP_BASE && !STRICT_ALIGNMENT"
-  {
-   if (!register_operand (operands[0], <MODE>mode)
-       && !register_operand (operands[1], <MODE>mode))
-    operands[1] = force_reg (<MODE>mode, operands[1]);
-  })
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
 
 (define_insn "*mov<mode>"
   [(set (match_operand:VALLF_64 0 "arc64_dest_operand"  "=w,    w,Ufpms,*r,*w,*r,*r,*m")
