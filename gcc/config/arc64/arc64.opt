@@ -73,7 +73,7 @@ Target RejectNegative Joined Enum(fpmodel) Var(arc64_fp_model) Init(0)
 Specify hardware FP model used.
 
 mdiv-rem
-Target Report Var(TARGET_ARC64_DIVREM) Init(TARGET_ARC64_DIVREM_DEFAULT)
+Target Var(TARGET_ARC64_DIVREM) Init(TARGET_ARC64_DIVREM_DEFAULT)
 Enable DIV-REM instructions.
 
 mbitscan
@@ -85,7 +85,7 @@ Target RejectNegative Joined
 -mcpu= Generate code for specific ARCv3 CPU variant.
 
 munaligned-access
-Target Report Var(unaligned_access) Init(UNALIGNED_ACCESS_DEFAULT)
+Target Var(unaligned_access) Init(UNALIGNED_ACCESS_DEFAULT)
 Enable unaligned accesses to packed data.
 
 mvolatile-di
@@ -93,21 +93,21 @@ Target Mask(VOLATILE_DI)
 Enable uncached access for volatile memories.
 
 mcode-density
-Target Report Mask(CODE_DENSITY)
+Target Mask(CODE_DENSITY)
 Enable code-density instructions.
 
 msimd
-Target Report Mask(SIMD)
+Target Mask(SIMD)
 Enable integer SIMD instructions.
 
 mwide
-Target Report Mask(WIDE_SIMD)
+Target Mask(WIDE_SIMD)
 Enable wide floating point SIMD support.
 
 m128
-Target Report Mask(WIDE_LDST)
+Target Mask(WIDE_LDST)
 Enable wide data transfer support.
 
 mbrcc
-Target Report Mask(BRCC)
+Target Mask(BRCC)
 Generate BRcc instructions during combiner step.
