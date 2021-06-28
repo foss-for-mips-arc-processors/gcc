@@ -54,7 +54,7 @@ Enum(arc64_atomic) String(3) Value(3)
 
 matomic=
 Target RejectNegative Joined Enum(arc64_atomic) Var(arc64_atomic_option) Init(DEFAULT_ARC64_ATOMIC_OPTION)
--matomic=atomic	Enable atomic instructions: {0, 1, 2, 3}
+-matomic=atomic	Enable atomic instructions: {0, 1, 2, 3}.
 
 Enum
 Name(fpmodel) Type(int)
