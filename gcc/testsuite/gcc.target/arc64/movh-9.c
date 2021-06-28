@@ -28,4 +28,4 @@ void foo(void)
   mem_dst = mem_src;
 }
 /* { dg-final { scan-assembler "ldb\\s+r\[0-9\]+,\\\[" } } */
-/* { dg-final { scan-assembler "stb_s\\s+r\\d,\\\[" } } */
+/* { dg-final { scan-assembler "stb\[_s\\s\]+r\\d,\\\[" } } */

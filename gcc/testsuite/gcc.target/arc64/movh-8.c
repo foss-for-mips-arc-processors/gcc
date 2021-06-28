@@ -12,4 +12,4 @@ void foo(void)
 }
 /* { dg-final { scan-assembler "ldh\\s+r\[0-9\]+,\\\[" } } */
 /* { dg-final { scan-assembler-not "sexh" } } */
-/* { dg-final { scan-assembler "sth_s\\s+r\\d,\\\[" } } */
+/* { dg-final { scan-assembler "sth\[_s\\s\]+r\\d,\\\[" } } */
