@@ -3383,8 +3383,11 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
 		     sel.nelts_per_input ());
   d.vmode = vmode;
   d.target = target;
-  d.op0 = op0;
-  d.op1 = op1;
+  d.op0 = op0 ? force_reg (vmode, op0) : NULL_RTX;
+  if (op0 == op1)
+    d.op1 = op1;
+  else
+    d.op1 = op1 ? force_reg (vmode, op1) : NULL_RTX;
   d.testing_p = !target;
 
   /* The pattern matching functions above are written to look for a small
