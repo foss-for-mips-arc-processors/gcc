@@ -10,4 +10,4 @@ void foo(void)
   register short reg_short;
   mem = reg_short;
 }
-/* { dg-final { scan-assembler "sth_s\\s+r\[0-9\]+,\\\[" } } */
+/* { dg-final { scan-assembler "sth\[_s\\s\]+r\[0-9\]+,\\\[" } } */
