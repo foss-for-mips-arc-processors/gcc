@@ -20,4 +20,4 @@ void foo(void)
 /* { dg-final { scan-assembler "mov_s\\s+r\\d,128" } } */
 /* { dg-final { scan-assembler "mov\\s+r\\d,-128" } } */
 /* { dg-final { scan-assembler "mov\\s+r\\d,-33" } } */
-/* { dg-final { scan-assembler-times "sth_s\\s+r\\d,\\\[" 5 } } */
+/* { dg-final { scan-assembler-times "sth\[_s\\s\]+r\\d,\\\[" 5 } } */
