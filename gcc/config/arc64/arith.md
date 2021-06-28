@@ -1006,8 +1006,8 @@
    rtx acc = gen_rtx_REG (SImode, R58_REGNUM);
 
    emit_move_insn (acc, operands[3]);
-   emit_insn (gen_<ANY_EXTEND:su_optab>machi0 (operands[1], operands[2]));
-   emit_move_insn (operands[0], acc);
+   emit_insn (gen_<ANY_EXTEND:su_optab>machi (operands[0], operands[1],
+                                             operands[2], acc));
    DONE;
    })
 
@@ -1061,8 +1061,8 @@
    rtx acc = gen_rtx_REG (DImode, R58_REGNUM);
 
    emit_move_insn (acc, operands[3]);
-   emit_insn (gen_<ANY_EXTEND:su_optab>macd0 (operands[1], operands[2]));
-   emit_move_insn (operands[0], acc);
+   emit_insn (gen_<ANY_EXTEND:su_optab>macd (operands[0], operands[1],
+                                            operands[2], acc));
    DONE;
    })
 
