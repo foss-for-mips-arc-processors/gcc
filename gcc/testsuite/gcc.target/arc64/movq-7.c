@@ -11,4 +11,4 @@ void foo(void)
 }
 /* { dg-final { scan-assembler "ldb\\s+r\[0-9\]+,\\\[" } } */
 /* { dg-final { scan-assembler-not "ext\[bhw\]\\s+" } } */
-/* { dg-final { scan-assembler "stb_s\\s+r\\d,\\\[" } } */
+/* { dg-final { scan-assembler "stb\[_s\\s\]+r\\d,\\\[" } } */
