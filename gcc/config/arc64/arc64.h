@@ -417,7 +417,7 @@ struct arc64_args
    standard name to implement the copy.  This logic does not apply when
    targeting -mstrict-align, so keep a sensible default in that case.  */
 #define MOVE_RATIO(speed) \
-  (!STRICT_ALIGNMENT ? 2 : (((speed) ? 15 : ARC64_CALL_RATIO) / 2))
+  (!STRICT_ALIGNMENT ? 2 : ((speed) ? 15 : ARC64_CALL_RATIO))
 
 #ifndef USED_FOR_TARGET
 extern const enum reg_class arc64_regno_to_regclass[];
