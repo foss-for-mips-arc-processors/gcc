@@ -569,11 +569,22 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set (match_operand:TI 0 "nonimmediate_operand")
 	(match_operand:TI 1 "general_operand"))]
   "TARGET_WIDE_LDST"
-  "
-  if (arc64_prepare_move_operands (operands[0], operands[1], TImode))
+  {
+    if (CONSTANT_P (operands[1]))
+      {
+	emit_move_insn (gen_lowpart (DImode, operands[0]),
+			gen_lowpart (DImode, operands[1]));
+	emit_move_insn (gen_highpart (DImode, operands[0]),
+			gen_highpart_mode (DImode, TImode, operands[1]));
+	DONE;
+      }
+    else if (!register_operand (operands[0], TImode)
+	     && !register_operand (operands[1], TImode))
+      operands[1] = force_reg (TImode, operands[1]);
+    arc64_prepare_move_operands (operands[0], operands[1], TImode);
     DONE;
-  "
-  )
+
+  })
 
 ;; We use movsf for soft and hard floats.
 (define_expand "movsf"
