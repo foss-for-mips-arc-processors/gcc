@@ -404,8 +404,12 @@ struct arc64_args
 #define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,INDIRECT,N_NAMED_ARGS) \
   ((CUM).iregs = 0, (CUM).fregs = 0)
 
+/* An integer expression for the size in bits of the largest integer machine
+   mode that should actually be used.  We allow pairs of registers.  */
+#define MAX_FIXED_MODE_SIZE GET_MODE_BITSIZE (TImode)
+
 /* Maximum bytes moved by a single instruction (load/store pair).  */
-#define MOVE_MAX (UNITS_PER_WORD)
+#define MOVE_MAX (UNITS_PER_WORD * 2)
 
 /* The base cost overhead of a memcpy call, for MOVE_RATIO and friends.  */
 #define ARC64_CALL_RATIO 8
