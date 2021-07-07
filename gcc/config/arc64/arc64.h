@@ -634,7 +634,6 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define DWARF_FRAME_REGNUM(REGNO) DBX_REGISTER_NUMBER(REGNO)
 /* DWARF2 CFA column which tracks the return address.  */
 #define DWARF_FRAME_RETURN_COLUMN BLINK_REGNUM
-#define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG (Pmode, BLINK_REGNUM)
 /* DWARF registers encodings.  */
 #define DBX_REGISTER_NUMBER(REGNO) arc64_dbx_register_number (REGNO)
 
