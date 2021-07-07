@@ -1739,6 +1739,7 @@ arc64_tls_call (rtx dest, rtx arg)
   if (!arc_tls_symbol)
     arc_tls_symbol = init_one_libfunc ("__tls_get_addr");
 
+  df_set_regs_ever_live (BLINK_REGNUM, true);
   emit_library_call_value (arc_tls_symbol, dest, LCT_CONST, Pmode,
 			   arg, Pmode);
 }
