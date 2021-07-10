@@ -67,6 +67,7 @@ arc64_cpu_cpp_builtins (cpp_reader * pfile)
     {
       builtin_define ("__arc_hard_float__");
       builtin_define ("__ARC_HARD_FLOAT__");
+      builtin_define ("__ARC_FLOAT_ABI_HARD__");
     }
   else
     {
