@@ -272,7 +272,38 @@ arc64_save_reg_p (int regno)
 	return false;
       break;
 
-    case F0_REGNUM ... F31_REGNUM:
+    case F0_REGNUM:
+    case F1_REGNUM:
+    case F2_REGNUM:
+    case F3_REGNUM:
+    case F4_REGNUM:
+    case F5_REGNUM:
+    case F6_REGNUM:
+    case F7_REGNUM:
+    case F8_REGNUM:
+    case F9_REGNUM:
+    case F10_REGNUM:
+    case F11_REGNUM:
+    case F12_REGNUM:
+    case F13_REGNUM:
+    case F14_REGNUM:
+    case F15_REGNUM:
+    case F16_REGNUM:
+    case F17_REGNUM:
+    case F18_REGNUM:
+    case F19_REGNUM:
+    case F20_REGNUM:
+    case F21_REGNUM:
+    case F22_REGNUM:
+    case F23_REGNUM:
+    case F24_REGNUM:
+    case F25_REGNUM:
+    case F26_REGNUM:
+    case F27_REGNUM:
+    case F28_REGNUM:
+    case F29_REGNUM:
+    case F30_REGNUM:
+    case F31_REGNUM:
       if (!ARC64_HAS_FP_BASE)
 	return false;
       break;
@@ -2846,12 +2877,14 @@ arc64_conditional_register_usage (void)
 {
   int regno;
 
+  /* When having floating point, we enable the registers to be used by compiler
+     and set the appropriate call used registers (i.e., f0-f15).  */
   if (ARC64_HAS_FP_BASE)
     {
       for (regno = F0_REGNUM; regno <= F31_REGNUM; regno++)
 	{
 	  fixed_regs[regno] = 0;
-	  call_used_regs[regno] = (regno < (F0_REGNUM + 14)) ? 1 : 0;
+	  call_used_regs[regno] = (regno < F16_REGNUM) ? 1 : 0;
 	}
     }
 }
