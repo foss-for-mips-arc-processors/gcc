@@ -2346,16 +2346,27 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set_attr "length" "4")
    (set_attr "type" "fh2s")])
 
-;;(define_expand "extendhfdf2"
-;;  [(match_operand:DF 0 "register_operand")
-;;   (match_operand:HF 1 "register_operand")]
-;;  "ARC64_HAS_FPUH"
-;;  {
-;;    rtx tmp = gen_reg_rtx (SFmode);
-;;    emit_insn (gen_extendhfsf2 (tmp, operands[1]));
-;;    emit_insn (gen_extendsfdf2 (operands[0], tmp));
-;;    DONE;
-;;  })
+(define_expand "extendhfdf2"
+  [(match_operand:DF 0 "register_operand")
+   (match_operand:HF 1 "register_operand")]
+  "ARC64_HAS_FPUS"
+  {
+    rtx tmp = gen_reg_rtx (SFmode);
+    emit_insn (gen_extendhfsf2 (tmp, operands[1]));
+    if (ARC64_HAS_FPUD)
+      emit_insn (gen_extendsfdf2 (operands[0], tmp));
+    else
+      {
+	rtx ret;
+	ret = emit_library_call_value (gen_rtx_SYMBOL_REF (Pmode,
+							   "__extendsfdf2"),
+				       operands[0], LCT_NORMAL, DFmode,
+				       tmp, SFmode);
+	if (ret != operands[0])
+	  emit_move_insn (operands[0], ret);
+      }
+    DONE;
+  })
 
 (define_insn "truncdfsf2"
   [(set (match_operand:SF 0 "register_operand" "=w")
@@ -2373,16 +2384,27 @@ vfrep, vpack, xbfu, xor, xorl"
   [(set_attr "length" "4")
    (set_attr "type" "fs2h")])
 
-;;(define_expand "truncdfhf2"
-;;  [(match_operand:HF 0 "register_operand")
-;;   (match_operand:DF 1 "register_operand")]
-;;  "ARC64_HAS_FPUH"
-;;  {
-;;    rtx tmp = gen_reg_rtx (SFmode);
-;;    emit_insn (gen_truncdfsf2 (tmp, operands[1]));
-;;    emit_insn (gen_truncsfhf2 (operands[0], tmp));
-;;    DONE;
-;;  })
+(define_expand "truncdfhf2"
+  [(match_operand:HF 0 "register_operand")
+   (match_operand:DF 1 "register_operand")]
+  "ARC64_HAS_FPUS"
+  {
+    rtx tmp = gen_reg_rtx (SFmode);
+    if (ARC64_HAS_FPUD)
+      emit_insn (gen_truncdfsf2 (tmp, operands[1]));
+    else
+      {
+	rtx ret;
+	ret = emit_library_call_value (gen_rtx_SYMBOL_REF (Pmode,
+							   "__truncdfsf2"),
+				       tmp, LCT_NORMAL, SFmode,
+				       operands[1], DFmode);
+	if (ret != tmp)
+	  emit_move_insn (tmp, ret);
+      }
+    emit_insn (gen_truncsfhf2 (operands[0], tmp));
+    DONE;
+  })
 
 ;; SI->SF SI->DF DI->SF DI->DF
 ;; FINT2S FINT2D FL2S FL2D
