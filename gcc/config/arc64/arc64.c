@@ -1711,11 +1711,17 @@ arc64_print_operand_punct_valid_p (unsigned char code)
 static bool
 arc64_output_addr_const_extra (FILE *file, rtx x)
 {
-  rtx base;
+  rtx base, offset = NULL_RTX;
 
   if (GET_CODE (x) == UNSPEC)
     {
       base = XVECEXP (x, 0, 0);
+      if (GET_CODE (base) == CONST
+	  && GET_CODE (XEXP (base, 0)) == PLUS)
+	{
+	  offset = XEXP (XEXP (base, 0), 1);
+	  base = XEXP (XEXP (base, 0), 0);
+	}
       output_addr_const (file, base);
       switch (XINT (x, 1))
 	{
@@ -1742,6 +1748,12 @@ arc64_output_addr_const_extra (FILE *file, rtx x)
 
 	default:
 	  gcc_unreachable ();
+	}
+
+      if (offset != NULL_RTX)
+	{
+	  fputs ("+", file);
+	  output_addr_const (file, offset);
 	}
       return true;
     }
@@ -4790,6 +4802,27 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	default:
 	  gcc_unreachable ();
 	}
+    }
+  else if (GET_CODE (XEXP (dst, 0)) == UNSPEC)
+    {
+      /* For rare situations when we need to split a PIC address.  */
+      rtx addr = XEXP (dst, 0);
+      switch (XINT (addr, 1))
+	{
+	case ARC64_UNSPEC_PCREL:
+	  addr = XVECEXP (addr, 0, 0);
+	  addr = plus_constant (Pmode, addr, GET_MODE_SIZE (DFmode));
+	  addr = gen_sym_unspec (addr, ARC64_UNSPEC_PCREL);
+	  break;
+
+	default:
+	  /* Fail for anything else.  */
+	  gcc_unreachable ();
+	}
+
+      mem_lo = adjust_address (dst, DFmode, 0);
+      mem_hi = adjust_automodify_address (mem_lo, GET_MODE (mem_lo),
+					  addr, GET_MODE_SIZE (DFmode));
     }
   else
     {
