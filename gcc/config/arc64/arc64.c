@@ -3313,6 +3313,10 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
       emit_insn (gen_arc64_swaplv2si (out, in0));
       break;
 
+    case E_V2HImode:
+      emit_insn (gen_arc64_swapv2hi (out, in0));
+      break;
+
     default:
       gcc_unreachable ();
     }
