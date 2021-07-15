@@ -1889,6 +1889,16 @@
   [(set_attr "length" "4")
    (set_attr "type" "swap")])
 
+(define_insn "arc64_swapv2hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(unspec:V2HI
+	 [(match_operand:V2HI 1 "register_operand" "r")]
+	  ARC64_UNSPEC_SWAP))]
+  ""
+  "swap\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "swap")])
+
 (define_insn "arc64_swp_lane0_v4hi"
   [(set (match_operand:V4HI 0 "register_operand" "=r")
 	(vec_concat:V4HI
