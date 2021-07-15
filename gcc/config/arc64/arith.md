@@ -1029,7 +1029,7 @@
 	(mult:SI
 	 (ANY_EXTEND:SI (match_operand:HI 1 "register_operand"      "%r,    0,r,r"))
 	 (ANY_EXTEND:SI (match_operand:HI 2 "nonmemory_operand" "rU06S0,S12S0,i,*ri")))
-	(match_operand:SI 3 "nonmemory_operand" "accum,accum,accum,*ri")))
+	(match_operand:SI 3 "register_operand" "accum,accum,accum,*r")))
   (clobber (reg:SI R58_REGNUM))]
  "TARGET_SIMD"
  "@
@@ -1084,7 +1084,7 @@
 	 (mult:DI
 	  (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "%r,0,r,r"))
 	  (ANY_EXTEND:DI (match_operand:SI 2 "nonmemory_operand" "rU06S0,S12S0,i,*ri")))
-	 (match_operand:DI 3 "register_operand" "accum,accum,accum,*ri")))
+	 (match_operand:DI 3 "register_operand" "accum,accum,accum,*r")))
    (clobber (reg:DI R58_REGNUM))]
   "TARGET_SIMD"
   "@
