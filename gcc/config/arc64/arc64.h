@@ -668,4 +668,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define SUBTARGET_CPP_SPEC ""
 #endif
 
+#undef ARC64_SUBTARGET_DEFAULT
+#define ARC64_SUBTARGET_DEFAULT 0
+
 #endif /* GCC_ARC64_H */
