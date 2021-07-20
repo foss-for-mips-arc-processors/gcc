@@ -40,3 +40,6 @@ along with GCC; see the file COPYING3.  If not see
 /* ...and crtend.o.  */
 #undef ENDFILE_SPEC
 #define ENDFILE_SPEC "crtend%O%s crtn%O%s"
+
+#undef UNALIGNED_ACCESS_DEFAULT
+#define UNALIGNED_ACCESS_DEFAULT 1
