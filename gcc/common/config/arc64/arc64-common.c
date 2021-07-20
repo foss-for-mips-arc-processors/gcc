@@ -45,7 +45,7 @@ static const struct default_options arc_option_optimization_table[] =
 #define TARGET_OPTION_OPTIMIZATION_TABLE arc_option_optimization_table
 
 #undef  TARGET_DEFAULT_TARGET_FLAGS
-#define TARGET_DEFAULT_TARGET_FLAGS (MASK_BITSCAN)
+#define TARGET_DEFAULT_TARGET_FLAGS (MASK_BITSCAN | ARC64_SUBTARGET_DEFAULT)
 
 #include "common/common-target-def.h"
 
