@@ -942,43 +942,43 @@
 
 
 ;; 32 x 32 -> 64 (signed/unsigned) Triggers FAIL: c-c++-common/torture/builtin-arith-overflow-12.c
-;worse results;(define_expand "<ANY_EXTEND:su_optab>mulsidi3"
-;worse results;  [(parallel [(set (match_operand:DI 0 "register_operand")
-;worse results;		   (mult:DI
-;worse results;		    (ANY_EXTEND:DI (match_operand:SI 1 "register_operand"))
-;worse results;		    (ANY_EXTEND:DI (match_operand:SI 2 "nonmemory_operand"))))
-;worse results;	      (clobber (reg:DI R58_REGNUM))])]
-;worse results;   ""
-;worse results;   "
-;worse results;    if (CONSTANT_P (operands[2]))
-;worse results;    {
-;worse results;      operands[2] = force_reg (SImode, operands[2]);
-;worse results;    }
-;worse results;   ")
-;worse results;
-;worse results;(define_insn "*mpyd<ANY_EXTEND:su_optab>"
-;worse results;  [(set (match_operand:DI 0 "register_operand" "=accum,r")
-;worse results;	(mult:DI
-;worse results;	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,r"))
-;worse results;	 (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" "r,r"))))
-;worse results;   (clobber (reg:DI R58_REGNUM))]
-;worse results;  ""
-;worse results;  "@
-;worse results;   mpyd<ANY_EXTEND:su_optab>\\t0,%1,%2
-;worse results;   mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
-;worse results;  [(set_attr "length" "4,4")
-;worse results;   (set_attr "type" "mpy")])
-;worse results;
-;worse results;(define_insn "*mpyd<ANY_EXTEND:su_optab>i"
-;worse results;  [(set (match_operand:DI 0 "register_operand" "=r,r,r")
-;worse results;	(mult:DI
-;worse results;	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,0,r"))
-;worse results;	 (match_operand:SI 2 "immediate_operand" "U06S0,S12S0,i")))
-;worse results;   (clobber (reg:DI R58_REGNUM))]
-;worse results;  ""
-;worse results;  "mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
-;worse results;  [(set_attr "length" "4,4,8")
-;worse results;   (set_attr "type" "mpy")])
+(define_expand "<ANY_EXTEND:su_optab>mulsidi3"
+  [(parallel [(set (match_operand:DI 0 "register_operand")
+		   (mult:DI
+		    (ANY_EXTEND:DI (match_operand:SI 1 "register_operand"))
+		    (ANY_EXTEND:DI (match_operand:SI 2 "nonmemory_operand"))))
+	      (clobber (reg:DI R58_REGNUM))])]
+   "TARGET_SIMD"
+   "
+    if (CONSTANT_P (operands[2]))
+    {
+      operands[2] = force_reg (SImode, operands[2]);
+    }
+   ")
+
+(define_insn "*mpyd<ANY_EXTEND:su_optab>"
+  [(set (match_operand:DI 0 "register_operand" "=accum,r")
+	(mult:DI
+	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,r"))
+	 (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" "r,r"))))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "@
+   mpyd<ANY_EXTEND:su_optab>\\t0,%1,%2
+   mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
+  [(set_attr "length" "4,4")
+   (set_attr "type" "mpy")])
+
+(define_insn "*mpyd<ANY_EXTEND:su_optab>i"
+  [(set (match_operand:DI 0 "register_operand" "=r,r,r")
+	(mult:DI
+	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,0,r"))
+	 (match_operand:SI 2 "immediate_operand" "U06S0,S12S0,i")))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD"
+  "mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
+  [(set_attr "length" "4,4,8")
+   (set_attr "type" "mpy")])
 
 
 ;; 16bit operations using SIMD instructions
