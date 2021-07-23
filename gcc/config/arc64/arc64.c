@@ -3643,20 +3643,34 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
       *cost = cost_limm;
       return true;
 
+    case LSHIFTRT:
+      op0 = XEXP (x, 0);
+      if (REG_P (op0))
+	return true;
+      break;
+
     case ASHIFT:
     case ASHIFTRT:
-    case LSHIFTRT:
       return true;
 
     case MULT:
-      /* Multiplication has large latencys, try if we can use adds and
-	 shifts.  */
+      op0 = XEXP (x, 0);
+      /* Multiplication has a large latency, use adds and shifts.  */
       *cost = COSTS_N_INSNS (2);
+      /* 64x64 multiplication is expensive.  */
+      if (GET_MODE_SIZE (mode) != UNITS_PER_WORD
+	  && (GET_CODE (op0) != ZERO_EXTEND
+	      || GET_CODE (op0) != SIGN_EXTEND))
+	*cost = COSTS_N_INSNS (3);
+      else if (GET_MODE_SIZE (mode) == UNITS_PER_WORD * 2)
+	*cost = COSTS_N_INSNS (4);
       return true;
 
+    case MOD:
+    case UMOD:
     case DIV:
     case UDIV:
-      /* Fav synthetic divs. */
+      /* Fav synthetic divs.  */
       *cost = COSTS_N_INSNS (12);
       return true;
 
