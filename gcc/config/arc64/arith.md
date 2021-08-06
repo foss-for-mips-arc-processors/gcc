@@ -736,11 +736,11 @@
    ])
 
 (define_insn "mulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,    r, accsi,r")
+  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,    r,accsi,r")
 	(mult:SI
 	 (sign_extend:SI
-	  (match_operand:HI 1 "register_operand"          "%0,    r,    0,    0,     r,r"))
-	 (match_operand:HI 2 "short_immediate_operand" "U06S0,U06S0,S12S0,S16S0,S16S0r,S16S0")))]
+	  (match_operand:HI 1 "register_operand"          "%0,    r,    0,    0,    r,r"))
+	 (match_operand:HI 2 "short_immediate_operand" "U06S0,U06S0,S12S0,S16S0,S16S0,S16S0")))]
   ""
   "@
    mpyw%?\\t%0,%1,%2
@@ -754,11 +754,11 @@
    (set_attr "predicable" "yes,no,no,yes,no,no")])
 
 (define_insn "umulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"            "=r,     r,    r,    r, accsi,r")
+  [(set (match_operand:SI 0 "register_operand"            "=r,     r,    r,    r,accsi,r")
 	(mult:SI
 	 (zero_extend:SI
-	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,    0,     r,r"))
-	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,U12S0,U16S0,U16S0r,U16S0")))]
+	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,    0,    r,r"))
+	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,U12S0,U16S0,U16S0,U16S0")))]
   ""
   "@
    mpyuw%?\\t%0,%1,%2
