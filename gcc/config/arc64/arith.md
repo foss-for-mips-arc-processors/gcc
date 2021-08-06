@@ -1246,6 +1246,16 @@
   [(set_attr "length" "8")
    (set_attr "type" "dmpywh")])
 
+(define_insn "*<ANY_EXTEND:su_optab>mpywh"
+  [(set (match_operand:SI 0 "register_operand"                        "=r,r")
+	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "r,r"))
+		 (match_operand:SI 2 "nonmemory_operand" "r,i")))]
+  "TARGET_SIMD"
+  "dmpywh<ANY_EXTEND:su_optab>\\t%0,%2,%1"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "dmpywh")
+   ])
+
 ;; dmach combine pattern used to implement 16b MAC patterns.  Extra
 ;; care needs to be taken when dealing with immediates which needs to
 ;; set the higher 16b to zero.  I.e. we cannot use safely U6 or S12
