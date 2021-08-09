@@ -736,7 +736,7 @@
    ])
 
 (define_insn "mulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,    r,accsi,r")
+  [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,    r,accrn,r")
 	(mult:SI
 	 (sign_extend:SI
 	  (match_operand:HI 1 "register_operand"          "%0,    r,    0,    0,    r,r"))
@@ -754,7 +754,7 @@
    (set_attr "predicable" "yes,no,no,yes,no,no")])
 
 (define_insn "umulhisi3i"
-  [(set (match_operand:SI 0 "register_operand"            "=r,     r,    r,    r,accsi,r")
+  [(set (match_operand:SI 0 "register_operand"            "=r,     r,    r,    r,accrn,r")
 	(mult:SI
 	 (zero_extend:SI
 	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,    0,    r,r"))
@@ -784,7 +784,7 @@
 ;faulty;   (set_attr "predicable" "yes,no,no,yes,no")])
 
 (define_insn "*mul<mode>3"
-  [(set (match_operand:GPI 0 "register_operand"            "=q,q,     r,     r,    r,    r, accsi,    r")
+  [(set (match_operand:GPI 0 "register_operand"            "=q,q,     r,     r,    r,    r, accrn,    r")
 	(mult:GPI (match_operand:GPI 1 "register_operand"  "%0,q,     0,     r,    0,    0,     r,    r")
 		  (match_operand:GPI 2 "nonmemory_operand"  "q,0,rU06S0,rU06S0,S12S0,S32S0,S32S0r,S32S0")))]
  ""
