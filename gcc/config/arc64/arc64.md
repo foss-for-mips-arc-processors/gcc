@@ -426,18 +426,18 @@
 (define_attr "cost" "" (const_int 0))
 
 (define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
-asll, asr, asrl, atldop, atldlop, bbit, bclr, bi, bic, bl, block,
-bmsk, branch, brcc, branchcc, brk, bset, bsetl, btst, bxor, bxorl,
-cmp, dbnz, dmb, dmpywh, ex, div, divl, ext, fadd, fcmp, fsub, fmul,
-fdiv, fh2s, fmin, fmax, fsgnj, fsgnjx, fsgnjn, fmadd, fmov, fmsub,
-fnmadd, fnmsub, fsqrt, frnd, fs2d, fs2h, fd2s, int2fp, uint2fp,
-fp2int, fp2uint, ffs, fls, flag, jl, jump, ld, llock, lsr, lsrl, lr,
-max, maxl, min, minl, move, movecc, mod, modl, neg, nop, norm, normh,
-norml, mac, mpy, mpyl, not, notl, or, orl, return, ror, rol, sbcl,
-scond, setcc, sex, sr, st, sub, subl, swap, swapl, swape, swapel,
-sync, tst, trap, qmach, qmpyh, udiv, udivl, umod, umodl, unknown,
-vadd, vsub, vmac2h, vmpy2h, vfadd, vfext, vfins, vfsub, vfmul, vfdiv,
-vfrep, vpack, xbfu, xor, xorl"
+asll, asr, asrl, atldlop, atldop, bbit, bclr, bi, bic, bl, block,
+bmsk, branch, branchcc, brcc, brk, bset, bsetl, btst, bxor, bxorl,
+cmp, dbnz, div, divl, dmb, dmpywh, ex, ext, fadd, fcmp, fd2s, fdiv,
+ffs, fh2s, flag, fls, fmadd, fmax, fmin, fmov, fmsub, fmul,
+fnmadd, fnmsub, fp2int, fp2uint, frnd, fs2d, fs2h, fsgnj, fsgnjn,
+fsgnjx, fsqrt, fsub, int2fp, jl, jump, ld, llock, lr, lsr, lsrl, mac,
+max, maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop,
+norm, normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
+sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape, swapel,
+swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl, unknown,
+vadd, vfadd, vfdiv, vfext, vfins, vfmul, vfrep, vfsub, vmac2h, vmpy2h,
+vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -553,6 +553,8 @@ vfrep, vpack, xbfu, xor, xorl"
 ;; -------------------------------------------------------------------
 ;; Pipeline descriptions and scheduling
 ;; -------------------------------------------------------------------
+
+;;(include "hs6x.md")
 
 ;; -------------------------------------------------------------------
 ;; Moves
