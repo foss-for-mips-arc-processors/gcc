@@ -172,6 +172,9 @@
 ;; Iterator for HI SI and DI modes
 (define_mode_iterator EPI [HI SI DI])
 
+;; Iterator for HI and SI modes
+(define_mode_iterator SPI [HI SI])
+
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
 (define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
