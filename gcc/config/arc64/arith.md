@@ -983,14 +983,16 @@
 
 ;; 16bit operations using SIMD instructions
 (define_insn "<optab>hi3"
-  [(set (match_operand:HI 0 "register_operand"       "=r,    r,r")
+  [(set (match_operand:HI 0 "register_operand"  "=r,r")
 	(ADDSUB:HI
-	 (match_operand:HI 1 "register_operand"       "r,    0,r")
-	 (match_operand:HI 2 "nonmemory_operand" "rU06S0,S12S0,i")))]
+	 (match_operand:HI 1 "register_operand"  "r,r")
+	 (match_operand:HI 2 "nonmemory_operand" "r,i")))]
   "TARGET_SIMD"
-  "v<optab>2h\\t%0,%1,%2"
-   [(set_attr "length"     "4,4,8")
-   (set_attr "type"       "v<optab>")])
+  "@
+   v<optab>2h\\t%0,%1,%2
+   v<optab>2h\\t%0,%1,%2@u32"
+   [(set_attr "length" "4,8")
+   (set_attr "type" "v<optab>")])
 
 ;; MADD patterns
 ;; 32 + (signe) 16 x (signe) 16 -> 32
@@ -1147,12 +1149,12 @@
 ;; N.B. Probably we need to make a more complex step to take care of
 ;; this operation when we schedule
 (define_peephole2
-  [(set (match_operand:SI 0 "register_operand" "")
-	(ARITH:SI (match_operand:SI 1 "register_operand" "")
-		  (match_operand:SI 2 "nonmemory_operand" "")))
-   (set (reg:SI R58_REGNUM) (match_dup 0))]
+  [(set (match_operand:SPI 0 "register_operand" "")
+	(ARITH:SPI (match_operand:SPI 1 "register_operand" "")
+		   (match_operand:SPI 2 "nonmemory_operand" "")))
+   (set (reg:SPI R58_REGNUM) (match_dup 0))]
   "peep2_reg_dead_p (2, operands[0])"
-  [(set (reg:SI R58_REGNUM) (ARITH:SI (match_dup 1) (match_dup 2)))])
+  [(set (reg:SPI R58_REGNUM) (ARITH:SPI (match_dup 1) (match_dup 2)))])
 
 (define_peephole2
   [(set (match_operand:SI 0 "register_operand" "")
@@ -1171,6 +1173,16 @@
   "peep2_reg_dead_p (2, operands[0])"
   [(set (reg:SI R58_REGNUM)
 	(mult:SI (ANY_EXTEND:SI (match_dup 1)) (match_dup 2)))])
+
+;; Propagate r58 to arithmetic operation when dealing with zero extension
+(define_peephole2
+  [(set (match_operand:HI 0 "register_operand")
+	(ADDSUB:HI (match_operand:HI 1 "register_operand")
+		   (match_operand:HI 2 "nonmemory_operand")))
+   (set (reg:SI R58_REGNUM) (match_operand:SI 3 "register_operand"))]
+  "peep2_reg_dead_p (2, operands[0])
+   && (REGNO (operands[3]) == REGNO (operands[0]))"
+  [(set (reg:HI R58_REGNUM) (ADDSUB:HI (match_dup 1) (match_dup 2)))])
 
 ;; Another combiner pattern (observed in rgbyiq01)
 (define_insn_and_split "dmpywhu"
