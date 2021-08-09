@@ -3601,6 +3601,13 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	    *cost = op_cost;
 	  return true;
 	}
+      if (mode == SImode
+	  && (GET_CODE (op0) == PLUS || GET_CODE (op0) == MINUS)
+	  && outer == SET)
+	{
+	  *cost = 0;
+	  return true;
+	}
       break;
 
     case SIGN_EXTEND:
