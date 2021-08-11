@@ -554,7 +554,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; Pipeline descriptions and scheduling
 ;; -------------------------------------------------------------------
 
-;;(include "hs6x.md")
+(include "hs6x.md")
 
 ;; -------------------------------------------------------------------
 ;; Moves
