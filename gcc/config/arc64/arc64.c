@@ -683,7 +683,7 @@ arc64_get_symbol_type (rtx x)
       case ARC64_CMODEL_MEDIUM:
 	return ARC64_LO32;
       case ARC64_CMODEL_LARGE:
-	return is_local ? ARC64_LO32 : ARC64_LARGE;
+	return is_local ? ARC64_PCREL : ARC64_LARGE;
       default:
 	gcc_unreachable ();
       }
