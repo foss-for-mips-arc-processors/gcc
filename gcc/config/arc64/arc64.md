@@ -638,8 +638,8 @@ vpack, vsub, xbfu, xor, xorl"
 ;; stb_s          c   , [b , u5]
 (define_insn "*arc64_movqi"
   [(set
-    (match_operand:QI 0 "arc64_dest_operand"   "=qh,    q, r,    q,Ustms,    m, Ucnst, r, m")
-    (match_operand:QI 1 "general_operand" " qhS03MV,U08S0,ri,Uldms,    q,S06S0,     i, m, r"))
+    (match_operand:QI 0 "arc64_dest_operand"   "=qh,    q, r,    q,Ustms,Ustor,Ucnst, r,Ustor")
+    (match_operand:QI 1 "general_operand" " qhS03MV,U08S0,ri,Uldms,    q,S06S0,    i, m, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
@@ -666,7 +666,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 (define_insn "*arc64_movhi"
   [(set
-    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,    m,Ucnst, r, m")
+    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,Ustor,Ucnst, r,Ustor")
     (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0,    i, m, r"))
    ]
   "register_operand (operands[0], HImode)
@@ -694,7 +694,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 (define_insn "*arc64_movsi"
   [(set
-    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,    m,Ucnst, r, m")
+    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,Ustor,Ucnst, r,Ustor")
     (match_operand:SI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,    q,S06S0,    i, m, r"))
    ]
   "register_operand (operands[0], SImode)
@@ -790,7 +790,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 ;; move 128bit
 (define_insn_and_split "*arc64_movti"
-  [(set (match_operand:TI 0 "arc64_dest_operand"  "=r,r,m")
+  [(set (match_operand:TI 0 "arc64_dest_operand"  "=r,r,Ustor")
 	(match_operand:TI 1 "nonimmediate_operand" "r,m,r"))]
   "TARGET_WIDE_LDST
    && (register_operand (operands[0], TImode)
@@ -813,7 +813,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,r, m")
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,r,Ustor")
 	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,m, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)
