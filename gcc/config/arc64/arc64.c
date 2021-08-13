@@ -736,7 +736,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1),
 				       scaling_p ? mode : QImode)
 	  || (load_p && CONST_INT_P (XEXP (x, 1))
-	      && !lra_in_progress && !optimize_size)))
+	      && !optimize_size)))
       return true;
 
   /* Indexed addresses.  */
@@ -4232,12 +4232,21 @@ arc64_limm_addr_p (rtx op)
     case CONST_INT:
     case CONST:
     case UNSPEC:
+    case LO_SUM:
       return true;
+
+    case PRE_INC:
+    case PRE_DEC:
+    case POST_INC:
+    case POST_DEC:
+    case PRE_MODIFY:
+    case POST_MODIFY:
     case PLUS:
-      /* legitimate address doesn't recognize [b,limm] variant of ld.
+      /* legitimate address doesn't recognize [b,limm] variant of st.
 	 Hence, use it to determine if we have limm or not in
 	 address.  */
-      return !arc64_legitimate_address_p (GET_MODE (op), op, true);
+      return !arc64_legitimate_address_1_p (GET_MODE (op), op,
+					    false, false, true);
     default:
       break;
     }
