@@ -732,7 +732,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 ;; Softcore float move.
 (define_insn "*movsf_softfp"
-   [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,Ustms,r,m")
+   [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,Ustms,r,Ustor")
 	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,    q,m,r"))
    ]
    "!ARC64_HAS_FP_BASE
