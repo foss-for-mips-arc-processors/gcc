@@ -55,7 +55,8 @@
 (define_memory_constraint "Ucnst" "@internal
    A valid memory operand for storing constants"
   (and (match_code "mem")
-       (match_test "!CONSTANT_P (XEXP (op, 0))")))
+       (match_test "!CONSTANT_P (XEXP (op, 0))")
+       (match_test "arc64_legitimate_store_address_p (mode, XEXP (op, 0))")))
 
 (define_memory_constraint "Uldms" "@internal
   A valid memory operand for loading using short instructions"
@@ -71,6 +72,11 @@
    A valid memory operand for floating point operations"
   (and (match_code "mem")
        (match_test "arc64_fp_access_p (op, mode)")))
+
+(define_memory_constraint "Ustor" "@internal
+   A valid memory operand for store instructions"
+  (and (match_code "mem")
+       (match_test "arc64_legitimate_store_address_p (mode, XEXP (op, 0))")))
 
 ;(define_constraint "Us<"
 ;  "@internal
