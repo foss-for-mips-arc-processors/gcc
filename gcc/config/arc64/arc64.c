@@ -4222,10 +4222,12 @@ arc64_expand_epilogue (bool sibcall_p)
 bool
 arc64_limm_addr_p (rtx op)
 {
+  rtx addr = XEXP (op, 0);
+
   if (!MEM_P (op))
     return false;
 
-  switch (GET_CODE (XEXP (op, 0)))
+  switch (GET_CODE (addr))
     {
     case SYMBOL_REF:
     case LABEL_REF:
@@ -4245,7 +4247,7 @@ arc64_limm_addr_p (rtx op)
       /* legitimate address doesn't recognize [b,limm] variant of st.
 	 Hence, use it to determine if we have limm or not in
 	 address.  */
-      return !arc64_legitimate_address_1_p (GET_MODE (op), op,
+      return !arc64_legitimate_address_1_p (GET_MODE (op), addr,
 					    false, false, true);
     default:
       break;
