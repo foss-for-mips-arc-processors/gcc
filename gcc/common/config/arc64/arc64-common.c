@@ -27,16 +27,15 @@ along with GCC; see the file COPYING3.  If not see
 #include "flags.h"
 
 /* Set default optimization options.  */
-/* The conditions are incomplete, so we rely on the evaluation order here,
-   which goes from first to last, i.e. the last match prevails.  */
-/* ??? But this trick only works for reject_negative options.  Approximate
-   missing option combination.  */
 #define OPT_LEVELS_3_PLUS_SPEED_ONLY OPT_LEVELS_3_PLUS
 static const struct default_options arc_option_optimization_table[] =
   {
     { OPT_LEVELS_SIZE, OPT_ftree_loop_optimize, NULL, 0},
     { OPT_LEVELS_SIZE, OPT_fmove_loop_invariants, NULL, 0},
+    /* Disable fomit-frame-pointer by default.  */
     { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
+    /* Enable redundant extension instructions removal at -O2 and higher.  */
+    { OPT_LEVELS_2_PLUS, OPT_free, NULL, 1 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
   };
 
