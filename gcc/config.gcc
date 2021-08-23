@@ -366,7 +366,7 @@ amdgcn*)
 am33_2.0-*-linux*)
 	cpu_type=mn10300
 	;;
-arc-*-* | arc[eb]*-*-*)
+arc-*-* | arceb-*-*)
 	cpu_type=arc
 	c_target_objs="arc-c.o"
 	cxx_target_objs="arc-c.o"
@@ -1306,7 +1306,7 @@ alpha*-dec-*vms*)
 	tm_file="${tm_file} vms/vms.h alpha/vms.h"
 	tmake_file="${tmake_file} alpha/t-vms alpha/t-alpha"
 	;;
-arc-*-elf* | arc[eb]*-*-*)
+arc-*-elf* | arceb-*-elf*)
 	tm_file="arc/arc-arch.h elfos.h newlib-stdint.h arc/elf.h ${tm_file}"
 	tmake_file="arc/t-multilib arc/t-arc"
 	extra_gcc_objs="driver-arc.o"
@@ -1327,7 +1327,7 @@ arc-*-elf* | arc[eb]*-*-*)
 	big*)	tm_file="arc/big.h ${tm_file}"
 	esac
 	;;
-arc-*-linux* | arc[eb]*-*linux*)
+arc-*-linux* | arceb-*-linux*)
 	tm_file="arc/arc-arch.h elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h arc/linux.h ${tm_file}"
 	tmake_file="${tmake_file} arc/t-multilib-linux arc/t-arc"
 	extra_gcc_objs="driver-arc.o"
@@ -4327,7 +4327,7 @@ case "${target}" in
 		done
 		;;
 
-	arc-*-* | arc[eb]*-*-*)
+	arc-*-* | arceb-*-*)
 		supported_defaults="cpu fpu"
 
 		new_cpu=hs38_linux
