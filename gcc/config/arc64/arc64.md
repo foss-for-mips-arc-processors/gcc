@@ -754,8 +754,8 @@ vpack, vsub, xbfu, xor, xorl"
 ;; use FSSGNJ.
 ;; FIXME! add short instruction selection
 (define_insn "*mov<mode>_hardfp"
-  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*m")
-	(match_operand:GPF_HF 1 "arc64_movf_operand"     "w,Ufpms,    w,*w,*r,*r,*G,*m,*r"))]
+  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*Ustor")
+	(match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G,*m,    *r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
