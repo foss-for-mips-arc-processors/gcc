@@ -34,7 +34,7 @@
 #define UNITS_PER_WORD  8
 
 /* Width of a fp register, in bytes.  */
-#define UNITS_PER_FP_REG ((ARC64_VFP_64 || ARC64_VFP_128) ? 8 : 4)
+#define UNITS_PER_FP_REG ((arc64_fp_model == 2) ? 8 : 4)
 
 /* Maximum number of registers that can appear in a valid memory
    address.  N.B. The ld insn allows 2, but the st insn only allows
