@@ -3802,7 +3802,7 @@ foo:	.long	25
 	lda	$4,foo($29)			!tprel'
 	tls_as_opt=--fatal-warnings
 	;;
-  arc-*-*)
+  arc-*-*|arc[eb]*-*-*)
     conftest_s='
 	add_s r0,r0, @foo@tpoff'
 	;;
