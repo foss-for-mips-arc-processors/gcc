@@ -476,7 +476,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
    Since they use reg_renumber, they are safe only once reg_renumber
    has been allocated, which happens in local-alloc.c.  */
 #define REGNO_OK_FOR_BASE_P(REGNO)					\
-  ((REGNO) < SP_REGNUM							\
+  (GP_REGNUM_P (REGNO)							\
    || ((REGNO) == AP_REGNUM)						\
    || ((REGNO) == SFP_REGNUM))
 
