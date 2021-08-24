@@ -1328,8 +1328,9 @@
   (set_attr "type" "mac")])
 
 ;; macwh combine pattern
-;; FIXME! the last move instruction needs to be combined back
-;; into dmacwh(u) insn
+;; FIXME! maybe we shoudl use r58 as intermediate result holder to
+;; enable linking (back-to-back) with other MAC instructions, but I
+;; haven't seen any example.
 (define_insn_and_split "dmacwh"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(plus:SI
@@ -1343,10 +1344,9 @@
   "TARGET_SIMD"
   "#"
   "&& reload_completed"
-  [(set (reg:SI R58_REGNUM)
+  [(set (match_dup 0)
 	(unspec:SI [(match_dup 6) (match_dup 2) (reg:SI R58_REGNUM)]
-		    ARC64_UNSPEC_DMACWH))
-   (set (match_dup 0) (reg:SI R58_REGNUM))]
+		    ARC64_UNSPEC_DMACWH))]
   {
    emit_move_insn (gen_rtx_REG (SImode, R58_REGNUM), operands[5]);
    operands[6] = gen_lowpart (DImode, operands[0]);
@@ -1368,16 +1368,21 @@
    (set_attr "type" "vpack")])
 
 (define_insn "dmacwh0"
-  [(set (reg:SI R58_REGNUM)
-	(unspec:SI [(match_operand:DI 0 "register_operand"  "r")
-		    (match_operand 1 "immediate_operand" "i")
+  [(set (match_operand:SI 0 "register_operand" "=accum,r")
+	(unspec:SI [(match_operand:DI 1 "register_operand"  "r,r")
+		    (match_operand 2 "immediate_operand" "i,i")
 		    (reg:SI R58_REGNUM)]
 		   ARC64_UNSPEC_DMACWH))]
   "TARGET_SIMD"
-  "dmacwh\\t0,%0,%1@u32"
+  "@
+   dmacwh\\t0,%1,%2@u32
+   dmacwh\\t%0,%1,%2@u32"
   [(set_attr "length" "8")
    (set_attr "type" "mac")])
 
+;; FIXME! maybe we shoudl use r58 as intermediate result holder to
+;; enable linking (back-to-back) with other MAC instructions, but I
+;; haven't seen any example.
 (define_insn_and_split "dmacwhu"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(plus:SI
@@ -1391,10 +1396,9 @@
   "TARGET_SIMD"
   "#"
   "&& reload_completed"
-  [(set (reg:SI R58_REGNUM)
+  [(set (match_dup 0)
 	(unspec:SI [(match_dup 6) (match_dup 2) (reg:SI R58_REGNUM)]
-		    ARC64_UNSPEC_DMACWHU))
-   (set (match_dup 0) (reg:SI R58_REGNUM))]
+		    ARC64_UNSPEC_DMACWHU))]
   {
    emit_move_insn (gen_rtx_REG (SImode, R58_REGNUM), operands[5]);
    operands[6] = gen_lowpart (DImode, operands[0]);
@@ -1405,13 +1409,15 @@
    (set_attr "type" "mac")])
 
 (define_insn "dmacwhu0"
-  [(set (reg:SI R58_REGNUM)
-	(unspec:SI [(match_operand:DI 0 "register_operand"  "r")
-		    (match_operand 1 "immediate_operand" "i")
+  [(set (match_operand:SI 0 "register_operand" "=accum,r")
+	(unspec:SI [(match_operand:DI 1 "register_operand"  "r,r")
+		    (match_operand 2 "immediate_operand" "i,i")
 		    (reg:SI R58_REGNUM)]
 		   ARC64_UNSPEC_DMACWHU))]
   "TARGET_SIMD"
-  "dmacwhu\\t0,%0,%1@u32"
+  "@
+   dmacwhu\\t0,%1,%2@u32
+   dmacwhu\\t%0,%1,%2@u32"
   [(set_attr "length" "8")
    (set_attr "type" "mac")])
 
