@@ -957,16 +957,24 @@
    ")
 
 (define_insn "*mpyd<ANY_EXTEND:su_optab>"
-  [(set (match_operand:DI 0 "register_operand" "=accum,r")
+  [(set (match_operand:DI 0 "register_operand" "=r")
 	(mult:DI
-	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,r"))
-	 (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" "r,r"))))
+	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r"))
+	 (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" "r"))))
    (clobber (reg:DI R58_REGNUM))]
   "TARGET_SIMD"
-  "@
-   mpyd<ANY_EXTEND:su_optab>\\t0,%1,%2
-   mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
-  [(set_attr "length" "4,4")
+  "mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "mpy")])
+
+(define_insn "*mpyd<ANY_EXTEND:su_optab>0"
+  [(set (reg:DI R58_REGNUM)
+	(mult:DI
+	 (ANY_EXTEND:DI (match_operand:SI 0 "register_operand" "r"))
+	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r"))))]
+  "TARGET_SIMD"
+  "mpyd<ANY_EXTEND:su_optab>\\t0,%0,%1"
+  [(set_attr "length" "4")
    (set_attr "type" "mpy")])
 
 (define_insn "*mpyd<ANY_EXTEND:su_optab>i"
@@ -1175,6 +1183,17 @@
   "peep2_reg_dead_p (2, operands[0])"
   [(set (reg:SI R58_REGNUM)
 	(mult:SI (ANY_EXTEND:SI (match_dup 1)) (ANY_EXTEND:SI (match_dup 2))))])
+
+(define_peephole2
+  [(parallel
+    [(set (match_operand:DI 0 "register_operand" "")
+	  (mult:DI (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" ""))
+		   (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" ""))))
+     (clobber (reg:DI R58_REGNUM))])
+   (set (reg:DI R58_REGNUM) (match_dup 0))]
+  "peep2_reg_dead_p (2, operands[0])"
+  [(set (reg:DI R58_REGNUM)
+	(mult:DI (ANY_EXTEND:DI (match_dup 1)) (ANY_EXTEND:DI (match_dup 2))))])
 
 (define_peephole2
   [(set (match_operand:SI 0 "register_operand" "")

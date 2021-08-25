@@ -3722,6 +3722,73 @@ arc64_rtx_costs_wrapper (rtx x, machine_mode mode, int outer,
   return result;
 }
 
+/* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
+   instruction fusion of some sort.  */
+
+static bool
+arc64_macro_fusion_p (void)
+{
+  /* When we use accumulators, make sure we schedule the producer/consumer of
+     accumulator close to each others.  */
+  return TARGET_SIMD;
+}
+
+/* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
+   should be kept together during scheduling.  */
+
+static bool
+arc64_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+  /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
+  bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
+
+  if (!arc64_macro_fusion_p ())
+    return false;
+
+  /* Don't handle anything with a jump.  FIXME! maybe it is interesting to keep
+     the cmp and jcc together for latter folding into BRcc insn.  */
+  if (!simple_sets_p)
+    return false;
+
+  /* 1st We are trying to match any MPY instruction which can have implicit
+     accumulator write and any mac instruction.  */
+  if (get_attr_type (prev) == TYPE_MPY
+      && get_attr_type (curr) == TYPE_MAC)
+    return true;
+
+  /* 2nd We try to match any back to back mac instruction.  */
+  if (get_attr_type (prev) == TYPE_MAC
+      && (get_attr_type (curr) == TYPE_MAC))
+    return true;
+
+#if 0
+  /* Try to keep r58 setting close to any previous related instruction.  We may
+     be able to merge those two into one instruction.  */
+  rtx set_dest;
+  set_dest = SET_DEST (curr_set);
+  if (get_attr_type (curr) == TYPE_MOVE
+      && REG_P (set_dest)
+      && REGNO (set_dest) == R58_REGNUM
+      && REG_P (SET_DEST (prev_set))
+      && REG_P (SET_SRC (curr_set))
+      && REGNO (SET_DEST (prev_set)) == REGNO (SET_SRC (curr_set)))
+    return true;
+
+  /* Try to keep any mac and any previous instruction close, dependency on add
+     operand.  */
+  if (get_attr_type (curr) == TYPE_MAC
+      && REG_P (SET_DEST (prev_set))
+      && GET_CODE (SET_SRC (curr_set)) == PLUS
+      && REG_P (XEXP (SET_SRC (curr_set), 1))
+      && REGNO (SET_DEST (prev_set)) != R58_REGNUM
+      && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 1)))
+    return true;
+#endif
+  return false;
+}
+
 /*
   Global functions.
 */
@@ -5227,6 +5294,13 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_ADDRESS_COST
 #define TARGET_ADDRESS_COST arc64_address_cost
+
+/* Scheduling.  */
+#undef TARGET_SCHED_MACRO_FUSION_P
+#define TARGET_SCHED_MACRO_FUSION_P arc64_macro_fusion_p
+
+#undef TARGET_SCHED_MACRO_FUSION_PAIR_P
+#define TARGET_SCHED_MACRO_FUSION_PAIR_P arc64_macro_fusion_pair_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
