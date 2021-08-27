@@ -2576,7 +2576,7 @@ hwloop_optimize (hwloop_info loop)
     - INSN_ADDRESSES (INSN_UID (loop->start_label));
   loop->length = length;
   if (dump_file)
-    fprintf (dump_file, ";; loop %d with lenght %d\n", loop->loop_no,
+    fprintf (dump_file, ";; loop %d with length %d\n", loop->loop_no,
 	     loop->length);
   if (loop->length > MAX_LOOP_LENGTH
       || loop->length < MIN_LOOP_LENGTH)
@@ -5301,6 +5301,13 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_SCHED_MACRO_FUSION_PAIR_P
 #define TARGET_SCHED_MACRO_FUSION_PAIR_P arc64_macro_fusion_pair_p
+
+/* Disable the speculation when filling delay slots.  In general we get better
+   (speed) results but not for EEMBC's text01 benchmark.  Disabling delay slot
+   filler speculation is needed to conserve the loops body size as calculated in
+   machine reorg phase.  More info see github issue#416.  */
+#undef TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P
+#define TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P hook_bool_void_true
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
