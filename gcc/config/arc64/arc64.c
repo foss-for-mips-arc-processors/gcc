@@ -1782,12 +1782,14 @@ static GTY(()) rtx arc_tls_symbol;
 static void
 arc64_tls_call (rtx dest, rtx arg)
 {
+  rtx argreg = gen_reg_rtx (Pmode);
   if (!arc_tls_symbol)
     arc_tls_symbol = init_one_libfunc ("__tls_get_addr");
 
   df_set_regs_ever_live (BLINK_REGNUM, true);
+  emit_insn (gen_rtx_SET (argreg, arg));
   emit_library_call_value (arc_tls_symbol, dest, LCT_CONST, Pmode,
-			   arg, Pmode);
+			   argreg, Pmode);
 }
 
 /* Create a legitimate mov instruction for the given BASE (unspec).  */
