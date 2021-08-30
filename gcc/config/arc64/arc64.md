@@ -534,9 +534,13 @@ vpack, vsub, xbfu, xor, xorl"
 (define_delay (eq_attr "type" "jump,branch,branchcc,dbnz,bbit,brcc")
   [(eq_attr "slottable" "true") (nil) (nil)])
 
-; Is there an instruction that we are actually putting into the delay slot?
+;; Is there an instruction that we are actually putting into the delay
+;; slot?  N.B. Until after delay slot filler consider full insn size.
+;; This is required for computing a correct loop body size.
 (define_attr "delay_slot_filled" "no,yes"
-  (cond [(match_test "NEXT_INSN (PREV_INSN (insn)) == insn")
+  (cond [(match_test "!crtl->dbr_scheduled_p")
+	 (const_string "yes")
+	 (match_test "NEXT_INSN (PREV_INSN (insn)) == insn")
 	 (const_string "no")
 	 (match_test "JUMP_P (insn)
 		      && INSN_ANNULLED_BRANCH_P (insn)
