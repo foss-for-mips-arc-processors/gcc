@@ -250,6 +250,7 @@ enum reg_class
    NO_REGS,
    AC16_REGS,
    SIBCALL_REGS,
+   CORE_REGS,
    GENERAL_REGS,
    FP_REGS,
    ALL_REGS,
@@ -263,6 +264,7 @@ enum reg_class
     "NO_REGS",					\
     "AC16_REGS",				\
     "SIBCALL_REGS",				\
+    "CORE_REGS",				\
     "GENERAL_REGS",				\
     "FP_REGS",					\
     "ALL_REGS"					\
@@ -273,6 +275,7 @@ enum reg_class
   { 0x00000000, 0x00000000, 0x00000000, 0x00000000 }, /* NO_REGS */	\
   { 0x0000f00f, 0x00000000, 0x00000000, 0x00000000 }, /* AC16_REGS */	\
   { 0x00001fff, 0x00000000, 0x00000000, 0x00000000 }, /* SIBCALL_REGS */ \
+  { 0x0000ffff, 0x00000000, 0x00000000, 0x00000000 }, /* CORE_REGS */ \
   { 0xdfffffff, 0x0fffffff, 0x00000000, 0x00000003 }, /* GENERAL_REGS */ \
   { 0x00000000, 0x00000000, 0xffffffff, 0x00000000 }, /* FP_REGS */	\
   { 0xffffffff, 0xffffffff, 0xffffffff, 0x00000007 }, /* ALL_REGS */	\
