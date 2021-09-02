@@ -2419,7 +2419,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; FINT2S FINT2D FL2S FL2D
 (define_insn "float<GPI:mode><GPF:mode>2"
   [(set (match_operand:GPF 0 "register_operand"           "=w")
-	(float:GPF (match_operand:GPI 1 "register_operand" "r")))]
+	(float:GPF (match_operand:GPI 1 "core_register_operand" "c")))]
   "ARC64_HAS_FP_BASE"
   "f<GPI:f2tab>2<GPF:sfxtab>\\t%0,%1"
   [(set_attr "length" "4")
@@ -2427,7 +2427,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 (define_expand "floatsihf2"
   [(match_operand:HF 0 "register_operand")
-   (match_operand:SI 1 "register_operand")]
+   (match_operand:SI 1 "core_register_operand")]
   "ARC64_HAS_FPUH"
   {
     rtx tmp = gen_reg_rtx (SFmode);
@@ -2438,7 +2438,7 @@ vpack, vsub, xbfu, xor, xorl"
 
 (define_expand "floatdihf2"
   [(match_operand:HF 0 "register_operand")
-   (match_operand:DI 1 "register_operand")]
+   (match_operand:DI 1 "core_register_operand")]
   "ARC64_HAS_FPUH"
   {
     rtx tmp = gen_reg_rtx (SFmode);
@@ -2451,7 +2451,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; FUINT2S FUINT2D FUL2S FUL2D
 (define_insn "floatuns<GPI:mode><GPF:mode>2"
   [(set (match_operand:GPF 0 "register_operand"                    "=w")
-	(unsigned_float:GPF (match_operand:GPI 1 "register_operand" "r")))]
+	(unsigned_float:GPF (match_operand:GPI 1 "core_register_operand" "c")))]
   "ARC64_HAS_FP_BASE"
   "fu<GPI:f2tab>2<GPF:sfxtab>\\t%0,%1"
   [(set_attr "length" "4")
@@ -2460,7 +2460,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; SF->uSI SF->uDI DF->uSI DF->uDI (using rounding towards zero)
 ;; FS2UINT_RZ FS2UL_RZ FD2UINT_RZ FD2UL_RZ
 (define_insn "fixuns_trunc<GPF:mode><GPI:mode>2"
-  [(set (match_operand:GPI 0 "register_operand"         "=r")
+  [(set (match_operand:GPI 0 "core_register_operand"         "=c")
 	(unsigned_fix:GPI (match_operand:GPF 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<GPF:sfxtab>2u<GPI:f2tab>_rz\\t%0,%1"
@@ -2470,7 +2470,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;; SF->SI SF->DI DF->SI DF->DI (using rounding towards zero)
 ;; FS2INT_RZ FS2L_RZ FD2INT_RZ FD2L_RZ
 (define_insn "fix_trunc<GPF:mode><GPI:mode>2"
-  [(set (match_operand:GPI 0 "register_operand"         "=r")
+  [(set (match_operand:GPI 0 "core_register_operand"         "=c")
 	(fix:GPI (match_operand:GPF 1 "register_operand" "w")))]
   "ARC64_HAS_FP_BASE"
   "f<GPF:sfxtab>2<GPI:f2tab>_rz\\t%0,%1"
