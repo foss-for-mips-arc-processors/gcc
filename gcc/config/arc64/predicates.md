@@ -92,6 +92,16 @@
      default:
        return 0;
      }
+   })
+
+(define_predicate "core_register_operand"
+  (match_code "reg,subreg")
+  {
+   if (GET_CODE (op) == SUBREG)
+     op = SUBREG_REG (op);
+   return (REG_P (op)
+	   && (REGNO (op) <= BLINK_REGNUM
+	       || (REGNO (op)) >= FIRST_PSEUDO_REGISTER));
   })
 
 

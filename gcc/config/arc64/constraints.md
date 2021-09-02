@@ -32,6 +32,11 @@
 (define_register_constraint "w" "ARC64_HAS_FP_BASE ? FP_REGS : NO_REGS"
   "Floating point and SIMD vector registers.")
 
+;; Register suited for floating point instructions [r0-r31]
+(define_register_constraint "c" "CORE_REGS"
+  "@internal
+   Core register set")
+
 ;; Register suited for mov_s g,h instructions like.
 ;; FIXME! check if we get better code when it is register_constraint.
 (define_constraint "h"
