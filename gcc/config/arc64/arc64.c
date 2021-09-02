@@ -255,6 +255,7 @@ arc64_save_reg_p (int regno)
 {
   bool call_saved;
   bool might_clobber;
+  bool eh_needed;
 
   gcc_assert (regno <= F31_REGNUM);
   gcc_assert (regno >= R0_REGNUM);
@@ -315,7 +316,15 @@ arc64_save_reg_p (int regno)
   call_saved = !global_regs[regno] && !call_used_regs[regno];
   might_clobber = df_regs_ever_live_p (regno) || crtl->saves_all_registers;
 
-  if (call_saved && might_clobber)
+  /* In a frame that calls __builtin_eh_return two data registers are used to
+     pass values back to the exception handler.  Ensure that these registers are
+     spilled to the stack so that the exception throw code can find them, and
+     update the saved values.  The handling code will then consume these
+     reloaded values to handle the exception.  */
+  eh_needed = crtl->calls_eh_return
+    && (EH_RETURN_DATA_REGNO (regno) != INVALID_REGNUM);
+
+  if ((call_saved && might_clobber) || eh_needed)
     return true;
   return false;
 }
@@ -354,7 +363,9 @@ arc64_compute_frame_info (void)
       frame->reg_offset[regno] = -1;
 
   /* Check if we need to save the return address.  */
-  if (!crtl->is_leaf || df_regs_ever_live_p (BLINK_REGNUM))
+  if (!crtl->is_leaf
+      || df_regs_ever_live_p (BLINK_REGNUM)
+      || crtl->calls_eh_return)
     {
       frame->reg_offset[BLINK_REGNUM] = offset;
       offset += UNITS_PER_WORD;
@@ -649,6 +660,16 @@ static bool
 arc64_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
 {
   return ((to == HARD_FRAME_POINTER_REGNUM) || (to == STACK_POINTER_REGNUM));
+}
+
+/* We force all frames that call eh_return to require a frame pointer, this will
+   ensure that the previous frame pointer is stored on entry to the function,
+   and will then be reloaded at function exit.  */
+
+static bool
+arc64_frame_pointer_required (void)
+{
+ return cfun->calls_alloca || crtl->calls_eh_return;
 }
 
 /* Giving a symbol, return how it will be addressed.  */
@@ -4283,6 +4304,18 @@ arc64_expand_epilogue (bool sibcall_p)
   if (frame_deallocated != 0)
     frame_stack_add (frame_deallocated);
 
+  /* For frames that use __builtin_eh_return, the register defined by
+     EH_RETURN_STACKADJ_RTX is set to 0 for all standard return paths.
+     On eh_return paths however, the register is set to the value that
+     should be added to the stack pointer in order to restore the
+     correct stack pointer for the exception handling frame.
+
+     For ARC64 we are going to use r4 for EH_RETURN_STACKADJ_RTX, add
+     this onto the stack for eh_return frames.  */
+  if (crtl->calls_eh_return)
+    emit_insn (gen_add2_insn (stack_pointer_rtx,
+			      EH_RETURN_STACKADJ_RTX));
+
   if (!sibcall_p)
     emit_jump_insn (gen_simple_return ());
 }
@@ -5139,6 +5172,9 @@ arc64_use_plt34_p (rtx sym)
 
 #undef TARGET_CAN_ELIMINATE
 #define TARGET_CAN_ELIMINATE arc64_can_eliminate
+
+#undef TARGET_FRAME_POINTER_REQUIRED
+#define TARGET_FRAME_POINTER_REQUIRED arc64_frame_pointer_required
 
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P arc64_legitimate_address_p
