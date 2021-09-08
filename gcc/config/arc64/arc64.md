@@ -1348,7 +1348,7 @@ vpack, vsub, xbfu, xor, xorl"
 (define_insn_and_split "dbnz"
   [(set (pc)
 	(if_then_else
-	 (ne (match_operand:DI 0 "nonimmediate_operand" "+r,!m")
+	 (ne (match_operand:DI 0 "arc64_dest_operand" "+r,!Ustor")
 	     (const_int 1))
 	 (label_ref (match_operand 1 "" ""))
 	 (pc)))
