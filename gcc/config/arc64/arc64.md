@@ -1357,9 +1357,31 @@ vpack, vsub, xbfu, xor, xorl"
 		 (const_int -1)))
    (clobber (match_scratch:DI 2 "=X,r"))]
   ""
-  "@
-   dbnz%*\\t%0,%l1
-   #"
+  "*
+{
+  switch (which_alternative)
+    {
+    default:
+      return \"#\";
+
+    case 0:
+      switch (get_attr_length (insn))
+	{
+	case 4:
+	  /* This is the normal case.  */
+	  return \"dbnz%*\\t%0,%l1\";
+
+	case 8:
+	  /* The dbnz is too short, use sub.f/beq instructions.  */
+	  return \"sub.f\\t%0,%0,1\\n\\tbne%*\\t%l1\";
+
+	default:
+	  gcc_unreachable ();
+	}
+      break;
+    }
+}
+"
   "reload_completed && memory_operand (operands[0], DImode)"
   [(set (match_dup 2) (match_dup 0))
    (parallel
@@ -1375,7 +1397,16 @@ vpack, vsub, xbfu, xor, xorl"
   ""
   [(set_attr "iscompact" "no")
    (set_attr "type" "dbnz")
-   (set_attr "length" "4,20")])
+   (set (attr "length")
+	(cond [(eq_attr "alternative" "1")
+	       (const_int 20)
+	       (and (eq_attr "alternative" "0")
+		    (ge (minus (match_dup 1) (pc)) (const_int -4092))
+		    (le (minus (match_dup 1) (pc))
+			(minus (const_int 4094)
+			       (symbol_ref "get_attr_delay_slot_length (insn)"))))
+	       (const_int 4)]
+	      (const_int 8)))])
 
 ; conditional execution
 (define_insn "*returnt_ce"
