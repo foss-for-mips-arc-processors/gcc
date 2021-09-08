@@ -514,7 +514,7 @@ arc64-*-elf)
 arc64-*-linux*)
 	tmake_file="${tmake_file} arc64/t-arc64 arc64/t-softfp t-softfp t-softfp-sfdf"
 	tmake_file="${tmake_file} t-slibgcc-libgcc t-slibgcc-nolc-override"
-	#FIXME! add unwind support md_unwind_header=arc64/linux-unwind.h
+	md_unwind_header=arc64/linux-unwind.h
 	;;
 arm-wrs-vxworks7*)
 	tmake_file="$tmake_file arm/t-arm arm/t-elf arm/t-bpabi arm/t-vxworks7"
