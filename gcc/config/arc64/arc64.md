@@ -218,6 +218,11 @@
 ;; All 2xfp Vectors
 (define_mode_iterator W2xF [(V2DF "ARC64_VFP_128")])
 
+;; Complement of the above.
+(define_mode_iterator V1FRF [(V2HF "ARC64_VFP_32")
+			     (V4HF "ARC64_VFP_64") (V2SF "ARC64_VFP_64")
+			     (V8HF "ARC64_VFP_128") (V4SF "ARC64_VFP_128")])
+
 ;; -------------------------------------------------------------------
 ;; Code Iterators
 ;; -------------------------------------------------------------------
