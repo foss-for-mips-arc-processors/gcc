@@ -2070,6 +2070,19 @@
   [(set_attr "length" "4")
    (set_attr "type" "vf<mntab>")])
 
+;; We need a neg pattern (observed in specInt2006 481.wrf)
+(define_expand "neg<mode>2"
+  [(set (match_operand:V1FRF 0 "arc64_fsimd_register" "=w")
+	(neg:V1FRF (match_operand:V1FRF 1 "arc64_fsimd_register" "w")))]
+  "ARC64_HAS_FP_BASE"
+  "{
+    rtx tmp = gen_reg_rtx (<VEL>mode);
+    emit_move_insn (tmp, CONST0_RTX (<VEL>mode));
+    emit_insn (gen_vfnmadds<mode> (operands[0], operands[1],
+				   tmp, operands[1]));
+    DONE;
+  }")
+
 (define_insn "vec_duplicate<mode>"
   [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(vec_duplicate:VALLF (match_operand:<VEL> 1 "register_operand" "w")))]
@@ -2218,9 +2231,9 @@
 (define_insn "fma<mode>4_rep"
   [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
-		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
 		   (vec_duplicate:VALLF
-		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
+		    (match_operand:<VEL> 2 "register_operand"  "w"))
+		   (match_operand:VALLF 3 "arc64_fsimd_register"  "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>madds\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2236,17 +2249,17 @@
   "ARC64_HAS_FP_BASE
    && peep2_reg_dead_p (2, operands[0])"
   [(set (match_dup 2)
-	(fma:VALLF (match_dup 3) (match_dup 4)
-		   (vec_duplicate:VALLF (match_dup 1))))]
+	(fma:VALLF (match_dup 3) (vec_duplicate:VALLF (match_dup 1))
+		   (match_dup 4)))]
   "")
 
 ;; FV<P>MSUBS
 (define_insn "fnma<mode>4_rep"
   [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
 	(fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
-		   (match_operand:VALLF 2 "arc64_fsimd_register"  "w")
 		   (vec_duplicate:VALLF
-		    (match_operand:<VEL> 3 "register_operand"  "w"))))]
+		    (match_operand:<VEL> 2 "register_operand"  "w"))
+		   (match_operand:VALLF 3 "arc64_fsimd_register"  "w")))]
   "ARC64_HAS_FP_BASE"
   "vf<sfxtab>msubs\\t%0,%1,%2,%3"
   [(set_attr "length" "4")
@@ -2262,9 +2275,35 @@
   "ARC64_HAS_FP_BASE
    && peep2_reg_dead_p (2, operands[0])"
   [(set (match_dup 2)
-	(fma:VALLF (neg:VALLF (match_dup 3)) (match_dup 4)
-		   (vec_duplicate:VALLF (match_dup 1))))]
+	(fma:VALLF (neg:VALLF (match_dup 3)) (vec_duplicate:VALLF (match_dup 1))
+		   (match_dup 4)))]
   "")
+
+;; FV<P>NMADDS
+(define_insn "vfnmadds<mode>"
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(neg:VALLF
+	 (fma:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w")
+		    (vec_duplicate:VALLF
+		     (match_operand:<VEL> 2 "register_operand"  "w"))
+		    (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmadds\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmadd")])
+
+;; FV<P>NMSUBS
+(define_insn "vfnmsubs<mode>"
+  [(set (match_operand:VALLF 0 "arc64_fsimd_register" "=w")
+	(neg:VALLF
+	 (fma:VALLF (neg:VALLF (match_operand:VALLF 1 "arc64_fsimd_register"  "w"))
+		    (vec_duplicate:VALLF
+		     (match_operand:<VEL> 2 "register_operand"  "w"))
+		    (match_operand:VALLF 3 "arc64_fsimd_register"  "w"))))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>nmsubs\\t%0,%1,%2,%3"
+  [(set_attr "length" "4")
+   (set_attr "type" "fnmsub")])
 
 ;; Vector reduction instructions (emulated)
 (define_expand "reduc_plus_scal_<mode>"
