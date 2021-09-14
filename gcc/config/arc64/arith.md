@@ -981,7 +981,7 @@
   [(set (match_operand:DI 0 "register_operand" "=r,r,r")
 	(mult:DI
 	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,0,r"))
-	 (match_operand:SI 2 "immediate_operand" "U06S0,S12S0,i")))
+	 (match_operand:SI 2 "<su_optab>signed32b_operand" "U06S0,S12S0,i")))
    (clobber (reg:DI R58_REGNUM))]
   "TARGET_SIMD"
   "mpyd<ANY_EXTEND:su_optab>\\t%0,%1,%2"
@@ -1298,12 +1298,22 @@
   [(set_attr "length" "8")
    (set_attr "type" "dmpywh")])
 
-(define_insn "*<ANY_EXTEND:su_optab>mpywh"
+(define_insn "*mpywhu"
   [(set (match_operand:SI 0 "register_operand"                        "=r,r")
-	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "r,r"))
-		 (match_operand:SI 2 "nonmemory_operand" "r,i")))]
+	(mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "r,r"))
+		 (match_operand:SI 2 "arc64_nonmem_unsig_operand" "r,i")))]
   "TARGET_SIMD"
-  "dmpywh<ANY_EXTEND:su_optab>\\t%0,%2,%1"
+  "dmpywhu\\t%0,%2,%1"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "dmpywh")
+   ])
+
+(define_insn "*mpywh"
+  [(set (match_operand:SI 0 "register_operand"                        "=r,r")
+	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "r,r"))
+		 (match_operand:SI 2 "arc64_nonmem_operand" "r,i")))]
+  "TARGET_SIMD"
+  "dmpywh\\t%0,%2,%1"
   [(set_attr "length" "4,8")
    (set_attr "type" "dmpywh")
    ])
