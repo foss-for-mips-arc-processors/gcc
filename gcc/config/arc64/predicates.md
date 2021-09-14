@@ -57,6 +57,12 @@
 	    (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		 (match_test "SIGNED_INT32 (INTVAL (op))")))))
 
+(define_predicate "arc64_nonmem_unsig_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_code "const_int")
+	    (match_test "UNSIGNED_INT32 (INTVAL (op))")
+	    (match_test "INTVAL (op) > 0"))))
+
 ;; Used for HIGH or LO_SUM patterns
 (define_predicate "arc64_immediate_or_pic"
   (ior (match_operand 0 "immediate_operand")
@@ -214,6 +220,15 @@
 (define_predicate "unsign_immediate_operand"
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT16 (INTVAL (op))")))
+
+(define_predicate "usigned32b_operand"
+  (and (match_code "const_int")
+       (match_test "INTVAL (op) > 0")
+       (match_test "UNSIGNED_INT32 (INTVAL (op))")))
+
+(define_predicate "signed32b_operand"
+  (and (match_code "const_int")
+       (match_test "SIGNED_INT32 (INTVAL (op))")))
 
 (define_predicate "bbitimm_operand"
   (and (match_code "const_int")
