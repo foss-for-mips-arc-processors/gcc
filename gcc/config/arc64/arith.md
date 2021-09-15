@@ -1002,17 +1002,6 @@
    [(set_attr "length" "4,8")
    (set_attr "type" "v<optab>")])
 
-(define_insn "zero_ext<optab>hi<mode>3"
-  [(set (match_operand:GPI 0 "register_operand"  "=r,r,r")
-	(zero_extend:GPI
-	 (ADDSUB:HI
-	  (match_operand:HI 1 "register_operand"  "r,0,r")
-	  (match_operand:HI 2 "nonmemory_operand" "rU06Sx,S12S0,i"))))]
-  ""
-  "<optab>\\t%0,%1,%2"
-   [(set_attr "length" "4,4,8")
-   (set_attr "type" "<optab>")])
-
 ;; MADD patterns
 ;; 32 + (signe) 16 x (signe) 16 -> 32
 (define_expand "<ANY_EXTEND:su_optab>maddhisi4"
