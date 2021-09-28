@@ -864,6 +864,9 @@ arc64_legitimate_constant_p (machine_mode mode, rtx x)
       return true;
 
     case SYMBOL_REF:
+      if (SYMBOL_REF_TLS_MODEL (x))
+	return false;
+      /* fallthrough  */
     case LABEL_REF:
       return true;
 
@@ -5152,6 +5155,17 @@ arc64_use_plt34_p (rtx sym)
   return (arc64_get_symbol_type (sym) == ARC64_LPIC);
 }
 
+/* Determine if it's legal to put X into the constant pool.  We arive here in
+   the case of a TLS symbol which needs to be precomputed.  We force this in
+   legitimize_constant_p.  */
+
+static bool
+arc64_cannot_force_const_mem (machine_mode mode ATTRIBUTE_UNUSED,
+			      rtx x)
+{
+  return tls_referenced_p (x);
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
@@ -5346,6 +5360,9 @@ arc64_libgcc_floating_mode_supported_p
    machine reorg phase.  More info see github issue#416.  */
 #undef TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P
 #define TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P hook_bool_void_true
+
+#undef TARGET_CANNOT_FORCE_CONST_MEM
+#define TARGET_CANNOT_FORCE_CONST_MEM arc64_cannot_force_const_mem
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
