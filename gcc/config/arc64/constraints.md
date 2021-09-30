@@ -83,22 +83,22 @@
   (and (match_code "mem")
        (match_test "arc64_legitimate_store_address_p (mode, XEXP (op, 0))")))
 
-;(define_constraint "Us<"
-;  "@internal
-;   Stack pre-decrement"
-;  (and (match_code "mem")
-;       (match_test "GET_CODE (XEXP (op, 0)) == PRE_DEC")
-;       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
-;       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
-;
-;(define_constraint "Us>"
-;  "@internal
-;   Stack post-increment"
-;  (and (match_code "mem")
-;       (match_test "GET_CODE (XEXP (op, 0)) == POST_INC")
-;       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
-;       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REG")))
-;
+(define_constraint "Ustk<"
+  "@internal
+   Stack pre-decrement"
+  (and (match_code "mem")
+       (match_test "GET_CODE (XEXP (op, 0)) == PRE_DEC")
+       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
+       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REGNUM")))
+
+(define_constraint "Ustk>"
+  "@internal
+   Stack post-increment"
+  (and (match_code "mem")
+       (match_test "GET_CODE (XEXP (op, 0)) == POST_INC")
+       (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
+       (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REGNUM")))
+
 ;;; Internal immediate constraint used to split move instructions.
 ;(define_constraint "Cax"
 ;  "@internal
