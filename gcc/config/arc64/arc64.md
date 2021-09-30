@@ -781,22 +781,6 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type" "fmov,ld,st,move,move,move,move,ld,st")
    (set_attr "length" "4,*,*,4,4,4,8,*,*")])
 
-(define_insn "*arc64_push"
-  [(set (mem:DI (pre_dec (reg:DI SP_REGNUM)))
-	(                 match_operand:DI 0 "register_operand" "qr"))]
-   ""
-   "pushl_s\\t%0"
-   [(set_attr "type" "st")
-    (set_attr "length" "2")])
-
-(define_insn "*arc64_pop"
-  [(set (                  match_operand:DI 0 "register_operand" "=qr")
-	(mem:DI (post_inc (reg:DI SP_REGNUM))))]
-  ""
-  "popl_s\\t%0"
-  [(set_attr "type" "ld")
-   (set_attr "length" "2")])
-
 ;; move 128bit
 (define_insn_and_split "*arc64_movti"
   [(set (match_operand:TI 0 "arc64_dest_operand"  "=r,r,Ustor")
@@ -822,8 +806,8 @@ vpack, vsub, xbfu, xor, xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,r,Ustor")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,m, r"))]
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,    r,r,Ustk<,Ustor")
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,Ustk>,m,    r, r"))]
    "register_operand (operands[0], DImode)
     || register_operand (operands[1], DImode)
     || (CONST_INT_P (operands[1])
@@ -836,10 +820,12 @@ vpack, vsub, xbfu, xor, xorl"
     movl\\t%0,%1
     addl\\t%0,pcl,%1
     stl%U0\\t%1,%0
+    popl_s\\t%0
     ldl%U1\\t%0,%1
+    pushl_s\\t%1
     stl%U0\\t%1,%0"
-   [(set_attr "type" "move,move,move,move,move,addl,st,ld,st")
-    (set_attr "length" "2,2,4,4,8,8,8,*,*")]
+   [(set_attr "type" "move,move,move,move,move,addl,st,ld,ld,st,st")
+    (set_attr "length" "2,2,4,4,8,8,8,2,*,2,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
