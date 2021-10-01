@@ -2294,6 +2294,15 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type"       "xbfu")
    (set_attr "length"     "8")])
 
+(define_insn "bswap<mode>2"
+  [(set (match_operand:GPI 0 "register_operand"  "=r,r")
+	(bswap:GPI
+	 (match_operand:GPI 1 "nonmemory_operand" "rU06S0,S32S0")))]
+  ""
+  "swape<mcctab>\\t%0,%1"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "swap")])
+
 ;; -------------------------------------------------------------------
 ;; Bitscan
 ;; -------------------------------------------------------------------
