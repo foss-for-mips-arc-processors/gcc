@@ -1731,7 +1731,7 @@
   [(set (match_operand:VALL 0 "register_operand" "=r")
 	(bswap:VALL (match_operand:VALL 1 "register_operand" "r")))]
   "TARGET_SIMD"
-  "swap<mcctab>e\\t%0,%1"
+  "swape<mcctab>\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "swap")])
 
