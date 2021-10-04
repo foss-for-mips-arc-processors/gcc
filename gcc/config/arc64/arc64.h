@@ -357,7 +357,8 @@ enum reg_class
    implicitly done, or UNKNOWN if none.  */
 #define LOAD_EXTEND_OP(MODE) (((MODE) == SImode) ? SIGN_EXTEND : ZERO_EXTEND)
 
-#define SLOW_BYTE_ACCESS 0
+/* Enable wide bitfield accesses for more efficient bitfield code.  */
+#define SLOW_BYTE_ACCESS 1
 
 #define NO_FUNCTION_CSE	1
 
