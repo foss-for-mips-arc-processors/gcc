@@ -3788,6 +3788,18 @@ arc64_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (get_attr_type (prev) == TYPE_MAC
       && (get_attr_type (curr) == TYPE_MAC))
     return true;
+  if (get_attr_type (prev) == TYPE_VMAC2H
+      && (get_attr_type (curr) == TYPE_VMAC2H))
+    return true;
+
+  /* 3rd Keep close to each other the MAC and the following MOV(L) rx,r58.  This
+     pattern will be match in machine reorg and simplified to a simple MAC
+     instruction.  */
+  if (get_attr_type (curr) == TYPE_MOVE
+      && REG_P (SET_SRC (curr_set))
+      && REGNO (SET_SRC (curr_set)) == R58_REGNUM
+      && get_attr_type (prev) == TYPE_MAC)
+    return true;
 
 #if 0
   /* Try to keep r58 setting close to any previous related instruction.  We may
