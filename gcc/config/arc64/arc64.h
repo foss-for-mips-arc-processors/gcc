@@ -111,7 +111,7 @@
 #define LONG_DOUBLE_TYPE_SIZE	64
 
 /* Defined by ABI.  */
-#define WCHAR_TYPE "unsigned int"
+#define WCHAR_TYPE "int"
 #define WCHAR_TYPE_SIZE 32
 
 #define DEFAULT_SIGNED_CHAR 0
