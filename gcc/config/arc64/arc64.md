@@ -1292,6 +1292,13 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "length" "2")
   (set_attr "type" "trap")])
 
+(define_insn "trap"
+  [(trap_if (const_int 1) (const_int 0))]
+  ""
+  "trap_s\\t5"
+  [(set_attr "length" "2")
+  (set_attr "type" "trap")])
+
 (define_insn "nop"
   [(const_int 0)]
   ""
