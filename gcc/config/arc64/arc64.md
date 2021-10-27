@@ -180,7 +180,7 @@
 
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
-(define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
+(define_mode_iterator P [SI DI])
 
 ;; Iterator for General Purpose Floating-point registers (16 -, 32-
 ;; and 64-bit modes)
@@ -942,7 +942,7 @@ vpack, vsub, xbfu, xor, xorl"
   [(parallel [(call (match_operand 0 "memory_operand")
 		    (match_operand 1 "general_operand"))
 	      (use (match_operand 2 "" ""))
-	     (clobber (reg:DI BLINK_REGNUM))])]
+	     (clobber (reg BLINK_REGNUM))])]
   ""
   {
    arc64_expand_call (NULL_RTX, operands[0], false);
@@ -950,10 +950,10 @@ vpack, vsub, xbfu, xor, xorl"
   }
 )
 
-(define_insn "*call_insn"
-  [(call (mem:DI (match_operand:DI 0 "arc64_call_insn_operand" "q,r,BLsym,S12S0,S32S0"))
+(define_insn "*call<mode>_insn"
+  [(call (mem:P (match_operand:P 0 "arc64_call_insn_operand" "q,r,BLsym,S12S0,S32S0"))
 	 (match_operand 1 "" ""))
-   (clobber (reg:DI BLINK_REGNUM))]
+   (clobber (reg:P BLINK_REGNUM))]
   ""
   "@
    jl_s%*\\t[%0]
@@ -969,7 +969,7 @@ vpack, vsub, xbfu, xor, xorl"
 		   (call (match_operand 1 "memory_operand")
 			 (match_operand 2 "general_operand")))
 	      (use (match_operand 3 "" ""))
-	      (clobber (reg:DI BLINK_REGNUM))])]
+	      (clobber (reg BLINK_REGNUM))])]
   ""
   "
   {
@@ -978,12 +978,12 @@ vpack, vsub, xbfu, xor, xorl"
   }"
 )
 
-(define_insn "*call_value_insn"
+(define_insn "*call<mode>_value_insn"
   [(set (match_operand 0 "" "")
-	(call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand"
+	(call (mem:P (match_operand:P 1 "arc64_call_insn_operand"
 					"q,r,BLsym,S12S0,S32S0"))
 	      (match_operand 2 "" "")))
-   (clobber (reg:DI BLINK_REGNUM))]
+   (clobber (reg:P BLINK_REGNUM))]
   ""
   "@
    jl_s%*\\t[%1]
