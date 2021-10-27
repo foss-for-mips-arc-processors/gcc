@@ -1,5 +1,5 @@
 /* Machine description for ARC64 architecture.
-   Copyright (C) 2019 Free Software Foundation, Inc.
+   Copyright (C) 2021 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -30,8 +30,24 @@
    numbered.  */
 #define WORDS_BIG_ENDIAN 0
 
+/* Determine TARGET_ARCH64 in all possible cases. */
+#ifdef IN_LIBGCC2
+#if defined(__ARC64_ARCH64__)
+#define TARGET_ARCH64 1
+#else
+#define TARGET_ARCH64 0
+#endif
+#else /* not IN_LIBGCC2 */
+#define TARGET_ARCH64 TARGET_64BIT
+#endif
+
+#define MAX_BITS_PER_WORD 64
+
 /* Width of a word, in units (bytes).  */
-#define UNITS_PER_WORD  8
+#define UNITS_PER_WORD  (TARGET_ARCH64 ? 8 : 4)
+#ifndef IN_LIBGCC2
+#define MIN_UNITS_PER_WORD 4
+#endif
 
 /* Width of a fp register, in bytes.  */
 #define UNITS_PER_FP_REG ((arc64_fp_model == 2) ? 8 : 4)
@@ -102,9 +118,9 @@
 /* Layout of Source Language Data Types.  */
 #define SHORT_TYPE_SIZE         16
 #define INT_TYPE_SIZE           32
-#define LONG_TYPE_SIZE          64
 #define LONG_LONG_TYPE_SIZE     64
-#define POINTER_SIZE            64
+#define POINTER_SIZE            (TARGET_ARCH64 ? 64 : 32)
+#define LONG_TYPE_SIZE          POINTER_SIZE
 
 #define FLOAT_TYPE_SIZE		32
 #define DOUBLE_TYPE_SIZE	64
@@ -116,13 +132,17 @@
 
 #define DEFAULT_SIGNED_CHAR 0
 
-#define SIZE_TYPE       "long unsigned int"
-#define PTRDIFF_TYPE	"long int"
+#undef SIZE_TYPE
+#define SIZE_TYPE       (POINTER_SIZE == 64 ? "long unsigned int" : "unsigned int")
+
+#undef PTRDIFF_TYPE
+#define PTRDIFF_TYPE	(POINTER_SIZE == 64 ? "long int" : "int")
 
 /* Specify the machine mode that the hardware addresses have.
    After generation of rtl, the compiler makes no further distinction
    between pointers and any other objects of this machine mode.  */
-#define Pmode         DImode
+
+#define Pmode word_mode
 
 /* Mode of a function address in a call instruction (for indexing purposes).  */
 #define FUNCTION_MODE	Pmode
@@ -410,10 +430,10 @@ struct arc64_args
 
 /* An integer expression for the size in bits of the largest integer machine
    mode that should actually be used.  We allow pairs of registers.  */
-#define MAX_FIXED_MODE_SIZE GET_MODE_BITSIZE (TImode)
+#define MAX_FIXED_MODE_SIZE GET_MODE_BITSIZE (TARGET_ARCH64 ? TImode : DImode)
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
-#define MOVE_MAX (UNITS_PER_WORD * 2)
+#define MOVE_MAX (16)
 
 /* The base cost overhead of a memcpy call, for MOVE_RATIO and friends.  */
 #define ARC64_CALL_RATIO 8
@@ -495,7 +515,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 /* Length in units of the trampoline for entering a nested function: 3
    insns + 2 pointer-sized entries.  */
-#define TRAMPOLINE_SIZE (16+16)
+#define TRAMPOLINE_SIZE 16+16
 
 /* Alignment required for a trampoline in bits .  */
 #define TRAMPOLINE_ALIGNMENT 64

@@ -104,6 +104,14 @@ mwide
 Target Mask(WIDE_SIMD)
 Enable wide floating point SIMD support.
 
+m32
+Target RejectNegative InverseMask(64BIT)
+Use 32-bit machine.
+
+m64
+Target RejectNegative Mask(64BIT)
+Use 64-bit machine.
+
 m128
 Target Mask(WIDE_LDST)
 Enable wide data transfer support.
