@@ -3950,7 +3950,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
       switch (GET_CODE (op1))
 	{
 	case CONST_INT:
-	  gcc_assert (mode == DImode);
+	  gcc_assert (mode == Pmode);
 	  if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
 	    {
 	      HOST_WIDE_INT val;
