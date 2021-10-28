@@ -684,6 +684,10 @@ extern const enum reg_class arc64_regno_to_regclass[];
   { "subtarget_cpp_spec",	SUBTARGET_CPP_SPEC }, \
   SUBTARGET_EXTRA_SPECS
 
+#undef  ASM_SPEC
+#define ASM_SPEC                                \
+  "%{m32:-mcpu=arc32} "
+
 #ifndef SUBTARGET_EXTRA_SPECS
 #define SUBTARGET_EXTRA_SPECS
 #endif
