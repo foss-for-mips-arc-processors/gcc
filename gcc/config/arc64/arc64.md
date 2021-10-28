@@ -1020,10 +1020,10 @@ vpack, vsub, xbfu, xor, xorl"
 )
 
 ;FIXME! add short variant for jump
-(define_insn "*sibcall_insn"
+(define_insn "*sibcall<mode>_insn"
   [(call
     (mem:DI
-     (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
+     (match_operand:P 0 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
     (match_operand 1 "" ""))
   (return)]
   "SIBLING_CALL_P (insn)"
@@ -1037,11 +1037,11 @@ vpack, vsub, xbfu, xor, xorl"
 )
 
 ;FIXME! add short variant for jump
-(define_insn "*sibcall_value_insn"
+(define_insn "*sibcall<mode>_value_insn"
  [(set (match_operand 0 "" "")
        (call
-	(mem:DI
-	 (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
+	(mem:P
+	 (match_operand:P 1 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
 	(match_operand 2 "" "")))
   (return)]
   "SIBLING_CALL_P (insn)"
