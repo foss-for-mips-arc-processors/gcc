@@ -158,7 +158,7 @@
 ;; -------------------------------------------------------------------
 
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
-(define_mode_iterator GPI [SI DI])
+(define_mode_iterator GPI [SI (DI "TARGET_64BIT")])
 
 ;; For doubling width of an integer mode
 (define_mode_attr DWI [(QI "HI") (HI "SI") (SI "DI") (DI "TI")])
@@ -170,7 +170,7 @@
 (define_mode_iterator EXT [QI HI SI])
 
 ;; Iterator for all integer modes (up to 64-bit)
-(define_mode_iterator ALLI [QI HI SI DI])
+(define_mode_iterator ALLI [QI HI SI (DI "TARGET_64BIT")])
 
 ;; Iterator for HI SI and DI modes
 (define_mode_iterator EPI [HI SI DI])
@@ -1595,7 +1595,7 @@ vpack, vsub, xbfu, xor, xorl"
 (define_expand "<optab>sidi2"
   [(set (match_operand:DI 0 "register_operand")
 	(ANY_EXTEND:DI (match_operand:SI 1 "nonimmediate_operand")))]
-  ""
+  "TARGET_64BIT"
 )
 
 (define_expand "<ANY_EXTEND:optab><SHORT:mode><GPI:mode>2"
@@ -1681,7 +1681,7 @@ vpack, vsub, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand")
 	(ARITH:DI (match_operand:DI 1 "register_operand")
 		  (match_operand:DI 2 "nonmemory_operand")))]
-  ""
+  "TARGET_64BIT"
   {
    if (!register_operand (operands[2], DImode)
        && !satisfies_constraint_S32S0 (operands[2]))
