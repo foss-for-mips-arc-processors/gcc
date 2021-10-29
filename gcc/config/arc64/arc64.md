@@ -180,7 +180,7 @@
 
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
-(define_mode_iterator P [SI DI])
+(define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
 
 ;; Iterator for General Purpose Floating-point registers (16 -, 32-
 ;; and 64-bit modes)
@@ -1022,7 +1022,7 @@ vpack, vsub, xbfu, xor, xorl"
 ;FIXME! add short variant for jump
 (define_insn "*sibcall<mode>_insn"
   [(call
-    (mem:DI
+    (mem:P
      (match_operand:P 0 "arc64_call_insn_operand" "Sbreg,BLsym,S12S0,S32S0"))
     (match_operand 1 "" ""))
   (return)]
@@ -1055,15 +1055,15 @@ vpack, vsub, xbfu, xor, xorl"
 )
 
 ; conditional execution patterns
-(define_insn "*call_ce"
+(define_insn "*call<mode>_ce"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 2 "cc_register" "") (const_int 0)])
     (parallel
-     [(call (mem:DI
-	     (match_operand:DI 0 "arc64_call_insn_operand" "r,BLsym,U06S0"))
+     [(call (mem:P
+	     (match_operand:P 0 "arc64_call_insn_operand" "r,BLsym,U06S0"))
 	    (match_operand 1 "" ""))
-      (clobber (reg:DI BLINK_REGNUM))]))]
+      (clobber (reg:P BLINK_REGNUM))]))]
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[0], Pmode)"
   "@
@@ -1073,16 +1073,16 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
-(define_insn "*callv_ce"
+(define_insn "*callv<mode>_ce"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (parallel
      [(set (match_operand 0 "" "")
-	   (call (mem:DI (match_operand:DI 1 "arc64_call_insn_operand"
+	   (call (mem:P (match_operand:P 1 "arc64_call_insn_operand"
 					   "r,BLsym,U06S0"))
 		 (match_operand 2 "" "")))
-      (clobber (reg:DI BLINK_REGNUM))]))]
+      (clobber (reg:P BLINK_REGNUM))]))]
   "(arc64_cmodel_var == ARC64_CMODEL_SMALL)
     || register_operand (operands[1], Pmode)"
   "@
@@ -1092,13 +1092,13 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type" "jl,bl,jl")
    (set_attr "length" "4")])
 
-(define_insn "*sibcall_insn_ce"
+(define_insn "*sibcall<mode>_insn_ce"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 2 "cc_register" "") (const_int 0)])
     (parallel
-     [(call (mem:DI
-	     (match_operand:DI 0 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
+     [(call (mem:P
+	     (match_operand:P 0 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
 	    (match_operand 1 "" ""))
       (return)]))]
   "SIBLING_CALL_P (insn)
@@ -1111,15 +1111,15 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type" "jump,branch,jump")
    (set_attr "length" "4")])
 
-(define_insn "*sibcall_value_insn_ce"
+(define_insn "*sibcall<mode>_value_insn_ce"
   [(cond_exec
     (match_operator 3 "arc64_comparison_operator"
 		    [(match_operand 4 "cc_register" "") (const_int 0)])
     (parallel
      [(set (match_operand 0 "" "")
 	   (call
-	    (mem:DI
-	     (match_operand:DI 1 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
+	    (mem:P
+	     (match_operand:P 1 "arc64_call_insn_operand" "Sbreg,BLsym,U06S0"))
 	    (match_operand 2 "" "")))
       (return)]))]
   "SIBLING_CALL_P (insn)
