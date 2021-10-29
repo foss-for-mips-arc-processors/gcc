@@ -614,11 +614,19 @@ extern const enum reg_class arc64_regno_to_regclass[];
 /* Called by crtstuff.c to make calls to function FUNCTION that are defined in
    SECTION_OP, and then to switch back to text section.  */
 #undef CRT_CALL_STATIC_FUNCTION
+#ifdef __ARC64_ARCH32__
 #define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)		\
   asm (SECTION_OP "\n\t"					\
-       "addl\tr12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t"	\
+       "add\tr12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t" \
        "jl\t[r12]\n"						\
        TEXT_SECTION_ASM_OP);
+#elif (defined __ARC64_ARCH64__)
+#define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)		\
+  asm (SECTION_OP "\n\t"					\
+       "addl\tr12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t" \
+       "jl\t[r12]\n"						\
+       TEXT_SECTION_ASM_OP);
+#endif
 
 /* ATOMIC options.  */
 /* FIXME: is 0 okay or should it be -1 like DEFAULT_arc_mpy_option?  */
