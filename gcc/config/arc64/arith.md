@@ -634,7 +634,7 @@
   [(set (match_operand:TI 0 "register_operand")
 	(ADDSUB:TI (match_operand:TI 1 "register_operand")
 		   (match_operand:TI 2 "nonmemory_operand")))]
-  ""
+  "TARGET_64BIT"
 {
   rtx low_dest, op1_low, op2_low, high_dest, op1_high, op2_high;
 
@@ -941,7 +941,7 @@
   [(set (match_operand:TI 0 "register_operand")
 	(mult:TI (ANY_EXTEND:TI (match_operand:DI 1 "register_operand"))
 		 (ANY_EXTEND:TI (match_operand:DI 2 "register_operand"))))]
-  ""
+  "TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
   emit_insn (gen_muldi3 (low, operands[1], operands[2]));
@@ -958,7 +958,7 @@
   [(set (match_operand:TI                          0 "register_operand")
 	(mult:TI (zero_extend:TI (match_operand:DI 1 "register_operand"))
 		 (sign_extend:TI (match_operand:DI 2 "register_operand"))))]
-  ""
+  "TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
   emit_insn (gen_muldi3 (low, operands[1], operands[2]));
