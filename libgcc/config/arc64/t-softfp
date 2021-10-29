@@ -1,8 +1,7 @@
-softfp_float_modes := sf df
-softfp_int_modes := si di ti
-softfp_extensions := sfdf
-softfp_truncations := dfsf
-softfp_exclude_libgcc2 := n
-#softfp_extras := fixhfti fixunshfti floattihf floatuntihf
+include $(srcdir)/config/arc64/t-softfp32
 
-#TARGET_LIBGCC2_CFLAGS += -Wno-missing-prototypes
+CPU_ARCH32:=$(findstring __ARC64_ARCH32__,$(shell $(gcc_compile_bare) -dM -E - </dev/null))
+
+ifndef CPU_ARCH32
+softfp_int_modes += ti
+endif
