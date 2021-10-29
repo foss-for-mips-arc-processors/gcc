@@ -500,7 +500,7 @@ arc64_save_callee_saves (void)
 	  --regno;
 	}
       else
-	save_mode = DImode;
+	save_mode = word_mode;
 
       reg = gen_rtx_REG (save_mode, regno);
       frame_allocated += frame_save_reg (reg, offset, disp);
@@ -629,7 +629,7 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	  restore_mode = TImode;
 	}
       else
-	restore_mode = DImode;
+	restore_mode = word_mode;
 
       reg = gen_rtx_REG (restore_mode, regno);
       frame_deallocated += frame_restore_reg (reg, disp);
@@ -3982,24 +3982,27 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	  gcc_unreachable ();
 
 	case CONST_DOUBLE:
-	  {
-	    long res[2];
-	    unsigned HOST_WIDE_INT ival;
-	    scalar_int_mode imode = int_mode_for_mode (mode).require ();
+	  if (mode == SFmode)
+	    return false;
+	  else
+	    {
+	      long res[2];
+	      unsigned HOST_WIDE_INT ival;
+	      scalar_int_mode imode = int_mode_for_mode (mode).require ();
 
-	    gcc_assert (mode == DFmode);
+	      gcc_assert (mode == DFmode);
 
-	    real_to_target (res, CONST_DOUBLE_REAL_VALUE (op1),
-			    REAL_MODE_FORMAT (mode));
-	    lo = zext_hwi (res[0], 32);
-	    hi = zext_hwi (res[1], 32);
+	      real_to_target (res, CONST_DOUBLE_REAL_VALUE (op1),
+			      REAL_MODE_FORMAT (mode));
+	      lo = zext_hwi (res[0], 32);
+	      hi = zext_hwi (res[1], 32);
 
-	    ival = lo | (hi << 32);
-	    tmp = gen_reg_rtx (imode);
-	    emit_move_insn (tmp, gen_int_mode (ival, imode));
-	    emit_move_insn (op0, gen_lowpart (mode, tmp));
-	    return true;
-	  }
+	      ival = lo | (hi << 32);
+	      tmp = gen_reg_rtx (imode);
+	      emit_move_insn (tmp, gen_int_mode (ival, imode));
+	      emit_move_insn (op0, gen_lowpart (mode, tmp));
+	      return true;
+	    }
 
 	case CONST:
 	case SYMBOL_REF:
@@ -4838,6 +4841,7 @@ void arc64_expand_casesi (rtx operands[])
 	case ARC64_CMODEL_MEDIUM:
 	case ARC64_CMODEL_LARGE:
 	  {
+	    gcc_assert (word_mode == DImode);
 	    /* Same code is used for PIC and large memory model.  */
 	    rtx lbl = gen_rtx_LABEL_REF (VOIDmode, operands[3]);
 	    rtx tmp = gen_reg_rtx (DImode);
