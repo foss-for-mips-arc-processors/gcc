@@ -433,7 +433,8 @@ struct arc64_args
 #define MAX_FIXED_MODE_SIZE GET_MODE_BITSIZE (TARGET_ARCH64 ? TImode : DImode)
 
 /* Maximum bytes moved by a single instruction (load/store pair).  */
-#define MOVE_MAX (16)
+#define MOVE_MAX (2*UNITS_PER_WORD)
+#define MAX_MOVE_MAX 16
 
 /* The base cost overhead of a memcpy call, for MOVE_RATIO and friends.  */
 #define ARC64_CALL_RATIO 8
@@ -617,7 +618,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #ifdef __ARC64_ARCH32__
 #define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)		\
   asm (SECTION_OP "\n\t"					\
-       "add\tr12,pcl,@" USER_LABEL_PREFIX #FUNC "@pcl\n\t" \
+       "mov\tr12,@" USER_LABEL_PREFIX #FUNC "\n\t" \
        "jl\t[r12]\n"						\
        TEXT_SECTION_ASM_OP);
 #elif (defined __ARC64_ARCH64__)
