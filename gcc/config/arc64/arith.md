@@ -931,7 +931,7 @@
 	   (ANY_EXTEND:TI (match_operand:DI 1 "register_operand" "%0,r"))
 	   (ANY_EXTEND:TI (match_operand:DI 2 "register_operand" "r,r")))
 	  (const_int 64))))]
-  ""
+  "TARGET_64BIT"
   "mpym<su_optab>l%?\\t%0,%1,%2"
   [(set_attr "type" "mpyl")
    (set_attr "length" "4")
