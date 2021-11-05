@@ -1677,23 +1677,17 @@ vpack, vsub, xbfu, xor, xorl"
 ;; Simple arithmetic
 ;; -------------------------------------------------------------------
 
-(define_expand "<optab>di3"
-  [(set (match_operand:DI 0 "register_operand")
-	(ARITH:DI (match_operand:DI 1 "register_operand")
-		  (match_operand:DI 2 "nonmemory_operand")))]
-  "TARGET_64BIT"
-  {
-   if (!register_operand (operands[2], DImode)
-       && !satisfies_constraint_S32S0 (operands[2]))
-      operands[2] = force_reg (DImode, operands[2]);
-  })
-
-(define_expand "<optab>si3"
-  [(set (match_operand:SI 0 "register_operand")
-	(ARITH:SI (match_operand:SI 1 "register_operand")
-		   (match_operand:SI 2 "nonmemory_operand")))]
+;; TODO: Allow symbols in LIMM field
+(define_expand "<optab><mode>3"
+  [(set (match_operand:GPI 0 "register_operand")
+	(ARITH:GPI (match_operand:GPI 1 "register_operand")
+		   (match_operand:GPI 2 "nonmemory_operand")))]
   ""
-  "")
+  {
+   if (!register_operand (operands[2], <MODE>mode)
+       && !satisfies_constraint_S32S0 (operands[2]))
+      operands[2] = force_reg (<MODE>mode, operands[2]);
+  })
 
 ;; The overflow patterns are tested using expensive tests and dg-torture.exp
 (define_expand "addv<mode>4"
