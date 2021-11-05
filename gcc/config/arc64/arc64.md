@@ -706,8 +706,8 @@ vpack, vsub, xbfu, xor, xorl"
 
 (define_insn "*arc64_movsi"
   [(set
-    (match_operand:SI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,    q,Ustms,Ustor,Ucnst, r,Ustor")
-    (match_operand:SI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,    q,S06S0,    i, m, r"))
+    (match_operand:SI 0 "arc64_dest_operand"      "=qh,r,    q,    r,    r,h,r,    q,Ustms,Ustor,Ucnst, r,Ustor")
+    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,i,i,Uldms,    q,S06S0,    i, m,    r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -720,6 +720,7 @@ vpack, vsub, xbfu, xor, xorl"
     mov\\t%0,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
+    add\\t%0,pcl,%1
     mov_s\\t%0,%1
     mov\\t%0,%1
     ld_s\\t%0,%1
@@ -728,8 +729,8 @@ vpack, vsub, xbfu, xor, xorl"
     st%U0\\t%1,%0
     ld%U1\\t%0,%1
     st%U0\\t%1,%0"
-   [(set_attr "type" "move,move,move,move,move,move,ld,st,st,st,ld,st")
-    (set_attr "length" "2,4,2,4,6,8,2,2,*,8,*,*")]
+   [(set_attr "type" "move,move,move,move,add,move,move,ld,st,st,st,ld,st")
+    (set_attr "length" "2,4,2,4,8,6,8,2,2,*,8,*,*")]
 )
 
 (define_insn "*mov<mode>_cmp0"
