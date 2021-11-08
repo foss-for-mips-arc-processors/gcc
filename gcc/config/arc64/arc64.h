@@ -122,6 +122,9 @@
 #define POINTER_SIZE            (TARGET_ARCH64 ? 64 : 32)
 #define LONG_TYPE_SIZE          POINTER_SIZE
 
+/* Defined for convenience.  */
+#define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
+
 #define FLOAT_TYPE_SIZE		32
 #define DOUBLE_TYPE_SIZE	64
 #define LONG_DOUBLE_TYPE_SIZE	64
@@ -514,12 +517,15 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define GP_REGNUM_P(REGNO)						\
   (((unsigned) (REGNO - R0_REGNUM)) <= (BLINK_REGNUM - R0_REGNUM))
 
-/* Length in units of the trampoline for entering a nested function: 3
-   insns + 2 pointer-sized entries.  */
-#define TRAMPOLINE_SIZE 16+16
-
+/* Trampolines, used for entering nested functions, are a block of code
+   followed by two pointers.  The sizes here are in bytes.  */
+#define TRAMPOLINE_CODE_SIZE	  \
+   ((Pmode == SImode)		  \
+    ? 8	  /* ld_s, ld, j_s     */ \
+    : 16) /* nop, ldl, ldl, j  */
+#define TRAMPOLINE_SIZE (TRAMPOLINE_CODE_SIZE + 2 * POINTER_BYTES)
 /* Alignment required for a trampoline in bits .  */
-#define TRAMPOLINE_ALIGNMENT 64
+#define TRAMPOLINE_ALIGNMENT POINTER_SIZE
 
 /* Names to predefine in the preprocessor for this target machine.  */
 #define TARGET_CPU_CPP_BUILTINS() arc64_cpu_cpp_builtins (pfile)

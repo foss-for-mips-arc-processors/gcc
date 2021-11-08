@@ -47,9 +47,6 @@
   (((signed)(REGNO) >= R0_REGNUM && (REGNO) <= R3_REGNUM)		\
    || ((REGNO) >= R12_REGNUM && (REGNO) <= R15_REGNUM))
 
-/* Defined for convenience.  */
-#define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
-
 /* Maximum size of a loop.  */
 #define MAX_LOOP_LENGTH 4094
 #define MIN_LOOP_LENGTH -4092
@@ -2022,25 +2019,33 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 /* Nested function support.  */
 
 /* Output assembler code for a block containing the constant parts of
-   a trampoline, leaving space for variable parts.  A trampoline looks
-   like this:
-
-   nop
-   ldl  r12,[pcl,12]
-   ldl  r11,[pcl,16]
-   j    [r12]
-   .xword function's address
-   .xword static chain value
-
-*/
+   a trampoline, leaving space for variable parts.  */
 
 static void
 arc64_asm_trampoline_template (FILE *f)
 {
-  asm_fprintf (f, "\tnop\n");
-  asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[12]);
-  asm_fprintf (f, "\tldl\t%s,[pcl,16]\n", reg_names[STATIC_CHAIN_REGNUM]);
-  asm_fprintf (f, "\tj\t[%s]\n", reg_names[12]);
+  if (!TARGET_64BIT)  /* ARC32 */
+    {
+      /* ld_s r12,[pcl,8]
+	 ld   r11,[pcl,12]
+	 j_s [r12]  */
+      asm_fprintf (f, "\tld_s\t%s,[pcl,8]\n", reg_names[R12_REGNUM]);
+      asm_fprintf (f, "\tld\t%s,[pcl,12]\n", reg_names[STATIC_CHAIN_REGNUM]);
+      asm_fprintf (f, "\tj_s\t[%s]\n", reg_names[R12_REGNUM]);
+    }
+  else /* TARGET_64BIT */
+    {
+      /* nop
+	 ldl  r12,[pcl,12]
+	 ldl  r11,[pcl,16]
+	 j    [r12] */
+      asm_fprintf (f, "\tnop\n");
+      asm_fprintf (f, "\tldl\t%s,[pcl,12]\n", reg_names[R12_REGNUM]);
+      asm_fprintf (f, "\tldl\t%s,[pcl,16]\n", reg_names[STATIC_CHAIN_REGNUM]);
+      asm_fprintf (f, "\tj\t[%s]\n", reg_names[R12_REGNUM]);
+    }
+  /* .(x)word function's address
+     .(x)word static chain value  */
   assemble_aligned_integer (POINTER_BYTES, const0_rtx);
   assemble_aligned_integer (POINTER_BYTES, const0_rtx);
 }
@@ -2051,11 +2056,14 @@ static void
 arc64_initialize_trampoline (rtx tramp, tree fndecl, rtx cxt)
 {
   rtx fnaddr = XEXP (DECL_RTL (fndecl), 0);
+  const int fnaddr_offset = TRAMPOLINE_CODE_SIZE;
+  const int cxt_offset = TRAMPOLINE_CODE_SIZE + POINTER_BYTES;
 
   emit_block_move (tramp, assemble_trampoline_template (),
 		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
-  emit_move_insn (adjust_address (tramp, Pmode, 12+4), fnaddr);
-  emit_move_insn (adjust_address (tramp, Pmode, 20+4), cxt);
+  emit_move_insn (adjust_address (tramp, Pmode, fnaddr_offset), fnaddr);
+  emit_move_insn (adjust_address (tramp, Pmode, cxt_offset), cxt);
+  /* FIXME: maybe it's good to use "maybe_emit_call_builtin___clear_cache"  */
   emit_library_call (gen_rtx_SYMBOL_REF (Pmode, "__clear_cache"),
 		     LCT_NORMAL, VOIDmode, XEXP (tramp, 0), Pmode,
 		     plus_constant (Pmode, XEXP (tramp, 0), TRAMPOLINE_SIZE),
