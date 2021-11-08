@@ -173,7 +173,7 @@
 (define_mode_iterator ALLI [QI HI SI (DI "TARGET_64BIT")])
 
 ;; Iterator for HI SI and DI modes
-(define_mode_iterator EPI [HI SI DI])
+(define_mode_iterator EPI [HI SI (DI "TARGET_64BIT")])
 
 ;; Iterator for HI and SI modes
 (define_mode_iterator SPI [HI SI])
