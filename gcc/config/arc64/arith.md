@@ -2096,10 +2096,10 @@
    #
    #"
   "&& reload_completed
-   && arc64_simd64x_split_move_p (operands, <MODE>mode)"
+   && arc64_split_double_move_p (operands, <MODE>mode)"
   [(const_int 0)]
   {
-   arc64_simd128_split_move (operands, <MODE>mode);
+   arc64_split_double_move (operands, <MODE>mode);
    DONE;
   }
   [(set_attr "type" "fmov,ld,st,move,move")
