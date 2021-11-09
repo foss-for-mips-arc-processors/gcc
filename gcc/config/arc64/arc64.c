@@ -4893,7 +4893,7 @@ arc64_allow_direct_access_p (rtx op)
    so.  This procedure is required when the vector length is larger
    than 64 bit.  */
 bool
-arc64_simd64x_split_move_p (rtx *operands, machine_mode mode)
+arc64_split_double_move_p (rtx *operands, machine_mode mode)
 {
   rtx op0 = operands[0];
   rtx op1 = operands[1];
@@ -4931,7 +4931,7 @@ arc64_simd64x_split_move_p (rtx *operands, machine_mode mode)
 /* This is the actual routine which splits a move simd to smaller
    bits.  */
 void
-arc64_simd128_split_move (rtx *operands, machine_mode mode)
+arc64_split_double_move (rtx *operands, machine_mode mode)
 {
   rtx op0 = operands[0];
   rtx op1 = operands[1];
@@ -4939,14 +4939,18 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
   unsigned int rdst, rsrc, i;
   unsigned iregs = CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
   bool swap_p = false;
+  machine_mode mvmode = smallest_int_mode_for_size (BITS_PER_WORD).require ();
 
-  /* Maximum size handled is 256b.  */
+  /* Maximum size handled is twice UNITS_PER_WORD.  */
   gcc_assert (iregs <= 2);
 
   /* This procedure works as long as the width of the fp regs is the
      same as the width of r regs.  */
   if (FLOAT_MODE_P (mode))
+    {
       gcc_assert (UNITS_PER_WORD == UNITS_PER_FP_REG);
+      mvmode = float_mode_for_size (BITS_PER_WORD).require ();
+    }
 
   /* Split reg-reg move.  */
   if (REG_P (op0) && REG_P (op1))
@@ -4959,12 +4963,12 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	/* The fp regs will never overlap r-regs.  However, this
 	   procedure can be used also for r-reg to r-regs splits.  */
 	for (i = 0; i < iregs; i++)
-	  emit_move_insn (gen_rtx_REG (DFmode, rdst + i),
-			  gen_rtx_REG (DFmode, rsrc + i));
+	  emit_move_insn (gen_rtx_REG (mvmode, rdst + i),
+			  gen_rtx_REG (mvmode, rsrc + i));
       else
 	for (i = 0; i < iregs; i++)
-	  emit_move_insn (gen_rtx_REG (DFmode, rdst + iregs - i - 1),
-			  gen_rtx_REG (DFmode, rsrc + iregs - i - 1));
+	  emit_move_insn (gen_rtx_REG (mvmode, rdst + iregs - i - 1),
+			  gen_rtx_REG (mvmode, rsrc + iregs - i - 1));
       return;
     }
 
@@ -4982,8 +4986,8 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
       dst = op1;
     }
 
-  lo = gen_lowpart (DFmode, src);
-  hi = gen_highpart_mode (DFmode, mode, src);
+  lo = gen_lowpart (mvmode, src);
+  hi = gen_highpart_mode (mvmode, mode, src);
 
   if (auto_inc_p (XEXP (dst, 0)))
     {
@@ -5027,17 +5031,17 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	     hi-load with an offset, and last the post modify
 	     instruction.  Thus the code can handle any type of auto
 	     increment address.  */
-	  mem_lo = adjust_automodify_address (dst, DFmode, next, 0);
-	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (DFmode));
-	  mem_hi = adjust_automodify_address (dst, DFmode, next,
-					      GET_MODE_SIZE (DFmode));
+	  mem_lo = adjust_automodify_address (dst, mvmode, next, 0);
+	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (mvmode));
+	  mem_hi = adjust_automodify_address (dst, mvmode, next,
+					      GET_MODE_SIZE (mvmode));
 	  swap_p = true;
 	  break;
 	case PRE_MODIFY:
-	  mem_lo = adjust_automodify_address (dst, DFmode, next, 0);
-	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (DFmode));
-	  mem_hi = adjust_automodify_address (dst, DFmode, next,
-					      GET_MODE_SIZE (DFmode));
+	  mem_lo = adjust_automodify_address (dst, mvmode, next, 0);
+	  next = plus_constant (Pmode, reg, GET_MODE_SIZE (mvmode));
+	  mem_hi = adjust_automodify_address (dst, mvmode, next,
+					      GET_MODE_SIZE (mvmode));
 	  break;
 	default:
 	  gcc_unreachable ();
@@ -5051,7 +5055,7 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	{
 	case ARC64_UNSPEC_PCREL:
 	  addr = XVECEXP (addr, 0, 0);
-	  addr = plus_constant (Pmode, addr, GET_MODE_SIZE (DFmode));
+	  addr = plus_constant (Pmode, addr, GET_MODE_SIZE (mvmode));
 	  addr = gen_sym_unspec (addr, ARC64_UNSPEC_PCREL);
 	  break;
 
@@ -5060,14 +5064,14 @@ arc64_simd128_split_move (rtx *operands, machine_mode mode)
 	  gcc_unreachable ();
 	}
 
-      mem_lo = adjust_address (dst, DFmode, 0);
+      mem_lo = adjust_address (dst, mvmode, 0);
       mem_hi = adjust_automodify_address (mem_lo, GET_MODE (mem_lo),
-					  addr, GET_MODE_SIZE (DFmode));
+					  addr, GET_MODE_SIZE (mvmode));
     }
   else
     {
-      mem_lo = adjust_address (dst, DFmode, 0);
-      mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (DFmode));
+      mem_lo = adjust_address (dst, mvmode, 0);
+      mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (mvmode));
     }
 
   if (REG_P (op1))
@@ -5158,7 +5162,7 @@ arc64_expand_cpymem (rtx *operands)
 	 8 + 6 + 1.  */
       if (n > 0 && n <= 8 * BITS_PER_UNIT)
 	{
-	  next_mode = smallest_mode_for_size (n, MODE_INT);
+	  next_mode = smallest_mode_for_size (n, MODE_INT).require ();
 	  int n_bits = GET_MODE_BITSIZE (next_mode);
 	  src = arc64_move_pointer (src, (n - n_bits) / BITS_PER_UNIT);
 	  dst = arc64_move_pointer (dst, (n - n_bits) / BITS_PER_UNIT);
