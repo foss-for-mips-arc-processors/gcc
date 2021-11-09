@@ -47,6 +47,9 @@
   (((signed)(REGNO) >= R0_REGNUM && (REGNO) <= R3_REGNUM)		\
    || ((REGNO) >= R12_REGNUM && (REGNO) <= R15_REGNUM))
 
+/* Use ARC64_LPIC only if dealing with 64-bit variant of arc64.  */
+#define ARC64_MAYBE_LPIC (TARGET_64BIT ? ARC64_LPIC : ARC64_PIC)
+
 /* Maximum size of a loop.  */
 #define MAX_LOOP_LENGTH 4094
 #define MIN_LOOP_LENGTH -4092
@@ -707,10 +710,10 @@ arc64_get_symbol_type (rtx x)
       }
   else if (flag_pic == 1)
     return is_local ? ARC64_PCREL : ARC64_PIC;
-  else if (is_local)
-    return ARC64_PCREL;
+  else if (flag_pic == 2)
+    return is_local ? ARC64_PCREL : ARC64_MAYBE_LPIC;
   else
-    return ARC64_LPIC;
+    gcc_unreachable ();
 }
 
 /* Helper legitimate address. Extra takes an input to discriminate
