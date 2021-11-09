@@ -797,10 +797,10 @@ vpack, vsub, xbfu, xor, xorl"
    lddl%U1\\t%0,%1
    stdl%U0\\t%1,%0"
    "&& reload_completed
-    && arc64_simd64x_split_move_p (operands, TImode)"
+    && arc64_split_double_move_p (operands, TImode)"
    [(const_int 0)]
    {
-    arc64_simd128_split_move (operands, TImode);
+    arc64_split_double_move (operands, TImode);
     DONE;
    }
   [(set_attr "type" "move,ld,st")
@@ -812,10 +812,11 @@ vpack, vsub, xbfu, xor, xorl"
 (define_insn "*arc64_movdi"
    [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,    r,r,Ustk<,Ustor")
 	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,Ustk>,m,    r, r"))]
-   "register_operand (operands[0], DImode)
-    || register_operand (operands[1], DImode)
-    || (CONST_INT_P (operands[1])
-        && satisfies_constraint_Ucnst (operands[0]))"
+   "TARGET_64BIT
+    && (register_operand (operands[0], DImode)
+        || register_operand (operands[1], DImode)
+        || (CONST_INT_P (operands[1])
+            && satisfies_constraint_Ucnst (operands[0])))"
    "@
     movl_s\\t%0,%1
     movl_s\\t%0,%1
