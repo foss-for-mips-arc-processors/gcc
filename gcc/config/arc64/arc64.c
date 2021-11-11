@@ -1658,8 +1658,8 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	    gcc_assert (mode != VOIDmode);
 	    /* GET_MODE_BITSIZE BITS_PER_WORD */
 	    msize = GET_MODE_SIZE (mode);
-	    if (msize > (UNITS_PER_WORD / 2))
-	      msize = UNITS_PER_WORD / 2;
+	    if (msize > (UNITS_PER_WORD / (TARGET_64BIT ? 2 : 1)))
+	      msize = UNITS_PER_WORD / (TARGET_64BIT ? 2 : 1);
 	    msize *= 8;
 	    l = real_to_target (NULL, CONST_DOUBLE_REAL_VALUE (x),
 				float_mode_for_size (msize).require ());
