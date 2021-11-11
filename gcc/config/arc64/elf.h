@@ -35,7 +35,9 @@ along with GCC; see the file COPYING3.  If not see
    %{static:-Bstatic}				\
    %{shared:-shared}				\
    %{symbolic:-Bsymbolic}			\
-   %{!static:%{rdynamic:-export-dynamic}}"
+   %{!static:%{rdynamic:-export-dynamic}}	\
+   %{m32:-m arc64elf32}"
+
 
 /* ...and crtend.o.  */
 #undef ENDFILE_SPEC
