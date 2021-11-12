@@ -54,6 +54,8 @@
 #define MAX_LOOP_LENGTH 4094
 #define MIN_LOOP_LENGTH -4092
 
+#define UNITS_PER_LIMM 4
+
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
   {
@@ -894,6 +896,7 @@ arc64_use_fp_regs (machine_mode mode)
     return false;
 
   /* FPU unit can have either 32 or 64 bit wide data path.  */
+  /* FIXME: Use macros for the sizes.  */
   if ((ARC64_HAS_FPUS && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 2)))
       || (ARC64_HAS_FPUH && (GET_MODE_SIZE (mode) == (UNITS_PER_WORD / 4)))
       || ARC64_HAS_FPUD)
@@ -1658,8 +1661,8 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	    gcc_assert (mode != VOIDmode);
 	    /* GET_MODE_BITSIZE BITS_PER_WORD */
 	    msize = GET_MODE_SIZE (mode);
-	    if (msize > (UNITS_PER_WORD / (TARGET_64BIT ? 2 : 1)))
-	      msize = UNITS_PER_WORD / (TARGET_64BIT ? 2 : 1);
+	    if (msize > UNITS_PER_LIMM)
+	      msize = UNITS_PER_LIMM;
 	    msize *= 8;
 	    l = real_to_target (NULL, CONST_DOUBLE_REAL_VALUE (x),
 				float_mode_for_size (msize).require ());
