@@ -4905,6 +4905,16 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
 
   if (register_operand (op0, mode) && register_operand (op1, mode))
     {
+      /* Check if we can use vadd2 instruction as a mov.  */
+      if (mode == DImode && TARGET_SIMD)
+	{
+	  /* If both registers are even-numbered, fallback to vadd2.  */
+	  if (((REGNO (op0) & 0x01) == 0) && ((REGNO (op1) & 0x01) == 0))
+	    return false;
+	  else
+	    return true;
+	}
+
       /* Check for r-reg to f-reg moves.  */
       if (GP_REGNUM_P (REGNO (op0)) || GP_REGNUM_P (REGNO (op1)))
 	return true;
@@ -4915,8 +4925,8 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
       return false;
     }
 
-  /* Check if we have 128bit moves.  */
-  if (TARGET_WIDE_LDST
+  /* Check if we have 64/128bit moves.  */
+  if ((TARGET_WIDE_LDST || TARGET_LL64)
       && (GET_MODE_SIZE (mode) <= (UNITS_PER_WORD * 2))
       && ((memory_operand (op0, mode) && REG_P (op1))
 	  || (memory_operand (op1, mode) && REG_P (op0))))
