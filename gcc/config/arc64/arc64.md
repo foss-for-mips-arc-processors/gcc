@@ -171,6 +171,7 @@
 
 ;; Iterator for all integer modes (up to 64-bit)
 (define_mode_iterator ALLI [QI HI SI (DI "TARGET_64BIT")])
+(define_mode_iterator MVALLI [QI HI SI DI])
 
 ;; Iterator for HI SI and DI modes
 (define_mode_iterator EPI [HI SI (DI "TARGET_64BIT")])
@@ -573,8 +574,8 @@ vpack, vsub, xbfu, xor, xorl"
 ;; -------------------------------------------------------------------
 
 (define_expand "mov<mode>"
-  [(set (match_operand:ALLI 0 "nonimmediate_operand")
-	(match_operand:ALLI 1 "general_operand"))]
+  [(set (match_operand:MVALLI 0 "nonimmediate_operand")
+	(match_operand:MVALLI 1 "general_operand"))]
   ""
   "
   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
@@ -2883,7 +2884,7 @@ vpack, vsub, xbfu, xor, xorl"
   (set_attr "type" "sync")])
 
 (include "atomic.md")
-
+(include "arc32.md")
 
 ;; mode:emacs-lisp
 ;; comment-start: ";; "
