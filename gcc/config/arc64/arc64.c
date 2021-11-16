@@ -3895,6 +3895,17 @@ arc64_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+static void
+arc64_override_options (void)
+{
+  if (TARGET_LL64 && TARGET_64BIT)
+    {
+      target_flags &= ~MASK_LL64;
+      warning (0, "Option -mll64 is ignored because the target"
+	          " is not 32-bit.");
+    }
+}
+
 /*
   Global functions.
 */
@@ -5473,6 +5484,9 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_CANNOT_FORCE_CONST_MEM
 #define TARGET_CANNOT_FORCE_CONST_MEM arc64_cannot_force_const_mem
+
+#undef TARGET_OPTION_OVERRIDE
+#define TARGET_OPTION_OVERRIDE arc64_override_options
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
