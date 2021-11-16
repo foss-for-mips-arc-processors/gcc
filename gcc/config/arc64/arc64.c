@@ -1362,6 +1362,7 @@ get_arc64_condition_code (rtx comparison)
      'N': Negative immediate, to be used in pair with 's'.
      'H': 2x16b vector immediate, hi lane is zero.
      'P': Constant address, swithces on/off _s to be used with 'C'
+     'A': output aq, rl or aq.rl flags for atomic ops.
 */
 
 static void
@@ -1579,6 +1580,42 @@ arc64_print_operand (FILE *file, rtx x, int code)
       asm_fprintf (file, "%wd", (ival >> scalled));
       break;
 
+    case 'A':
+      if (!ARC64_HAS_ATOMIC_3)
+	return;
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%A");
+	  return;
+	}
+      ival = INTVAL (x);
+      switch ((enum memmodel) ival)
+	{
+	case MEMMODEL_ACQ_REL:
+	  fputs (".aq.rl", file);
+	  break;
+
+	case MEMMODEL_SEQ_CST:
+	case MEMMODEL_SYNC_SEQ_CST:
+	case MEMMODEL_ACQUIRE:
+	case MEMMODEL_CONSUME:
+	case MEMMODEL_SYNC_ACQUIRE:
+	  fputs (".aq", file);
+	  break;
+
+	case MEMMODEL_RELEASE:
+	case MEMMODEL_SYNC_RELEASE:
+	  fputs (".rl", file);
+	  break;
+
+	case MEMMODEL_RELAXED:
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	}
+      break;
+
     case 0:
       if (x == NULL)
 	{
@@ -1641,7 +1678,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 static void
 arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 {
-  register rtx base, index = 0;
+  rtx base, index = 0;
 
   switch (GET_CODE (addr))
     {
