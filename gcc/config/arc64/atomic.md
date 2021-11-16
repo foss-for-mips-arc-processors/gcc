@@ -143,7 +143,7 @@
 	 ARC64_VUNSPEC_ATOOPS))]
   "ARC64_HAS_ATOMIC_2"
   "@
-   atld<sfxtab>.<optab>\\t%0,%1
+   atld<sfxtab>.<optab>%A3\\t%0,%1
    #"
   "&& reload_completed && !operands_match_p (operands[0], operands[2])"
   [(const_int 0)]
