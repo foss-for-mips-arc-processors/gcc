@@ -112,6 +112,10 @@ m64
 Target RejectNegative Mask(64BIT)
 Use 64-bit machine.
 
+mll64
+Target Mask(LL64)
+Enable double load/store instructions for arc64:32.
+
 m128
 Target Mask(WIDE_LDST)
 Enable wide data transfer support.
