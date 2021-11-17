@@ -844,7 +844,7 @@ vpack, vsub, xbfu, xor, xorl"
    (set_attr "length" "4,6,8,8")])
 
 ;; The immediates are already trimmed to fit the 32 bit limm field.
-(define_insn "*movdi_high"
+(define_insn "*movh_shift"
   [(set (match_operand:DI 0 "register_operand"            "=     r,   qh,    r")
 	(ashift:DI (match_operand:DI 1 "nonmemory_operand" "rS12S0,S32S0,S32S0")
 		   (const_int 32)))]
