@@ -3957,8 +3957,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 				      gen_rtx_ASHIFT (mode, GEN_INT (hi),
 						      GEN_INT (32))));
 	      emit_insn (gen_rtx_SET (op0,
-				      gen_rtx_LO_SUM (mode, tmp,
-						      GEN_INT (lo))));
+				      plus_constant (mode, tmp, lo)));
 	      return true;
 	    }
 	  break;
