@@ -3584,9 +3584,11 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 {
   rtx op0, op1;
   const int cost_limm = speed ? 0 : COSTS_N_INSNS (1);
+  int factor;
 
-  /* Everything cost 1, unless specified.  */
-  *cost = COSTS_N_INSNS (1);
+  /* If we use a mode larger than UNITS_PER_WORD factor it in.  N.B. The cost is
+     already factored in, however, the costs for MULT and DIV is too large.  */
+  factor = CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
 
   switch (GET_CODE (x))
     {
@@ -3598,6 +3600,9 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	{
 	case MEM:
 	  /* Store instruction.  */
+
+	  if ((factor == 2) && TARGET_WIDE_LDST)
+	    *cost = COSTS_N_INSNS (1);
 	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed);
 	  if (CONST_INT_P (op1))
 	    {
@@ -3626,6 +3631,9 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 
     case MEM:
       /* Generic/loads.  */
+
+      if ((factor == 2) && TARGET_WIDE_LDST)
+	*cost = COSTS_N_INSNS (1);
       *cost += arc64_address_cost (XEXP (x, 0), mode, 0, speed);
       return true;
 
@@ -3745,7 +3753,8 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	      || GET_CODE (op0) != SIGN_EXTEND))
 	*cost = COSTS_N_INSNS (3);
       else if (GET_MODE_SIZE (mode) == UNITS_PER_WORD * 2)
-	*cost = COSTS_N_INSNS (4);
+	*cost = factor * COSTS_N_INSNS (4);
+
       return true;
 
     case MOD:
@@ -3753,7 +3762,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
     case DIV:
     case UDIV:
       /* Fav synthetic divs.  */
-      *cost = COSTS_N_INSNS (12);
+      *cost = factor * COSTS_N_INSNS (12);
       return true;
 
     case EQ:
