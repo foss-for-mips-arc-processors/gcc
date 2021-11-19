@@ -92,7 +92,9 @@
 
 /* Alignments.  */
 #define FASTEST_ALIGNMENT       BITS_PER_WORD
-#define BIGGEST_ALIGNMENT	64
+/* pr64242.c is one interesting test which changing BIGGEST_ALIGNMENT triggers
+   errors.  */
+#define BIGGEST_ALIGNMENT	BITS_PER_WORD
 #define ARC64_EXPAND_ALIGNMENT(COND, EXP, ALIGN)			\
   (((COND) && ((ALIGN) < FASTEST_ALIGNMENT)				\
     && (TREE_CODE (EXP) == ARRAY_TYPE)) ? FASTEST_ALIGNMENT : (ALIGN))
