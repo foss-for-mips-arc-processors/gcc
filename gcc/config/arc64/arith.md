@@ -12,9 +12,7 @@
 
 (define_code_iterator DIVREM [div udiv mod umod])
 
-(define_code_attr bit_optab [(plus   "adc")
-			     (minus  "sbc")
-			     (ior    "bset")
+(define_code_attr bit_optab [(ior    "bset")
 			     (xor    "bxor")
 			     ])
 
@@ -553,33 +551,61 @@
    (set_attr "length" "8")]
   )
 
-(define_insn "<optab>di3_cmp"
-  [(set (match_operand:DI 0 "register_operand"     "=r,    r,    r,    r,r,    r,    r")
-	(ADDSUB:DI (match_operand:DI 1 "arc64_nonmem_operand" " 0,    0,    0,    r,r,S32S0,    r")
-		   (match_operand:DI 2 "arc64_nonmem_operand" " r,U06S0,S12S0,U06S0,r,    r,S32S0")))
-   (set (reg:CC_C CC_REGNUM)
-	(compare:CC_C (ADDSUB:DI (match_dup 1)
-				 (match_dup 2))
-		      (match_dup 2)))]
+(define_insn "sub<mode>3_cmp"
+  [(set (reg:CC CC_REGNUM)
+	(compare:CC
+	 (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0")))
+   (set (match_operand:GPI 0 "register_operand"         "=r,    r,r,    r,    r")
+	(minus:GPI (match_dup 1) (match_dup 2)))]
 
-  "register_operand (operands[1], DImode) || register_operand (operands[2], DImode)"
-  "<optab>l.f\\t%0,%1,%2"
-  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-   (set_attr "length"     "4,4,4,4,4,8,8")
-   (set_attr "type"       "<optab>l")]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "sub<sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length"     "4,4,4,8,8")
+   (set_attr "type"       "sub<sfxtab>")]
   )
 
-(define_insn "<optab>di3_carry"
-  [(set (match_operand:DI 0 "register_operand" "=r")
-	(ADDSUB:DI
-	 (ADDSUB:DI (match_operand:DI 1 "register_operand" "r")
-		    (match_operand:DI 2 "register_operand" "r"))
-	 (ltu:DI (reg:CC_C CC_REGNUM) (const_int 0))))]
+(define_insn "add<mode>3_cmp"
+  [(set (reg:CC_C CC_REGNUM)
+	(compare:CC_C
+	 (plus:GPI
+	  (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r")
+	  (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0"))
+	 (match_dup 1)))
+   (set (match_operand:GPI 0 "register_operand"          "=r,    r,r,    r,    r")
+	(plus:GPI (match_dup 1) (match_dup 2)))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "add<sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length"     "4,4,4,8,8")
+   (set_attr "type"       "add<sfxtab>")])
+
+;; Extending this pattern to handle CCmode, we need to match GEU code
+;; also.
+(define_insn "add<mode>3_carry"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+	(plus:GPI
+	 (plus:GPI (match_operand:GPI 1 "register_operand" "r")
+		   (match_operand:GPI 2 "register_operand" "r"))
+	 (ltu:GPI (reg:CC_C CC_REGNUM) (const_int 0))))]
   ""
-  "<bit_optab>l\\t%0,%1,%2"
-  [(set_attr "type" "<bit_optab>l")
-   (set_attr "length" "4")]
-)
+  "adc<sfxtab>\\t%0,%1,%2"
+  [(set_attr "type" "adc<sfxtab>")
+   (set_attr "length" "4")])
+
+;; Extending this pattern to handle Cmode, we need to match GEU code
+;; also.
+(define_insn "sub<mode>3_carry"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+	(minus:GPI
+	 (minus:GPI (match_operand:GPI 1 "register_operand" "r")
+		    (match_operand:GPI 2 "register_operand" "r"))
+	 (ltu:GPI (reg:CC CC_REGNUM) (const_int 0))))]
+  ""
+  "sbc<sfxtab>\\t%0,%1,%2"
+  [(set_attr "type" "sbc<sfxtab>")
+   (set_attr "length" "4")])
 
 (define_expand "<optab>ti3"
   [(set (match_operand:TI 0 "register_operand")
