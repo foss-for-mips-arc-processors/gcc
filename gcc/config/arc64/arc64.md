@@ -430,15 +430,15 @@
 ;; used instead.
 (define_attr "cost" "" (const_int 0))
 
-(define_attr "type" "abs, adcl, add, addhl, addl, and, andl, asl,
+(define_attr "type" "abs, adc, adcl, add, addhl, addl, and, andl, asl,
 asll, asr, asrl, atldlop, atldop, bbit, bclr, bi, bic, bl, block,
 bmsk, branch, branchcc, brcc, brk, bset, bsetl, btst, bxor, bxorl,
 cmp, dbnz, div, divl, dmb, dmpywh, ex, ext, fadd, fcmp, fd2s, fdiv,
-ffs, fh2s, flag, fls, fmadd, fmax, fmin, fmov, fmsub, fmul,
-fnmadd, fnmsub, fp2int, fp2uint, frnd, fs2d, fs2h, fsgnj, fsgnjn,
-fsgnjx, fsqrt, fsub, int2fp, jl, jump, ld, llock, lr, lsr, lsrl, mac,
-max, maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop,
-norm, normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
+ffs, fh2s, flag, fls, fmadd, fmax, fmin, fmov, fmsub, fmul, fnmadd,
+fnmsub, fp2int, fp2uint, frnd, fs2d, fs2h, fsgnj, fsgnjn, fsgnjx,
+fsqrt, fsub, int2fp, jl, jump, ld, llock, lr, lsr, lsrl, mac, max,
+maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
+normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror, sbc,
 sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape, swapel,
 swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl, unknown,
 vadd, vfadd, vfdiv, vfext, vfins, vfmul, vfrep, vfsub, vmac2h, vmpy2h,
