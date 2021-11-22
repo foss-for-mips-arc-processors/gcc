@@ -752,12 +752,18 @@ arc64_legitimate_address_1_p (machine_mode mode,
       || GET_CODE (x) == LABEL_REF)
     return (arc64_get_symbol_type (x) == ARC64_LO32);
 
+  /* Double load/stores are not scaling with 128 bits but with the
+     register size.  */
+  machine_mode scaling_mode = mode;
+  if (GET_MODE_SIZE (scaling_mode) >= 2 * UNITS_PER_WORD)
+      scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD);
+
   /* ST instruction can only accept a single register plus a small
      offset as address.  */
   if (GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
       && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1),
-				       scaling_p ? mode : QImode)
+				       scaling_p ? scaling_mode : QImode)
 	  || (load_p && CONST_INT_P (XEXP (x, 1))
 	      /* FIXME! we can use address scalling here to fit even more.  */
 	      && (UNSIGNED_INT32 (INTVAL (XEXP (x, 1)))
@@ -770,7 +776,11 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
       && REG_P (XEXP (x, 1)))
-    return true;
+    {
+      if (GET_MODE_SIZE (mode) >= 2 * UNITS_PER_WORD)
+	return TARGET_LL64 || TARGET_WIDE_LDST;
+      return true;
+    }
 
   /* Scalled addresses.  Permitted variants:
      ld.as rx, [rb,ri]         addr = rb + ri * scaling
@@ -791,9 +801,12 @@ arc64_legitimate_address_1_p (machine_mode mode,
       {
       case 2:
       case 4:
-      case 8:
 	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
 	  return true;
+	break;
+      case 8:
+	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
+	  return TARGET_64BIT;
 	break;
       case 16:
 	if (INTVAL (XEXP (XEXP (x, 0), 1)) == UNITS_PER_WORD)
@@ -5087,6 +5100,15 @@ arc64_split_double_move (rtx *operands, machine_mode mode)
     {
       mem_lo = adjust_address (dst, mvmode, 0);
       mem_hi = arc64_move_pointer (mem_lo, GET_MODE_SIZE (mvmode));
+      /* Catching scenarios like:
+	 ld r0, [r0, 4]	  (ld lo, [mem_lo])
+	 ld r1, [r0, 8]	  (ld hi, [mem_hi])
+
+	 And setting the trigger (swap_p) to convert them to:
+	 ld r1, [r0, 8]
+	 ld r0, [r0, 4]  */
+      if (reg_overlap_mentioned_p (lo, mem_lo))
+	swap_p = true;
     }
 
   if (REG_P (op1))
