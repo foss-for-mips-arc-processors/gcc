@@ -43,6 +43,8 @@ extern unsigned arc64_dbx_register_number (unsigned);
 extern bool arc64_expand_fvect_shr (rtx *);
 extern bool arc64_use_plt34_p (rtx);
 extern int regno_clobbered_p (unsigned int, rtx_insn *, machine_mode, int);
+extern void arc64_gen_unlikely_cbranch (enum rtx_code, machine_mode, rtx);
+
 #endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */
