@@ -74,9 +74,22 @@
 	    (match_test "!arc64_is_long_call_p (op)"))
        (match_operand 0 "nonmemory_operand")))
 
+; to be used by <op>.f instructions
+(define_special_predicate "cc_compare_operator"
+  (match_code "compare")
+  {
+   return GET_MODE (op) == CC_Cmode
+	  || GET_MODE (op) == CC_Vmode;
+  })
+
 ; to be used for b{eq/ne}_s instructions.
 (define_predicate "equality_comparison_operator"
-  (match_code "eq, ne"))
+  (match_code "eq, ne")
+  {
+   machine_mode opmode = GET_MODE (XEXP (op, 0));
+   return (opmode != CC_Vmode);
+  })
+
 
 ; to be used for b{eq/ne/...}_s instructions.
 (define_predicate "ccmode_comparison_operator"

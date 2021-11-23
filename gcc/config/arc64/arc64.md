@@ -160,6 +160,9 @@
 ;; Iterator for General Purpose Integer registers (32- and 64-bit modes)
 (define_mode_iterator GPI [SI DI])
 
+;; For doubling width of an integer mode
+(define_mode_attr DWI [(QI "HI") (HI "SI") (SI "DI") (DI "TI")])
+
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
@@ -1692,44 +1695,155 @@ vpack, vsub, xbfu, xor, xorl"
   ""
   "")
 
-;;(define_expand "addv<mode>4"
-;;  [(match_operand:GPI 0 "register_operand")
-;;   (match_operand:GPI 1 "register_operand")
-;;   (match_operand:GPI 2 "nonmemory_operand")
-;;   (label_ref (match_operand 3 "" ""))]
-;;  ""
-;;  )
-;;
-;;(define_expand "uaddv<mode>4"
-;;  [(match_operand:GPI 0 "register_operand")
-;;   (match_operand:GPI 1 "register_operand")
-;;   (match_operand:GPI 2 "register_operand")
-;;   (label_ref (match_operand 3 "" ""))]
-;;  ""
-;;)
-;;
-;;(define_expand "subv<GPI:mode>4"
-;;  [(match_operand:GPI 0 "register_operand")
-;;   (match_operand:GPI 1 "register_operand")
-;;   (match_operand:GPI 2 "nonmemory_operand")
-;;   (label_ref (match_operand 3 "" ""))]
-;;  ""
-;;  )
-;;
-;;(define_expand "negv<GPI:mode>3"
-;;  [(match_operand:GPI 0 "register_operand")
-;;   (match_operand:GPI 1 "register_operand")
-;;   (label_ref (match_operand 2 "" ""))]
-;;  ""
-;;  )
-;;
-;;(define_expand "usubv<mode>4"
-;;  [(match_operand:GPI 0 "register_operand")
-;;   (match_operand:GPI 1 "nonmemory_operand")
-;;   (match_operand:GPI 2 "nonmemory_operand")
-;;   (label_ref (match_operand 3 "" ""))]
-;;  ""
-;;  )
+;; The overflow patterns are tested using expensive tests and dg-torture.exp
+(define_expand "addv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "register_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  {
+    emit_insn (gen_add<mode>3_Vcmp (operands[0], operands[1], operands[2]));
+    arc64_gen_unlikely_cbranch (NE, CC_Vmode, operands[3]);
+    DONE;
+  })
+
+(define_insn "add<mode>3_Vcmp"
+  [(parallel
+    [(set
+      (reg:CC_V CC_REGNUM)
+      (compare:CC_V
+       (plus:<DWI>
+	(sign_extend:<DWI> (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r"))
+	(sign_extend:<DWI> (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0")))
+       (sign_extend:<DWI> (plus:GPI (match_dup 1) (match_dup 2)))))
+     (set (match_operand:GPI 0 "register_operand"                     "=    r,    r,r,    r,    r")
+	  (plus:GPI (match_dup 1) (match_dup 2)))])]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "add<sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length"     "4,4,4,8,8")
+   (set_attr "type"       "add<sfxtab>")])
+
+(define_expand "uaddv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "register_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  {
+    emit_insn (gen_add<mode>3_Ccmp (operands[0], operands[1], operands[2]));
+    arc64_gen_unlikely_cbranch (LTU, CC_Cmode, operands[3]);
+    DONE;
+  })
+
+(define_expand "subv<GPI:mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "register_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  {
+    emit_insn (gen_sub<mode>3_Vcmp (operands[0], operands[1], operands[2]));
+    arc64_gen_unlikely_cbranch (NE, CC_Vmode, operands[3]);
+    DONE;
+  })
+
+(define_insn "sub<GPI:mode>3_Vcmp"
+  [(set
+    (reg:CC_V CC_REGNUM)
+    (compare:CC_V
+     (sign_extend:<DWI>
+      (minus:GPI
+       (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r")
+       (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0")))
+     (minus:<DWI> (sign_extend:<DWI> (match_dup 1))
+		  (sign_extend:<DWI> (match_dup 2)))))
+   (set (match_operand:GPI 0 "register_operand"   "=    r,    r,r,    r,    r")
+	(minus:GPI (match_dup 1) (match_dup 2)))]
+  "register_operand (operands[1], <MODE>mode)
+   || register_operand (operands[2], <MODE>mode)"
+  "sub<sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length" "4,4,4,8,8")
+   (set_attr "type"   "sub<sfxtab>")])
+
+(define_expand "negv<mode>3"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (label_ref (match_operand 2 "" ""))]
+  ""
+  {
+    emit_insn (gen_neg<mode>2_Vcmp (operands[0], operands[1]));
+    arc64_gen_unlikely_cbranch (NE, CC_Vmode, operands[2]);
+    DONE;
+  })
+
+(define_insn "negsi2_Vcmp"
+  [(set (reg:CC_V CC_REGNUM)
+	(compare:CC_V
+	 (sign_extend:DI
+	  (neg:SI (match_operand:SI 1 "register_operand" "r")))
+	 (neg:DI (sign_extend:DI (match_dup 1)))))
+   (set (match_operand:SI 0 "register_operand" "=r")
+	(neg:SI (match_dup 1)))]
+  ""
+  "neg.f\\t%0,%1"
+  [(set_attr "type" "neg")
+   (set_attr "length" "4")])
+
+(define_insn "negdi2_Vcmp"
+  [(set (reg:CC_V CC_REGNUM)
+	(compare:CC_V
+	 (sign_extend:TI
+	  (neg:DI (match_operand:DI 1 "register_operand" "r")))
+	 (neg:TI (sign_extend:TI (match_dup 1)))))
+   (set (match_operand:DI 0 "register_operand" "=r")
+	(neg:DI (match_dup 1)))]
+  ""
+  "rsubl.f\\t%0,%1,0"
+  [(set_attr "type" "neg")
+   (set_attr "length" "4")])
+
+(define_expand "usubv<mode>4"
+  [(match_operand:GPI 0 "register_operand")
+   (match_operand:GPI 1 "register_operand")
+   (match_operand:GPI 2 "register_operand")
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  {
+    emit_insn (gen_sub<mode>3_cmp (operands[0], operands[1], operands[2]));
+    arc64_gen_unlikely_cbranch (LTU, CCmode, operands[3]);
+    DONE;
+  })
+
+(define_expand "<su_optab>mulvsi4"
+  [(ANY_EXTEND:DI (match_operand:SI 0 "register_operand"))
+   (ANY_EXTEND:DI (match_operand:SI 1 "register_operand"))
+   (ANY_EXTEND:DI (match_operand:SI 2 "register_operand"))
+   (label_ref (match_operand 3 "" ""))]
+  ""
+  {
+    emit_insn (gen_<su_optab>mulsi3_Vcmp (operands[0], operands[1], operands[2]));
+    arc64_gen_unlikely_cbranch (NE, CC_Vmode, operands[3]);
+    DONE;
+  })
+
+(define_insn "<su_optab>mulsi3_Vcmp"
+  [(parallel
+    [(set
+      (reg:CC_V CC_REGNUM)
+      (compare:CC_V
+       (mult:DI
+	(ANY_EXTEND:DI (match_operand:SI 1 "register_operand"        "%0,    r,r,    r"))
+	(ANY_EXTEND:DI (match_operand:SI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,S32S0")))
+       (ANY_EXTEND:DI (mult:SI (match_dup 1) (match_dup 2)))))
+     (set (match_operand:SI 0 "register_operand"                     "=r,    r,r,    r")
+	  (mult:SI (match_dup 1) (match_dup 2)))])]
+  "register_operand (operands[1], SImode)
+   || register_operand (operands[2], SImode)"
+  "mpy<su_optab>.f\\t%0,%1,%2"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type"   "mpy")])
 
 ;; -------------------------------------------------------------------
 ;; Comparison insns
