@@ -20,6 +20,7 @@
 CC_MODE (CC_ZN);    /* Only N and Z bits of condition flags are valid.  */
 CC_MODE (CC_Z);     /* Only Z bit of condition flags is valid.  */
 CC_MODE (CC_C);     /* C represents unsigned overflow of a simple addition.  */
+CC_MODE (CC_V);     /* Only V bit of condition flag is valid.  */
 CC_MODE (CC_FPU);
 CC_MODE (CC_FPUE);
 
