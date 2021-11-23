@@ -558,7 +558,6 @@
 	 (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0")))
    (set (match_operand:GPI 0 "register_operand"         "=r,    r,r,    r,    r")
 	(minus:GPI (match_dup 1) (match_dup 2)))]
-
   "register_operand (operands[1], <MODE>mode)
    || register_operand (operands[2], <MODE>mode)"
   "sub<sfxtab>.f\\t%0,%1,%2"
@@ -567,12 +566,12 @@
   )
 
 (define_insn "add<mode>3_cmp"
-  [(set (reg:CC_C CC_REGNUM)
-	(compare:CC_C
-	 (plus:GPI
-	  (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r")
-	  (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0"))
-	 (match_dup 1)))
+  [(set (match_operand 3 "cc_register" "")
+	(match_operator 4 "cc_compare_operator"
+			[(plus:GPI
+			  (match_operand:GPI 1 "arc64_nonmem_operand" "    0,    r,r,S32S0,    r")
+			  (match_operand:GPI 2 "arc64_nonmem_operand" "S12S0,U06S0,r,    r,S32S0"))
+			 (match_dup 1)]))
    (set (match_operand:GPI 0 "register_operand"          "=r,    r,r,    r,    r")
 	(plus:GPI (match_dup 1) (match_dup 2)))]
   "register_operand (operands[1], <MODE>mode)
@@ -607,6 +606,30 @@
   [(set_attr "type" "sbc<sfxtab>")
    (set_attr "length" "4")])
 
+(define_expand "add<mode>3_Ccmp"
+  [(parallel
+    [(set (reg:CC_C CC_REGNUM)
+	  (compare:CC_C
+	   (plus:GPI
+	    (match_operand:GPI 1 "arc64_nonmem_operand")
+	    (match_operand:GPI 2 "arc64_nonmem_operand"))
+	   (match_dup 1)))
+     (set (match_operand:GPI 0 "register_operand")
+	  (plus:GPI (match_dup 1) (match_dup 2)))])]
+  ""
+  )
+
+(define_expand "sub<mode>3_Ccmp"
+  [(parallel
+    [(set (reg:CC CC_REGNUM)
+	  (compare:CC
+	   (match_operand:GPI 1 "arc64_nonmem_operand")
+	   (match_operand:GPI 2 "arc64_nonmem_operand")))
+     (set (match_operand:GPI 0 "register_operand")
+	  (minus:GPI (match_dup 1) (match_dup 2)))])]
+  ""
+  )
+
 (define_expand "<optab>ti3"
   [(set (match_operand:TI 0 "register_operand")
 	(ADDSUB:TI (match_operand:TI 1 "register_operand")
@@ -622,8 +645,8 @@
   op2_high = gen_highpart_mode (DImode, TImode, operands[2]);
   op2_low = gen_lowpart (DImode, operands[2]);
 
-  emit_insn (gen_<optab>di3_cmp (low_dest, op1_low,
-				 force_reg (DImode, op2_low)));
+  emit_insn (gen_<optab>di3_Ccmp (low_dest, op1_low,
+				  force_reg (DImode, op2_low)));
   emit_insn (gen_<optab>di3_carry (high_dest, op1_high,
 				   force_reg (DImode, op2_high)));
 

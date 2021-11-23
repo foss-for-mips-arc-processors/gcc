@@ -1316,6 +1316,13 @@ get_arc64_condition_code (rtx comparison)
 	case GEU : return ARC_CC_NC;
 	default : gcc_unreachable ();
 	}
+    case E_CC_Vmode:
+      switch (GET_CODE (comparison))
+	{
+	case EQ : return ARC_CC_NV;
+	case NE : return ARC_CC_V;
+	default : gcc_unreachable ();
+	}
     case E_CC_FPUmode:
     case E_CC_FPUEmode:
       switch (GET_CODE (comparison))
@@ -5221,6 +5228,22 @@ arc64_cannot_force_const_mem (machine_mode mode ATTRIBUTE_UNUSED,
 			      rtx x)
 {
   return tls_referenced_p (x);
+}
+
+/* Generate RTL for conditional branch with rtx comparison CODE in mode
+   CC_MODE.  */
+
+void
+arc64_gen_unlikely_cbranch (enum rtx_code code, machine_mode cc_mode,
+			    rtx label_ref)
+{
+  rtx x;
+  x = gen_rtx_fmt_ee (code, VOIDmode, gen_rtx_REG (cc_mode, CC_REGNUM),
+		      const0_rtx);
+  x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+			    gen_rtx_LABEL_REF (VOIDmode, label_ref),
+			    pc_rtx);
+  emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
 }
 
 /* Target hooks.  */
