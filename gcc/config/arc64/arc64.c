@@ -4277,10 +4277,17 @@ void arc64_init_expanders (void)
 
 machine_mode
 arc64_select_cc_mode (enum rtx_code op,
-		      rtx x ATTRIBUTE_UNUSED,
+		      rtx x,
 		      rtx y)
 {
   machine_mode mode = GET_MODE (x);
+
+  /* Matches all instructions which can do .f and clobbers only Z flag.  */
+  if (GET_MODE_CLASS (mode) == MODE_INT
+      && y == const0_rtx
+      && GET_CODE (x) == MULT
+      && (op == EQ || op == NE))
+    return CC_Zmode;
 
   /* Matches all instructions which can do .f and clobbers Z and N
      flags.  Because we compare with zero, for LT we can use "mi" and
