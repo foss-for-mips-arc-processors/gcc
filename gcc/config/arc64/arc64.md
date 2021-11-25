@@ -2012,6 +2012,18 @@ vpack, vsub, xbfu, xor, xorl"
   [(set_attr "length" "4,4,4,8")
    (set_attr "type" "setcc")])
 
+(define_insn "*set<cctab><mode>_cmp"
+  [(set (reg:CC CC_REGNUM)
+	(compare:CC
+	 (match_operand:GPI 1 "register_operand"     "r,    r,    0,r")
+	 (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06S0,S12S0,n")))
+   (set (match_operand:SI 0 "register_operand"      "=r,    r,    r,r")
+	(SETCC:SI (match_dup 1) (match_dup 2)))]
+  ""
+  "set<cctab><sfxtab>.f\\t%0,%1,%2"
+  [(set_attr "length" "4,4,4,8")
+   (set_attr "type" "setcc")])
+
 ;; Special cases of SETCC
 (define_insn_and_split "*sethi<mode>"
   [(set (match_operand:SI 0 "register_operand"      "=r,    r,r")
