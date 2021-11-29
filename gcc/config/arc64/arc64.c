@@ -1039,6 +1039,16 @@ arc64_pass_by_reference (cumulative_args_t cum_v,
 	return false;
     }
 
+  /* In earlier passes, the *_pass_by_reference() hook is called with the
+     "COMPLEX" as the "argument of the function" and later"COMPLEX.element"
+     is considered to be the "argument of the function".  This check makes
+     a unified decision in all those scenarios.  */
+  if (COMPLEX_MODE_P (arg.mode))
+    {
+      const machine_mode mode = GET_MODE_INNER (arg.mode);
+      size = GET_MODE_SIZE (mode);
+    }
+
   /* Variable sized arguments are always returned by reference, and
      arguments which are variable sized or larger than 2 registers are
      passed by reference.  */
