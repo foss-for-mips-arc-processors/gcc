@@ -3921,6 +3921,14 @@ arc64_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 static void
 arc64_override_options (void)
 {
+  if (arcv3_cpu_string)
+    if (strcmp ("hs5x", arcv3_cpu_string) == 0)
+      TARGET_64BIT = false;
+    else if (strcmp ("hs6x", arcv3_cpu_string) == 0)
+      TARGET_64BIT = true;
+    else
+      error ("%<-mcpu=%s%>s is not a valid CPU option.", arcv3_cpu_string);
+
   if (TARGET_LL64 && TARGET_64BIT)
     {
       target_flags &= ~MASK_LL64;

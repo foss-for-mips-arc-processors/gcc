@@ -30,6 +30,9 @@
    numbered.  */
 #define WORDS_BIG_ENDIAN 0
 
+/* Is the 64bit or 32bit variant of the CPU used?  */
+#define TARGET_64BIT arc64_target_64bit
+
 /* Determine TARGET_ARCH64 in all possible cases. */
 #ifdef IN_LIBGCC2
 #if defined(__ARC64_ARCH64__)
@@ -703,7 +706,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 
 #undef  ASM_SPEC
 #define ASM_SPEC                                \
-  "%{m32:-mcpu=arc32} "
+  "%{mcpu=*:-mcpu=%*}"
 
 #ifndef SUBTARGET_EXTRA_SPECS
 #define SUBTARGET_EXTRA_SPECS
