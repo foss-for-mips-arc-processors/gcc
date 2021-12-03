@@ -16,9 +16,9 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-MULTILIB_OPTIONS = mfpu=fpus/mfpu=fpud/m128/m32
+MULTILIB_OPTIONS = mfpu=fpus/mfpu=fpud/m128/mcpu=hs5x
 
-MULTILIB_DIRNAMES = fpus fpud m128 m32
+MULTILIB_DIRNAMES = fpus fpud m128 hs5x
 
 # Using m128 will default to standard implementation of memcpy/memset
 MULTILIB_REUSE = mfpu.fpud=mfpu.fpud/m128
