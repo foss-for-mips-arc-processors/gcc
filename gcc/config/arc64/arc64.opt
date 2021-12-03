@@ -1,5 +1,5 @@
 ; Machine description for ARC64 architecture.
-; Copyright (C) 2019x Free Software Foundation, Inc.
+; Copyright (C) 2021 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -19,6 +19,9 @@
 
 HeaderInclude
 config/arc64/arc64-opts.h
+
+TargetVariable
+bool arc64_target_64bit = true
 
 Enum
 Name(cmodel) Type(enum arc64_code_model)
@@ -81,8 +84,8 @@ Target Mask(BITSCAN)
 Enable NORM, NORMH, FFS, FLS, NORML, FFSL, and FLSL bitscan instructions.
 
 mcpu=
-Target RejectNegative Joined
--mcpu= Generate code for specific ARCv3 CPU variant.
+Target RejectNegative ToLower Joined Var(arcv3_cpu_string)
+-mcpu=CPU Generate code for specific ARCv3 CPU variant.
 
 munaligned-access
 Target Var(unaligned_access) Init(UNALIGNED_ACCESS_DEFAULT)
@@ -103,14 +106,6 @@ Enable integer SIMD instructions.
 mwide
 Target Mask(WIDE_SIMD)
 Enable wide floating point SIMD support.
-
-m32
-Target RejectNegative InverseMask(64BIT)
-Use 32-bit machine.
-
-m64
-Target RejectNegative Mask(64BIT)
-Use 64-bit machine.
 
 mll64
 Target Mask(LL64)

@@ -36,7 +36,7 @@ along with GCC; see the file COPYING3.  If not see
    %{shared:-shared}				\
    %{symbolic:-Bsymbolic}			\
    %{!static:%{rdynamic:-export-dynamic}}	\
-   %{m32:-m arc64elf32}"
+   %{mcpu=hs5*:-m arc64elf32}"
 
 
 /* ...and crtend.o.  */
