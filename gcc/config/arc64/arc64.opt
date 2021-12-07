@@ -21,7 +21,7 @@ HeaderInclude
 config/arc64/arc64-opts.h
 
 TargetVariable
-bool arc64_target_64bit = true
+bool arc64_target_64bit = ARC64_64BIT_DEFAULT
 
 Enum
 Name(cmodel) Type(enum arc64_code_model)
