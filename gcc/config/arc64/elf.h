@@ -30,15 +30,6 @@ along with GCC; see the file COPYING3.  If not see
 #undef STARTFILE_SPEC
 #define STARTFILE_SPEC "crt0%O%s crti%O%s crtbegin%O%s"
 
-#undef  LINK_SPEC
-#define LINK_SPEC "%{h*} \
-   %{static:-Bstatic}				\
-   %{shared:-shared}				\
-   %{symbolic:-Bsymbolic}			\
-   %{!static:%{rdynamic:-export-dynamic}}	\
-   %{mcpu=hs5*:-m arc64elf32}"
-
-
 /* ...and crtend.o.  */
 #undef ENDFILE_SPEC
 #define ENDFILE_SPEC "crtend%O%s crtn%O%s"
