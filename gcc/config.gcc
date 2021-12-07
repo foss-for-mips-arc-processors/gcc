@@ -373,7 +373,7 @@ arc-*-* | arceb-*-*)
 	extra_options="${extra_options} arc/arc-tables.opt g.opt"
 	extra_headers="arc-simd.h"
 	;;
-arc64-*-*)
+arc[6432]*-*-*)
 	cpu_type=arc64
 	c_target_objs="arc64-c.o"
 	cxx_target_objs="arc64-c.o"
@@ -1352,8 +1352,12 @@ arc-*-linux* | arceb-*-linux*)
 	gcc_cv_initfini_array=yes
 	;;
 arc64-*-elf*)
-	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h ${tm_file}"
+	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h arc64/elf64.h ${tm_file}"
 	tmake_file="${tmake_file} arc64/t-multilib arc64/t-arc64"
+	;;
+arc32-*-elf*)
+	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h arc64/elf32.h ${tm_file}"
+	tmake_file="${tmake_file} arc64/t-multilib32 arc64/t-arc64"
 	;;
 arc64-*-linux*)
 	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h linux-android.h glibc-stdint.h ${tm_file}"
@@ -4376,7 +4380,7 @@ case "${target}" in
 		fi
 		;;
 
-	arc64-*-*)
+	arc[6432]*-*-*)
 		supported_defaults="fpu"
 		case "$with_fpu" in
 		"" | fpus | fpud)
