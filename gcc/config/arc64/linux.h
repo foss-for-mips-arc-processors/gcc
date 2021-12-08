@@ -100,3 +100,6 @@ along with GCC; see the file COPYING3.  If not see
    fun = gen_rtx_SYMBOL_REF (Pmode, "_mcount");			\
    emit_library_call (fun, LCT_NORMAL, VOIDmode, rt, Pmode);	\
   }
+
+#undef ARC64_64BIT_DEFAULT
+#define ARC64_64BIT_DEFAULT 1
