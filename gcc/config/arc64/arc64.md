@@ -2243,36 +2243,20 @@ vpack, vsub, xbfu, xor, xorl"
   "")
 
 (define_insn "*rotrsi3"
-  [(set (match_operand:SI 0 "register_operand"                   "=r,     r,r")
-	(rotatert:SI (match_operand:SI 1 "nonmemory_operand"      "0,     r,i")
-		     (match_operand:SI 2 "nonmemory_operand" "rU06S0,rU06S0,r")))]
+  [(set (match_operand:SI 0 "register_operand"                  "=r,    r,    r,     r,r")
+	(rotatert:SI (match_operand:SI 1 "nonmemory_operand"     "r,    r,    r,     r,i")
+		     (match_operand:SI 2 "nonmemory_operand" "U0001,U0008,U0016,rU06S0,r")))]
   ;; FIXME! this needs BARREL_SHIFTER option
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
-  "ror%?\\t%0,%1,%2"
-  [(set_attr "type" "ror")
-   (set_attr "predicable" "yes,no,no")
-   (set_attr "length" "4,4,8")])
-
-(define_insn "rotr1"
-  [(set (match_operand:SI 0 "register_operand"              "=     r,r")
-	(rotatert:SI (match_operand:SI 1 "nonmemory_operand" "rU06S0,i")
-		     (const_int 1)))]
-  ""
-  "ror%?\\t%0,%1"
-  [(set_attr "type" "ror")
-   (set_attr "predicable" "no")
-   (set_attr "length" "4,8")])
-
-(define_insn "rotr8"
-  [(set (match_operand:SI 0 "register_operand"              "=     r,r")
-	(rotatert:SI (match_operand:SI 1 "nonmemory_operand" "rU06S0,i")
-		     (const_int 8)))]
-  ""
-  "ror8%?\\t%0,%1"
-  [(set_attr "type" "ror")
-   (set_attr "predicable" "no")
-   (set_attr "length" "4,8")])
+  "@
+   ror\\t%0,%1
+   ror8\\t%0,%1
+   swap\\t%0,%1
+   ror\\t%0,%1,%2
+   ror\\t%0,%1,%2"
+  [(set_attr "type" "ror,ror,swap,ror,ror")
+   (set_attr "length" "4,4,4,4,8")])
 
 (define_expand "rotlsi3"
   [(set (match_operand:SI 0 "register_operand")
