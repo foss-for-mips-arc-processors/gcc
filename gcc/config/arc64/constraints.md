@@ -197,6 +197,22 @@
   (and (match_code "const_double")
        (ior (match_test "op == CONST0_RTX (DFmode)")
 	    (match_test "GET_MODE_SIZE (GET_MODE (op)) <= 4"))))
+
+(define_constraint "U0001" "@internal
+  Match const int 1"
+  (and (match_code "const_int")
+       (match_test "ival == 1")))
+
+(define_constraint "U0008" "@internal
+  Match const int 8"
+  (and (match_code "const_int")
+       (match_test "ival == 8")))
+
+(define_constraint "U0016" "@internal
+  Match const int 16"
+  (and (match_code "const_int")
+       (match_test "ival == 16")))
+
 ;---------------------------------------------------------
 
 (define_constraint "U06S0" "@internal
