@@ -3939,6 +3939,16 @@ arc64_override_options (void)
     }
 }
 
+/* Return the fixed registers used for condition codes.  */
+
+static bool
+arc64_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
+{
+  *p1 = CC_REGNUM;
+  *p2 = INVALID_REGNUM;
+  return true;
+}
+
 /*
   Global functions.
 */
@@ -5539,6 +5549,13 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_OPTION_OVERRIDE
 #define TARGET_OPTION_OVERRIDE arc64_override_options
+
+/* CC regs optimizations.  */
+#undef TARGET_FIXED_CONDITION_CODE_REGS
+#define TARGET_FIXED_CONDITION_CODE_REGS arc64_fixed_condition_code_regs
+
+#undef TARGET_FLAGS_REGNUM
+#define TARGET_FLAGS_REGNUM CC_REGNUM
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
