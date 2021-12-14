@@ -2948,13 +2948,13 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 
 
 ;; For thread pointer builtins
-(define_expand "get_thread_pointerdi"
-  [(set (match_operand:DI 0 "register_operand") (match_dup 1))]
+(define_expand "get_thread_pointer<mode>"
+  [(set (match_operand:P 0 "register_operand") (match_dup 1))]
  ""
  "operands[1] = gen_rtx_REG (Pmode, R30_REGNUM);")
 
-(define_expand "set_thread_pointerdi"
-  [(set (match_dup 1) (match_operand:DI 0 "register_operand"))]
+(define_expand "set_thread_pointer<mode>"
+  [(set (match_dup 1) (match_operand:P 0 "register_operand"))]
  ""
  "operands[1] = gen_rtx_REG (Pmode, R30_REGNUM);")
 
