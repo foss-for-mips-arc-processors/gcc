@@ -1351,16 +1351,23 @@ arc-*-linux* | arceb-*-linux*)
 	# automatically detect that GAS supports it, yet we require it.
 	gcc_cv_initfini_array=yes
 	;;
-arc64-*-elf*)
-	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h arc64/elf64.h ${tm_file}"
-	tmake_file="${tmake_file} arc64/t-multilib arc64/t-arc64"
-	;;
 arc32-*-elf*)
 	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h arc64/elf32.h ${tm_file}"
 	tmake_file="${tmake_file} arc64/t-multilib32 arc64/t-arc64"
 	;;
+arc64-*-elf*)
+	tm_file="dbxelf.h elfos.h newlib-stdint.h arc64/elf.h arc64/elf64.h ${tm_file}"
+	tmake_file="${tmake_file} arc64/t-multilib arc64/t-arc64"
+	;;
+arc32-*-linux*)
+	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h arc64/linux32.h linux-android.h glibc-stdint.h ${tm_file}"
+	tmake_file="${tmake_file} arc64/t-arc64"
+	# Force .init_array support.  The configure script cannot always
+	# automatically detect that GAS supports it, yet we require it.
+	gcc_cv_initfini_array=yes
+	;;
 arc64-*-linux*)
-	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h linux-android.h glibc-stdint.h ${tm_file}"
+	tm_file="dbxelf.h elfos.h gnu-user.h linux.h arc64/linux.h arc64/linux64.h linux-android.h glibc-stdint.h ${tm_file}"
 	tmake_file="${tmake_file} arc64/t-arc64"
 	# Force .init_array support.  The configure script cannot always
 	# automatically detect that GAS supports it, yet we require it.
