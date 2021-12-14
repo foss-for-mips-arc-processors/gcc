@@ -1,6 +1,6 @@
-/* Target macros for arc64-*-linux targets.
+/* Target macros for arc*-*-linux targets.
 
-   Copyright (C) 2020 Free Software Foundation, Inc.
+   Copyright (C) 2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -28,20 +28,6 @@ along with GCC; see the file COPYING3.  If not see
       GNU_USER_TARGET_OS_CPP_BUILTINS ();	\
     }						\
   while (0)
-
-#define GLIBC_DYNAMIC_LINKER   "/lib/ld-linux-arc64.so.2"
-
-/* Note that the default is to link against dynamic libraries, if they are
-   available.  Override with -static.  */
-#undef LINK_SPEC
-#define LINK_SPEC "%{h*} \
-  %{static:-Bstatic} \
-  %{shared:-shared} \
-  %{symbolic:-Bsymbolic} \
-  %{!static: \
-    %{rdynamic:-export-dynamic} \
-    %{!shared:-dynamic-linker " GNU_USER_DYNAMIC_LINKER "}} \
-  -X "
 
 #undef STARTFILE_SPEC
 #define STARTFILE_SPEC							\
@@ -100,9 +86,6 @@ along with GCC; see the file COPYING3.  If not see
    fun = gen_rtx_SYMBOL_REF (Pmode, "_mcount");			\
    emit_library_call (fun, LCT_NORMAL, VOIDmode, rt, Pmode);	\
   }
-
-#undef ARC64_64BIT_DEFAULT
-#define ARC64_64BIT_DEFAULT 1
 
 #undef UNALIGNED_ACCESS_DEFAULT
 #define UNALIGNED_ACCESS_DEFAULT 1

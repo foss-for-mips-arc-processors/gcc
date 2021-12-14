@@ -1,6 +1,6 @@
-/* Target macros for arc64-elf targets.
+/* Target macros for arc*-elf targets.
 
-   Copyright (C) 2020 Free Software Foundation, Inc.
+   Copyright (C) 2021 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
