@@ -499,14 +499,14 @@
    (set_attr "type"       "<optab><sfxtab>")])
 
 ;; To be merged into adddi3
-(define_insn "*add_tls_off"
-  [(set (match_operand:DI 0 "register_operand" "=r")
-	(plus:DI (match_operand:DI 1 "register_operand" "r")
-		 (unspec:DI [(match_operand 2 "" "")]
+(define_insn "*add_tls_off<mode>"
+  [(set (match_operand:P 0 "register_operand" "=r")
+	(plus:P (match_operand:P 1 "register_operand" "r")
+		(unspec:P [(match_operand 2 "" "")]
 			    ARC64_UNSPEC_TLS_OFF)))]
   ""
-  "addl\\t%0,%1,%2@tpoff"
-  [(set_attr "type" "addl")
+  "add<sfxtab>\\t%0,%1,%2@tpoff"
+  [(set_attr "type" "add<sfxtab>")
    (set_attr "length" "8")]
   )
 
