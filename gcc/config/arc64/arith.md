@@ -1033,19 +1033,21 @@
   [(set_attr "length" "4,4,8")
    (set_attr "type" "mpy")])
 
-
 ;; 16bit operations using SIMD instructions
-(define_insn "<optab>hi3"
-  [(set (match_operand:HI 0 "register_operand"  "=r,r")
-	(ADDSUB:HI
-	 (match_operand:HI 1 "register_operand"  "r,r")
-	 (match_operand:HI 2 "nonmemory_operand" "r,i")))]
-  "TARGET_SIMD"
-  "@
-   v<optab>2h\\t%0,%1,%2
-   v<optab>2h\\t%0,%1,%2@u32"
-   [(set_attr "length" "4,8")
-   (set_attr "type" "v<optab>")])
+;; This gives worst code, keep it here for any other ideas.
+;; exth -> add -> exth/extb :: add -> exth/extb
+;;(define_insn "<optab>hi3"
+;;  [(set (match_operand:HI 0 "register_operand"  "=r,r")
+;;	(ADDSUB:HI
+;;	 (match_operand:HI 1 "register_operand"  "r,r")
+;;	 (match_operand:HI 2 "nonmemory_operand" "r,i")))]
+;;  "TARGET_SIMD"
+;;  "@
+;;   v<optab>2h\\t%0,%1,%2
+;;   v<optab>2h\\t%0,%1,%2@u32"
+;;   [(set_attr "length" "4,8")
+;;   (set_attr "type" "v<optab>")])
+
 
 ;; MADD patterns
 ;; 32 + (signe) 16 x (signe) 16 -> 32
