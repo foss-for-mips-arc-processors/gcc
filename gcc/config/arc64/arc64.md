@@ -736,14 +736,14 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 
 (define_insn "*arc64_movsi"
   [(set
-    (match_operand:SI 0 "arc64_dest_operand"      "=qh,r,    q,    r,    r,h,r,    q,Ustms,Ustor,Ucnst, r,Ustor")
-    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,i,i,Uldms,    q,S06S0,    i, m,    r"))
+    (match_operand:SI 0 "arc64_dest_operand"      "=qh,r,    q,    r,    r,         h,         r,    q,Ustms,Ustor,Ucnst, r,Ustor")
+    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,U32S0SymMV,U32S0SymMV,Uldms,    q,S06S0,U32S0, m,    r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
    || (satisfies_constraint_S06S0 (operands[1])
        && memory_operand (operands[0], SImode))
-   || (CONST_INT_P (operands[1])
+   || (satisfies_constraint_U32S0 (operands[1])
        && satisfies_constraint_Ucnst (operands[0]))"
    "@
     mov_s\\t%0,%1
