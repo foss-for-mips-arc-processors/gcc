@@ -511,7 +511,12 @@ arc-*-linux* | arceb-*-linux*)
 arc32-*-elf | arc64-*-elf)
 	tmake_file="${tmake_file} arc64/t-arc64 arc64/t-softfp t-softfp t-softfp-sfdf"
 	;;
-arc32-*-linux* | arc64-*-linux*)
+arc32-*-linux*)
+	tmake_file="${tmake_file} arc64/t-softfp t-softfp t-softfp-sfdf"
+	tmake_file="${tmake_file} t-slibgcc-libgcc t-slibgcc-nolc-override"
+	md_unwind_header=arc64/linux-unwind.h
+	;;
+arc64-*-linux*)
 	tmake_file="${tmake_file} arc64/t-arc64 arc64/t-softfp t-softfp t-softfp-sfdf"
 	tmake_file="${tmake_file} t-slibgcc-libgcc t-slibgcc-nolc-override"
 	md_unwind_header=arc64/linux-unwind.h
