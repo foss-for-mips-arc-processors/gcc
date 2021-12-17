@@ -5349,6 +5349,42 @@ arc64_gen_unlikely_cbranch (enum rtx_code code, machine_mode cc_mode,
   emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
 }
 
+/* True if the dependency between OUT_INSN and IN_INSN is on the accumulator
+   register.  IN_INSN is a mac type of instruction.  */
+
+int
+accumulator_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
+{
+  rtx in_set = single_set (in_insn);
+  rtx out_set = single_set (out_insn);
+
+  if (!in_set || !out_set)
+    return false;
+
+  if (!REG_P (SET_DEST (out_set)) || (REGNO (SET_DEST (out_set)) != R58_REGNUM))
+    return false;
+
+  rtx tmp = SET_SRC (in_set);
+  if (GET_CODE (tmp) == PLUS && GET_CODE (XEXP (tmp, 0)) == MULT)
+    return true;
+  return true;
+}
+
+/* True if IN_INSN is setting the accumulator.  */
+
+int
+set_accumulator_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		   rtx_insn *in_insn)
+{
+  rtx in_set = single_set (in_insn);
+  if (!in_set)
+    return false;
+
+  if (REG_P (SET_DEST (in_set)) && (REGNO (SET_DEST (in_set)) == R58_REGNUM))
+    return true;
+  return false;
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
