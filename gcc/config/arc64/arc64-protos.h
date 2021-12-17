@@ -44,7 +44,8 @@ extern bool arc64_expand_fvect_shr (rtx *);
 extern bool arc64_use_plt34_p (rtx);
 extern int regno_clobbered_p (unsigned int, rtx_insn *, machine_mode, int);
 extern void arc64_gen_unlikely_cbranch (enum rtx_code, machine_mode, rtx);
-
+extern int accumulator_bypass_p (rtx_insn *, rtx_insn *);
+extern int set_accumulator_p (rtx_insn *, rtx_insn *);
 #endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */

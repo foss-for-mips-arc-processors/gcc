@@ -1,6 +1,6 @@
 # GCC Makefile fragment for Synopsys ARC64.
 #
-# Copyright (C) 2020 Free Software Foundation, Inc.
+# Copyright (C) 2021 Free Software Foundation, Inc.
 #
 # This file is part of GCC.
 #
@@ -23,3 +23,9 @@ arc64-c.o: $(srcdir)/config/arc64/arc64-c.c $(CONFIG_H) $(SYSTEM_H) \
 $(TREE_H) $(TM_H) $(TM_P_H) coretypes.h
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/arc64/arc64-c.c
+
+PASSES_EXTRA += $(srcdir)/config/arc64/arc64-passes.def
+
+# Local Variables:
+# mode: Makefile
+# End:
