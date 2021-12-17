@@ -85,6 +85,8 @@
 (define_bypass 3 "mpy32_insn" "mpy*_insn")
 (define_bypass 3 "mpy32_insn" "div_insn")
 
-(define_bypass 1 "alu_arith" "mpy*_insn")
+(define_bypass 1 "alu_arith" "mpy*_insn" "!accumulator_bypass_p")
 (define_bypass 1 "alu_arith" "div_insn")
 (define_bypass 1 "alu_arith" "store_insn" "store_data_bypass_p")
+
+(define_bypass 1 "alu_arith" "alu_arith" "set_accumulator_p")
