@@ -316,6 +316,11 @@ enum reg_class
 
 #define REGNO_REG_CLASS(REGNO) arc64_regno_to_regclass[ (REGNO) ]
 
+/* A C expression that is nonzero if it is OK to rename a hard register FROM to
+   another hard register TO.  */
+
+#define HARD_REGNO_RENAME_OK(FROM, TO) arc64_hard_regno_rename_ok (FROM, TO)
+
 /* The class value for valid base registers. A base register is one used in
    an address which is the register value plus a displacement.  */
 
