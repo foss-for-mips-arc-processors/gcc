@@ -1286,7 +1286,9 @@ vpack, vsub, xbfu, xor, xorl"
 (define_insn "simple_return"
   [(simple_return)]
   ""
-  "j_s%*\\t[blink]"
+  {
+   return arc64_output_return ();
+  }
   [(set_attr "type" "return")
    (set_attr "length" "2")])
 
