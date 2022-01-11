@@ -62,6 +62,11 @@
     (R58_REGNUM		58)
     (R59_REGNUM		59)
 
+    (R60_REGNUM		60)
+    (R61_REGNUM		61)
+    (R62_REGNUM		62)
+    (R63_REGNUM		63)
+
     (F0_REGNUM		64)
     (F1_REGNUM		65)
     (F2_REGNUM		66)
@@ -126,6 +131,7 @@
    ARC64_VUNSPEC_LL
    ARC64_VUNSPEC_SYNC
    ARC64_VUNSPEC_ATOOPS
+   ARC64_VUNSPEC_RTIE
 
    ARC64_UNSPEC_MEMBAR
    ARC64_UNSPEC_FLS
@@ -442,11 +448,11 @@ ffs, fh2s, flag, fls, fmadd, fmax, fmin, fmov, fmsub, fmul, fnmadd,
 fnmsub, fp2int, fp2uint, frnd, fs2d, fs2h, fsgnj, fsgnjn, fsgnjx,
 fsqrt, fsub, int2fp, jl, jump, ld, llock, lr, lsr, lsrl, mac, max,
 maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
-normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror, sbc,
-sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape, swapel,
-swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl, unknown,
-vadd, vfadd, vfdiv, vfext, vfins, vfmul, vfrep, vfsub, vmac2h, vmpy2h,
-vpack, vsub, xbfu, xor, xorl"
+normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
+rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
+swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
+unknown, vadd, vfadd, vfdiv, vfext, vfins, vfmul, vfrep, vfsub,
+vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
@@ -1320,6 +1326,15 @@ vpack, vsub, xbfu, xor, xorl"
   ""
   [(set_attr "length" "0")
    (set_attr "type" "block")]
+  )
+
+(define_insn "rtie"
+  [(return)
+   (unspec_volatile [(const_int 0)] ARC64_VUNSPEC_RTIE)]
+  ""
+  "rtie"
+  [(set_attr "length" "4")
+   (set_attr "type" "rtie")]
   )
 
 ;; Don't need initialization instructions.
