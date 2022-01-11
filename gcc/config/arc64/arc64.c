@@ -366,6 +366,10 @@ arc64_save_reg_p (int regno)
 
   switch (regno)
     {
+    case R60_REGNUM:
+    case R61_REGNUM:
+    case R62_REGNUM:
+    case R63_REGNUM:
     case ILINK_REGNUM:
     case BLINK_REGNUM:
     case SP_REGNUM:
@@ -417,7 +421,7 @@ arc64_save_reg_p (int regno)
       break;
     }
 
-  call_saved = !global_regs[regno] && !call_used_regs[regno];
+  call_saved = !global_regs[regno] && !call_used_or_fixed_reg_p (regno);
   might_clobber = df_regs_ever_live_p (regno) || crtl->saves_all_registers;
 
   /* In a frame that calls __builtin_eh_return two data registers are used to
@@ -430,6 +434,20 @@ arc64_save_reg_p (int regno)
 
   if ((call_saved && might_clobber) || eh_needed)
     return true;
+
+  /* If this is an interrupt handler, then we must save extra registers.  */
+  if (ARC_INTERRUPT_P (cfun->machine->fn_type))
+    {
+      /* ARCv3 has ACCUMULATOR register as baseline.  */
+      if (regno == R58_REGNUM)
+	return true;
+
+      if (df_regs_ever_live_p (regno)
+	  /* if this is not a leaf function, then we must save all temporary
+	     registers.  */
+	  || (!crtl->is_leaf && call_used_regs[regno] && !fixed_regs[regno]))
+	return true;
+    }
   return false;
 }
 
@@ -2210,6 +2228,10 @@ arc64_function_ok_for_sibcall (tree decl,
 {
   /* Don't use sibcall for naked functions.  */
   if (ARC_NAKED_P (cfun->machine->fn_type))
+    return false;
+
+  /* Don't use sibcall for ISR functions.  */
+  if (ARC_INTERRUPT_P (cfun->machine->fn_type))
     return false;
 
   if (decl && targetm.binds_local_p (decl))
@@ -4446,7 +4468,8 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
 bool
 arc64_can_use_return_insn_p (void)
 {
-  return (reload_completed && cfun->machine->frame.frame_size == 0);
+  return (reload_completed && cfun->machine->frame.frame_size == 0
+	  && !ARC_INTERRUPT_P (cfun->machine->fn_type));
 }
 
 
@@ -4464,8 +4487,16 @@ arc64_epilogue_uses (int regno)
 #endif
 
   if (epilogue_completed)
-    if (regno == BLINK_REGNUM)
-      return 1;
+    {
+      if (regno == BLINK_REGNUM)
+	return 1;
+
+      /* An interrupt restores more registers.  */
+      if (ARC_INTERRUPT_P (cfun->machine->fn_type)
+	  && (df_regs_ever_live_p (regno)
+	      || (!crtl->is_leaf && call_used_or_fixed_reg_p (regno))))
+	return 1;
+    }
 
   return 0;
 }
@@ -4644,7 +4675,9 @@ arc64_expand_epilogue (bool sibcall_p)
     emit_insn (gen_add2_insn (stack_pointer_rtx,
 			      EH_RETURN_STACKADJ_RTX));
 
-  if (!sibcall_p)
+  if (ARC_INTERRUPT_P (cfun->machine->fn_type))
+    emit_jump_insn (gen_rtie ());
+  else if (!sibcall_p)
     emit_jump_insn (gen_simple_return ());
 }
 
@@ -5576,6 +5609,19 @@ arc64_output_return (void)
     return "";
 
   return "j_s%*\t[blink]";
+}
+
+/* Return nonzero if register FROM_REGNO can be renamed to register
+   TO_REGNO.  */
+
+bool
+arc64_hard_regno_rename_ok (unsigned from_regno ATTRIBUTE_UNUSED,
+			    unsigned to_regno)
+{
+  /* Interrupt functions can only use registers that have already been saved by
+     the prologue, even if they would normally be call-clobbered.  */
+  return (!ARC_INTERRUPT_P (cfun->machine->fn_type)
+	  || df_regs_ever_live_p (to_regno));
 }
 
 /* Target hooks.  */
