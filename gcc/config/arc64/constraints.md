@@ -110,7 +110,8 @@
 (define_constraint "BLsym"
   "@internal
   is a symbol reference allowed by the BL instruction"
-  (match_code "symbol_ref"))
+  (and (match_code "symbol_ref")
+       (match_test "!arc64_is_long_call_p (op)")))
 
 (define_constraint "U06M1"
   "@internal
