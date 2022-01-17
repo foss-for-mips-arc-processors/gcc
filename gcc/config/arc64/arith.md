@@ -1368,7 +1368,7 @@
   "TARGET_SIMD"
   "@
    dmach\\t%0,%1,%2
-   dmach\\t%0,%1,%H2@u32
+   dmach\\t%0,%1,%V2@u32
    #"
   "&& reload_completed
    && (CONST_INT_P (operands[3]) || (REGNO (operands[3]) != R58_REGNUM))"
@@ -1388,7 +1388,7 @@
  "TARGET_SIMD"
  "@
   dmach\\t0,%0,%1
-  dmach\\t0,%0,%H1@u32"
+  dmach\\t0,%0,%V1@u32"
  [(set_attr "length" "4,8")
   (set_attr "type" "mac")])
 
@@ -2515,7 +2515,7 @@
 	  (parallel [(const_int 1)])
 	  )))]
   "ARC64_VFP_128"
-  "vf<sfxtab>rep\\t%0,%h1"
+  "vf<sfxtab>rep\\t%0,%H1"
   [(set_attr "length" "4")
    (set_attr "type" "vfrep")])
 
