@@ -848,10 +848,10 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (match_operand:DI 1 "arc64_immediate_or_pic" "S12S0,SymIm,SymIm,SyPic")))]
   ""
   "@
-   movhl\\t%0,%h1
-   movhl_s\\t%0,%h1
-   movhl\\t%0,%h1
-   addhl\\t%0,pcl,%h1"
+   movhl\\t%0,%H1
+   movhl_s\\t%0,%H1
+   movhl\\t%0,%H1
+   addhl\\t%0,pcl,%H1"
   [(set_attr "type" "move")
    (set_attr "length" "4,6,8,8")])
 
