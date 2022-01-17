@@ -1509,12 +1509,12 @@ get_arc64_condition_code (rtx comparison)
      'm': output condition code without 'dot'.
      '?': Short instruction suffix.
      'L': Lower 32bit of immediate or symbol.
-     'h': Higher 32bit of an immediate, 64b-register or symbol.
+     'H': Higher 32bit of an immediate, 64b-register or symbol.
      'C': Constant address, switches on/off @plt.
      's': Scalled immediate.
      'S': Scalled immediate, to be used in pair with 's'.
      'N': Negative immediate, to be used in pair with 's'.
-     'H': 2x16b vector immediate, hi lane is zero.
+     'V': 2x16b vector immediate, hi lane is zero.
      'P': Constant address, swithces on/off _s to be used with 'C'
      'A': output aq, rl or aq.rl flags for atomic ops.
 */
@@ -1601,6 +1601,11 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  fputs ("@u32", file);
 	  break;
 	}
+      else if (REG_P (x))
+	{
+	  asm_fprintf (file, "%s", reg_names [REGNO (x)]);
+	  break;
+	}
       else if (!CONST_INT_P (x))
 	{
 	  output_operand_lossage ("invalid operand for %%L code");
@@ -1611,7 +1616,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
       fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
       break;
 
-    case 'h':
+    case 'H':
       if (GET_CODE (x) == SYMBOL_REF
 	  || GET_CODE (x) == LABEL_REF
 	  || GET_CODE (x) == UNSPEC)
@@ -1629,15 +1634,15 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	asm_fprintf (file, "%s", reg_names [REGNO (x) + 1]);
       else
 	{
-	  output_operand_lossage ("invalid operand for %%h code");
+	  output_operand_lossage ("invalid operand for %%H code");
 	  return;
 	}
       break;
 
-    case 'H':
+    case 'V':
       if (!CONST_INT_P (x))
 	{
-	  output_operand_lossage ("invalid operand for %%H code");
+	  output_operand_lossage ("invalid operand for %%V code");
 	  return;
 	}
       ival = INTVAL (x);
