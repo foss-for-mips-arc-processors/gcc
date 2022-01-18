@@ -199,6 +199,11 @@
        (ior (match_test "op == CONST0_RTX (DFmode)")
 	    (match_test "GET_MODE_SIZE (GET_MODE (op)) <= 4"))))
 
+(define_constraint "U0000" "@internal
+  Match const int 0"
+  (and (match_code "const_int")
+       (match_test "ival == 0")))
+
 (define_constraint "U0001" "@internal
   Match const int 1"
   (and (match_code "const_int")
