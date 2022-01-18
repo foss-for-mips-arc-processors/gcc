@@ -4149,6 +4149,33 @@ arc64_warn_func_return (tree decl)
   return !arc64_naked_function_p (decl);
 }
 
+/* Return false for selected jumps crossing between hot and cold partitions.  */
+
+static bool
+arc64_can_follow_jump (const rtx_insn *br1, const rtx_insn *br2)
+{
+  /* Avoid compiler warnings.  */
+  union {const rtx_insn *c; rtx_insn *r;} u;
+
+  u.c = br1;
+  if (flag_reorder_blocks_and_partition
+      && CROSSING_JUMP_P (br2))
+    switch (get_attr_type (u.r))
+      {
+      case TYPE_BRANCHCC:
+      case TYPE_BRCC:
+	return false;
+      case TYPE_BRANCH:
+	if (get_attr_length (u.r) == 2)
+	  return false;
+	break;
+      default:
+	break;
+      }
+
+  return true;
+}
+
 /*
   Global functions.
 */
@@ -5848,6 +5875,9 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_WARN_FUNC_RETURN
 #define TARGET_WARN_FUNC_RETURN arc64_warn_func_return
+
+#undef TARGET_CAN_FOLLOW_JUMP
+#define TARGET_CAN_FOLLOW_JUMP arc64_can_follow_jump
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
