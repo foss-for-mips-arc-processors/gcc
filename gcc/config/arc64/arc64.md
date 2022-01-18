@@ -546,7 +546,10 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(eq_attr "call_slottable" "true") (nil) (nil)])
 
 ;; Jumps delay slots
-(define_delay (eq_attr "type" "jump,branch,branchcc,dbnz,bbit,brcc")
+(define_delay (ior (eq_attr "type" "jump,branch,branchcc,dbnz,bbit")
+;; Accordingly to PRM jumps with LIMM and delay slots are illegal.
+		   (and (eq_attr "type" "brcc")
+			(eq_attr "length" "4,12")))
   [(eq_attr "slottable" "true") (nil) (nil)])
 
 ;; Is there an instruction that we are actually putting into the delay
@@ -1567,24 +1570,26 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (const_int 4)
 	 (const_int 8)))])
 
-;; combiner patterns for BRcc instructions.  We consider all BRcc
-;; supported comparisons but compare with zero. The positive range
-;; needs to take into account the limm size, and the pcl rounding.
-;; This pattern is under an option as it may prohibit further
-;; optimizations like if-conversion.
+;; combiner/instruction pattern for BRcc instructions.  We consider
+;; all BRcc supported comparisons but compare with zero. The positive
+;; range needs to take into account the limm size, and the pcl
+;; rounding.  This pattern is under an option as it may prohibit
+;; further optimizations like if-conversion.
 (define_insn "*brcc"
   [(set (pc)
 	(if_then_else
 	 (match_operator 3 "brcc_comparison_operator"
-			 [(match_operand:GPI 1 "register_operand"  "r,r")
-			  (match_operand:GPI 2 "brcc_2ndoperand" "U06S0r,U32S0")])
+			 [(match_operand:GPI 1 "register_operand"      "q,     r,r")
+			  (match_operand:GPI 2 "nonmemory_operand" "U0000,U06S0r,S32S0")])
 	 (label_ref (match_operand 0 "" ""))
 	 (pc)))
    (clobber (reg:CC_ZN CC_REGNUM))]
-  "!CROSSING_JUMP_P (insn) && TARGET_BRCC"
+  "!CROSSING_JUMP_P (insn) && (TARGET_BRCC || reload_completed)"
   {
    switch (get_attr_length (insn))
-     {
+    {
+     case 2:
+       return \"br%m3<sfxtab>_s\\t%1,%2,%l0\";
      case 4:
      case 8:
        return \"br%m3<sfxtab>%*\\t%1,%2,%l0\";
@@ -1594,19 +1599,67 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   }
   [(set_attr "type" "brcc")
    (set (attr "length")
-	(cond [(and (ge (minus (match_dup 0) (pc)) (const_int -254))
+	(cond [(and (match_operand 3 "equality_comparison_operator" "")
+		    (ge (minus (match_dup 0) (pc)) (const_int -126))
+		    (le (minus (match_dup 0) (pc)) (const_int 122))
+		    (eq (symbol_ref "which_alternative") (const_int 0))
+		    ;; no delay slot for short version.
+		    (eq_attr "delay_slot_filled" "no")
+		    (ior (and (match_operand:DI 1 "" "")
+			      (match_test "TARGET_64BIT"))
+			 (and (match_operand:SI 1 "" "")
+			      (match_test "!TARGET_64BIT"))))
+	       (const_int 2)
+	       (and (ge (minus (match_dup 0) (pc)) (const_int -254))
 		    (le (minus (match_dup 0) (pc)) (const_int 248))
-		    (eq (symbol_ref "which_alternative") (const_int 0)))
+		    (ior (eq (symbol_ref "which_alternative") (const_int 0))
+			 (eq (symbol_ref "which_alternative") (const_int 1))))
 	       (const_int 4)
 	       (and (ge (minus (match_dup 0) (pc)) (const_int -254))
 		    (le (minus (match_dup 0) (pc)) (const_int 244))
-		    (eq (symbol_ref "which_alternative") (const_int 1)))
+		    (eq (symbol_ref "which_alternative") (const_int 2)))
 	       (const_int 8)
 	       ;; This should be variable as well...
-	       (eq (symbol_ref "which_alternative") (const_int 0))
+	       (eq (symbol_ref "which_alternative") (const_int 1))
 	       (const_int 12)]
 	      (const_int 12)))
    ])
+
+;; Peephole pattern to match BRcc instructions.
+(define_peephole2
+  [(set (match_operand 0 "cc_register")
+	(compare:CC (match_operand:GPI 1 "register_operand")
+		    (match_operand:GPI 2 "nonmemory_operand")))
+   (set (pc) (if_then_else
+	      (match_operator 3 "brcc_comparison_operator"
+			      [(match_dup 0) (const_int 0)])
+	      (label_ref (match_operand 4 ""))
+	      (pc)))]
+  "peep2_reg_dead_p (2, operands[0])"
+  [(parallel [(set (pc)
+		   (if_then_else
+		    (match_op_dup 3 [(match_dup 1) (match_dup 2)])
+		    (label_ref (match_dup 4))
+		    (pc)))
+	      (clobber (reg:CC_ZN CC_REGNUM))])])
+
+;; Similar like the one above.
+(define_peephole2
+  [(set (match_operand 0 "cc_register")
+	(compare:CC_ZN (match_operand:GPI 1 "register_operand")
+		       (const_int 0)))
+   (set (pc) (if_then_else
+	      (match_operator 2 "brcc_comparison_operator"
+			      [(match_dup 0) (const_int 0)])
+	      (label_ref (match_operand 3 ""))
+	      (pc)))]
+  "peep2_reg_dead_p (2, operands[0])"
+  [(parallel [(set (pc)
+		   (if_then_else
+		    (match_op_dup 2 [(match_dup 1) (const_int 0)])
+		    (label_ref (match_dup 3))
+		    (pc)))
+	      (clobber (reg:CC_ZN CC_REGNUM))])])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
