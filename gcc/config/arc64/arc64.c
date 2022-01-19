@@ -3814,6 +3814,9 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
       op0 = XEXP (x, 0);
       op1 = XEXP (x, 1);
 
+      if ((mode != SImode) && (mode != DImode))
+	*cost += 1;
+
       /* Check if we have add{1,2,3} instruction.  */
       if ((GET_CODE (op0) == ASHIFT
 	   && _1_2_3_operand (XEXP (op0, 1), VOIDmode))
@@ -3844,7 +3847,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
       if (MEM_P (op0))
 	{
 	  /* All loads can zero extend to any size for free.  */
-	  *cost += rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
+	  *cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
 	  return true;
 	}
       if (mode == DImode
@@ -3854,13 +3857,6 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	  int op_cost = rtx_cost (op0, VOIDmode, ZERO_EXTEND, 0, speed);
 	  if (op_cost)
 	    *cost = op_cost;
-	  return true;
-	}
-      if (mode == SImode
-	  && (GET_CODE (op0) == PLUS || GET_CODE (op0) == MINUS)
-	  && outer == SET)
-	{
-	  *cost = 0;
 	  return true;
 	}
       break;
