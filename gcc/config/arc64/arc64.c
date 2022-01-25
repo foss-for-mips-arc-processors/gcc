@@ -49,6 +49,7 @@
 
 /* Use ARC64_LPIC only if dealing with 64-bit variant of arc64.  */
 #define ARC64_MAYBE_LPIC (TARGET_64BIT ? ARC64_LPIC : ARC64_PIC)
+#define ARC64_MAYBE_LARGE (TARGET_64BIT ? ARC64_LARGE : ARC64_LO32)
 
 /* Maximum size of a loop.  */
 #define MAX_LOOP_LENGTH 4094
@@ -806,7 +807,8 @@ arc64_get_symbol_type (rtx x)
      For large model, we should use a pc-rel accessing.  */
   if (LABEL_REF_P (x))
     return flag_pic ? ARC64_PIC :
-      (arc64_cmodel_var ==  ARC64_CMODEL_LARGE ? ARC64_LARGE : ARC64_LO32);
+      (arc64_cmodel_var ==  ARC64_CMODEL_LARGE ? ARC64_MAYBE_LARGE :
+       ARC64_LO32);
 
   /* FIXME! Maybe I should assert here.  */
   if (!SYMBOL_REF_P (x))
@@ -827,7 +829,7 @@ arc64_get_symbol_type (rtx x)
       case ARC64_CMODEL_MEDIUM:
 	return ARC64_LO32;
       case ARC64_CMODEL_LARGE:
-	return is_local ? ARC64_PCREL : ARC64_LARGE;
+	return is_local ? ARC64_PCREL : ARC64_MAYBE_LARGE;
       default:
 	gcc_unreachable ();
       }
@@ -2013,6 +2015,18 @@ arc64_tls_call (rtx dest, rtx arg)
 			   argreg, Pmode);
 }
 
+/* Handle LARGE memory model for RTX.  */
+
+static rtx
+arc64_large_address (rtx base, rtx scratch)
+{
+  if (!TARGET_64BIT)
+    return base;
+
+  emit_insn (gen_rtx_SET (scratch, gen_rtx_HIGH (Pmode, base)));
+  return gen_rtx_LO_SUM (Pmode, scratch, copy_rtx (base));
+}
+
 /* Create a legitimate mov instruction for the given BASE (unspec).  */
 
 static rtx
@@ -2028,10 +2042,9 @@ arc64_legit_unspec (rtx base)
       return base;
 
     case ARC64_CMODEL_LARGE:
-      t1 = gen_reg_rtx (Pmode);
       ret = gen_reg_rtx (Pmode);
-      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, base)));
-      emit_insn (gen_rtx_SET (ret, gen_rtx_LO_SUM (Pmode, t1, base)));
+      t1 = gen_reg_rtx (Pmode);
+      emit_insn (gen_rtx_SET (ret, arc64_large_address (base, t1)));
       return ret;
 
     default:
@@ -2108,7 +2121,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
     case LABEL_REF:
       t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
       gcc_assert (t1);
-      if (!flag_pic)
+      if (!flag_pic && !is_local)
 	{
 	  switch (arc64_cmodel_var)
 	    {
@@ -2116,8 +2129,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 	    case ARC64_CMODEL_MEDIUM:
 	      return x;
 	    default:
-	      emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, x)));
-	      return gen_rtx_LO_SUM (Pmode, t1, x);
+	      return arc64_large_address (x, t1);
 	    }
 	}
       else if (is_local)
@@ -2142,8 +2154,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
 	  /* Global symbol, we access it via a load from the GOT
 	     (LARGE model).  */
 	  base = gen_sym_unspec (x, ARC64_UNSPEC_GOT);
-	  emit_insn (gen_rtx_SET (t1, gen_rtx_HIGH (Pmode, base)));
-	  t1 = gen_rtx_LO_SUM (Pmode, t1, copy_rtx (base));
+	  t1 = arc64_large_address (base, t1);
 	  return gen_const_mem (Pmode, t1);
 	}
 
