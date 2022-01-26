@@ -4195,6 +4195,12 @@ arc64_is_long_call_p (rtx sym)
 {
   arc64_symb symb_t = arc64_get_symbol_type (sym);
 
+  /* No subtleties for the time being, if user asks for large memory model,
+     everything goes via regs.  */
+  if (!TARGET_64BIT
+      && (arc64_cmodel_var == ARC64_CMODEL_LARGE))
+    return true;
+
   switch (symb_t)
     {
     case ARC64_UNK:
