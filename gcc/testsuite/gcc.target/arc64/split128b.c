@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-require-effective-target hs6x } */
 /* { dg-options "-O2 -m128 -fpic" } */
 
 struct tst {
