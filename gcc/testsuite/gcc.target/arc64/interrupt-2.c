@@ -10,5 +10,8 @@ foo2 (void)
   extern volatile int COUNTER;
   COUNTER++;
 }
-/* { dg-final { scan-assembler "push.*r0" } } */
-/* { dg-final { scan-assembler "pop.*r0" } } */
+/* { dg-final { scan-assembler "push.*r0" { target { hs6x } } } } */
+/* { dg-final { scan-assembler "pop.*r0" { target { hs6x } } } } */
+
+/* { dg-final { scan-assembler "st\.a.*r0" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "ld\.ab.*r0" { target { hs5x } } } } */
