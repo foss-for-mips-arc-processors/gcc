@@ -5,9 +5,6 @@
 
 (define_code_iterator COMMUTATIVEF [plus and ior xor])
 
-;; Operations which can be predicated non commutative
-(define_code_iterator ARITHP [minus ashift ashiftrt lshiftrt])
-
 (define_code_iterator BIT [ior xor])
 
 (define_code_iterator DIVREM [div udiv mod umod])
@@ -36,7 +33,6 @@
    <mntab><sfxtab>%?\\t%0,%1,%2
    <mntab><sfxtab>%?\\t%0,%1,%2"
   [(set_attr "iscompact" "maybe,maybe,no,no,no,no,no,no,no")
-   (set_attr "predicable" "no,no,yes,no,no,no,no,no,no")
    (set_attr "length"     "*,*,4,4,4,4,4,8,8")
    (set_attr "type"       "<mntab>")]
   )
@@ -126,7 +122,6 @@
    sub<sfxtab>%?\\t%0,%1,%2
    sub<sfxtab>%?\\t%0,%1,%2"
   [(set_attr "iscompact"  "yes,maybe,maybe,no,no,no,no,no,no,no,no")
-   (set_attr "predicable" "no,yes,no,yes,yes,no,no,no,no,no,no")
    (set_attr "length"     "2,*,*,4,4,4,4,4,4,8,8")
    (set_attr "type"       "sub")]
   )
@@ -207,38 +202,6 @@
   [(set_attr "predicable" "yes,yes,no,no,no,no,no")
    (set_attr "length"     "4,4,4,4,4,8,8")
    (set_attr "type"       "<ADDSUB:optab><GPI:sfxtab>")])
-
-; Conditional execution
-(define_insn "*<optab><mode>_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"             "=     r,r")
-	 (ARITHP:GPI (match_operand:GPI 1 "register_operand"  "     0,0")
-		     (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
-  ""
-  "<mntab><sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "iscompact" "no")
-   (set_attr "length"     "4,8")
-   (set_attr "type"       "<mntab>")])
-
-(define_insn "*<optab><mode>_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"  "=     r,    r,r")
-	 (COMMUTATIVEF:GPI
-	  (match_operand:GPI 1 "nonmemory_operand" "     0,S32S0,0")
-	  (match_operand:GPI 2 "nonmemory_operand" "rU06S0,    0,S32S0"))))]
-  "register_operand (operands[1], <MODE>mode)
-   || register_operand (operands[2], <MODE>mode)"
-  "@
-   <mntab><sfxtab>.%m3\\t%0,%1,%2
-   <mntab><sfxtab>.%m3\\t%0,%2,%1
-   <mntab><sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "iscompact" "no")
-   (set_attr "length"     "4,8,8")
-   (set_attr "type"       "<mntab>")])
 
 ;; Arithmetic patterns used by the combiner.
 (define_insn "*bic<mode>3"
@@ -503,10 +466,8 @@
    && (register_operand (operands[1], <MODE>mode)
        || register_operand (operands[2], <MODE>mode))"
   "<mntab><sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-   (set_attr "length"     "4,4,4,4,4,8,8")
-   (set_attr "type"       "<optab><sfxtab>")]
-  )
+  [(set_attr "length"     "4,4,4,4,4,8,8")
+   (set_attr "type"       "<optab><sfxtab>")])
 
 (define_insn "*<optab><mode>3_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
@@ -767,22 +728,7 @@
   "mpy<ANY_EXTEND:su_optab>w%?\\t%0,%1,%2"
   [(set_attr "length" "*,4,4")
    (set_attr "iscompact" "maybe,no,no")
-   (set_attr "type" "mpy")
-   (set_attr "predicable" "yes,yes,no")
-   ])
-
-(define_insn "*<ANY_EXTEND:su_optab>mulhisi3r_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-   (set (match_operand:SI 0 "register_operand"                         "=r")
-	(mult:SI (ANY_EXTEND:SI (match_operand:HI 1 "register_operand" "%0"))
-		 (ANY_EXTEND:SI (match_operand:HI 2 "register_operand"  "r")))))]
-  ""
-  "mpy<ANY_EXTEND:su_optab>w.%m3\\t%0,%1,%2"
-  [(set_attr "length" "4")
-   (set_attr "type" "mpy")
-   ])
+   (set_attr "type" "mpy")])
 
 (define_insn "mulhisi3i"
   [(set (match_operand:SI 0 "register_operand"            "=r,    r,    r,    r,accrn,r")
@@ -870,18 +816,6 @@
   (set_attr "iscompact" "yes,yes,no,no,no,no,no")
   (set_attr "type" "mpy")
   (set_attr "predicable" "no,no,yes,no,no,yes,no")])
-
-(define_insn "*mul<mode>3_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"             "=     r,    r")
-	 (mult:GPI (match_operand:GPI 1 "register_operand"  "%     0,    0")
-		   (match_operand:GPI 2 "nonmemory_operand"  "rU06S0,S32S0"))))]
- ""
- "mpy<sfxtab>.%m3\\t%0,%1,%2"
- [(set_attr "length" "4,8")
-  (set_attr "type" "mpy<sfxtab>")])
 
 (define_insn "*mulsi3_cmp0"
   [(set (reg:CC_Z CC_REGNUM)
