@@ -829,7 +829,7 @@ arc64_get_symbol_type (rtx x)
       case ARC64_CMODEL_MEDIUM:
 	return ARC64_LO32;
       case ARC64_CMODEL_LARGE:
-	return is_local ? ARC64_PCREL : ARC64_MAYBE_LARGE;
+	return ARC64_MAYBE_LARGE;
       default:
 	gcc_unreachable ();
       }
@@ -2121,7 +2121,7 @@ arc64_legitimize_address_1 (rtx x, rtx scratch)
     case LABEL_REF:
       t1 = can_create_pseudo_p () ? gen_reg_rtx (Pmode) : scratch;
       gcc_assert (t1);
-      if (!flag_pic && !is_local)
+      if (!flag_pic)
 	{
 	  switch (arc64_cmodel_var)
 	    {
