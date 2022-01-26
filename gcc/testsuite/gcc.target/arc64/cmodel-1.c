@@ -9,6 +9,6 @@ int test (int a)
   return 3 * long_call(a + 1);
 }
 
-/* { dg-final { scan-assembler "movhl" } } */
-/* { dg-final { scan-assembler "orl" } } */
+/* { dg-final { scan-assembler "movhl" { target { hs6x } } } } */
+/* { dg-final { scan-assembler "orl" { target { hs6x } } } } */
 /* { dg-final { scan-assembler "jl_s.*\[r\d+\]" } } */
