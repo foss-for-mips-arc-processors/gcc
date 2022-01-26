@@ -399,6 +399,18 @@
 			 (geu "hs")
 			 (gtu "NA")])
 
+;; used for inverting predicated SET instructions.
+(define_code_attr CCTAB [(eq "EQ")
+			 (ne "NE")
+			 (lt "LT")
+			 (ge "GE")
+			 (le "LE")
+			 (gt "GT")
+			 (ltu "LTU")
+			 (leu "NA")
+			 (geu "GEU")
+			 (gtu "NA")])
+
 ;; Sign- or zero-extend data-op
 (define_code_attr su [(sign_extend "s") (zero_extend "u")])
 
@@ -1515,7 +1527,7 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (label_ref (match_operand 0 "" ""))
 	 (pc)))
    (clobber (reg:CC_ZN CC_REGNUM))]
-  "!CROSSING_JUMP_P (insn)"
+  "!CROSSING_JUMP_P (insn) && (TARGET_BBIT || reload_completed)"
   {
    operands[2] = GEN_INT (exact_log2 (INTVAL (operands[2])));
    switch (get_attr_length (insn))
@@ -1537,6 +1549,30 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (const_int 4)
 	 (const_int 8)))])
 
+;; BBITx instructions need to be generated as late as possible.
+;; Hence, we need to postpone it untill 2nd peephole2 step.  However,
+;; this may need an upstream change.
+
+;;(define_peephole2
+;;  [(set (match_operand 0 "cc_register")
+;;	(compare:CC_ZN (and:GPI (match_operand:GPI 1 "register_operand" "")
+;;				(match_operand 2 "bbitimm_operand" ""))
+;;		       (const_int 0)))
+;;   (set (pc) (if_then_else
+;;	      (match_operator 3 "equality_comparison_operator"
+;;			      [(match_dup 0) (const_int 0)])
+;;	      (label_ref (match_operand 4 "" ""))
+;;	      (pc)))]
+;;  "(peephole2_instance == 1) && peep2_reg_dead_p (2, operands[0])"
+;;  [(parallel
+;;    [(set (pc)
+;;	  (if_then_else
+;;	   (match_op_dup 3 [(and:GPI (match_dup 1) (match_dup 2))
+;;			    (const_int 0)])
+;;	 (label_ref (match_operand 4 "" ""))
+;;	 (pc)))
+;;     (clobber (reg:CC_ZN CC_REGNUM))])])
+
 (define_insn "*bbit_zext"
   [(set (pc)
 	(if_then_else
@@ -1549,7 +1585,7 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (label_ref (match_operand 0 "" ""))
 	 (pc)))
    (clobber (reg:CC_ZN CC_REGNUM))]
-  "!CROSSING_JUMP_P (insn)"
+  "!CROSSING_JUMP_P (insn) && (TARGET_BBIT || reload_completed)"
   {
    switch (get_attr_length (insn))
      {
@@ -1569,6 +1605,29 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 			 (symbol_ref "get_attr_delay_slot_length (insn)"))))
 	 (const_int 4)
 	 (const_int 8)))])
+
+;;(define_peephole2
+;;  [(set (match_operand 0 "cc_register")
+;;	(compare:CC_ZN (zero_extract:GPI
+;;			(match_operand:GPI 1 "register_operand" "")
+;;			(const_int 1)
+;;			(match_operand:GPI 2 "nonmemory_operand" ""))
+;;		       (const_int 0)))
+;;   (set (pc) (if_then_else
+;;	      (match_operator 3 "equality_comparison_operator"
+;;			      [(match_dup 0) (const_int 0)])
+;;	      (label_ref (match_operand 4 "" ""))
+;;	      (pc)))]
+;;  "(peephole2_instance == 1) && peep2_reg_dead_p (2, operands[0])"
+;;  [(parallel
+;;    [(set (pc)
+;;	  (if_then_else
+;;	   (match_op_dup 3 [(zero_extract:GPI
+;;			     (match_dup 1) (const_int 1) (match_dup 2))
+;;			    (const_int 0)])
+;;	 (label_ref (match_operand 4 "" ""))
+;;	 (pc)))
+;;     (clobber (reg:CC_ZN CC_REGNUM))])])
 
 ;; combiner/instruction pattern for BRcc instructions.  We consider
 ;; all BRcc supported comparisons but compare with zero. The positive
@@ -1711,18 +1770,6 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(set_attr "type" "and,ld,ld")
    (set_attr "length" "4,2,*")]
 )
-
-;; conditional execution for the above two patterns
-(define_insn "*zero_extend<SHORT:mode><GPI:mode>2_ce"
-  [(cond_exec
-    (match_operator 2 "arc64_comparison_operator"
-		    [(match_operand 3 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0"register_operand" "=r")
-	 (zero_extend:GPI (match_operand:SHORT 1 "register_operand" "0"))))]
-  ""
-  "bmsk<GPI:mcctab>.%m2\\t%0,%1,<SHORT:sizen>"
-  [(set_attr "type" "and")
-   (set_attr "length" "4")])
 
 (define_insn "*sign_extend<mode>di2"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
@@ -2196,20 +2243,6 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 ;;  [(set_attr "length" "4,4,8")
 ;;   (set_attr "type" "fmov,move,move")])
 
-;; conditional patterns
-;; Todo: add conditional execution for leu and geu
-(define_insn "*set<cctab><mode>_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:SI 0 "register_operand"            "=r,r")
-	 (SETCC:SI (match_operand:GPI 1 "register_operand"  "0,0")
-		   (match_operand:GPI 2 "arc64_nonmem_operand" "r,n"))))]
-  ""
-  "set<cctab><sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "type" "setcc")
-   (set_attr "length" "4,8")])
-
 ;; -------------------------------------------------------------------
 ;; Logical operations
 ;; -------------------------------------------------------------------
@@ -2259,19 +2292,6 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
    (set_attr "length" "4,4,4,8")
    (set_attr "predicable" "yes,no,no,no")]
 )
-
-;; Conditional execution
-(define_insn "*<optab><mode>_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:GPI 0 "register_operand"                  "=r,r")
-	 (MINMAX:GPI (match_operand:GPI 1 "register_operand"      "%0,0")
-		     (match_operand:GPI 2 "nonmemory_operand" "rU06S0,S32S0"))))]
-  ""
-  "<mntab><sfxtab>.%m3\\t%0,%1,%2"
-  [(set_attr "type" "<mntab>")
-   (set_attr "length" "4,8")])
 
 ;; Zero-extend pattern
 (define_insn "*<optab>si_zextend"
@@ -2379,19 +2399,6 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
    (set_attr "predicable" "no")
    (set_attr "length" "4,8")])
 
-;; Conditional execution
-(define_insn "*rotrsi_ce"
-  [(cond_exec
-    (match_operator 3 "arc64_comparison_operator"
-		    [(match_operand 4 "cc_register" "") (const_int 0)])
-    (set (match_operand:SI 0 "register_operand"                   "=r,r")
-	 (rotatert:SI (match_operand:SI 1 "register_operand"      "%0,0")
-		      (match_operand:SI 2 "nonmemory_operand" "rU06S0,S32S0"))))
-   ]
-  ""
-  "ror.%m3\\t%0,%1,%2"
-  [(set_attr "type" "ror")
-   (set_attr "length" "4,8")])
 
 ;; -------------------------------------------------------------------
 ;; Bitfields
@@ -2927,9 +2934,6 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
  ""
  "operands[1] = gen_rtx_REG (Pmode, R30_REGNUM);")
 
-
-(include "arith.md")
-
 (define_insn "sync"
   [(unspec_volatile [(const_int 1)]
 		   ARC64_VUNSPEC_SYNC)]
@@ -2938,8 +2942,10 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(set_attr "length" "4")
   (set_attr "type" "sync")])
 
+(include "arith.md")
 (include "atomic.md")
 (include "arc32.md")
+(include "condexec.md")
 
 ;; mode:emacs-lisp
 ;; comment-start: ";; "
