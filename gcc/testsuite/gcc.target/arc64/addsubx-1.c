@@ -32,7 +32,7 @@ int plus1 (int a, int b)
 }
 
 /* { dg-final { scan-assembler "add1_s\\s+" } } */
-/* { dg-final { scan-assembler "add1l\\s+" } } */
+/* { dg-final { scan-assembler "add1l\\s+" { target { hs6x } } } } */
 /* { dg-final { scan-assembler "sub1\\s+" } } */
-/* { dg-final { scan-assembler "sub1l\\s+" } } */
+/* { dg-final { scan-assembler "sub1l\\s+" { target { hs6x } } } } */
 /* { dg-final { scan-assembler "add3\\.f\\s+" } } */
