@@ -18,9 +18,15 @@ void isr_0 (void)
 /* { dg-final { scan-assembler-times "\\sr8" 2 } } */
 /* { dg-final { scan-assembler-times "\\sr7" 2 } } */
 /* { dg-final { scan-assembler-times "\\sr6" 2 } } */
-/* { dg-final { scan-assembler-times "\\sr5\\n" 2 } } */
-/* { dg-final { scan-assembler-times "\\sr4\\n" 2 } } */
-/* { dg-final { scan-assembler-times "\\sr3\\n" 2 } } */
-/* { dg-final { scan-assembler-times "\\sr2\\n" 2 } } */
-/* { dg-final { scan-assembler-times "\\sr1\\n" 2 } } */
+/* { dg-final { scan-assembler-times "\\sr5\\n" 2 { target hs6x } } } */
+/* { dg-final { scan-assembler-times "\\sr4\\n" 2 { target hs6x } } } */
+/* { dg-final { scan-assembler-times "\\sr3\\n" 2 { target hs6x } } } */
+/* { dg-final { scan-assembler-times "\\sr2\\n" 2 { target hs6x } } } */
+/* { dg-final { scan-assembler-times "\\sr1\\n" 2 { target hs6x } } } */
 /* { dg-final { scan-assembler-times "\\sr0" 2 } } */
+
+/* { dg-final { scan-assembler-times "\\sr5," 2 { target hs5x } } } */
+/* { dg-final { scan-assembler-times "\\sr4," 2 { target hs5x } } } */
+/* { dg-final { scan-assembler-times "\\sr3," 2 { target hs5x } } } */
+/* { dg-final { scan-assembler-times "\\sr2," 2 { target hs5x } } } */
+/* { dg-final { scan-assembler-times "\\sr1," 2 { target hs5x } } } */
