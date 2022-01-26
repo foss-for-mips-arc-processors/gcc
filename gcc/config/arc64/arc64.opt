@@ -118,3 +118,7 @@ Enable wide data transfer support.
 mbrcc
 Target Mask(BRCC)
 Generate BRcc instructions during combiner step.
+
+mbbit
+Target Mask(BBIT)
+Generate BBITx instructions during combiner step.
