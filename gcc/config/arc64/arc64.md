@@ -189,6 +189,9 @@
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
 (define_mode_iterator P [(SI "Pmode == SImode") (DI "Pmode == DImode")])
 
+;; Iterator for integer modes which map into a pair of registers.
+(define_mode_iterator DBLI [DI (TI "TARGET_64BIT")])
+
 ;; Iterator for General Purpose Floating-point registers (16 -, 32-
 ;; and 64-bit modes)
 (define_mode_iterator GPF_HF [(HF "ARC64_HAS_FPUH")
@@ -249,6 +252,7 @@
 
 ;; Three operand arithmetic operations
 (define_code_iterator ARITH [plus minus mult])
+(define_code_iterator ADDSUB [plus minus] )
 
 ;; Three operand logic operations
 (define_code_iterator LOGIC [and ior xor smin smax])
@@ -329,6 +333,10 @@
 (define_mode_attr vel [(V2HI "hi") (V4HI "hi") (V2SI "si")
 		       (V2HF "hf") (V4HF "hf") (V2SF "sf")
 		       (V8HF "hf") (V4SF "sf") (V2DF "df")])
+
+;; Define element mode for each double-r mode.
+(define_mode_attr REL [(DI "SI") (TI "DI")])
+(define_mode_attr rel [(DI "si") (TI "di")])
 
 ;; Used by vector extract pattern
 (define_mode_attr vextrsz [(V2HI "16") (V4HI "16") (V2SI "32")])
@@ -1799,10 +1807,26 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 ;; -------------------------------------------------------------------
 
 ;; TODO: Allow symbols in LIMM field
-(define_expand "<optab><mode>3"
+(define_expand "<optab>si3"
+  [(set (match_operand:SI 0 "register_operand")
+	(ADDSUB:SI (match_operand:SI 1 "register_operand")
+		   (match_operand:SI 2 "nonmemory_operand")))]
+  ""
+  {
+   if (!register_operand (operands[1], SImode)
+       && !register_operand (operands[2], SImode))
+     {
+       if (!CONST_INT_P (operands[1]))
+	 operands[1] = force_reg (SImode, operands[1]);
+       else
+	 operands[2] = force_reg (SImode, operands[2]);
+     }
+  })
+
+(define_expand "mul<mode>3"
   [(set (match_operand:GPI 0 "register_operand")
-	(ARITH:GPI (match_operand:GPI 1 "register_operand")
-		   (match_operand:GPI 2 "nonmemory_operand")))]
+	(mult:GPI (match_operand:GPI 1 "register_operand")
+		  (match_operand:GPI 2 "nonmemory_operand")))]
   ""
   {
    if (!register_operand (operands[2], <MODE>mode)
