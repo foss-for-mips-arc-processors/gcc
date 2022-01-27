@@ -12,7 +12,7 @@
   "@
   bmsk<GPI:mcctab>.%m2\\t%0,%1,<SHORT:sizen>
   #"
-  "reload_completed && (!rtx_equal_p (operands[0], operands[1]))"
+  "reload_completed && (REGNO (operands[0]) != REGNO (operands[1]))"
   [(cond_exec
     (match_op_dup 2 [(match_dup 3) (const_int 0)])
     (set (match_dup 4) (match_dup 1)))
@@ -331,7 +331,7 @@
   "@
    mpy<ANY_EXTEND:su_optab>w.%m3\\t%0,%1,%2
    #"
-  "reload_completed && (!rtx_equal_p (operands[0], operands[1]))"
+  "reload_completed && (REGNO (operands[0]) != REGNO (operands[1]))"
   [(cond_exec
     (match_op_dup 3 [(match_dup 4) (const_int 0)])
     (set (match_dup 0) (mult:SI (ANY_EXTEND:SI (match_dup 0))
@@ -342,7 +342,7 @@
 			      operands[4], const0_rtx);
    /* Check first if the second input reg-operand is the same as the output
       reg-operand.  */
-   if (rtx_equal_p (operands[0], operands[2]))
+   if (REGNO (operands[0]) == REGNO (operands[2]))
      std::swap (operands[1], operands[2]);
    else
      {
