@@ -13,8 +13,6 @@
 			     (xor    "bxor")
 			     ])
 
-(define_code_iterator ADDSUB [plus minus] )
-
 ;; SI instructions having short instruction variant
 (define_insn "*<optab><mode>_insn"
   [(set (                match_operand:GPI 0 "register_operand"   "=q,q,     r,    r,     r,    r,    r,    r,r")
@@ -591,27 +589,34 @@
   ""
   )
 
-(define_expand "<optab>ti3"
-  [(set (match_operand:TI 0 "register_operand")
-	(ADDSUB:TI (match_operand:TI 1 "register_operand")
-		   (match_operand:TI 2 "nonmemory_operand")))]
-  "TARGET_64BIT"
+(define_expand "<optab><mode>3"
+  [(set (match_operand:DBLI 0 "register_operand")
+	(ADDSUB:DBLI (match_operand:DBLI 1 "register_operand")
+		     (match_operand:DBLI 2 "nonmemory_operand")))]
+  ""
 {
   rtx low_dest, op1_low, op2_low, high_dest, op1_high, op2_high;
 
-  high_dest = gen_highpart (DImode, operands[0]);
-  low_dest = gen_lowpart (DImode, operands[0]);
-  op1_high = gen_highpart (DImode, operands[1]);
-  op1_low = gen_lowpart (DImode, operands[1]);
-  op2_high = gen_highpart_mode (DImode, TImode, operands[2]);
-  op2_low = gen_lowpart (DImode, operands[2]);
+  if (GET_MODE_SIZE (<MODE>mode) == (UNITS_PER_WORD * 2))
+    {
+      high_dest = gen_highpart (<REL>mode, operands[0]);
+      low_dest = gen_lowpart (<REL>mode, operands[0]);
+      op1_high = gen_highpart (<REL>mode, operands[1]);
+      op1_low = gen_lowpart (<REL>mode, operands[1]);
+      op2_high = gen_highpart_mode (<REL>mode, <MODE>mode, operands[2]);
+      op2_low = gen_lowpart (<REL>mode, operands[2]);
 
-  emit_insn (gen_<optab>di3_Ccmp (low_dest, op1_low,
-				  force_reg (DImode, op2_low)));
-  emit_insn (gen_<optab>di3_carry (high_dest, op1_high,
-				   force_reg (DImode, op2_high)));
+      emit_insn (gen_<optab><rel>3_Ccmp (low_dest, op1_low,
+					 force_reg (<REL>mode, op2_low)));
+      emit_insn (gen_<optab><rel>3_carry (high_dest, op1_high,
+					  force_reg (<REL>mode, op2_high)));
 
-  DONE;
+      DONE;
+    }
+  else if (!register_operand (operands[2], <MODE>mode)
+	   && !satisfies_constraint_S32S0 (operands[2]))
+    operands[2] = force_reg (<MODE>mode, operands[2]);
+
 })
 
 ;; Shifted adds and subs
