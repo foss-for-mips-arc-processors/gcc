@@ -103,3 +103,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #undef ARC64_64BIT_DEFAULT
 #define ARC64_64BIT_DEFAULT 1
+
+#undef UNALIGNED_ACCESS_DEFAULT
+#define UNALIGNED_ACCESS_DEFAULT 1
