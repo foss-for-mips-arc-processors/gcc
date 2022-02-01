@@ -25,6 +25,7 @@
 	    (and (ior (match_code "label_ref")
 		      (match_code "symbol_ref"))
 		 (match_test "arc64_allow_direct_access_p (op)"))
+	    (match_code "const")
 	    (match_operand 0 "memory_operand")
 	    (and (match_code "unspec")
 		 (ior (match_test "XINT (op,1) == ARC64_UNSPEC_PCREL")
@@ -57,7 +58,7 @@
 	    (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
 		 (match_test "SIGNED_INT32 (INTVAL (op))")))))
 
-(define_predicate "arc64_nonmem_unsig_operand"
+(define_predicate "arc64_reg_or_unsig_operand"
   (ior (match_operand 0 "register_operand")
        (and (match_code "const_int")
 	    (match_test "UNSIGNED_INT32 (INTVAL (op))")

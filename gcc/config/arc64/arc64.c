@@ -76,7 +76,7 @@ const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
 
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
-   NO_REGS, NO_REGS, GENERAL_REGS, NO_REGS,
+   NO_REGS, NO_REGS, GENERAL_REGS, GENERAL_REGS,
    NO_REGS, NO_REGS, NO_REGS, NO_REGS,
 
    FP_REGS, FP_REGS, FP_REGS, FP_REGS,
@@ -2955,6 +2955,8 @@ arc64_reorg (void)
 	case CODE_FOR_umacd0:
 	case CODE_FOR_machi0:
 	case CODE_FOR_macd0:
+	  if (!TARGET_64BIT && ((REGNO (op0) & 1) != 0))
+	    continue;
 	  tmp = SET_SRC (PATTERN (insn));
 	  op1 = XEXP (XEXP (XEXP (tmp, 0), 0), 0);
 	  op2 = XEXP (XEXP (XEXP (tmp, 0), 1), 0);
@@ -3405,6 +3407,9 @@ arc64_simd_dup (struct e_vec_perm_d *d)
   rtx in0 = d->op0;
   rtx out = d->target;
 
+  if (!TARGET_64BIT)
+    return false;
+
   if (!d->one_vector_p)
     return false;
 
@@ -3491,7 +3496,8 @@ arc64_simd_vpack (struct e_vec_perm_d *d)
   machine_mode vmode = d->vmode;
 
   if (GET_MODE_UNIT_SIZE (vmode) > 4
-      || FLOAT_MODE_P (vmode))
+      || FLOAT_MODE_P (vmode)
+      || !TARGET_64BIT)
     return false;
 
   if (!d->perm[0].is_constant (&odd)
@@ -3539,7 +3545,8 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
   rtx t0, t1, t2, out, in0;
 
   if (GET_MODE_UNIT_SIZE (vmode) > 4
-      || FLOAT_MODE_P (vmode))
+      || FLOAT_MODE_P (vmode)
+      || !TARGET_64BIT)
     return false;
 
   if (!d->one_vector_p)
@@ -3589,7 +3596,8 @@ arc64_simd_swap (struct e_vec_perm_d *d)
   rtx t0, t1, t2, out, in0;
   machine_mode vmode = d->vmode;
 
-  if (vmode != E_V4HImode)
+  if (vmode != E_V4HImode
+      || !TARGET_64BIT)
     return false;
 
   if (!d->one_vector_p)
@@ -3623,7 +3631,8 @@ arc64_simd_vpack2wl (struct e_vec_perm_d *d)
 {
   machine_mode vmode = d->vmode;
 
-  if (vmode != E_V4HImode)
+  if (vmode != E_V4HImode
+      || !TARGET_64BIT)
     return false;
 
   if (d->perm[0] != 0
@@ -3645,7 +3654,8 @@ arc64_simd_vpack2wm (struct e_vec_perm_d *d)
 {
   machine_mode vmode = d->vmode;
 
-  if (vmode != E_V4HImode)
+  if (vmode != E_V4HImode
+      || !TARGET_64BIT)
     return false;
 
   if (d->perm[0] != 2

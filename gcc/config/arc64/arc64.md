@@ -1770,7 +1770,7 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand"      "=r,    q,r")
 	(zero_extend:DI
 	 (match_operand:EXT 1 "nonimmediate_operand" "r,Uldms,m")))]
-   ""
+   "TARGET_64BIT"
    "@
    bmskl\\t%0,%1,<sizen>
    ld<sfxtab>_s\\t%0,%1
@@ -1783,7 +1783,8 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
 	(sign_extend:DI
 	 (match_operand:EXT 1 "nonimmediate_operand"  "r,m")))]
-   "(!TARGET_VOLATILE_DI) || (!MEM_VOLATILE_P (operands[1]))"
+   "((!TARGET_VOLATILE_DI) || (!MEM_VOLATILE_P (operands[1])))
+    && TARGET_64BIT"
    "@
    sex<exttab>l\\t%0,%1
    ld<sfxtab>.x%U1\\t%0,%1"
@@ -2322,7 +2323,7 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   [(set (match_operand:DI 0 "register_operand" "=q,r")
 	(zero_extend:DI
 	 (LOP2EX:SI (match_operand:SI 1 "register_operand" "q,r"))))]
-  ""
+  "TARGET_64BIT"
   "<mntab>%?\\t%0,%1"
   [(set_attr "type" "<mntab>")
    (set_attr "iscompact" "yes,no")
@@ -2334,7 +2335,7 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	 (MINMAX:SI
 	  (match_operand:SI 1 "register_operand"      "%0,    0,     r,r")
 	  (match_operand:SI 2 "nonmemory_operand" "rU06S0,S12S0,rU06S0,S32S0"))))]
-  ""
+  "TARGET_64BIT"
   "<mntab>%?\\t%0,%1,%2"
   [(set_attr "type" "max")
    (set_attr "length" "4,4,4,8")
