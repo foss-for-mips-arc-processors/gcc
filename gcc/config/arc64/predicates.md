@@ -25,7 +25,6 @@
 	    (and (ior (match_code "label_ref")
 		      (match_code "symbol_ref"))
 		 (match_test "arc64_allow_direct_access_p (op)"))
-	    (match_code "const")
 	    (match_operand 0 "memory_operand")
 	    (and (match_code "unspec")
 		 (ior (match_test "XINT (op,1) == ARC64_UNSPEC_PCREL")
