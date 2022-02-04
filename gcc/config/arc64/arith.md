@@ -55,7 +55,6 @@
    <mntab>%?\\t%0,%1,%2
    <mntab>%?\\t%0,%1,%2"
   [(set_attr "iscompact" "maybe,maybe,no,no,no,no,no,no,no")
-   (set_attr "predicable" "no,no,yes,no,no,no,no,no,no")
    (set_attr "length"     "*,*,4,4,4,4,4,8,8")
    (set_attr "type"       "<mntab>")]
   )
@@ -68,7 +67,19 @@
    || register_operand (operands[2], <MODE>mode)"
   "<mntab><sfxtab>%?\\t%0,%1,%2"
   [(set_attr "iscompact" "maybe,no,no,no,no,no")
-   (set_attr "predicable" "no,yes,no,no,no,no")
+   (set_attr "length"     "*,4,4,4,8,8")
+   (set_attr "type"       "<mntab>")])
+
+(define_insn "*<optab>zsidi_insn"
+  [(set (match_operand:DI 0 "register_operand"    "=q,     r,    r,    r,    r,r")
+	(zero_extend:DI
+	 (ASHIFT:SI
+	  (match_operand:SI 1 "nonmemory_operand" " 0,     0,    0,    r,S32S0,r")
+	  (match_operand:SI 2 "nonmemory_operand" " q,rU06S0,S12S0,rU06S0,   r,S32S0"))))]
+  "register_operand (operands[1], SImode)
+   || register_operand (operands[2], SImode)"
+  "<mntab>%?\\t%0,%1,%2"
+  [(set_attr "iscompact" "yes,no,no,no,no,no")
    (set_attr "length"     "*,4,4,4,8,8")
    (set_attr "type"       "<mntab>")])
 
@@ -630,8 +641,20 @@
   "add%2<sfxtab>%?\\t%0,%3,%1"
   [(set_attr "type" "add")
    (set_attr "length" "*,4,4,8")
-   (set_attr "predicable" "yes,yes,no,no")
    (set_attr "iscompact" "maybe,no,no,no")])
+
+(define_insn "*addzsidi_shift"
+  [(set (match_operand:DI 0 "register_operand" "=q,r,r,r")
+	(zero_extend:DI
+	 (plus:SI
+	  (ashift:SI (match_operand:SI 1 "register_operand" "q,r,r,r")
+		     (match_operand:SI 2 "_1_2_3_operand" ""))
+	 (match_operand:SI 3 "arc64_regsym_operand"  "0,0,r,S32S0SymMV"))))]
+   ""
+   "add%2%?\\t%0,%3,%1"
+   [(set_attr "type" "add")
+    (set_attr "length" "*,4,4,8")
+    (set_attr "iscompact" "yes,no,no,no")])
 
 (define_insn "*addx<mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
