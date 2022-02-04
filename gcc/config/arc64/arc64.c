@@ -985,11 +985,9 @@ arc64_legitimate_address_p (machine_mode mode,
   return arc64_legitimate_address_1_p (mode, x, strict, true, true);
 }
 
-/* Implement TARGET_LEGITIMATE_CONSTANT_P hook.  Return true for constants
-   that should be rematerialized rather than spilled.  */
-
+/* Helper for legitimate constant.  */
 static bool
-arc64_legitimate_constant_p (machine_mode mode, rtx x)
+arc64_legitimate_constant1_p (machine_mode mode, rtx x, bool nosym)
 {
   switch (GET_CODE (x))
     {
@@ -1006,14 +1004,17 @@ arc64_legitimate_constant_p (machine_mode mode, rtx x)
 	return false;
       /* fallthrough  */
     case LABEL_REF:
+      if (nosym)
+	return false;
       return true;
 
     case CONST:
       if (GET_CODE (XEXP (x, 0)) == PLUS)
 	{
 	  rtx tmp = XEXP (x, 0);
-	  bool t1 = arc64_legitimate_constant_p (mode, XEXP (tmp, 0));
-	  bool t2 = arc64_legitimate_constant_p (mode, XEXP (tmp, 1));
+	  /* Do not allow @symb + offset constants.  */
+	  bool t1 = arc64_legitimate_constant1_p (mode, XEXP (tmp, 0), true);
+	  bool t2 = arc64_legitimate_constant1_p (mode, XEXP (tmp, 1), true);
 	  return (t1 && t2);
 	}
       return false;
@@ -1021,6 +1022,15 @@ arc64_legitimate_constant_p (machine_mode mode, rtx x)
     default:
       return false;
     }
+}
+
+/* Implement TARGET_LEGITIMATE_CONSTANT_P hook.  Return true for constants
+   that should be rematerialized rather than spilled.  */
+
+static bool
+arc64_legitimate_constant_p (machine_mode mode, rtx x)
+{
+  return arc64_legitimate_constant1_p (mode, x, false);
 }
 
 /* Giving a mode, return true if we can pass it in fp registers.  */
