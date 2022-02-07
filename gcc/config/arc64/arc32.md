@@ -8,8 +8,8 @@
        || register_operand (operands[1], DImode))"
   "@
   vadd2\\t%0,%1,0
-  ldd%U1%V1\\t%0,%1
-  std%U0%V0\\t%1,%0"
+  ldd%U1\\t%0,%1
+  std%U0\\t%1,%0"
   "&& reload_completed && arc64_split_double_move_p (operands, DImode)"
   [(const_int 0)]
   {
