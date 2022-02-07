@@ -5602,15 +5602,16 @@ arc64_use_plt34_p (rtx sym)
   return (arc64_get_symbol_type (sym) == ARC64_LPIC);
 }
 
-/* Determine if it's legal to put X into the constant pool.  We arive here in
-   the case of a TLS symbol which needs to be precomputed.  We force this in
+/* Determine if it's legal to put X into the constant pool.  By all means, it is
+   not ok to put a symbol in a constant pool.  We arive here in the case of a
+   TLS symbol which needs to be precomputed.  We force this in
    legitimize_constant_p.  */
 
 static bool
 arc64_cannot_force_const_mem (machine_mode mode ATTRIBUTE_UNUSED,
 			      rtx x)
 {
-  return tls_referenced_p (x);
+  return contains_symbol_ref_p (x) || tls_referenced_p (x);
 }
 
 /* Generate RTL for conditional branch with rtx comparison CODE in mode
