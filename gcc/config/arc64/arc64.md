@@ -1373,33 +1373,34 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 ; operand 0 is the loop count pseudo register
 ; operand 1 is the label to jump to at the top of the loop
 (define_expand "doloop_end"
-  [(parallel [(set (pc)
-		   (if_then_else
-		    (ne (match_operand:DI 0 "" "")
-			(const_int 1))
-		    (label_ref (match_operand 1 "" ""))
-		    (pc)))
-	      (set (match_dup 0) (plus:DI (match_dup 0) (const_int -1)))
-	      (clobber (match_dup 2))])]
-  ""
-  {
-   machine_mode mode = GET_MODE (operands[0]);
-   if (mode != DImode)
-     FAIL;
-   operands[2] = gen_rtx_SCRATCH (mode);
-  })
+ [(use (match_operand 0 "" ""))        ; loop pseudo
+  (use (match_operand 1 "" ""))]       ; doloop_end pattern
+ ""
+ {
+  machine_mode mode = GET_MODE (operands[0]);
+  if (mode != Pmode)
+    FAIL;
 
-(define_insn_and_split "dbnz"
+  operands[0] = force_reg (Pmode, operands[0]);
+
+  if (mode == SImode)
+    emit_jump_insn (gen_dbnzsi (operands[0], operands[1]));
+  else
+    emit_jump_insn (gen_dbnzdi (operands[0], operands[1]));
+  DONE;
+ })
+
+(define_insn_and_split "dbnz<mode>"
   [(set (pc)
 	(if_then_else
-	 (ne (match_operand:DI 0 "arc64_dest_operand" "+r,!Ustor")
+	 (ne (match_operand:P 0 "arc64_dest_operand" "+r,!Ustor")
 	     (const_int 1))
 	 (label_ref (match_operand 1 "" ""))
 	 (pc)))
    (set (match_dup 0)
-	(plus:DI (match_dup 0)
-		 (const_int -1)))
-   (clobber (match_scratch:DI 2 "=X,r"))]
+	(plus:P (match_dup 0)
+		(const_int -1)))
+   (clobber (match_scratch:P 2 "=X,r"))]
   ""
   "*
 {
@@ -1416,31 +1417,29 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
 	  return \"dbnz%*\\t%0,%l1\";
 
 	case 8:
-	  /* The dbnz is too short, use sub.f/beq instructions.  */
-	  return \"sub.f\\t%0,%0,1\\n\\tbne%*\\t%l1\";
+	  /* The dbnz is too short, use sub.f/bne instructions.  */
+	  return \"sub<sfxtab>.f\\t%0,%0,1\\n\\tbne%*\\t%l1\";
 
 	default:
 	  gcc_unreachable ();
 	}
       break;
     }
-}
-"
-  "reload_completed && memory_operand (operands[0], DImode)"
+}"
+  "reload_completed && memory_operand (operands[0], Pmode)"
   [(set (match_dup 2) (match_dup 0))
    (parallel
     [(set (reg:CC_ZN CC_REGNUM)
-	  (compare:CC_ZN (plus:DI (match_dup 2) (const_int -1))
+	  (compare:CC_ZN (plus:P (match_dup 2) (const_int -1))
 			 (const_int 0)))
-     (set (match_dup 2) (plus:DI (match_dup 2) (const_int -1)))])
+     (set (match_dup 2) (plus:P (match_dup 2) (const_int -1)))])
    (set (match_dup 0) (match_dup 2))
    (set (pc) (if_then_else (ne (reg:CC_ZN CC_REGNUM)
 			       (const_int 0))
 			   (label_ref (match_dup 1))
 			   (pc)))]
   ""
-  [(set_attr "iscompact" "no")
-   (set_attr "type" "dbnz")
+  [(set_attr "type" "dbnz")
    (set (attr "length")
 	(cond [(eq_attr "alternative" "1")
 	       (const_int 20)
