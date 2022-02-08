@@ -1000,12 +1000,16 @@ arc64_legitimate_constant1_p (machine_mode mode, rtx x, bool nosym)
       return true;
 
     case SYMBOL_REF:
+      /* TODO: We should use arc64_get_symbol_type function here and retun
+	 true/false depending on the type of the symbol.  */
       if (SYMBOL_REF_TLS_MODEL (x))
+	return false;
+      if (nosym || flag_pic)
 	return false;
       /* fallthrough  */
     case LABEL_REF:
-      if (nosym)
-	return false;
+      /* FIXME: Labels should be PC-rel when PIC, and make sure they are not
+	 ending up in constant pool.  */
       return true;
 
     case CONST:
