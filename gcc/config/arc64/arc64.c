@@ -2806,10 +2806,17 @@ hwloop_fail (hwloop_info loop)
   rtx test;
   rtx insn;
 
-  emit_insn_before (gen_adddi_cmp0 (loop->iter_reg,
-				    loop->iter_reg,
-				    constm1_rtx),
-		    loop->loop_end);
+  if (TARGET_64BIT)
+    emit_insn_before (gen_adddi_cmp0 (loop->iter_reg,
+				      loop->iter_reg,
+				      constm1_rtx),
+		      loop->loop_end);
+  else
+    emit_insn_before (gen_addsi_cmp0 (loop->iter_reg,
+				      loop->iter_reg,
+				      constm1_rtx),
+		      loop->loop_end);
+
   test = gen_rtx_NE (VOIDmode, gen_rtx_REG (CC_ZNmode, CC_REGNUM), const0_rtx);
   test = gen_rtx_IF_THEN_ELSE (VOIDmode, test,
 			       gen_rtx_LABEL_REF (Pmode, loop->start_label),
@@ -2873,7 +2880,9 @@ hwloop_pattern_reg (rtx_insn *insn)
 {
   rtx reg;
 
-  if (!JUMP_P (insn) || recog_memoized (insn) != CODE_FOR_dbnz)
+  if (!JUMP_P (insn)
+      || (TARGET_64BIT && (recog_memoized (insn) != CODE_FOR_dbnzdi))
+      || (!TARGET_64BIT && (recog_memoized (insn) != CODE_FOR_dbnzsi)))
     return NULL_RTX;
 
   reg = SET_DEST (XVECEXP (PATTERN (insn), 0, 1));
