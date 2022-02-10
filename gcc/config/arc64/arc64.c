@@ -861,9 +861,16 @@ arc64_legitimate_address_1_p (machine_mode mode,
       /* Don't allow constant + offset when we don't have native
 	 ld/st, as the compiler may use very large offsets.  These
 	 memory accesses are splited anyhow.  */
-      if (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2)
-	  && !TARGET_WIDE_LDST)
-	return false;
+      if (GET_MODE_SIZE (mode) == UNITS_PER_WORD * 2)
+	{
+	  /* 32-bit and no double loads?  */
+	  if (!TARGET_64BIT && !TARGET_LL64)
+	    return false;
+	  /* 64-bit and no double loads?  */
+	  if (TARGET_64BIT && !TARGET_WIDE_LDST)
+	    return false;
+	  /* fall thru  */
+	}
       if (GET_CODE (XEXP (x, 0)) == PLUS
 	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
 	  /* Reloc addendum is only 32bit.   */
@@ -901,7 +908,12 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && REG_P (XEXP (x, 1)))
     {
       if (GET_MODE_SIZE (mode) >= 2 * UNITS_PER_WORD)
-	return TARGET_LL64 || TARGET_WIDE_LDST;
+	{
+	  if (!TARGET_64BIT)
+	    return TARGET_LL64;
+	  else
+	    return TARGET_WIDE_LDST;
+	}
       return true;
     }
 
@@ -920,24 +932,32 @@ arc64_legitimate_address_1_p (machine_mode mode,
       && GET_CODE (XEXP (x, 0)) == MULT
       && REG_P (XEXP (XEXP (x, 0), 0))
       && CONST_INT_P (XEXP (XEXP (x, 0), 1)))
-    switch (GET_MODE_SIZE (mode))
-      {
-      case 2:
-      case 4:
-	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
-	  return true;
-	break;
-      case 8:
-	if (INTVAL (XEXP (XEXP (x, 0), 1)) == GET_MODE_SIZE (mode))
-	  return TARGET_64BIT;
-	break;
-      case 16:
-	if (INTVAL (XEXP (XEXP (x, 0), 1)) == UNITS_PER_WORD)
-	  return TARGET_WIDE_LDST;
-	break;
-      default:
-	break;
-      }
+    {
+      /* x is plus(mult(index, scaling), base) => base + index*scaling  */
+      const rtx mult = XEXP (x, 0);
+      const int scaling = INTVAL (XEXP (mult, 1));
+
+      switch (GET_MODE_SIZE (mode))
+	{
+	case 2:	  /* ldh  */
+	case 4:	  /* ld   */
+	  if (scaling == GET_MODE_SIZE (mode))
+	    return true;
+	  break;
+	case 8:	  /* ldd or ldl  */
+	  if (scaling == 4)
+	    return (!TARGET_64BIT && TARGET_LL64);
+	  if (scaling == 8)
+	    return TARGET_64BIT;
+	  break;
+	case 16:  /* lddl  */
+	  if (scaling == 8)
+	    return TARGET_WIDE_LDST;
+	  break;
+	default:
+	  break;
+	}
+    }
 
   if ((GET_CODE (x) == PRE_DEC || GET_CODE (x) == PRE_INC
        || GET_CODE (x) == POST_DEC || GET_CODE (x) == POST_INC)
