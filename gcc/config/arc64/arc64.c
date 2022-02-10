@@ -609,22 +609,29 @@ arc64_save_callee_saves (void)
 	  || (regno == BLINK_REGNUM))
 	continue;
 
+      save_mode = word_mode;
       if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
 	{
 	  save_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
 	}
-      else if (TARGET_WIDE_LDST
-	       /* Use 128bit stores for context saving.  */
-	       && (regno > 1)
+      else if (regno > 1
 	       && (((regno - 1) % 2) == 0)
 	       && (frame->reg_offset[regno - 1] != -1))
 	{
-	  save_mode = TImode;
-	  --regno;
+	  /* Use 64-bit double stores for context saving.  */
+	  if (!TARGET_64BIT && TARGET_LL64)
+	    {
+	      save_mode = DImode;
+	      --regno;
+	    }
+	  /* Use 128-bit double stores for context saving.  */
+	  else if (TARGET_64BIT && TARGET_WIDE_LDST)
+	    {
+	      save_mode = TImode;
+	      --regno;
+	    }
 	}
-      else
-	save_mode = word_mode;
 
       reg = gen_rtx_REG (save_mode, regno);
       frame_allocated += frame_save_reg (reg, offset, disp);
@@ -732,6 +739,8 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
   for (regno = R0_REGNUM; regno <= F31_REGNUM; regno++)
     {
       HOST_WIDE_INT disp = 0;
+      bool double_load_p = false;
+
       if (frame->reg_offset[regno] == -1
 	  /* Hard frame pointer has been restored.  */
 	  || (frame_pointer_needed && regno == R27_REGNUM)
@@ -739,27 +748,35 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	  || (regno == BLINK_REGNUM))
 	continue;
 
+      restore_mode = word_mode;
       if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
 	{
 	  restore_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
 	}
-      else if (TARGET_WIDE_LDST
-	       /* Use 128bit loads for context restoring.  */
-	       && ((regno % 2) == 0)
+      else if ((regno % 2) == 0
 	       && (!frame_pointer_needed || ((regno + 1) != R27_REGNUM))
 	       && (frame->reg_offset[regno + 1] != -1))
 	{
-	  restore_mode = TImode;
+	  /* Use 64-bit double loads for context restoring.  */
+	  if (!TARGET_64BIT && TARGET_LL64)
+	    {
+	      restore_mode = DImode;
+	      double_load_p = true;
+	    }
+	  /* Use 128-bit double loads for context restoring.  */
+	  else if (TARGET_64BIT && TARGET_WIDE_LDST)
+	    {
+	      restore_mode = TImode;
+	      double_load_p = true;
+	    }
 	}
-      else
-	restore_mode = word_mode;
 
       reg = gen_rtx_REG (restore_mode, regno);
       frame_deallocated += frame_restore_reg (reg, disp);
 
-      if (restore_mode == TImode)
-	regno ++;
+      if (double_load_p)
+	regno++;
     }
 
   return frame_deallocated;
