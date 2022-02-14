@@ -2452,6 +2452,23 @@ vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
    (set_attr "length"     "4,8")
    (set_attr "predicable" "no")])
 
+(define_insn "*zextzvsi"
+  [(set (match_operand:DI 0 "register_operand"                  "=r,r")
+	(zero_extract:DI (match_operand:SI 1 "register_operand"  "0,r")
+			 (match_operand 2    "const_int_operand" "n,n")
+			 (match_operand 3    "const_int_operand" "n,n")))]
+  ""
+  {
+   int assemble_op2 = (((INTVAL (operands[2]) - 1) & 0x1f) << 5)
+                       | (INTVAL (operands[3]) & 0x1f);
+   operands[2] = GEN_INT (assemble_op2);
+   return "xbfu%?\\t%0,%1,%2";
+  }
+  [(set_attr "type"       "xbfu")
+   (set_attr "iscompact"  "no")
+   (set_attr "length"     "4,8")
+   (set_attr "predicable" "no")])
+
 ;;FIXME! compute length based on the input args.
 (define_insn "*extzvdi"
   [(set (match_operand:DI 0 "register_operand"                  "=r,r")
