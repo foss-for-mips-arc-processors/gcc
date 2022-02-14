@@ -57,6 +57,9 @@
 
 #define UNITS_PER_LIMM 4
 
+#define DOUBLE_LOAD_STORE ((!TARGET_64BIT && TARGET_LL64) \
+			   || (TARGET_64BIT && TARGET_WIDE_LDST))
+
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
   {
@@ -3854,7 +3857,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	case MEM:
 	  /* Store instruction.  */
 
-	  if ((factor == 2) && TARGET_WIDE_LDST)
+	  if ((factor == 2) && DOUBLE_LOAD_STORE)
 	    *cost = COSTS_N_INSNS (1);
 	  *cost += arc64_address_cost (XEXP (op0, 0), mode, 0, speed);
 	  if (CONST_INT_P (op1))
@@ -3885,7 +3888,7 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
     case MEM:
       /* Generic/loads.  */
 
-      if ((factor == 2) && TARGET_WIDE_LDST)
+      if ((factor == 2) && DOUBLE_LOAD_STORE)
 	*cost = COSTS_N_INSNS (1);
       *cost += arc64_address_cost (XEXP (x, 0), mode, 0, speed);
       return true;
@@ -5299,11 +5302,11 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
     }
 
   /* Check if we have 64/128bit moves.  */
-  if ((TARGET_WIDE_LDST || TARGET_LL64)
-      && (GET_MODE_SIZE (mode) <= (UNITS_PER_WORD * 2))
+  if (DOUBLE_LOAD_STORE
       && ((memory_operand (op0, mode) && REG_P (op1))
 	  || (memory_operand (op1, mode) && REG_P (op0))))
     {
+      gcc_assert (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2));
       /* Sanity check for wide st/ld instructions.  */
       if (REG_P (op0) && ((REGNO (op0) & 0x01) != 0))
 	return true;
@@ -5507,8 +5510,8 @@ arc64_expand_cpymem (rtx *operands)
      will always require an even number of instructions to do now.  And each
      operation requires both a load+store, so devide the max number by 2.  */
   int max_num_moves = (speed_p ? 16 : ARC64_CALL_RATIO) / 2;
-  /* In case of 128-bit moves, double the threshold.  */
-  if (TARGET_WIDE_LDST)
+  /* In case of double moves, double the threshold.  */
+  if (DOUBLE_LOAD_STORE)
     max_num_moves *= 2;
 
   /* We can't do anything smart if the amount to copy is not constant.  */
@@ -5520,7 +5523,12 @@ arc64_expand_cpymem (rtx *operands)
   /* Try to keep the number of instructions low.  For all cases we will do at
      most two moves for the residual amount, since we'll always overlap the
      remainder.  */
-  const int divisor = TARGET_WIDE_LDST ? 16 : 8;
+  int divisor;
+  if (TARGET_64BIT)
+    divisor = TARGET_WIDE_LDST ? 16 : 8;
+  else
+    divisor = TARGET_LL64 ? 8 : 4;
+
   if (((n / divisor) + (n % divisor ? 2 : 0)) > max_num_moves)
     return false;
 
@@ -5535,7 +5543,7 @@ arc64_expand_cpymem (rtx *operands)
 
   /* Maximum amount to copy in one go.  */
   const int copy_limit
-    = TARGET_WIDE_LDST ? GET_MODE_BITSIZE (TImode) : GET_MODE_BITSIZE (DImode);
+    = DOUBLE_LOAD_STORE ? (2 * BITS_PER_WORD) : BITS_PER_WORD;
 
   while (n > 0)
     {
