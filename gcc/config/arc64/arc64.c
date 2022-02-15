@@ -1554,6 +1554,32 @@ get_arc64_condition_code (rtx comparison)
   gcc_unreachable ();
 }
 
+/* Address scaling is a bit tricky in case of double loads/stores.
+   In normal cases, the address scaling takes the element size
+   of the data it is handling as the offset. However, in case of
+   a double load/store the offset size is the same size of a single
+   element and not the double of it. e.g.:
+
+   ldb.as   r1, [r0, 1]	      offset is 1 (1*1), data is  1 byte
+   ldw.as   r1, [r0, 1]	      offset is 2 (1*2), data is  2 bytes
+   ld.as    r1, [r0, 1]	      offset is 4 (1*4), data is  4 bytes
+   ldl.as   r1, [r0, 1]	      offset is 8 (1*8), data is  8 bytes
+
+   ldd.as   r1, [r0, 1]	      offset is 4 (1*4), data is  8 bytes
+   lddl.as  r1, [r0, 1]	      offset is 8 (1*8), data is 16 bytes
+*/
+
+static machine_mode
+arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
+{
+  if (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2))
+    {
+      gcc_assert (DOUBLE_LOAD_STORE);
+      return Pmode;
+    }
+  return mode;
+}
+
 /* Print operand X (an rtx) in assembler syntax to file FILE.  CODE is
    a letter or dot (`z' in `%z0') or 0 if no letter was specified.
    For `%' followed by punctuation, CODE is the punctuation and X is
@@ -1587,6 +1613,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
   int scalled = 0;
   int sign = 1;
+  machine_mode effective_mode;
 
   switch (code)
     {
@@ -1634,12 +1661,14 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  break;
 
 	case PLUS:
+	  effective_mode =
+	    arc64_get_effective_mode_for_address_scaling (GET_MODE (x));
 	  if (GET_CODE (XEXP (XEXP (x, 0), 0)) == MULT)
 	    fputs (".as", file);
 	  else if (REG_P (XEXP (XEXP (x, 0), 0))
 		   && CONST_INT_P (XEXP (XEXP (x, 0), 1))
 		   && ARC64_CHECK_SCALLED_IMMEDIATE (XEXP (XEXP (x, 0), 1),
-						     GET_MODE (x)))
+						     effective_mode))
 	    {
 	      fputs (".as", file);
 	      scalled_p = true;
@@ -1895,6 +1924,7 @@ static void
 arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 {
   rtx base, index = 0;
+  machine_mode effective_mode = mode;
 
   switch (GET_CODE (addr))
     {
@@ -1915,11 +1945,16 @@ arc64_print_operand_address (FILE *file , machine_mode mode, rtx addr)
 	base = XEXP (addr, 0), index = XEXP (addr, 1);
 
       gcc_assert (OBJECT_P (base));
+      effective_mode =
+	arc64_get_effective_mode_for_address_scaling (mode);
       if (REG_P (base)
 	  && scalled_p
 	  && CONST_INT_P (index)
-	  && ARC64_CHECK_SCALLED_IMMEDIATE (index, mode))
-	index = GEN_INT (INTVAL (index) >> ARC64LOG2 (GET_MODE_SIZE (mode)));
+	  && ARC64_CHECK_SCALLED_IMMEDIATE (index, effective_mode))
+	{
+	  index = GEN_INT (INTVAL (index) >>
+			   ARC64LOG2 (GET_MODE_SIZE (effective_mode)));
+	}
       scalled_p = false;
 
       arc64_print_operand_address (file, mode, base);
