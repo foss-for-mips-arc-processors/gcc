@@ -1460,7 +1460,7 @@
 (define_expand "mov<mode>"
   [(set (match_operand:VALL 0 "nonimmediate_operand")
 	(match_operand:VALL 1 "general_operand"))]
-  "TARGET_SIMD && TARGET_64BIT"
+  "TARGET_SIMD"
   "
    if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
     DONE;
@@ -1469,7 +1469,7 @@
 (define_expand "movmisalign<mode>"
   [(set (match_operand:VALL 0 "nonimmediate_operand")
 	(match_operand:VALL 1 "general_operand"))]
-  "TARGET_SIMD && !STRICT_ALIGNMENT && TARGET_64BIT"
+  "TARGET_SIMD && !STRICT_ALIGNMENT"
   "
    if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
     DONE;
@@ -1478,7 +1478,7 @@
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,Ustor")
 	(match_operand:VALL 1 "nonimmediate_operand" "r,m,r"))]
-  "TARGET_SIMD
+  "TARGET_SIMD && TARGET_64BIT
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
   "@
