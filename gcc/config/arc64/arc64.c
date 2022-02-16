@@ -5318,7 +5318,10 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
   if (register_operand (op0, mode) && register_operand (op1, mode))
     {
       /* Check if we can use vadd2 instruction as a mov.  */
-      if (mode == DImode && TARGET_SIMD)
+      if (TARGET_SIMD
+	  && !FLOAT_MODE_P (mode)
+	  && !TARGET_64BIT
+	  && (GET_MODE_SIZE (mode) == (2 * UNITS_PER_WORD)))
 	{
 	  /* If both registers are even-numbered, fallback to vadd2.  */
 	  if (((REGNO (op0) & 0x01) == 0) && ((REGNO (op1) & 0x01) == 0))
