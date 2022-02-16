@@ -618,7 +618,7 @@ arc64_save_callee_saves (void)
 	  save_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
 	}
-      else if (regno > 1
+      else if (regno >= 1
 	       && (((regno - 1) % 2) == 0)
 	       && (frame->reg_offset[regno - 1] != -1))
 	{
@@ -759,7 +759,8 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	}
       else if ((regno % 2) == 0
 	       && (!frame_pointer_needed || ((regno + 1) != R27_REGNUM))
-	       && (frame->reg_offset[regno + 1] != -1))
+	       && (frame->reg_offset[regno + 1] != -1
+		   && ((regno + 1) != BLINK_REGNUM)))
 	{
 	  /* Use 64-bit double loads for context restoring.  */
 	  if (!TARGET_64BIT && TARGET_LL64)
