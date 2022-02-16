@@ -261,12 +261,6 @@ static const int lutlog2[] = {0, 0, 1, 0, 2, 0, 0, 0,
    && VERIFY_SHIFT (INTVAL (offset), ARC64LOG2 (GET_MODE_SIZE (mode)))	\
    && SIGNED_INT9 (INTVAL (offset) >> ARC64LOG2 (GET_MODE_SIZE (mode))))
 
-/* Check if an offset fits in signed 9 bit immediate field.  */
-#define ARC64_CHECK_SMALL_IMMEDIATE(indx, mode)				\
-  (CONST_INT_P (indx)							\
-   && (ARC64_CHECK_SCALLED_IMMEDIATE (indx, mode)			\
-       || SIGNED_INT9 (INTVAL (indx))))
-
 /* ALIGN FRAMES on word boundaries.  */
 #define ARC64_STACK_ALIGN(LOC)						\
   (((LOC) + STACK_BOUNDARY / BITS_PER_UNIT - 1) & -STACK_BOUNDARY/BITS_PER_UNIT)
@@ -903,24 +897,42 @@ arc64_legitimate_address_1_p (machine_mode mode,
       || GET_CODE (x) == LABEL_REF)
     return (arc64_get_symbol_type (x) == ARC64_LO32);
 
-  /* Double load/stores are not scaling with 128 bits but with the
-     register size.  */
-  machine_mode scaling_mode = mode;
-  if (GET_MODE_SIZE (scaling_mode) >= 2 * UNITS_PER_WORD)
-      scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD);
-
-  /* ST instruction can only accept a single register plus a small
-     offset as address.  */
+  /* Check register + offset address type.  */
   if (GET_CODE (x) == PLUS
       && REG_P (XEXP (x, 0))
-      && (ARC64_CHECK_SMALL_IMMEDIATE (XEXP (x, 1),
-				       scaling_p ? scaling_mode : QImode)
-	  || (load_p && CONST_INT_P (XEXP (x, 1))
-	      /* FIXME! we can use address scalling here to fit even more.  */
-	      && (UNSIGNED_INT32 (INTVAL (XEXP (x, 1)))
-		  || SIGNED_INT32 (INTVAL (XEXP (x, 1))))
-	      && !optimize_size)))
-      return true;
+      && CONST_INT_P (XEXP (x, 1)))
+    {
+      machine_mode scaling_mode = mode;
+      rtx offset = XEXP (x, 1);
+      HOST_WIDE_INT ioffset = INTVAL (offset);
+
+
+      if (GET_MODE_SIZE (scaling_mode) == 2 * UNITS_PER_WORD)
+	{
+	  /* Double load/stores are not scaling with 128 bits but with the
+	     register size.  */
+	  scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD);
+
+	  /* Adjust the offset as we may need to split this address.  */
+	  ioffset += UNITS_PER_WORD;
+	}
+      scaling_mode = scaling_p ? scaling_mode : QImode;
+
+      /* ST instruction can only accept a single register plus a small s9 offset
+	 as address.  */
+      if ((ARC64LOG2 (GET_MODE_SIZE (scaling_mode))
+	   && VERIFY_SHIFT (ioffset, ARC64LOG2 (GET_MODE_SIZE (scaling_mode)))
+	   && SIGNED_INT9 (ioffset >> ARC64LOG2 (GET_MODE_SIZE (scaling_mode))))
+	  || SIGNED_INT9 (ioffset))
+	return true;
+
+      if (load_p
+	  /* FIXME! we can use address scalling here to fit even more.  */
+	  && (UNSIGNED_INT32 (INTVAL (offset))
+	      || SIGNED_INT32 (INTVAL (offset)))
+	  && !optimize_size)
+	return true;
+    }
 
   /* Indexed addresses.  */
   if (load_p
