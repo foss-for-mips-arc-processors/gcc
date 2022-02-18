@@ -4304,6 +4304,14 @@ arc64_can_follow_jump (const rtx_insn *br1, const rtx_insn *br2)
   return true;
 }
 
+/* Implements target hook TARGET_SCHED_ISSUE_RATE.  */
+
+static int
+arc64_sched_issue_rate (void)
+{
+  return 2;
+}
+
 /*
   Global functions.
 */
@@ -6021,6 +6029,9 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_CAN_FOLLOW_JUMP
 #define TARGET_CAN_FOLLOW_JUMP arc64_can_follow_jump
+
+#undef TARGET_SCHED_ISSUE_RATE
+#define TARGET_SCHED_ISSUE_RATE arc64_sched_issue_rate
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
