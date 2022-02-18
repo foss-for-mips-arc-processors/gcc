@@ -1573,17 +1573,24 @@
    (ANY_EXTEND:V2SI (match_operand:V4HI 1 "register_operand"))
    (ANY_EXTEND:V2SI (match_operand:V4HI 2 "register_operand"))
    (match_operand:V2SI 3 "register_operand")]
-  "TARGET_SIMD && TARGET_64BIT"
+  "TARGET_SIMD"
 {
   rtx acc_reg  = gen_rtx_REG (V2SImode, R58_REGNUM);
-  rtx op1_high = gen_reg_rtx (V4HImode);
-  rtx op2_high = gen_reg_rtx (V4HImode);
 
   emit_move_insn (acc_reg, operands[3]);
-  emit_insn (gen_arc64_swapl (op1_high, operands[1]));
-  emit_insn (gen_arc64_swapl (op2_high, operands[2]));
   emit_insn (gen_arc64_<su>vmach_zero (operands[1], operands[2]));
-  emit_insn (gen_arc64_<su>vmach (operands[0], op1_high, op2_high));
+  if (TARGET_64BIT)
+    {
+      rtx op1_high = gen_reg_rtx (V4HImode);
+      rtx op2_high = gen_reg_rtx (V4HImode);
+      emit_insn (gen_arc64_swapl (op1_high, operands[1]));
+      emit_insn (gen_arc64_swapl (op2_high, operands[2]));
+      emit_insn (gen_arc64_<su>vmach (operands[0], op1_high, op2_high));
+    }
+  else
+    {
+      emit_insn (gen_arc32_<su>vmach_hi (operands[0], operands[1], operands[2]));
+    }
   DONE;
 })
 
