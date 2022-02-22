@@ -1628,14 +1628,30 @@
    (set_attr "type" "vmac2h")])
 
 ;; FIXME! for v2hi -> dmpyh
-(define_insn "reduc_plus_scal_v4hi"
-  [(set (match_operand:HI 0 "register_operand" "=r")
-	(unspec:HI [(match_operand:V4HI 1 "register_operand" "r")]
+(define_expand "reduc_plus_scal_v4hi"
+  [(parallel
+    [(set (match_operand:HI 0 "register_operand" "=r")
+	  (unspec:HI [(match_operand:V4HI 1 "register_operand" "r")]
+		     ARC64_UNSPEC_QMPYH))
+     (clobber (reg:DI R58_REGNUM))])]
+  "TARGET_SIMD"
+  "")
+
+(define_insn_and_split "*reduc_v4hi"
+  [(set (match_operand:HI 0 "register_operand" "=accum,r")
+	(unspec:HI [(match_operand:V4HI 1 "register_operand" "r,r")]
 		   ARC64_UNSPEC_QMPYH))
    (clobber (reg:DI R58_REGNUM))]
   "TARGET_SIMD"
   "qmpyh\\t%0,%1,1"
-  [(set_attr "length" "4")
+  "&& reload_completed && !TARGET_64BIT && (REGNO (operands[0]) != R58_REGNUM)"
+  [(parallel
+    [(set (reg:HI R58_REGNUM)
+	  (unspec:HI [(match_dup 1)] ARC64_UNSPEC_QMPYH))
+     (clobber (reg:DI R58_REGNUM))])
+   (set (match_dup 0) (reg:HI R58_REGNUM))]
+  ""
+  [(set_attr "length" "8,4")
    (set_attr "type" "qmpyh")])
 
 (define_insn "reduc_plus_scal_v2si"
