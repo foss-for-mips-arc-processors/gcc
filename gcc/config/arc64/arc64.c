@@ -5344,6 +5344,10 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
   rtx op0 = operands[0];
   rtx op1 = operands[1];
 
+  /* Split only double moves.  */
+  if (GET_MODE_SIZE (mode) < (UNITS_PER_WORD * 2))
+    return false;
+
   if (register_operand (op0, mode) && register_operand (op1, mode))
     {
       /* Check if we can use vadd2 instruction as a mov.  */
