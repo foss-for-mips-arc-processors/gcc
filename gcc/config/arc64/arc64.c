@@ -3441,7 +3441,7 @@ arc64_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
       return 1;
 
     case vec_perm:
-      return 3; /* We don't really have vec_perm.  */
+      return 1; /* We don't really have vec_perm.  */
 
     case vec_promote_demote:
       return 1;
