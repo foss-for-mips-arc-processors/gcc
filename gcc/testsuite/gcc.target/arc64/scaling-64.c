@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-require-effective-target hs5x } */
 /* { dg-options "-mcpu=hs5x -mll64 -O0" } */
 
 /* Address scaling for double loads and stores must multiply
