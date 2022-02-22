@@ -1,5 +1,7 @@
 /* { dg-do compile } */
-/* { dg-options "-mcpu=hs6x -m128 -O0" } */
+/* { dg-options "-O0" } */
+/* { dg-additional-options "-m128" { target { hs6x } } } */
+/* { dg-additional-options "-mll64" { target { hs5x } } } */
 
 /* Address scaling for double loads and stores must multiply
    the "offset" with the size of a single element and not
@@ -32,7 +34,16 @@ void func()
   __builtin_strcpy(buf, "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456");
 }
 
-/* { dg-final { scan-assembler "lddl\\s+r.,\\\[r.\\\]"   } } */
-/* { dg-final { scan-assembler "stdl\\s+r.,\\\[r.\\\]"   } } */
-/* { dg-final { scan-assembler "lddl.as\\s+r.,\\\[r.,2\\\]" } } */
-/* { dg-final { scan-assembler "stdl.as\\s+r.,\\\[r.,2\\\]" } } */
+/* { dg-final { scan-assembler "lddl\\s+r.,\\\[r.\\\]" { target { hs6x } }  } } */
+/* { dg-final { scan-assembler "stdl\\s+r.,\\\[r.\\\]" { target { hs6x } }  } } */
+/* { dg-final { scan-assembler "lddl.as\\s+r.,\\\[r.,2\\\]" { target { hs6x } } } } */
+/* { dg-final { scan-assembler "stdl.as\\s+r.,\\\[r.,2\\\]" { target { hs6x } } } } */
+
+/* { dg-final { scan-assembler "ldd\\s+r.,\\\[r.\\\]" { target { hs5x } }  } } */
+/* { dg-final { scan-assembler "std\\s+r.,\\\[r.\\\]" { target { hs5x } }  } } */
+/* { dg-final { scan-assembler "ldd.as\\s+r.,\\\[r.,2\\\]" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "std.as\\s+r.,\\\[r.,2\\\]" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "ldd.as\\s+r.,\\\[r.,4\\\]" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "std.as\\s+r.,\\\[r.,4\\\]" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "ldd.as\\s+r.,\\\[r.,6\\\]" { target { hs5x } } } } */
+/* { dg-final { scan-assembler "std.as\\s+r.,\\\[r.,6\\\]" { target { hs5x } } } } */
