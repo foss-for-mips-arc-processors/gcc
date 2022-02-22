@@ -4198,9 +4198,14 @@ arc64_override_options (void)
       if ( *p == '8')
 	{
 	  if (TARGET_64BIT)
-	    target_flags |= MASK_WIDE_LDST;
+	    {
+	      target_flags |= MASK_WIDE_LDST;
+	    }
 	  else
-	    target_flags |= MASK_LL64;
+	    {
+	      target_flags |= MASK_LL64;
+	    }
+	  target_flags |= MASK_SIMD;
 	}
     }
 
