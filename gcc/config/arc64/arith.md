@@ -1530,13 +1530,14 @@
 	tmp2 = gen_reg_rtx (V4HImode);
 	emit_insn (gen_arc64_swapl (tmp1, operands[1]));
 	emit_insn (gen_arc64_swapl (tmp2, operands[2]));
+	emit_insn (gen_arc64_<su>vmpy2h (operands[0], tmp1, tmp2));
       }
     else
       {
 	tmp1 = operands[1];
 	tmp2 = operands[2];
+	emit_insn (gen_arc32_<su>vmpy2h_hi (operands[0], tmp1, tmp2));
       }
-    emit_insn (gen_arc64_<su>vmpy2h (operands[0], tmp1, tmp2));
     DONE;
   })
 
