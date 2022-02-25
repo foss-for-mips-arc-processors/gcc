@@ -57,3 +57,20 @@
   "vmac2h<su_optab>%?\\t%0,%H1,%H2"
   [(set_attr "length" "4")
    (set_attr "type" "vmac2h")])
+
+ (define_insn "arc32_<su>vmpy2h_hi"
+   [(set (match_operand:V2SI 0 "register_operand"  "=r")
+	 (mult:V2SI
+	  (ANY_EXTEND:V2SI
+	   (vec_select:V2HI
+	    (match_operand:V4HI 1 "register_operand" "r")
+	    (parallel [(const_int 2) (const_int 3)])))
+	  (ANY_EXTEND:V2SI
+	   (vec_select:V2HI
+	    (match_operand:V4HI 2 "register_operand" "r")
+	    (parallel [(const_int 2) (const_int 3)])))))
+    (clobber (reg:V2SI R58_REGNUM))]
+   "TARGET_SIMD && !TARGET_64BIT"
+   "vmpy2h<su_optab>\\t%0,%H1,%H2"
+   [(set_attr "length" "4")
+    (set_attr "type" "vmpy2h")])
