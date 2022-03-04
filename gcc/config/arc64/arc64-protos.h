@@ -48,6 +48,7 @@ extern int accumulator_bypass_p (rtx_insn *, rtx_insn *);
 extern int set_accumulator_p (rtx_insn *, rtx_insn *);
 extern const char *arc64_output_return (void);
 extern bool arc64_hard_regno_rename_ok (unsigned, unsigned);
+extern void arc64_expand_vector_init (rtx, rtx);
 
 #endif /* RTX_CODE */
 
