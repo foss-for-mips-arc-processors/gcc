@@ -1487,6 +1487,36 @@
    st<mcctab>%U0\\t%1,%0"
   [(set_attr "type" "move,ld,st")])
 
+(define_insn "arc64_vpack_v4hihi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(unspec:V4HI [(match_operand:HI 1 "register_operand" "r")
+		      (match_operand:HI 2 "register_operand" "r")]
+		     ARC64_UNSPEC_VPACK4HL))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "vpack4hl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_vpack_v2sisi"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(unspec:V2SI [(match_operand:SI 1 "register_operand" "r")
+		      (match_operand:SI 2 "register_operand" "r")]
+		     ARC64_UNSPEC_VPACK2WL))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "vpack2wl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_expand "vec_init<mode><vel>"
+  [(match_operand:V64I 0 "register_operand")
+   (match_operand 1 "")]
+  "TARGET_SIMD && TARGET_64BIT"
+  {
+   arc64_expand_vector_init (operands[0], operands[1]);
+   DONE;
+  })
+
+
 (define_insn "<optab><mode>3"
   [(set (match_operand:VALL 0 "register_operand"           "=r")
 	(ADDSUB:VALL (match_operand:VALL 1 "register_operand" "r")
