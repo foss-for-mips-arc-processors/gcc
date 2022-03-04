@@ -204,7 +204,7 @@
 (define_mode_iterator VALL [V2HI V4HI V2SI])
 
 ;; All 64b int vectors
-(define_mode_iterator V64I [V2HI V4HI V2SI])
+(define_mode_iterator V64I [V4HI V2SI])
 
 ;; All fp vectors
 (define_mode_iterator VALLF [(V2HF "ARC64_VFP_32")
