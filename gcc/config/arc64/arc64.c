@@ -5825,6 +5825,46 @@ arc64_hard_regno_rename_ok (unsigned from_regno ATTRIBUTE_UNUSED,
 	  || df_regs_ever_live_p (to_regno));
 }
 
+/* Emit the RTX necessary to initialize the vector TARGET with values in
+   VALS.  */
+
+void
+arc64_expand_vector_init (rtx target, rtx vals)
+{
+  machine_mode mode = GET_MODE (target);
+  machine_mode inner_mode = GET_MODE_INNER (mode);
+  int n_elts = GET_MODE_NUNITS (mode);
+  int i;
+  rtx elem[4], tmp[2];
+
+  gcc_assert (n_elts <= 4);
+  for (i = 0; i < n_elts; i++)
+    {
+      elem[i] = XVECEXP (vals, 0, i);
+      if (!register_operand (elem[i], GET_MODE (elem[i])))
+	elem[i] = force_reg (inner_mode, elem[i]);
+    }
+
+  switch (mode)
+    {
+    case V4HImode:
+      tmp[0] = gen_reg_rtx (mode);
+      tmp[1] = gen_reg_rtx (mode);
+      emit_insn (gen_arc64_vpack_v4hihi (tmp[0], elem[0], elem[1]));
+      emit_insn (gen_arc64_vpack_v4hihi (tmp[1], elem[2], elem[3]));
+      emit_insn (gen_arc64_sel_lane2_0v4hi (target, tmp[0], tmp[1]));
+      break;
+
+    case V2SImode:
+      emit_insn (gen_arc64_vpack_v2sisi (target, elem[0], elem[1]));
+      break;
+
+    case V2HImode: /* FIXME!: Use vpack2hl here.  */
+    default:
+      gcc_unreachable ();
+    }
+}
+
 /* Target hooks.  */
 
 #undef TARGET_ASM_ALIGNED_DI_OP
