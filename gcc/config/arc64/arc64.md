@@ -323,6 +323,9 @@
 			 (V2HF "32") (V4HF "64") (V2SF "64")
 			 (V8HF "128") (V4SF "128") (V2DF "128")])
 
+;; Used to implement predicated sign extension patterns
+(define_mode_attr sexsft [(QI "24") (HI "16") (SI "8")])
+
 ;; Used by float conv patterns.
 (define_mode_attr f2tab [(SI "int") (DI "l")])
 
