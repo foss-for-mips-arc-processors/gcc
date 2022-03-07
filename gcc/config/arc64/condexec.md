@@ -355,6 +355,28 @@
   [(set_attr "length" "4,8")
    (set_attr "type" "mpy")])
 
+(define_insn_and_split "*sign_extend<mode>si2_ce"
+  [(cond_exec
+    (match_operator 2 "arc64_comparison_operator"
+		    [(match_operand 3 "cc_register" "") (const_int 0)])
+    (set (match_operand:SI 0 "register_operand" "=r")
+	 (sign_extend:SI
+	  (match_operand:SHORT 1 "nonimmediate_operand" "r"))))]
+  ""
+  "#"
+  "reload_completed"
+  [(cond_exec
+    (match_op_dup 2 [(match_dup 3) (const_int 0)])
+    (set (match_dup 0) (ashift:SI (match_dup 1) (const_int <sexsft>))))
+   (cond_exec
+    (match_op_dup 2 [(match_dup 3) (const_int 0)])
+    (set (match_dup 0) (ashiftrt:SI (match_dup 0) (const_int <sexsft>))))]
+  "
+  operands[1] = simplify_gen_subreg (SImode, operands[1], <MODE>mode, 0);
+  "
+  [(set_attr "type" "asl")
+   (set_attr "length" "8")])
+
 ;; mode:emacs-lisp
 ;; comment-start: ";; "
 ;; eval: (set-syntax-table (copy-sequence (syntax-table)))
