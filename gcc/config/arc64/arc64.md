@@ -154,6 +154,9 @@
    ARC64_UNSPEC_SWAP
    ARC64_UNSPEC_VEC_SHR
    ARC64_UNSPEC_VEC_SHL
+   ARC64_UNSEPC_HEXCH
+   ARC64_UNSEPC_SEXCH
+   ARC64_UNSEPC_DEXCH
    ])
 
 (include "constraints.md")
@@ -231,10 +234,15 @@
 ;; All 2xfp Vectors
 (define_mode_iterator W2xF [(V2DF "ARC64_VFP_128")])
 
-;; Complement of the above.
+;; All HF and SF vectors
 (define_mode_iterator V1FRF [(V2HF "ARC64_VFP_32")
 			     (V4HF "ARC64_VFP_64") (V2SF "ARC64_VFP_64")
 			     (V8HF "ARC64_VFP_128") (V4SF "ARC64_VFP_128")])
+
+;; All HF vectors
+(define_mode_iterator VxHF [(V2HF "ARC64_VFP_32")
+			    (V4HF "ARC64_VFP_64")
+			    (V8HF "ARC64_VFP_128")])
 
 ;; -------------------------------------------------------------------
 ;; Code Iterators
@@ -313,6 +321,10 @@
 			   (V2HF "s") (V4HF "d") (V2SF "d")])
 (define_mode_attr fmvitab [(HF "i") (SF "i") (DF "l")
 			   (V2HF "i") (V4HF "l") (V2SF "l")])
+
+;; To be used by vector exch instructions emitted by reduction
+;; patterns.
+(define_mode_attr fmextab [(V4HF "s") (V4SF "d")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
@@ -474,8 +486,8 @@ maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
 normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
 rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
 swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
-unknown, vadd, vfadd, vfdiv, vfext, vfins, vfmul, vfrep, vfsub,
-vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
+unknown, vadd, vfadd, vfdiv, vfexch, vfext, vfins, vfmul, vfrep,
+vfsub, vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))

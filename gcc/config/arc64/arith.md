@@ -2383,6 +2383,62 @@
   [(set_attr "length" "4")
    (set_attr "type" "fnmsub")])
 
+;; Exchange unspecs used for reduction ops.
+(define_insn "arc64_dexch<mode>"
+  [(set (match_operand:VALLF_128 0 "register_operand" "=w")
+	(unspec:VALLF_128 [(match_operand:VALLF_128 1 "register_operand" "w")]
+			  ARC64_UNSEPC_DEXCH))]
+  "ARC64_HAS_FP_BASE"
+  "vfdexch\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfexch")])
+
+(define_insn "arc64_sexch<mode>"
+  [(set (match_operand:V1FRF 0 "register_operand" "=w")
+	(unspec:V1FRF [(match_operand:V1FRF 1 "register_operand" "w")]
+		      ARC64_UNSEPC_SEXCH))]
+  "ARC64_HAS_FP_BASE"
+  "vfsexch\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfexch")])
+
+(define_insn "arc64_hexch<mode>"
+  [(set (match_operand:VxHF 0 "register_operand" "=w")
+	(unspec:VxHF [(match_operand:VxHF 1 "register_operand" "w")]
+		     ARC64_UNSEPC_HEXCH))]
+  "ARC64_HAS_FP_BASE"
+  "vfhexch\\t%0,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfexch")])
+
+(define_expand "reduc_plus_scal_v8hf"
+  [(match_operand:HF 0 "register_operand")
+   (match_operand:V8HF 1 "register_operand")]
+  ""
+  {
+    rtx low = gen_lowpart (HFmode, operands[1]);
+    rtx high = gen_reg_rtx (HFmode);
+    rtx tmp0, tmp1, tmp2, tmp3;
+
+    tmp0 = gen_reg_rtx (V8HFmode);
+    tmp1 = gen_reg_rtx (V8HFmode);
+    tmp2 = gen_reg_rtx (V8HFmode);
+    tmp3 = gen_reg_rtx (V8HFmode);
+
+    /* 1/2 of the vector.  */
+    emit_insn (gen_arc64_dexchv8hf (tmp0, operands[1]));
+    emit_insn (gen_addv8hf3 (tmp1, tmp0, operands[1]));
+
+    /* 1/4 of the vector.  */
+    emit_insn (gen_arc64_sexchv8hf (tmp2, tmp1));
+    emit_insn (gen_addv8hf3 (tmp3, tmp2, tmp1));
+
+    /* Last 2 elements.  */
+    emit_insn (gen_vec_extractv8hfhf (high, tmp3, GEN_INT (1)));
+    emit_insn (gen_addhf3 (operands[0], high, low));
+    DONE;
+  })
+
 ;; Vector reduction instructions (emulated)
 (define_expand "reduc_plus_scal_<mode>"
   [(match_operand:<VEL> 0 "register_operand")
@@ -2402,6 +2458,7 @@
    (match_operand:V4xF 1 "register_operand")]
   ""
   {
+#if 0
     rtx op0 = gen_lowpart (<VEL>mode, operands[1]);
     rtx op1 = gen_reg_rtx (<VEL>mode);
     rtx op2 = gen_reg_rtx (<VEL>mode);
@@ -2422,6 +2479,21 @@
 
     emit_insn (gen_add<vel>3 (operands[0], tmp1, tmp2));
     DONE;
+#else
+    rtx low = gen_lowpart (<VEL>mode, operands[1]);
+    rtx high = gen_reg_rtx (<VEL>mode);
+    rtx tmp0, tmp1;
+
+    tmp0 = gen_reg_rtx (<MODE>mode);
+    tmp1 = gen_reg_rtx (<MODE>mode);
+
+    emit_insn (gen_arc64_<fmextab>exch<mode> (tmp0, operands[1]));
+    emit_insn (gen_add<mode>3 (tmp1, tmp0, operands[1]));
+
+    emit_insn (gen_vec_extract<mode><vel> (high, tmp1, GEN_INT (1)));
+    emit_insn (gen_add<vel>3 (operands[0], high, low));
+    DONE;
+#endif
   })
 
 ;; Emulated vector ops using scalar function, only for double width vectors.
