@@ -2387,7 +2387,7 @@
 (define_insn "arc64_dexch<mode>"
   [(set (match_operand:VALLF_128 0 "register_operand" "=w")
 	(unspec:VALLF_128 [(match_operand:VALLF_128 1 "register_operand" "w")]
-			  ARC64_UNSEPC_DEXCH))]
+			  ARC64_UNSPEC_DEXCH))]
   "ARC64_HAS_FP_BASE"
   "vfdexch\\t%0,%1"
   [(set_attr "length" "4")
@@ -2396,7 +2396,7 @@
 (define_insn "arc64_sexch<mode>"
   [(set (match_operand:V1FRF 0 "register_operand" "=w")
 	(unspec:V1FRF [(match_operand:V1FRF 1 "register_operand" "w")]
-		      ARC64_UNSEPC_SEXCH))]
+		      ARC64_UNSPEC_SEXCH))]
   "ARC64_HAS_FP_BASE"
   "vfsexch\\t%0,%1"
   [(set_attr "length" "4")
@@ -2405,7 +2405,7 @@
 (define_insn "arc64_hexch<mode>"
   [(set (match_operand:VxHF 0 "register_operand" "=w")
 	(unspec:VxHF [(match_operand:VxHF 1 "register_operand" "w")]
-		     ARC64_UNSEPC_HEXCH))]
+		     ARC64_UNSPEC_HEXCH))]
   "ARC64_HAS_FP_BASE"
   "vfhexch\\t%0,%1"
   [(set_attr "length" "4")
