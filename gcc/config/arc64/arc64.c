@@ -3783,6 +3783,84 @@ arc64_simd_vpack2wm (struct e_vec_perm_d *d)
   return true;
 }
 
+/* Recognize patterns for {H,S,D}EXCH insns, which reverse elements:
+   VFHEXCH (v2hf): h0 h1
+   VFHEXCH (v4hf): h2 h3 h0 h1
+   VFHEXCH (v8hf): h6 h7 h4 h5 h2 h3 h0 h1
+
+   VFSEXCH (v4hf): h1h0 h3h2
+   VFSEXCH (v8hf): h5h4 h7h6 h1h0 h3h2
+
+   VFDEXCH (v8hf): h3h2h1h0 h7h6h5h4
+
+   VFSEXCH (v2sf): s0 s1
+   VFSEXCH (v4sf): s2 s3 s0 s1
+
+   VFDEXCH (v4sf): s1s0 s3s2
+
+   VFDEXCH (v2df): d0 d1
+ */
+
+static bool
+arc64_simd_exch (struct e_vec_perm_d *d)
+{
+  HOST_WIDE_INT diff;
+  unsigned int i, size, unspec;
+  machine_mode vmode = d->vmode;
+
+  if (!ARC64_HAS_FP_BASE
+      || !FLOAT_MODE_P (vmode)
+      || !d->one_vector_p
+      || !d->perm[0].is_constant (&diff)
+      || !diff)
+    return false;
+
+  size = diff * GET_MODE_UNIT_BITSIZE (vmode);
+  if (size == 64)
+    {
+      if (!ARC64_HAS_FPUD)
+	return false;
+      unspec = ARC64_UNSPEC_DEXCH;
+    }
+  else if (size == 32)
+    {
+      unspec = ARC64_UNSPEC_SEXCH;
+    }
+  else if (size == 16)
+    {
+      unspec = ARC64_UNSPEC_HEXCH;
+    }
+  else
+    return false;
+
+  switch (diff)
+    {
+    case 1:
+      for (i = 0; i < 2; i++)
+	if (!d->perm.series_p (i, 2, diff - i, 2))
+	  return false;
+      break;
+
+    case 2:
+    case 4:
+      for (i = 0; i < diff; i++)
+	if (!d->perm.series_p (i, diff, diff + i, -diff))
+	  return false;
+      break;
+
+    default:
+      return false;
+    }
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  rtx src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, d->op0), unspec);
+  emit_set_insn (d->target, src);
+  return true;
+}
+
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
@@ -3841,6 +3919,8 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
       else if (arc64_simd_vpack2wl (&d))
 	return true;
       else if (arc64_simd_vpack2wm (&d))
+	return true;
+      else if (arc64_simd_exch (&d))
 	return true;
     }
   return false;
