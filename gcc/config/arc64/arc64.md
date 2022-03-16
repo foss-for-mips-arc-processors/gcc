@@ -157,6 +157,12 @@
    ARC64_UNSPEC_HEXCH
    ARC64_UNSPEC_SEXCH
    ARC64_UNSPEC_DEXCH
+   ARC64_UNSPEC_HUNPKL
+   ARC64_UNSPEC_SUNPKL
+   ARC64_UNSPEC_DUNPKL
+   ARC64_UNSPEC_HUNPKM
+   ARC64_UNSPEC_SUNPKM
+   ARC64_UNSPEC_DUNPKM
    ])
 
 (include "constraints.md")
@@ -465,6 +471,19 @@
 ;; -------------------------------------------------------------------
 ;; Int Iterators.
 ;; -------------------------------------------------------------------
+(define_int_iterator PERMUTED [ARC64_UNSPEC_DUNPKL ARC64_UNSPEC_DUNPKM])
+(define_int_iterator PERMUTES [ARC64_UNSPEC_SUNPKL ARC64_UNSPEC_SUNPKM])
+(define_int_iterator PERMUTEH [ARC64_UNSPEC_HUNPKL ARC64_UNSPEC_HUNPKM])
+
+;; -------------------------------------------------------------------
+;; Int Iterators Attributes.
+;; -------------------------------------------------------------------
+(define_int_attr perm_pat [(ARC64_UNSPEC_HUNPKL "unpkl")
+			   (ARC64_UNSPEC_SUNPKL "unpkl")
+			   (ARC64_UNSPEC_DUNPKL "unpkl")
+			   (ARC64_UNSPEC_HUNPKM "unpkm")
+			   (ARC64_UNSPEC_SUNPKM "unpkm")
+			   (ARC64_UNSPEC_DUNPKM "unpkm")])
 
 ;; -------------------------------------------------------------------
 ;; Instruction types and attributes
@@ -487,7 +506,7 @@ normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
 rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
 swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
 unknown, vadd, vfadd, vfdiv, vfexch, vfext, vfins, vfmul, vfrep,
-vfsub, vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
+vfsub, vfunpkl, vfunpkm, vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
