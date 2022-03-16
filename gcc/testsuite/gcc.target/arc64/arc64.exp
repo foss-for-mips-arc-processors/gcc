@@ -51,6 +51,16 @@ proc check_effective_target_doubleaccess { } {
     }]
 }
 
+
+# Return 1 if DP FP is enabled for the target
+proc check_effective_target_dpfp { } {
+    return [check_no_compiler_messages dpfp assembly {
+	#if !defined(__ARC_FPU_DP__)
+	#error No double loads or stores detected
+	#endif
+    }]
+}
+
 # If a testcase doesn't have special options, use these.
 global DEFAULT_CFLAGS
 if ![info exists DEFAULT_CFLAGS] then {
