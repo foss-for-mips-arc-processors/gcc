@@ -2623,6 +2623,37 @@
   [(set_attr "length" "4")
    (set_attr "type" "vfrep")])
 
+;; Shuffle patterns
+(define_insn "arc64_d<PERMUTED:perm_pat><mode>"
+  [(set (match_operand:VALLF_128 0 "register_operand" "=w")
+	(unspec:VALLF_128 [(match_operand:VALLF_128 1 "register_operand" "w")
+			   (match_operand:VALLF_128 2 "register_operand" "w")]
+			  PERMUTED))]
+  "ARC64_HAS_FP_BASE"
+  "vfd<PERMUTED:perm_pat>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<PERMUTED:perm_pat>")])
+
+(define_insn "arc64_s<PERMUTES:perm_pat><mode>"
+  [(set (match_operand:V1FRF 0 "register_operand" "=w")
+	(unspec:V1FRF [(match_operand:V1FRF 1 "register_operand" "w")
+		       (match_operand:V1FRF 2 "register_operand" "w")]
+		      PERMUTES))]
+  "ARC64_HAS_FP_BASE"
+  "vfs<PERMUTES:perm_pat>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<PERMUTES:perm_pat>")])
+
+(define_insn "arc64_h<PERMUTEH:perm_pat><mode>"
+  [(set (match_operand:VxHF 0 "register_operand" "=w")
+	(unspec:VxHF [(match_operand:VxHF 1 "register_operand" "w")
+		      (match_operand:VxHF 2 "register_operand" "w")]
+		      PERMUTEH))]
+  "ARC64_HAS_FP_BASE"
+  "vfh<PERMUTEH:perm_pat>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vf<PERMUTEH:perm_pat>")])
+
 ;; Required pattern needed for vector reduction operations.
 ;;(define_expand "vec_shr_<mode>"
 ;;  [(match_operand:VALLF 0 "register_operand")

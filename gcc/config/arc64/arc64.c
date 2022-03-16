@@ -3861,6 +3861,78 @@ arc64_simd_exch (struct e_vec_perm_d *d)
   return true;
 }
 
+/* Recognize FV<P>UNPACKL/FV<P>UNPACKM instructions.
+
+   VFHUNPKL (v2hf): Ch0 Bh0
+   VFHUNPKL (v4hf): Ch2 Ch0 Bh2 Bh0
+   VFHUNPKL (v8hf): Ch6 Ch4 Ch2 Ch0 Bh6 Bh4 Bh2 Bh0
+
+   VFSUNPKL (v4hf): Ch1Ch0 Bh1Bh0
+   VFSUNPKL (v8hf): Ch5Ch4 Ch1Ch0 Bh5Bh4 Bh1Bh0
+
+   VFDUNPKL (v8hf): Ch3Ch2Ch1Ch0 Bh3Bh2Bh1Bh0
+
+   VFSUNPKL (v2sf): Cs0 Bs0
+   VFSUNPKL (v4sf): Cs2 Cs0 Bs2 Bs0
+
+   VFDUNPKL (v4sf): Cs1Cs0 Bs1Bs0
+
+   VFDUNPKL (v2df): Cd0 Bd0
+ */
+
+static bool
+arc64_simd_unpk (struct e_vec_perm_d *d)
+{
+  HOST_WIDE_INT odd, n;
+  poly_uint64 nelt = d->perm.length ();
+  unsigned int i, j, size, unspec, diff = 0;
+  machine_mode vmode = d->vmode;
+
+  if (!ARC64_HAS_FP_BASE
+      || !FLOAT_MODE_P (vmode)
+      || !d->perm[0].is_constant (&odd)
+      || (odd != 0 && odd != 1 && odd != 2 && odd != 4))
+    return false;
+
+  n = (odd == 0) ? 1 : odd;
+  for (i = n; (i < 5) && (diff == 0); i <<= 1)
+    {
+      bool found = true;
+      for (j = 0; (j < i) && found; j++)
+	if (!d->perm.series_p (j, i, odd + j, i * 2 )
+	    || !d->perm.series_p ((nelt >> 1) + j, i, nelt + odd + j, i * 2))
+	  found = false;
+      if (found)
+	diff = i;
+    }
+
+  size = diff * GET_MODE_UNIT_BITSIZE (vmode);
+  if (size == 64)
+    {
+      if (!ARC64_HAS_FPUD)
+	return false;
+      unspec = odd ? ARC64_UNSPEC_DUNPKM : ARC64_UNSPEC_DUNPKL;
+    }
+  else if (size == 32)
+    {
+      unspec = odd ? ARC64_UNSPEC_SUNPKM : ARC64_UNSPEC_SUNPKL;
+    }
+  else if (size == 16)
+    {
+      unspec = odd ? ARC64_UNSPEC_HUNPKM : ARC64_UNSPEC_HUNPKL;
+    }
+  else
+    return false;
+
+  /* Success!  */
+  if (d->testing_p)
+    return true;
+
+  rtx src = gen_rtx_UNSPEC (vmode, gen_rtvec (2, d->op0, d->op1), unspec);
+  emit_set_insn (d->target, src);
+  return true;
+}
+
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
@@ -3921,6 +3993,8 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
       else if (arc64_simd_vpack2wm (&d))
 	return true;
       else if (arc64_simd_exch (&d))
+	return true;
+      else if (arc64_simd_unpk (&d))
 	return true;
     }
   return false;
