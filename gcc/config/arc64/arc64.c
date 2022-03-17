@@ -4021,6 +4021,95 @@ arc64_simd_pack (struct e_vec_perm_d *d)
   return true;
 }
 
+/* Recognize VF<p>BFLYL and VF<p>BFLYM instructions.
+
+   VFHBFLYL (v2hf): Ch0 Bh0
+   VFHBFLYL (v4hf): Ch2 Bh2 Ch0 Bh0
+   VFHBFLYL (v8hf): Ch6 Bh6 Ch4 Bh4 Ch2 Bh2 Ch0 Bh0
+
+   VFSBFLYL (v4hf): Ch1Ch0 Bh1Bh0
+   VFSBFLYL (v8hf): Ch5Ch4 Bh5Bh4 Ch1Ch0 Bh1Bh0
+
+   VFDBFLYL (v8hf): Ch3Ch2Ch1Ch0 Bh3Bh2Bh1Bh0
+
+   VFSBFLYL (v2sf): Cs0 Bs0
+   VFSBFLYL (v4sf): Cs2 Bs2 Cs0 Bs0
+
+   VFDBFLYL (v4sf): Cs1Cs0 Bs1Bs0
+
+   VFDBFLYL (v2df): Cd0 Bd0
+
+
+   VFHBFLYM (v2hf): Ch1 Bh1
+   VFHBFLYM (v4hf): Ch3 Bh3 Ch1 Bh1
+   VFHBFLYM (v8hf): Ch7 Bh7 Ch5 Bh5 Ch3 Bh3 Ch1 Bh1
+
+   VFSBFLYM (v4hf): Ch3Ch2 Bh3Bh2
+   VFSBFLYM (v8hf): Ch7Ch6 Bh7Bh6 Ch3Ch2 Bh3Bh2
+
+   VFDBFLYM (v8hf): Ch7Ch6Ch5Ch4 Bh7Bh6Bh5Bh4
+
+   VFSBFLYM (v2sf): Cs1 Bs1
+   VFSBFLYM (v4sf): Cs3 Bs3 Cs1 Bs1
+
+   VFDBFLYM (v4sf): Cs3Cs2 Bs3Bs2
+
+   VFDBFLYM (v2df): Cd1 Bd1
+ */
+
+static bool
+arc64_simd_bfly (struct e_vec_perm_d *d)
+{
+  HOST_WIDE_INT odd;
+  poly_uint64 nelt = d->perm.length ();
+  unsigned int i, j, size, unspec, diff = 0;
+  machine_mode vmode = d->vmode;
+
+  if (!ARC64_HAS_FP_BASE
+      || !FLOAT_MODE_P (vmode)
+      || !d->perm[0].is_constant (&odd)
+      || (odd == 3)
+      || (odd < 0 && odd > (HOST_WIDE_INT)(nelt >> 1)))
+    return false;
+
+  for (i = 4; (i > 0) && (diff == 0); i >>= 1)
+    {
+      bool found = true;
+      for (j = 0; (j < i) && found; j++)
+	if (!d->perm.series_p (j, 2 * i, odd + j, 2 * i)
+	    || !d->perm.series_p (i + j, 2 * i, nelt + odd + j, 2 * i))
+	  found = false;
+      if (found)
+	diff = i;
+    }
+
+  size = diff * GET_MODE_UNIT_BITSIZE (vmode);
+  if (size == 64)
+    {
+      if (!ARC64_HAS_FPUD)
+	return false;
+      unspec = odd ? ARC64_UNSPEC_DBFLYM : ARC64_UNSPEC_DBFLYL;
+    }
+  else if (size == 32)
+    {
+      unspec = odd ? ARC64_UNSPEC_SBFLYM : ARC64_UNSPEC_SBFLYL;
+    }
+  else if (size == 16)
+    {
+      unspec = odd ? ARC64_UNSPEC_HBFLYM : ARC64_UNSPEC_HBFLYL;
+    }
+  else
+    return false;
+
+  /* Success!  */
+  if (d->testing_p)
+    return true;
+
+  rtx src = gen_rtx_UNSPEC (vmode, gen_rtvec (2, d->op0, d->op1), unspec);
+  emit_set_insn (d->target, src);
+  return true;
+}
+
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
@@ -4085,6 +4174,8 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
       else if (arc64_simd_unpk (&d))
 	return true;
       else if (arc64_simd_pack (&d))
+	return true;
+      else if (arc64_simd_bfly (&d))
 	return true;
     }
   return false;
