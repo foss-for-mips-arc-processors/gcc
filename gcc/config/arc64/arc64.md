@@ -169,6 +169,12 @@
    ARC64_UNSPEC_HPACKM
    ARC64_UNSPEC_SPACKM
    ARC64_UNSPEC_DPACKM
+   ARC64_UNSPEC_HBFLYL
+   ARC64_UNSPEC_SBFLYL
+   ARC64_UNSPEC_DBFLYL
+   ARC64_UNSPEC_HBFLYM
+   ARC64_UNSPEC_SBFLYM
+   ARC64_UNSPEC_DBFLYM
    ])
 
 (include "constraints.md")
@@ -477,12 +483,24 @@
 ;; -------------------------------------------------------------------
 ;; Int Iterators.
 ;; -------------------------------------------------------------------
-(define_int_iterator PERMUTED [ARC64_UNSPEC_DUNPKL ARC64_UNSPEC_DUNPKM
-			       ARC64_UNSPEC_DPACKL ARC64_UNSPEC_DPACKM])
-(define_int_iterator PERMUTES [ARC64_UNSPEC_SUNPKL ARC64_UNSPEC_SUNPKM
-			       ARC64_UNSPEC_SPACKL ARC64_UNSPEC_SPACKM])
-(define_int_iterator PERMUTEH [ARC64_UNSPEC_HUNPKL ARC64_UNSPEC_HUNPKM
-			       ARC64_UNSPEC_HPACKL ARC64_UNSPEC_HPACKM])
+(define_int_iterator PERMUTED [ARC64_UNSPEC_DUNPKL
+			       ARC64_UNSPEC_DUNPKM
+			       ARC64_UNSPEC_DPACKL
+			       ARC64_UNSPEC_DPACKM
+			       ARC64_UNSPEC_DBFLYL
+			       ARC64_UNSPEC_DBFLYM])
+(define_int_iterator PERMUTES [ARC64_UNSPEC_SUNPKL
+			       ARC64_UNSPEC_SUNPKM
+			       ARC64_UNSPEC_SPACKL
+			       ARC64_UNSPEC_SPACKM
+			       ARC64_UNSPEC_SBFLYL
+			       ARC64_UNSPEC_SBFLYM])
+(define_int_iterator PERMUTEH [ARC64_UNSPEC_HUNPKL
+			       ARC64_UNSPEC_HUNPKM
+			       ARC64_UNSPEC_HPACKL
+			       ARC64_UNSPEC_HPACKM
+			       ARC64_UNSPEC_HBFLYL
+			       ARC64_UNSPEC_HBFLYM])
 
 ;; -------------------------------------------------------------------
 ;; Int Iterators Attributes.
@@ -498,7 +516,13 @@
 			   (ARC64_UNSPEC_DPACKL "packl")
 			   (ARC64_UNSPEC_HPACKM "packm")
 			   (ARC64_UNSPEC_SPACKM "packm")
-			   (ARC64_UNSPEC_DPACKM "packm")])
+			   (ARC64_UNSPEC_DPACKM "packm")
+			   (ARC64_UNSPEC_HBFLYL "bflyl")
+			   (ARC64_UNSPEC_SBFLYL "bflyl")
+			   (ARC64_UNSPEC_DBFLYL "bflyl")
+			   (ARC64_UNSPEC_HBFLYM "bflym")
+			   (ARC64_UNSPEC_SBFLYM "bflym")
+			   (ARC64_UNSPEC_DBFLYM "bflym")])
 
 ;; -------------------------------------------------------------------
 ;; Instruction types and attributes
@@ -520,9 +544,9 @@ maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
 normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
 rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
 swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
-unknown, vadd, vfadd, vfdiv, vfexch, vfext, vfins, vfmul, vfpackl,
-vfpackm, vfrep, vfsub, vfunpkl, vfunpkm, vmac2h, vmpy2h, vpack, vsub,
-xbfu, xor, xorl"
+unknown, vadd, vfadd, vfbflyl, vfbflym, vfdiv, vfexch, vfext, vfins,
+vfmul, vfpackl, vfpackm, vfrep, vfsub, vfunpkl, vfunpkm, vmac2h,
+vmpy2h, vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
