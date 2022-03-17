@@ -3933,6 +3933,94 @@ arc64_simd_unpk (struct e_vec_perm_d *d)
   return true;
 }
 
+/* Recognize VF<p>PACKL and VF<p>PACKM instructions.
+
+   VFHPACKL (v2hf): Ch0 Bh0
+   VFHPACKL (v4hf): Ch1 Bh1 Ch0 Bh0
+   VFHPACKL (v8hf): Ch3 Bh3 Ch2 Bh2 Ch1 Bh1 Ch0 Bh0
+
+   VFSPACKL (v4hf): Ch1Ch0 Bh1Bh0
+   VFSPACKL (v8hf): Ch3Ch2 Bh3Bh2 Ch1Ch0 Bh1Bh0
+
+   VFDPACKL (v8hf): Ch3Ch2Ch1Ch0 Bh3Bh2Bh1Bh0
+
+   VFSPACKL (v2sf): Cs0 Bs0
+   VFSPACKL (v4sf): Cs1 Bs1 Cs0 Bs0
+
+   VFDPACKL (v4sf): Cs1Cs0 Bs1Bs0
+
+   VFDPACKL (v2df): Cd0 Bd0
+
+
+   VFHPACKM (v2hf): Ch1 Bh1
+   VFHPACKM (v4hf): Ch3 Bh3 Ch2 Bh2
+   VFHPACKM (v8hf): Ch7 Bh7 Ch6 Bh6 Ch5 Bh5 Ch4 Bh4
+
+   VFSPACKM (v4hf): Ch3Ch2 Bh3Bh2
+   VFSPACKM (v8hf): Ch7Ch6 Bh7Bh6 Ch5Ch4 Bh5Bh4
+
+   VFDPACKM (v8hf): Ch7Ch6Ch5Ch4 Bh7Bh6Bh5Bh4
+
+   VFSPACKM (v2sf): Cs1 Bs1
+   VFSPACKM (v4sf): Cs3 Bs3 Cs2 Bs2
+
+   VFDPACKM (v4sf): Cs3Cs2 Bs3Bs2
+
+   VFDPACKM (v2df): Cd1 Bd1
+ */
+
+static bool
+arc64_simd_pack (struct e_vec_perm_d *d)
+{
+  HOST_WIDE_INT odd;
+  poly_uint64 nelt = d->perm.length ();
+  unsigned int i, j, size, unspec, diff = 0;
+  machine_mode vmode = d->vmode;
+
+  if (!ARC64_HAS_FP_BASE
+      || !FLOAT_MODE_P (vmode)
+      || !d->perm[0].is_constant (&odd)
+      || (odd != 0 && odd != (HOST_WIDE_INT)(nelt >> 1)))
+    return false;
+
+  for (i = 4; (i > 0) && (diff == 0); i >>= 1)
+    {
+      bool found = true;
+      for (j = 0; (j < i) && found; j++)
+	if (!d->perm.series_p (j, 2 * i, odd + j, i)
+	    || !d->perm.series_p (i + j, 2 * i, nelt + odd + j, i))
+	  found = false;
+      if (found)
+	diff = i;
+    }
+
+  size = diff * GET_MODE_UNIT_BITSIZE (vmode);
+  if (size == 64)
+    {
+      if (!ARC64_HAS_FPUD)
+	return false;
+      unspec = odd ? ARC64_UNSPEC_DPACKM : ARC64_UNSPEC_DPACKL;
+    }
+  else if (size == 32)
+    {
+      unspec = odd ? ARC64_UNSPEC_SPACKM : ARC64_UNSPEC_SPACKL;
+    }
+  else if (size == 16)
+    {
+      unspec = odd ? ARC64_UNSPEC_HPACKM : ARC64_UNSPEC_HPACKL;
+    }
+  else
+    return false;
+
+  /* Success!  */
+  if (d->testing_p)
+    return true;
+
+  rtx src = gen_rtx_UNSPEC (vmode, gen_rtvec (2, d->op0, d->op1), unspec);
+  emit_set_insn (d->target, src);
+  return true;
+}
+
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
@@ -3995,6 +4083,8 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
       else if (arc64_simd_exch (&d))
 	return true;
       else if (arc64_simd_unpk (&d))
+	return true;
+      else if (arc64_simd_pack (&d))
 	return true;
     }
   return false;
