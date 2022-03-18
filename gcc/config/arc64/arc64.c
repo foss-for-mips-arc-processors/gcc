@@ -3878,12 +3878,28 @@ arc64_simd_exch (struct e_vec_perm_d *d)
    VFDUNPKL (v4sf): Cs1Cs0 Bs1Bs0
 
    VFDUNPKL (v2df): Cd0 Bd0
+
+   VFHUNPKM (v2hf): Ch1 Bh1
+   VFHUNPKM (v4hf): Ch3 Ch1 Bh3 Bh1
+   VFHUNPKM (v8hf): Ch7 Ch5 Ch3 Ch1 Bh7 Bh5 Bh3 Bh1
+
+   VFSUNPKM (v4hf): Ch3Ch2 Bh3Bh2
+   VFSUNPKM (v8hf): Ch7Ch6 Ch3Ch2 Bh7Bh6 Bh3Bh2
+
+   VFDUNPKM (v8hf): Ch7Ch6Ch5Ch4 Bh7Bh6Bh5Bh4
+
+   VFSUNPKM (v2sf): Cs1 Bs1
+   VFSUNPKM (v4sf): Cs3 Cs1 Bs3 Bs1
+
+   VFDUNPKM (v4sf): Cs3Cs2 Bs3Bs2
+
+   VFDUNPKM (v2df): Cd1 Bd1
  */
 
 static bool
 arc64_simd_unpk (struct e_vec_perm_d *d)
 {
-  HOST_WIDE_INT odd, n;
+  HOST_WIDE_INT odd, lo;
   poly_uint64 nelt = d->perm.length ();
   unsigned int i, j, size, unspec, diff = 0;
   machine_mode vmode = d->vmode;
@@ -3891,11 +3907,14 @@ arc64_simd_unpk (struct e_vec_perm_d *d)
   if (!ARC64_HAS_FP_BASE
       || !FLOAT_MODE_P (vmode)
       || !d->perm[0].is_constant (&odd)
-      || (odd != 0 && odd != 1 && odd != 2 && odd != 4))
+      || (odd == 3)
+      || (odd < 0 && odd > (HOST_WIDE_INT)(nelt >> 1)))
     return false;
 
-  n = (odd == 0) ? 1 : odd;
-  for (i = n; (i < 5) && (diff == 0); i <<= 1)
+  /* If ODD is set, then diff == odd.  Thus, the below condition should
+     hold.  */
+  lo = (odd == 0) ? 1 : odd;
+  for (i = 4; (i >= lo) && (diff == 0); i >>= 1)
     {
       bool found = true;
       for (j = 0; (j < i) && found; j++)
