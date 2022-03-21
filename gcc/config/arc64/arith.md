@@ -2675,3 +2675,54 @@
 ;;  "vfasrl\\t%0,%1,%2"
 ;;  [(set_attr "length" "4")
 ;;   (set_attr "type" "asl")])
+
+
+(define_insn "*arc64_vfsubadd<mode>3"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(unspec:VALLF [(match_operand:VALLF 1 "register_operand" "w")
+		       (match_operand:VALLF 2 "register_operand" "w")]
+		      ARC64_UNSPEC_VFSUBADD))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>subadd\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfsubadd")])
+
+(define_expand "cadd90<mode>3"
+  [(set (match_operand:VALLF 0 "register_operand")
+	(unspec:VALLF [(match_operand:VALLF 1 "register_operand")
+		       (match_operand:VALLF 2 "register_operand")]
+		      ARC64_UNSPEC_VFSUBADD))]
+  "ARC64_HAS_FP_BASE"
+ {
+    rtx tmp = gen_reg_rtx (<MODE>mode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (<MODE>mode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_<cplxtab>EXCH));
+    operands[2] = tmp;
+ })
+
+(define_insn "*arc64_vfaddsub<mode>3"
+  [(set (match_operand:VALLF 0 "register_operand" "=w")
+	(unspec:VALLF [(match_operand:VALLF 1 "register_operand" "w")
+		       (match_operand:VALLF 2 "register_operand" "w")]
+		      ARC64_UNSPEC_VFADDSUB))]
+  "ARC64_HAS_FP_BASE"
+  "vf<sfxtab>addsub\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vfaddsub")])
+
+(define_expand "cadd270<mode>3"
+  [(set (match_operand:VALLF 0 "register_operand")
+	(unspec:VALLF [(match_operand:VALLF 1 "register_operand")
+		       (match_operand:VALLF 2 "register_operand")]
+		      ARC64_UNSPEC_VFADDSUB))]
+  "ARC64_HAS_FP_BASE"
+  {
+    rtx tmp = gen_reg_rtx (<MODE>mode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (<MODE>mode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_<cplxtab>EXCH));
+    operands[2] = tmp;
+  })
