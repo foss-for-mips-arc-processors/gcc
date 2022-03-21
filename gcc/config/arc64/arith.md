@@ -2020,7 +2020,7 @@
 	(unspec:V2SI
 	  [(match_operand:V2SI 1 "register_operand" "r")]
 	  ARC64_UNSPEC_SWAPL))]
-  "TARGET_64BIT && TARGET_64BIT"
+  "TARGET_64BIT"
   "swapl\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "swapl")])
@@ -2030,7 +2030,7 @@
 	(unspec:V4HI
 	 [(match_operand:V4HI 1 "register_operand" "r")]
 	  ARC64_UNSPEC_SWAP))]
-  ""
+  "TARGET_64BIT"
   "swap\\t%0,%1"
   [(set_attr "length" "4")
    (set_attr "type" "swap")])
@@ -2075,6 +2075,91 @@
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
 
+(define_insn "*arc64_vsubadd<mode>3"
+    [(set (match_operand:VALL 0 "register_operand" "=r")
+	(unspec:VALL [(match_operand:VALL 1 "register_operand" "r")
+		      (match_operand:VALL 2 "register_operand" "r")]
+		      ARC64_UNSPEC_VSUBADD))]
+  "TARGET_SIMD"
+  "vsubadd<sfxtab>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vaddsub")])
+
+;; In 64b arches, we miss a shuffle pattern that swaps 16b pairs in a
+;; 64b reg.  In 32b arches, we miss a quick way to exchange 2 32b
+;; regs.  Hence, no support for v4hi.
+(define_expand "cadd90v2si3"
+  [(set (match_operand:V2SI 0 "register_operand")
+	(unspec:V2SI [(match_operand:V2SI 1 "register_operand")
+		      (match_operand:V2SI 2 "register_operand")]
+		      ARC64_UNSPEC_VSUBADD))]
+  "TARGET_SIMD && TARGET_64BIT"
+  {
+    rtx tmp = gen_reg_rtx (V2SImode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (V2SImode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_SWAPL));
+    operands[2] = tmp;
+  })
+
+(define_expand "cadd90v2hi3"
+  [(set (match_operand:V2HI 0 "register_operand")
+	(unspec:V2HI [(match_operand:V2HI 1 "register_operand")
+		      (match_operand:V2HI 2 "register_operand")]
+		      ARC64_UNSPEC_VSUBADD))]
+  "TARGET_SIMD && TARGET_64BIT"
+  {
+    rtx tmp = gen_reg_rtx (V2HImode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (V2HImode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_SWAP));
+    operands[2] = tmp;
+  })
+
+(define_insn "*arc64_vaddsub<mode>3"
+    [(set (match_operand:VALL 0 "register_operand" "=r")
+	(unspec:VALL [(match_operand:VALL 1 "register_operand" "r")
+		      (match_operand:VALL 2 "register_operand" "r")]
+		      ARC64_UNSPEC_VADDSUB))]
+  "TARGET_SIMD"
+  "vaddsub<sfxtab>\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vaddsub")])
+
+;; In 64b arches, we miss a shuffle pattern that swaps 16b pairs in a
+;; 64b reg.  In 32b arches, we miss a quick way to exchange 2 32b
+;; regs.  Hence, no support for v4hi.
+(define_expand "cadd270v2si3"
+  [(set (match_operand:V2SI 0 "register_operand")
+	(unspec:V2SI [(match_operand:V2SI 1 "register_operand")
+		      (match_operand:V2SI 2 "register_operand")]
+		      ARC64_UNSPEC_VADDSUB))]
+  "TARGET_SIMD && TARGET_64BIT"
+  {
+    rtx tmp = gen_reg_rtx (V2SImode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (V2SImode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_SWAPL));
+    operands[2] = tmp;
+  })
+
+(define_expand "cadd270v2hi3"
+  [(set (match_operand:V2HI 0 "register_operand")
+	(unspec:V2HI [(match_operand:V2HI 1 "register_operand")
+		      (match_operand:V2HI 2 "register_operand")]
+		      ARC64_UNSPEC_VADDSUB))]
+  "TARGET_SIMD"
+  {
+    rtx tmp = gen_reg_rtx (V2HImode);
+
+    emit_move_insn (tmp, gen_rtx_UNSPEC (V2HImode,
+					 gen_rtvec (1, operands[2]),
+					 ARC64_UNSPEC_SWAP));
+    operands[2] = tmp;
+  })
 
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
