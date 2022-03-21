@@ -177,6 +177,8 @@
    ARC64_UNSPEC_DBFLYM
    ARC64_UNSPEC_VFADDSUB
    ARC64_UNSPEC_VFSUBADD
+   ARC64_UNSPEC_VADDSUB
+   ARC64_UNSPEC_VSUBADD
    ])
 
 (include "constraints.md")
@@ -554,9 +556,10 @@ maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
 normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
 rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
 swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
-unknown, vadd, vfadd, vfaddsub, vfbflyl, vfbflym, vfdiv, vfexch,
-vfext, vfins, vfmul, vfpackl, vfpackm, vfrep, vfsub, vfsubadd,
-vfunpkl, vfunpkm, vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
+unknown, vadd, vaddsub, vfadd, vfaddsub, vfbflyl, vfbflym, vfdiv,
+vfexch, vfext, vfins, vfmul, vfpackl, vfpackm, vfrep, vfsub, vfsubadd,
+vfunpkl, vfunpkm, vmac2h, vmpy2h, vpack, vsub, vsubadd, xbfu, xor,
+xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
