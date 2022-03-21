@@ -334,7 +334,7 @@
   "reload_completed && (REGNO (operands[0]) != REGNO (operands[1]))"
   [(cond_exec
     (match_op_dup 3 [(match_dup 4) (const_int 0)])
-    (set (match_dup 0) (mult:SI (ANY_EXTEND:SI (match_dup 0))
+    (set (match_dup 0) (mult:SI (ANY_EXTEND:SI (match_dup 5))
 				(ANY_EXTEND:SI (match_dup 2)))))]
   "
  {
@@ -343,12 +343,16 @@
    /* Check first if the second input reg-operand is the same as the output
       reg-operand.  */
    if (REGNO (operands[0]) == REGNO (operands[2]))
-     std::swap (operands[1], operands[2]);
+     {
+       std::swap (operands[1], operands[2]);
+       operands[5] = operands[1];
+     }
    else
      {
        rtx tmp = simplify_gen_subreg (HImode, operands[0], SImode, 0);
        emit_insn (gen_rtx_COND_EXEC (VOIDmode, cond,
 				     gen_rtx_SET (tmp, operands[1])));
+       operands[5] = tmp;
      }
  }
   "
