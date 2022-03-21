@@ -175,6 +175,8 @@
    ARC64_UNSPEC_HBFLYM
    ARC64_UNSPEC_SBFLYM
    ARC64_UNSPEC_DBFLYM
+   ARC64_UNSPEC_VFADDSUB
+   ARC64_UNSPEC_VFSUBADD
    ])
 
 (include "constraints.md")
@@ -343,6 +345,14 @@
 ;; To be used by vector exch instructions emitted by reduction
 ;; patterns.
 (define_mode_attr fmextab [(V4HF "s") (V4SF "d")])
+
+;; Used to implement cadd{90,270} functions
+(define_mode_attr cplxtab [(V2HF "H")
+			   (V4HF "H")
+			   (V2SF "S")
+			   (V8HF "H")
+			   (V4SF "S")
+			   (V2DF "D")])
 
 ;; Give the number of bits-1 in the mode
 (define_mode_attr sizen [(QI "7") (HI "15") (SI "31") (DI "63")
@@ -544,9 +554,9 @@ maxl, min, minl, mod, modl, move, movecc, mpy, mpyl, neg, nop, norm,
 normh, norml, not, notl, or, orl, qmach, qmpyh, return, rol, ror,
 rtie, sbc, sbcl, scond, setcc, sex, sr, st, sub, subl, swap, swape,
 swapel, swapl, sync, trap, tst, udiv, udivl, uint2fp, umod, umodl,
-unknown, vadd, vfadd, vfbflyl, vfbflym, vfdiv, vfexch, vfext, vfins,
-vfmul, vfpackl, vfpackm, vfrep, vfsub, vfunpkl, vfunpkm, vmac2h,
-vmpy2h, vpack, vsub, xbfu, xor, xorl"
+unknown, vadd, vfadd, vfaddsub, vfbflyl, vfbflym, vfdiv, vfexch,
+vfext, vfins, vfmul, vfpackl, vfpackm, vfrep, vfsub, vfsubadd,
+vfunpkl, vfunpkm, vmac2h, vmpy2h, vpack, vsub, xbfu, xor, xorl"
   (const_string "unknown"))
 
 (define_attr "iscompact" "yes,no,maybe" (const_string "no"))
