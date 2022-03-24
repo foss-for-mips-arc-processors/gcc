@@ -2260,6 +2260,17 @@
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
 
+(define_insn "arc64_vpack_v2hihi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(vec_concat:V2HI
+	 (match_operand:HI 1 "register_operand" "r")
+	 (match_operand:HI 2 "register_operand" "r")
+	 ))]
+  "TARGET_SIMD"
+  "vpack2hl\\t%0,%1,%2"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
 ;; -------------------------------------------------------------------
