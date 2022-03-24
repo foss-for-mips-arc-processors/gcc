@@ -2203,7 +2203,7 @@
        rtx tmp = gen_reg_rtx (V2HImode);
 
        emit_insn (gen_arc64_truncate_lo_v2hi (tmp, operands[1]));
-       emit_insn (gen_arc64_truncate_hi_v4hi (operands[0], tmp, operands[1]));
+       emit_insn (gen_arc64_truncate_hi_v4hi (operands[0], tmp, operands[2]));
 
        DONE;
      }
