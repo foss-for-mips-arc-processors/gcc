@@ -3518,18 +3518,13 @@ arc64_simd_dup (struct e_vec_perm_d *d)
   rtx in0 = d->op0;
   rtx out = d->target;
 
-  if (!TARGET_64BIT)
-    return false;
-
-  if (!d->one_vector_p)
-    return false;
-
-  if (d->perm.encoding ().encoded_nelts () != 1
-      || !d->perm[0].is_constant (&elt))
-    return false;
-  /* elt is zero, then the vec_dup pattern does as good as we do
-     here.  */
-  if (elt == 0)
+  if (!TARGET_64BIT
+      || !d->one_vector_p
+      || vmode == E_V2HImode
+      || d->perm.encoding ().encoded_nelts () != 1
+      || !d->perm[0].is_constant (&elt)
+      /* elt is zero, then the vec_dup pattern does as good as we do here.  */
+      || elt == 0)
     return false;
 
   if (d->testing_p)
@@ -3606,16 +3601,27 @@ arc64_simd_vpack (struct e_vec_perm_d *d)
   rtx out, in0, in1;
   machine_mode vmode = d->vmode;
 
-  if (GET_MODE_UNIT_SIZE (vmode) > 4
-      || FLOAT_MODE_P (vmode)
-      || !TARGET_64BIT)
-    return false;
-
-  if (!d->perm[0].is_constant (&odd)
+  if (FLOAT_MODE_P (vmode)
+      || !d->perm[0].is_constant (&odd)
       || (odd != 0 && odd != 1)
       || !d->perm.series_p (0, 1, odd, 2)
       || !d->perm.series_p (2, 1, nelt + odd, 2))
     return false;
+
+  switch (vmode)
+    {
+    case E_V2SImode:
+    case E_V4HImode:
+      if (!TARGET_64BIT)
+	return false;
+      break;
+
+    case E_V2HImode:
+      break;
+
+    default:
+      return false;
+    }
 
   /* Success!  */
   if (d->testing_p)
@@ -3638,6 +3644,13 @@ arc64_simd_vpack (struct e_vec_perm_d *d)
 	emit_insn (gen_arc64_sel_lane1_v2si (out, in0, in1));
       else
 	emit_insn (gen_arc64_sel_lane0_v2si (out, in0, in1));
+      break;
+
+    case E_V2HImode:
+      if (odd)
+	emit_insn (gen_arc64_sel_lane1_v2hi (out, in0, in1));
+      else
+	emit_insn (gen_arc64_sel_lane0_v2hi (out, in0, in1));
       break;
 
     default:
