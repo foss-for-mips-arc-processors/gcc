@@ -6226,7 +6226,10 @@ arc64_expand_vector_init (rtx target, rtx vals)
       emit_insn (gen_arc64_vpack_v2sisi (target, elem[0], elem[1]));
       break;
 
-    case V2HImode: /* FIXME!: Use vpack2hl here.  */
+    case V2HImode:
+      emit_insn (gen_arc64_vpack_v2hihi (target, elem[0], elem[1]));
+      break;
+
     default:
       gcc_unreachable ();
     }
