@@ -1798,9 +1798,11 @@
 
 (define_insn "arc64_pack4hi"
   [(set (match_operand:V4HI 0 "register_operand" "=r")
-	(unspec:V4HI [(match_operand:V2SI 1 "register_operand" "r")
-		      (match_operand:V2SI 2 "register_operand" "r")]
-		     ARC64_UNSPEC_VPACK4HL))]
+	(vec_concat:V4HI
+	 (truncate:V2HI
+	  (match_operand:V2SI 1 "register_operand" "r"))
+	 (truncate:V2HI
+	  (match_operand:V2SI 2 "register_operand" "r"))))]
   "TARGET_SIMD && TARGET_64BIT"
   "vpack4hl\\t%0,%1,%2"
   [(set_attr "length" "4")
@@ -2160,6 +2162,103 @@
 					 ARC64_UNSPEC_SWAP));
     operands[2] = tmp;
   })
+
+;; Conversions.
+(define_insn "arc64_truncate_lo_v2hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(truncate:V2HI (match_operand:V2SI 1 "register_operand" "r")))]
+  "TARGET_SIMD && !TARGET_64BIT"
+  "vpack2hl\\t%0,%H1,%L1"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
+(define_insn "arc64_truncate_hi_v4hi"
+  [(set (match_operand:V4HI 0 "register_operand" "=r")
+	(vec_concat:V4HI
+	 (match_operand:V2HI 1 "register_operand" "0")
+	 (truncate:V2HI (match_operand:V2SI 2 "register_operand" "r"))))]
+  "TARGET_SIMD && !TARGET_64BIT"
+  "vpack2hl\\t%H0,%H2,%L2"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
+;; Vector Pack:
+;; 32bit:
+;;   vpack2hl RTl, RAh, RAl
+;;   vpack2hl RTh, RBh, RBl
+;; 64bit:
+;;   vpack4hl RT, RA, RB
+(define_expand "vec_pack_trunc_v2si"
+  [(set (match_operand:V4HI 0 "register_operand")
+	(vec_concat:V4HI
+	 (truncate:V2HI
+	  (match_operand:V2SI 1 "register_operand"))
+	 (truncate:V2HI
+	  (match_operand:V2SI 2 "register_operand"))
+	 ))]
+  "TARGET_SIMD"
+  {
+   if (!TARGET_64BIT)
+     {
+       rtx tmp = gen_reg_rtx (V2HImode);
+
+       emit_insn (gen_arc64_truncate_lo_v2hi (tmp, operands[1]));
+       emit_insn (gen_arc64_truncate_hi_v4hi (operands[0], tmp, operands[1]));
+
+       DONE;
+     }
+  })
+
+(define_insn "vec_pack_trunc_si"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(vec_concat:V2HI
+	 (truncate:HI
+	  (match_operand:SI 1 "register_operand" "r"))
+	 (truncate:HI
+	  (match_operand:SI 2 "register_operand" "r"))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2hl\\t%0,%1,%2"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
+(define_insn "vec_duplicatev2hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(vec_duplicate:V2HI (match_operand:HI 1 "register_operand" "r")))]
+  "TARGET_SIMD"
+  "vpack2hl\\t%0,%1,%1"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
+(define_insn "arc64_sel_lane0_v2hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(vec_concat:V2HI
+	 (vec_select:HI
+	  (match_operand:V2HI 1 "register_operand" "r")
+	  (parallel [(const_int 0)]))
+	 (vec_select:HI
+	  (match_operand:V2HI 2 "register_operand" "r")
+	  (parallel [(const_int 0)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2hl\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
+
+(define_insn "arc64_sel_lane1_v2hi"
+  [(set (match_operand:V2HI 0 "register_operand" "=r")
+	(vec_concat:V2HI
+	 (vec_select:HI
+	  (match_operand:V2HI 1 "register_operand" "r")
+	  (parallel [(const_int 1)]))
+	 (vec_select:HI
+	  (match_operand:V2HI 2 "register_operand" "r")
+	  (parallel [(const_int 1)]))
+	 ))]
+  "TARGET_SIMD"
+  "vpack2hm\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "vpack")])
 
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
