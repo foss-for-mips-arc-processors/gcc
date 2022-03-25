@@ -2271,6 +2271,26 @@
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
 
+(define_insn "<optab>v2si3"
+  [(set (match_operand:V2SI 0 "register_operand" "=r")
+	(EV2OP:V2SI (match_operand:V2SI 1 "register_operand" "r")
+                    (match_operand:V2SI 2 "register_operand" "r")))]
+  "TARGET_SIMD"
+  "v<mntab>2\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "<mntab>")])
+
+(define_insn "*<optab>v2si3_dup"
+  [(set (match_operand:V2SI 0 "register_operand" "=r,r")
+	(EV2OP:V2SI
+	 (vec_duplicate:V2SI
+	  (match_operand 1 "vectdup_immediate_operand" "S12S0, S06S0"))
+	 (match_operand:V2SI 2 "register_operand" "0,r")))]
+  "TARGET_SIMD"
+  "v<mntab>2\\t%0,%2,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "<mntab>")])
+
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
 ;; -------------------------------------------------------------------
