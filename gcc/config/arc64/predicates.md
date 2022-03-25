@@ -151,6 +151,12 @@
        (match_test "SIGNED_INT6 (INTVAL (op))"))
 )
 
+(define_predicate "vectdup_immediate_operand"
+  (and (match_code "const_int")
+       (ior (match_test "SIGNED_INT6 (INTVAL (op))")
+	    (match_test "UNSIGNED_INT12 (INTVAL (op))")))
+)
+
 ;; Return true if OP is a MEM that when used as a load or store address will
 ;; require an 8 byte insn.
 ;; Load and store instructions don't allow the same possibilities but they're
