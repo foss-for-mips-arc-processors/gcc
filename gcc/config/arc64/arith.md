@@ -1498,13 +1498,13 @@
    (set_attr "type" "vpack")])
 
 (define_insn "arc64_vpack_v2sisi"
-  [(set (match_operand:V2SI 0 "register_operand" "=r")
-	(unspec:V2SI [(match_operand:SI 1 "register_operand" "r")
-		      (match_operand:SI 2 "register_operand" "r")]
-		     ARC64_UNSPEC_VPACK2WL))]
+  [(set (match_operand:V2SI 0 "register_operand"    "=r,    r,r,r")
+	(vec_concat:V2SI
+         (match_operand:SI 1 "register_operand"  "    r,    0,r,r")
+	 (match_operand:SI 2 "nonmemory_operand" "U06S0,S12S0,r,S32S0")))]
   "TARGET_SIMD && TARGET_64BIT"
   "vpack2wl\\t%0,%1,%2"
-  [(set_attr "length" "4")
+  [(set_attr "length" "4,4,4,8")
    (set_attr "type" "vpack")])
 
 (define_expand "vec_init<mode><vel>"
@@ -1516,7 +1516,6 @@
    DONE;
   })
 
-
 (define_insn "<optab><mode>3"
   [(set (match_operand:VALL 0 "register_operand"           "=r")
 	(ADDSUB:VALL (match_operand:VALL 1 "register_operand" "r")
@@ -1525,6 +1524,18 @@
   "v<mntab><sfxtab>\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "v<mntab>")])
+
+;; Add with duplicate input.
+(define_insn "*add<mode>3_dup"
+  [(set (match_operand:VALL 0 "register_operand" "=r,r")
+	(plus:VALL
+	 (vec_duplicate:VALL
+	  (match_operand 1 "vectdup_immediate_operand" "S06S0,S12S0"))
+	 (match_operand:VALL 2 "register_operand" "r,0")))]
+  "TARGET_SIMD"
+  "vadd<sfxtab>\\t%0,%2,%1"
+  [(set_attr "length" "4")
+   (set_attr "type" "vadd")])
 
 (define_insn "neg<mode>2"
   [(set (match_operand:VALL 0 "register_operand" "=r")
@@ -2019,9 +2030,13 @@
 
 (define_insn "arc64_swaplv2si"
   [(set (match_operand:V2SI 0 "register_operand" "=r")
-	(unspec:V2SI
-	  [(match_operand:V2SI 1 "register_operand" "r")]
-	  ARC64_UNSPEC_SWAPL))]
+	(vec_concat:V2SI
+	 (vec_select:SI
+	  (match_operand:V2SI 1 "register_operand" "r")
+	  (parallel [(const_int 1)]))
+	 (vec_select:SI
+	  (match_dup 1)
+	  (parallel [(const_int 0)]))))]
   "TARGET_64BIT"
   "swapl\\t%0,%1"
   [(set_attr "length" "4")
