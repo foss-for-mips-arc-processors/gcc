@@ -1453,6 +1453,18 @@
   [(set_attr "length" "8")
    (set_attr "type" "mac")])
 
+(define_insn "*vpack2hl_scalar"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(ior:SI
+	 (and:SI (match_operand:SI 1 "register_operand" "r")
+		 (const_int 65535))
+	 (ashift:SI (match_operand:SI 2 "register_operand" "r")
+		    (const_int 16))))]
+  "TARGET_SIMD"
+  "vpack2hl\\t%0,%2,%1"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
 ;; -------------------------------------------------------------------
 ;; Integer SIMD instructions
 ;; -------------------------------------------------------------------
