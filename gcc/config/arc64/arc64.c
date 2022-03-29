@@ -4444,6 +4444,25 @@ arc64_rtx_costs (rtx x, machine_mode mode, rtx_code outer,
 	}
       break;
 
+    case AND:
+    case XOR:
+    case IOR:
+      op0 = XEXP (x, 0);
+      op1 = XEXP (x, 1);
+
+      if ((REG_P (op0) || REG_P (op1))
+	  && (CONST_INT_P (op0) || CONST_INT_P (op1)))
+	return true;
+
+      /* Detect VPACK2HL instructions.  */
+      if (TARGET_SIMD
+	  && GET_CODE (op0) == AND
+	  && GET_CODE (op1) == ASHIFT
+	  && mode == E_SImode)
+	return true;
+
+      break;
+
     default:
       break;
     }
