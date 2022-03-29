@@ -4142,6 +4142,42 @@ arc64_simd_bfly (struct e_vec_perm_d *d)
   return true;
 }
 
+/* Implement combination of vpack4hl/vpack4hm instructions.  */
+
+static bool
+arc64_simd_lane_pack (struct e_vec_perm_d *d)
+{
+  machine_mode vmode = d->vmode;
+  HOST_WIDE_INT elem;
+  poly_uint64 nelt = d->perm.length ();
+  rtx t0, t1;
+  rtx in0 = d->op0;
+  rtx in1 = d->op1;
+  rtx out = d->target;
+
+  if (vmode != E_V4HImode
+      || !TARGET_64BIT
+      || !d->perm[0].is_constant (&elem)
+      || (elem != 0 && elem != 2)
+      || !d->perm.series_p (0, 2, elem, 1)
+      || !d->perm.series_p (1, 2, elem + nelt, 1))
+    return false;
+
+  /* Success! */
+  if (d->testing_p)
+    return true;
+
+  t0 = gen_reg_rtx (vmode);
+  t1 = gen_reg_rtx (vmode);
+  emit_insn (gen_arc64_sel_lane2_0v4hi (t0, in0, in1));
+  emit_insn (gen_arc64_sel_lane3_1v4hi (t1, in0, in1));
+  if (elem == 0)
+    emit_insn (gen_arc64_sel_lane2_0v4hi (out, t0, t1));
+  else
+    emit_insn (gen_arc64_sel_lane3_1v4hi (out, t0, t1));
+  return true;
+}
+
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
@@ -4208,6 +4244,8 @@ arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
       else if (arc64_simd_pack (&d))
 	return true;
       else if (arc64_simd_bfly (&d))
+	return true;
+      else if (arc64_simd_lane_pack (&d))
 	return true;
     }
   return false;
