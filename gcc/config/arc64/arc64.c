@@ -60,6 +60,8 @@
 #define DOUBLE_LOAD_STORE ((!TARGET_64BIT && TARGET_LL64) \
 			   || (TARGET_64BIT && TARGET_WIDE_LDST))
 
+#define ARC_INVERSE_CONDITION_CODE(X)  ((X) ^ 1)
+
 /* Implement REGNO_REG_CLASS.  */
 const enum reg_class arc64_regno_to_regclass[FIRST_PSEUDO_REGISTER] =
   {
@@ -1602,6 +1604,7 @@ arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
 	  then we assume DImode.
      'U': Load/store update or scaling indicator.
      'm': output condition code without 'dot'.
+     'M': output inverse condition code without 'dot'.
      '?': Short instruction suffix.
      'L': Lower 32bit of immediate or symbol.
      'H': Higher 32bit of an immediate, 64b-register or symbol.
@@ -1750,6 +1753,11 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
     case 'm':
       fputs (arc_condition_codes[get_arc64_condition_code (x)], file);
+      break;
+
+    case 'M':
+      fputs (arc_condition_codes[ARC_INVERSE_CONDITION_CODE
+				 (get_arc64_condition_code (x))], file);
       break;
 
     case 'C':

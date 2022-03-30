@@ -312,6 +312,9 @@
 ;; Emulated 1 operand vector operations
 (define_code_iterator EV1OP [abs neg])
 
+;; Code iterator for unary negate and bitwise complement.
+(define_code_iterator NEG_NOT [neg not])
+
 ;; -------------------------------------------------------------------
 ;; Mode Attributes
 ;; -------------------------------------------------------------------
@@ -2435,6 +2438,49 @@ xorl"
   [(set_attr "type" "max")
    (set_attr "length" "4,4,4,8")
    (set_attr "predicable" "yes,no,no,no")])
+
+;; NEGCC and NOTCC patterns used by ifcvt.
+(define_expand "<mntab><mode>cc"
+  [(set (match_operand:GPI 0 "register_operand")
+	(if_then_else:GPI (match_operand 1 "arc64_comparison_operator")
+			  (NEG_NOT:GPI (match_operand:GPI 2 "register_operand"))
+			  (match_operand:GPI 3 "register_operand")))]
+  ""
+  {
+   rtx tmp;
+   enum rtx_code code = GET_CODE (operands[1]);
+
+   if (code == UNEQ || code == LTGT)
+     FAIL;
+
+   tmp = arc64_gen_compare_reg (code, XEXP (operands[1], 0),
+				XEXP (operands[1], 1));
+   operands[1] = gen_rtx_fmt_ee (code, VOIDmode, tmp, const0_rtx);
+  })
+
+(define_insn "*cneg<mode>"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+	(if_then_else:GPI
+	 (match_operator 3 "arc64_comparison_operator"
+			 [(match_operand 4 "cc_register" "") (const_int 0)])
+	 (neg:GPI (match_operand:GPI 1 "register_operand" "0"))
+	 (match_operand:GPI 2 "register_operand"  "r")))]
+  ""
+  "neg<mcctab>.%m3\\t%0,%1\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  [(set_attr "length" "8")
+   (set_attr "type" "neg")])
+
+(define_insn "*cnot<mode>"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+	(if_then_else:GPI
+	 (match_operator 3 "arc64_comparison_operator"
+			 [(match_operand 4 "cc_register" "") (const_int 0)])
+	 (not:GPI (match_operand:GPI 1 "register_operand" "0"))
+	 (match_operand:GPI 2 "register_operand"  "r")))]
+  ""
+  "xor<mcctab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  [(set_attr "length" "12")
+   (set_attr "type" "xor")])
 
 ;; -------------------------------------------------------------------
 ;; Shifts
