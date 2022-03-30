@@ -2466,7 +2466,7 @@ xorl"
 	 (neg:GPI (match_operand:GPI 1 "register_operand" "0"))
 	 (match_operand:GPI 2 "register_operand"  "r")))]
   ""
-  "neg<mcctab>.%m3\\t%0,%1\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  "rsub<sfxtab>.%m3\\t%0,%1,0\\n\\tmov<mcctab>.%M3\\t%0,%2"
   [(set_attr "length" "8")
    (set_attr "type" "neg")])
 
@@ -2478,7 +2478,7 @@ xorl"
 	 (not:GPI (match_operand:GPI 1 "register_operand" "0"))
 	 (match_operand:GPI 2 "register_operand"  "r")))]
   ""
-  "xor<mcctab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  "xor<sfxtab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2"
   [(set_attr "length" "12")
    (set_attr "type" "xor")])
 
