@@ -2464,10 +2464,10 @@ xorl"
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
 	 (neg:GPI (match_operand:GPI 1 "register_operand" "0"))
-	 (match_operand:GPI 2 "register_operand"  "r")))]
+	 (match_operand:GPI 2 "register_operand"  "0")))]
   ""
-  "rsub<sfxtab>.%m3\\t%0,%1,0\\n\\tmov<mcctab>.%M3\\t%0,%2"
-  [(set_attr "length" "8")
+  "rsub<sfxtab>.%m3\\t%0,%1,0"
+  [(set_attr "length" "4")
    (set_attr "type" "neg")])
 
 (define_insn "*cnot<mode>"
@@ -2476,10 +2476,10 @@ xorl"
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
 	 (not:GPI (match_operand:GPI 1 "register_operand" "0"))
-	 (match_operand:GPI 2 "register_operand"  "r")))]
+	 (match_operand:GPI 2 "register_operand"  "0")))]
   ""
-  "xor<sfxtab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2"
-  [(set_attr "length" "12")
+  "xor<sfxtab>.%m3\\t%0,%1,-1"
+  [(set_attr "length" "8")
    (set_attr "type" "xor")])
 
 ;; -------------------------------------------------------------------
