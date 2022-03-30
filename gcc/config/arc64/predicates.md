@@ -260,3 +260,8 @@
 (define_predicate "plt34_symbol_p"
   (and (match_code "symbol_ref")
        (match_test "arc64_use_plt34_p (op)")))
+
+;; Return true if OP a (const_int 0) operand.
+(define_predicate "const0_operand"
+  (and (match_code "const_int")
+       (match_test "op == CONST0_RTX (mode)")))
