@@ -225,6 +225,9 @@
 ;; Iterator for General Purpose Floating-point registers (32- and 64-bit modes)
 (define_mode_iterator GPF [(SF "ARC64_HAS_FPUS") (DF "ARC64_HAS_FPUD")])
 
+;; Iterator for General Purpose Floating-point registers (16- and 32-bit modes)
+(define_mode_iterator HF_SF [(HF "ARC64_HAS_FPUH") (SF "ARC64_HAS_FPUS")])
+
 ;; All int vectors
 (define_mode_iterator VALL [V2HI V4HI V2SI])
 
@@ -2302,7 +2305,7 @@ xorl"
   [(set_attr "length" "4,4,8")
    (set_attr "type" "setcc")])
 
-;; MOVCC patterns seems to generate worse code. Disable them for time being
+;; MOVCC patterns
 (define_expand "mov<mode>cc"
   [(set (match_operand:ALLI 0 "register_operand")
 	(if_then_else:ALLI (match_operand 1 "arc64_comparison_operator")
@@ -2322,10 +2325,10 @@ xorl"
   })
 
 (define_expand "mov<mode>cc"
-  [(set (match_operand:GPF 0 "register_operand")
-	(if_then_else:GPF (match_operand 1 "arc64_comparison_operator")
-			  (match_operand:GPF 2 "register_operand")
-			  (match_operand:GPF 3 "register_operand")))]
+  [(set (match_operand:GPF_HF 0 "register_operand")
+	(if_then_else:GPF_HF (match_operand 1 "arc64_comparison_operator")
+			     (match_operand:GPF_HF 2 "register_operand")
+			     (match_operand:GPF_HF 3 "register_operand")))]
   ""
   {
    rtx tmp;
@@ -2358,19 +2361,39 @@ xorl"
    (set_attr "type" "move")])
 
 (define_insn "*cmov<mode>"
-  [(set (match_operand:GPF 0 "register_operand" "=w,*r,*r")
-	(if_then_else:GPF
+  [(set (match_operand:HF_SF 0 "register_operand" "=w,*r,*r,w,*r,*r")
+	(if_then_else:HF_SF
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
-	 (match_operand:GPF 1 "nonmemory_operand" "w,*r,*E")
-	 (match_operand:GPF 2 "register_operand"  "0, 0, 0")))]
-  ""
+	 (match_operand:HF_SF 1 "nonmemory_operand" "w,*r,*E,0, 0, 0")
+	 (match_operand:HF_SF 2 "nonmemory_operand" "0, 0, 0,w,*r,*E")))]
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
   "@
    f<sfxtab>mov.%m3\\t%0,%1
    mov<mcctab>.%m3\\t%0,%1
-   mov<mcctab>.%m3\\t%0,%1"
-  [(set_attr "length" "4,4,8")
-   (set_attr "type" "fmov,move,move")])
+   mov<mcctab>.%m3\\t%0,%1
+   f<sfxtab>mov.%M3\\t%0,%2
+   mov<mcctab>.%M3\\t%0,%2
+   mov<mcctab>.%M3\\t%0,%2"
+  [(set_attr "length" "4,4,8,4,4,8")
+   (set_attr "type" "fmov,move,move,fmov,move,move")])
+
+(define_insn "*cmovdf"
+  [(set (match_operand:DF 0 "register_operand" "=w,*r,w,*r")
+	(if_then_else:DF
+	 (match_operator 3 "arc64_comparison_operator"
+			 [(match_operand 4 "cc_register" "") (const_int 0)])
+	 (match_operand:DF 1 "register_operand" "w,*r,0, 0")
+	 (match_operand:DF 2 "register_operand" "0, 0,w,*r")))]
+  "ARC64_HAS_FPUD"
+  "@
+   fdmov.%m3\\t%0,%1
+   movl.%m3\\t%0,%1
+   fdmov.%M3\\t%0,%2
+   movl.%M3\\t%0,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "fmov,move,fmov,move")])
 
 ;; -------------------------------------------------------------------
 ;; Logical operations
