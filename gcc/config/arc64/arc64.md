@@ -2488,27 +2488,33 @@ xorl"
   })
 
 (define_insn "*cneg<mode>"
-  [(set (match_operand:GPI 0 "register_operand" "=r")
+  [(set (match_operand:GPI 0 "register_operand" "=r,r,r")
 	(if_then_else:GPI
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
-	 (neg:GPI (match_operand:GPI 1 "register_operand" "0"))
-	 (match_operand:GPI 2 "register_operand"  "0")))]
+	 (neg:GPI (match_operand:GPI 1 "register_operand" "0,0,0"))
+	 (match_operand:GPI 2 "nonmemory_operand"  "0,rU06S0,S32S0")))]
   ""
-  "rsub<sfxtab>.%m3\\t%0,%1,0"
-  [(set_attr "length" "4")
+  "@
+   rsub<sfxtab>.%m3\\t%0,%1,0
+   rsub<sfxtab>.%m3\\t%0,%1,0\\n\\tmov<mcctab>.%M3\\t%0,%2
+   rsub<sfxtab>.%m3\\t%0,%1,0\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  [(set_attr "length" "4,8,12")
    (set_attr "type" "neg")])
 
 (define_insn "*cnot<mode>"
-  [(set (match_operand:GPI 0 "register_operand" "=r")
+  [(set (match_operand:GPI 0 "register_operand" "=r,r,r")
 	(if_then_else:GPI
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
-	 (not:GPI (match_operand:GPI 1 "register_operand" "0"))
-	 (match_operand:GPI 2 "register_operand"  "0")))]
+	 (not:GPI (match_operand:GPI 1 "register_operand" "0,0,0"))
+	 (match_operand:GPI 2 "register_operand"  "0,rU06S0,S32S0")))]
   ""
-  "xor<sfxtab>.%m3\\t%0,%1,-1"
-  [(set_attr "length" "8")
+  "@
+   xor<sfxtab>.%m3\\t%0,%1,-1
+   xor<sfxtab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2
+   xor<sfxtab>.%m3\\t%0,%1,-1\\n\\tmov<mcctab>.%M3\\t%0,%2"
+  [(set_attr "length" "8,12,16")
    (set_attr "type" "xor")])
 
 ;; -------------------------------------------------------------------
