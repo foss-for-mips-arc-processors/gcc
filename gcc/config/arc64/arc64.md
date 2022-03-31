@@ -2340,15 +2340,21 @@ xorl"
   })
 
 (define_insn "*cmov<mode>"
-  [(set (match_operand:ALLI 0 "register_operand" "=r,r")
+  [(set (match_operand:ALLI 0 "register_operand" "=r,r,r,r")
 	(if_then_else:ALLI
 	 (match_operator 3 "arc64_comparison_operator"
 			 [(match_operand 4 "cc_register" "") (const_int 0)])
-	 (match_operand:ALLI 1 "nonmemory_operand" "rU06S0,S32S0")
-	 (match_operand:ALLI 2 "register_operand"  "0,0")))]
-  ""
-  "mov<mcctab>.%m3\\t%0,%1"
-  [(set_attr "length" "4,8")
+	 (match_operand:ALLI 1 "nonmemory_operand"  "0,0,rU06S0,S32S0")
+	 (match_operand:ALLI 2 "nonmemory_operand" "rU06S0,S32S0,0,0")
+	 ))]
+  "register_operand (operands[0], <MODE>mode)
+   || register_operand (operands[1], <MODE>mode)"
+  "@
+   mov<mcctab>.%M3\\t%0,%2
+   mov<mcctab>.%M3\\t%0,%2
+   mov<mcctab>.%m3\\t%0,%1
+   mov<mcctab>.%m3\\t%0,%1"
+  [(set_attr "length" "4,8,4,8")
    (set_attr "type" "move")])
 
 (define_insn "*cmov<mode>"
