@@ -128,12 +128,11 @@ arc_fallback_frame_state (struct _Unwind_Context *context,
 	= ((_Unwind_Ptr)&(regs[i])) - new_cfa;
     }
 
-  /* Special case for handling blink: blink <--> ret.  */
-  fs->regs.reg[reg_offset_map[REG_BLINK]].how = REG_SAVED_VAL_OFFSET;
-  fs->regs.reg[reg_offset_map[REG_BLINK]].loc.offset
-    = ((_Unwind_Ptr)(regs[REG_RET])) - new_cfa;
-
-  fs->retaddr_column = reg_offset_map[REG_BLINK];
+  fs->signal_frame = 1;
+  fs->retaddr_column = __LIBGCC_DWARF_ALT_FRAME_RETURN_COLUMN__;
+  fs->regs.reg[fs->retaddr_column].how = REG_SAVED_VAL_OFFSET;
+  fs->regs.reg[fs->retaddr_column].loc.offset =
+    ((_Unwind_Ptr) (regs[ret])) - new_cfa;
 
   return _URC_NO_REASON;
 }
