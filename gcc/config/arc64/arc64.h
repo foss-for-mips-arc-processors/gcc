@@ -685,7 +685,13 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define DWARF_FRAME_RETURN_COLUMN BLINK_REGNUM
 /* DWARF registers encodings.  */
 #define DBX_REGISTER_NUMBER(REGNO) arc64_dbx_register_number (REGNO)
-
+/* The DWARF 2 CFA column which tracks the return address from a signal handler
+   context.  This value must not correspond to a hard register and must be out
+   of the range of DWARF_FRAME_REGNUM().  The unwind-dw2.c file is using
+   DWARF_REG_TO_UNWIND_COLUMN and DWARF_FRAME_REGISTERS macros.  The
+   DWARF_FRAME_REGNUM macro returns no equivalent DWARF register for
+   AP_REGNUM. Thus, we should be safe using AP_REGNUM.  */
+#define DWARF_ALT_FRAME_RETURN_COLUMN AP_REGNUM
 
 /* Exception Handling support.  */
 /* Use R0 through R3 to pass exception handling information.  */
