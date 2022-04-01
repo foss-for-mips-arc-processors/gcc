@@ -1,18 +1,3 @@
-;; -------------------------------------------------------------------
-;; Code Attributes
-;; -------------------------------------------------------------------
-(define_code_iterator COMMUTATIVE [and ior xor])
-
-(define_code_iterator COMMUTATIVEF [plus and ior xor])
-
-(define_code_iterator BIT [ior xor])
-
-(define_code_iterator DIVREM [div udiv mod umod])
-
-(define_code_attr bit_optab [(ior    "bset")
-			     (xor    "bxor")
-			     ])
-
 ;; SI instructions having short instruction variant
 (define_insn "*<optab><mode>_insn"
   [(set (                match_operand:GPI 0 "register_operand"   "=q,q,     r,    r,     r,    r,    r,    r,r")
@@ -1168,12 +1153,12 @@
 ;; N.B. Probably we need to make a more complex step to take care of
 ;; this operation when we schedule
 (define_peephole2
-  [(set (match_operand:SPI 0 "register_operand" "")
-	(ARITH:SPI (match_operand:SPI 1 "register_operand" "")
-		   (match_operand:SPI 2 "nonmemory_operand" "")))
-   (set (reg:SPI R58_REGNUM) (match_dup 0))]
+  [(set (match_operand:HI_SI 0 "register_operand" "")
+	(ARITH:HI_SI (match_operand:HI_SI 1 "register_operand" "")
+		     (match_operand:HI_SI 2 "nonmemory_operand" "")))
+   (set (reg:HI_SI R58_REGNUM) (match_dup 0))]
   "peep2_reg_dead_p (2, operands[0])"
-  [(set (reg:SPI R58_REGNUM) (ARITH:SPI (match_dup 1) (match_dup 2)))])
+  [(set (reg:HI_SI R58_REGNUM) (ARITH:HI_SI (match_dup 1) (match_dup 2)))])
 
 (define_peephole2
   [(set (match_operand:SI 0 "register_operand" "")
@@ -2300,8 +2285,8 @@
 
 (define_insn "<optab>v2si3"
   [(set (match_operand:V2SI 0 "register_operand" "=r")
-	(EV2OP:V2SI (match_operand:V2SI 1 "register_operand" "%r")
-                    (match_operand:V2SI 2 "register_operand" "r")))]
+	(MINMAX:V2SI (match_operand:V2SI 1 "register_operand" "%r")
+                     (match_operand:V2SI 2 "register_operand" "r")))]
   "TARGET_SIMD"
   "v<mntab>2\\t%0,%1,%2"
   [(set_attr "length" "4")
@@ -2309,7 +2294,7 @@
 
 (define_insn "*<optab>v2si3_dup"
   [(set (match_operand:V2SI 0 "register_operand" "=r,r")
-	(EV2OP:V2SI
+	(MINMAX:V2SI
 	 (vec_duplicate:V2SI
 	  (match_operand 1 "vectdup_immediate_operand" "S06S0,S12S0"))
 	 (match_operand:V2SI 2 "register_operand" "r,0")))]
@@ -2742,8 +2727,8 @@
 ;; MAX/MIN
 (define_insn_and_split "<optab><mode>3"
   [(set (match_operand:W2xF 0 "arc64_fsimd_register" "=w")
-	(EV2OP:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")
-		    (match_operand:W2xF 2 "arc64_fsimd_register" "w")))]
+	(MINMAX:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")
+		     (match_operand:W2xF 2 "arc64_fsimd_register" "w")))]
   "ARC64_VFP_128"
   "#"
   "&& reload_completed"
@@ -2765,7 +2750,7 @@
 ;; NEG/ABS
 (define_insn_and_split "<optab><mode>2"
   [(set (match_operand:W2xF 0 "arc64_fsimd_register" "=w")
-	(EV1OP:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")))]
+	(ABS_NEG:W2xF (match_operand:W2xF 1 "arc64_fsimd_register" "w")))]
   "ARC64_VFP_128"
   "#"
   "&& reload_completed"

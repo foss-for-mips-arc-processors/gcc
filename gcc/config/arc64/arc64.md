@@ -208,7 +208,7 @@
 (define_mode_iterator EPI [HI SI (DI "TARGET_64BIT")])
 
 ;; Iterator for HI and SI modes
-(define_mode_iterator SPI [HI SI])
+(define_mode_iterator HI_SI [HI SI])
 
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; pointer-sized quantities.  Exactly one of the two alternatives will match.
@@ -291,7 +291,7 @@
 (define_code_iterator LOGIC [and ior xor smin smax])
 
 ;; Two operand logic operations
-(define_code_iterator LOGIC2 [not abs])
+(define_code_iterator NOT_ABS [not abs])
 
 ;; Two operand logic operations extended, used for zero_extend
 ;; patterns
@@ -309,14 +309,21 @@
 ;; Comutative VF operations
 (define_code_iterator VCOP [plus mult])
 
-;; Emulated 2 operand vector operations
-(define_code_iterator EV2OP [smin smax])
-
 ;; Emulated 1 operand vector operations
-(define_code_iterator EV1OP [abs neg])
+(define_code_iterator ABS_NEG [abs neg])
 
 ;; Code iterator for unary negate and bitwise complement.
 (define_code_iterator NEG_NOT [neg not])
+
+;; Code iterator for bit logic ops.
+(define_code_iterator BIT [ior xor])
+
+;; Code iterator for div/mod ops.
+(define_code_iterator DIVREM [div udiv mod umod])
+
+;; Comutative operations
+(define_code_iterator COMMUTATIVE [and ior xor])
+(define_code_iterator COMMUTATIVEF [plus and ior xor])
 
 ;; -------------------------------------------------------------------
 ;; Mode Attributes
@@ -497,6 +504,10 @@
 			 (minus    "sub")
 			 (smax      "max")
 			 (smin      "min")])
+
+;; Map rtl objects to arc's bit operation instructions
+(define_code_attr bit_optab [(ior    "bset")
+			     (xor    "bxor")])
 
 ;; -------------------------------------------------------------------
 ;; Int Iterators.
@@ -2411,7 +2422,7 @@ xorl"
 
 (define_expand "<optab><mode>2"
   [(set (match_operand:GPI 0 "register_operand")
-	(LOGIC2:GPI (match_operand:GPI 1 "register_operand")))]
+	(NOT_ABS:GPI (match_operand:GPI 1 "register_operand")))]
   ""
   )
 
@@ -2427,7 +2438,7 @@ xorl"
 
 (define_insn "*<optab><mode>2"
   [(set (match_operand:GPI 0 "register_operand" "=q,r")
-	(LOGIC2:GPI (match_operand:GPI 1 "register_operand" "q,r")))]
+	(NOT_ABS:GPI (match_operand:GPI 1 "register_operand" "q,r")))]
   ""
   "<mntab><sfxtab>%?\\t%0,%1"
   [(set_attr "type" "<mntab>")
