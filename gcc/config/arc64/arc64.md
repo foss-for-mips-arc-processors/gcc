@@ -869,13 +869,13 @@ xorl"
 
 (define_insn "*mov<mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
-	(compare:CC_ZN (match_operand:ALLI 1 "register_operand" "r")
+	(compare:CC_ZN (match_operand:ALLI 1 "nonmemory_operand" "S12S0r,S32S0")
 		       (const_int 0)))
-   (set (match_operand:ALLI 0 "register_operand" "=r") (match_dup 1))]
+   (set (match_operand:ALLI 0 "register_operand" "=r,r") (match_dup 1))]
   ""
   "mov<mcctab>.f\\t%0,%1"
   [(set_attr "type" "move")
-   (set_attr "length" "4")])
+   (set_attr "length" "4,8")])
 
 ;; Softcore float move.
 (define_insn "*movsf_softfp"
