@@ -122,3 +122,7 @@ Generate BRcc instructions during combiner step.
 mbbit
 Target Mask(BBIT)
 Generate BBITx instructions during combiner step.
+
+mexperimental
+Target Mask(EXP)
+Experimental option, to be removed.
