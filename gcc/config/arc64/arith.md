@@ -1445,7 +1445,7 @@
 		 (const_int 65535))
 	 (ashift:SI (match_operand:SI 2 "register_operand" "r")
 		    (const_int 16))))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hl\\t%0,%2,%1"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2179,7 +2179,7 @@
 (define_insn "arc64_truncate_lo_v2hi"
   [(set (match_operand:V2HI 0 "register_operand" "=r")
 	(truncate:V2HI (match_operand:V2SI 1 "register_operand" "r")))]
-  "TARGET_SIMD && !TARGET_64BIT"
+  "TARGET_SIMD && !TARGET_64BIT && TARGET_EXP"
   "vpack2hl\\t%0,%H1,%L1"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2189,7 +2189,7 @@
 	(vec_concat:V4HI
 	 (match_operand:V2HI 1 "register_operand" "0")
 	 (truncate:V2HI (match_operand:V2SI 2 "register_operand" "r"))))]
-  "TARGET_SIMD && !TARGET_64BIT"
+  "TARGET_SIMD && !TARGET_64BIT && TARGET_EXP"
   "vpack2hl\\t%H0,%H2,%L2"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2208,7 +2208,7 @@
 	 (truncate:V2HI
 	  (match_operand:V2SI 2 "register_operand"))
 	 ))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   {
    if (!TARGET_64BIT)
      {
@@ -2229,7 +2229,7 @@
 	 (truncate:HI
 	  (match_operand:SI 2 "register_operand" "r"))
 	 ))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hl\\t%0,%1,%2"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2237,7 +2237,7 @@
 (define_insn "vec_duplicatev2hi"
   [(set (match_operand:V2HI 0 "register_operand" "=r")
 	(vec_duplicate:V2HI (match_operand:HI 1 "register_operand" "r")))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hl\\t%0,%1,%1"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2252,7 +2252,7 @@
 	  (match_operand:V2HI 2 "register_operand" "r")
 	  (parallel [(const_int 0)]))
 	 ))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hl\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -2267,7 +2267,7 @@
 	  (match_operand:V2HI 2 "register_operand" "r")
 	  (parallel [(const_int 1)]))
 	 ))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hm\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -2278,7 +2278,7 @@
 	 (match_operand:HI 1 "register_operand" "r")
 	 (match_operand:HI 2 "register_operand" "r")
 	 ))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "vpack2hl\\t%0,%1,%2"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
@@ -2287,7 +2287,7 @@
   [(set (match_operand:V2SI 0 "register_operand" "=r")
 	(MINMAX:V2SI (match_operand:V2SI 1 "register_operand" "%r")
                      (match_operand:V2SI 2 "register_operand" "r")))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "v<mntab>2\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "<mntab>")])
@@ -2298,7 +2298,7 @@
 	 (vec_duplicate:V2SI
 	  (match_operand 1 "vectdup_immediate_operand" "S06S0,S12S0"))
 	 (match_operand:V2SI 2 "register_operand" "r,0")))]
-  "TARGET_SIMD"
+  "TARGET_SIMD && TARGET_EXP"
   "v<mntab>2\\t%0,%2,%1"
   [(set_attr "length" "4")
    (set_attr "type" "<mntab>")])
