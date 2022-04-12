@@ -3669,7 +3669,7 @@ arc64_simd_vpack (struct e_vec_perm_d *d)
   return true;
 }
 
-/* Reverse vector, recognize swapl instruction.  */
+/* Reverse vector, recognize swapl and vfexch instructions.  */
 
 static bool
 arc64_simd_swapl (struct e_vec_perm_d *d)
@@ -3677,9 +3677,10 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
   poly_uint64 nelt = d->perm.length ();
   machine_mode vmode = d->vmode;
   rtx t0, t1, t2, out, in0;
+  rtx src;
+  unsigned int unspec;
 
   if (GET_MODE_UNIT_SIZE (vmode) > 4
-      || FLOAT_MODE_P (vmode)
       || !TARGET_64BIT)
     return false;
 
@@ -3695,6 +3696,8 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
 
   in0 = d->op0;
   out = d->target;
+  t0 = d->target;
+  t1 = d->target;
 
   switch (vmode)
     {
@@ -3714,6 +3717,48 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
 
     case E_V2HImode:
       emit_insn (gen_arc64_swapv2hi (out, in0));
+      break;
+
+    case E_V8HFmode:
+      t1 = gen_reg_rtx (vmode);
+      /* Fall through.  */
+    case E_V4SFmode:
+      t0 = gen_reg_rtx (vmode);
+      /* Fall through.  */
+    case E_V2DFmode:
+      unspec = ARC64_UNSPEC_DEXCH;
+      src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, in0), unspec);
+      emit_set_insn (t0, src);
+      if (vmode == E_V2DFmode)
+	return true;
+
+      unspec = ARC64_UNSPEC_SEXCH;
+      src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, t0), unspec);
+      emit_set_insn (t1, src);
+      if (vmode == E_V4SFmode)
+	return true;
+
+      unspec = ARC64_UNSPEC_HEXCH;
+      src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, t1), unspec);
+      emit_set_insn (out, src);
+      break;
+
+    case E_V4HFmode:
+      t1 = gen_reg_rtx (vmode);
+      /* Fall through.  */
+    case E_V2SFmode:
+      unspec = ARC64_UNSPEC_SEXCH;
+      src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, in0), unspec);
+      emit_set_insn (t1, src);
+      if (vmode == E_V2SFmode)
+	return true;
+      in0 = t1;
+      /* Fall through.  */
+
+    case E_V2HFmode:
+      unspec = ARC64_UNSPEC_HEXCH;
+      src = gen_rtx_UNSPEC (vmode, gen_rtvec (1, in0), unspec);
+      emit_set_insn (out, src);
       break;
 
     default:
