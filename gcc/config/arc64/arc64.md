@@ -279,6 +279,9 @@
 ;; This code iterator allows the shifts supported in arithmetic instructions
 (define_code_iterator ASHIFT [ashift ashiftrt lshiftrt])
 
+;; Only logical shifts
+(define_code_iterator LSHIFT [ashift lshiftrt])
+
 ;; Iterates over the SETcc instructions
 (define_code_iterator SETCC [eq ne gt lt ge le ltu geu])
 (define_code_iterator ALLCC [eq ne gt lt ge le ltu geu gtu leu])
