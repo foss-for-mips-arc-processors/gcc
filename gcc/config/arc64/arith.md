@@ -1450,6 +1450,17 @@
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
 
+(define_insn "*vpack2wl_scalar"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	 (ashift:DI (match_operand:DI 1 "register_operand" "r")
+		    (const_int 32))
+	 (zero_extend:DI (match_operand:SI 2  "register_operand" "r"))))]
+  "TARGET_64BIT"
+  "vpack2wl\\t%0,%2,%1"
+  [(set_attr "type" "vpack")
+   (set_attr "length" "4")])
+
 ;; -------------------------------------------------------------------
 ;; Integer SIMD instructions
 ;; -------------------------------------------------------------------
