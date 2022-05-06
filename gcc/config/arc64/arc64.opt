@@ -115,6 +115,10 @@ m128
 Target Mask(WIDE_LDST)
 Enable wide data transfer support.
 
+mfpmov
+Target Mask(FP_MOVE)
+Reduce pressure on GPRs by using FPRs for memory operations like memcpy.
+
 mbrcc
 Target Mask(BRCC)
 Generate BRcc instructions during combiner step.
