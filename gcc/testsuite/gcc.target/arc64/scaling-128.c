@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O0" } */
+/* { dg-options "-O0 -mno-fpmov" } */
 /* { dg-additional-options "-m128" { target { hs6x } } } */
 /* { dg-additional-options "-mll64" { target { hs5x } } } */
 
