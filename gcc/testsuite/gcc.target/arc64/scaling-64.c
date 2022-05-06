@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target hs5x } */
-/* { dg-options "-mcpu=hs5x -mll64 -O0" } */
+/* { dg-options "-mll64 -O0 -mno-fpmov" } */
 
 /* Address scaling for double loads and stores must multiply
    the "offset" with the size of a single element and not
