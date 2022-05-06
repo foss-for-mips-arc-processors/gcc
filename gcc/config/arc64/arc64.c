@@ -60,6 +60,69 @@
 #define DOUBLE_LOAD_STORE ((!TARGET_64BIT && TARGET_LL64) \
 			   || (TARGET_64BIT && TARGET_WIDE_LDST))
 
+/* Logic:
+
+   HS5x (32-bit arch):
+     - no 64-bit loads and stores   -> 32-bit moves
+       - use_fpu && fpu_exists      ->   fpr
+       - else			    ->   gpr
+     - 64-bit loads and stores      -> 64-bit moves
+       - use_fpu && fpu{s,d}_exists ->   fpr
+       - else			    ->   gpr
+
+   HS6x (64-bit arch):
+     - no 128-bit loads and stores  -> 64-bit moves
+       - use_fpu && fpu_exists      ->   fpr
+       - else			    ->   gpr
+     - 128-bit loads and stores     -> 128-bit moves
+       - use_fpu && fpud_exists     ->   fpr
+       - else			    ->   gpr.  */
+
+static machine_mode cpymem_copy_mode (void)
+{
+  /* HS6x.  */
+  if (TARGET_64BIT)
+    {
+      if (!TARGET_WIDE_LDST)
+	{
+	  if (TARGET_FP_MOVE && ARC64_HAS_FPUD)
+	    return DFmode;
+	  else if (TARGET_FP_MOVE && ARC64_VFP_64)
+	    return V2SFmode;
+
+	  return DImode;
+	}
+
+      if (TARGET_FP_MOVE)
+	{
+	  if (ARC64_VFP_128)
+	    return V2DFmode;
+	}
+
+      return TImode;
+    }
+  /* HS5x.  */
+  else
+    {
+      if (!TARGET_LL64)
+	{
+	  if (TARGET_FP_MOVE && ARC64_HAS_FPUS)
+	    return SFmode;
+
+	  return SImode;
+	}
+
+      if (TARGET_FP_MOVE)
+	{
+	  /* ARC64_VFP_64 does not cover all cases YET.  */
+	  if (ARC64_VFP_64)
+	    return DFmode;
+	}
+
+      return DImode;
+    }
+}
+
 #define ARC_INVERSE_CONDITION_CODE(X)  ((X) ^ 1)
 
 /* Implement REGNO_REG_CLASS.  */
@@ -6048,6 +6111,96 @@ arc64_split_double_move (rtx *operands, machine_mode mode)
     }
 }
 
+/* What mode to use when copying N-bits of data.
+
+   HS5x
+     n >= 64: copy_mode()
+     n >= 32: SFmode	      if FP_MOVE
+	      SImode	      otherwise
+     n >= 16: HFmode	      if FP_MOVE
+	      HImode	      otherwise
+     n >=  8: QImode
+
+   HS6x
+     n >= 128: copy_mode()
+     n >=  64: DFmode	      if FP_MOVE
+i	       DImode	      otherwise
+     n >=  32: SFmode	      if FP_MOVE
+i	       SImode	      otherwise
+     n >=  16: HFmode	      if FP_MOVE
+i	       HImode	      otherwise
+     n >=   8: QImode
+
+  Note about the "return ((machine_mode) (FP ? Fmode : Imode))":
+  GCC 8.3 gives a warning about "int to machine_mode" conversion if we
+  don't use the explicit "((machine_mode) ...)" casting, while it is
+  absolutely OK with "retun [F|I]mode;" separately.
+*/
+
+static machine_mode
+cpymem_copy_mode_for_n (int n)
+{
+  /* HS6x.  */
+  if (TARGET_64BIT)
+    {
+      if (n >= 128)
+	return cpymem_copy_mode ();
+      else if (n >= 64)
+	return ((machine_mode) (TARGET_FP_MOVE ? DFmode : DImode));
+      /* fall-thru.  */
+    }
+  /* HS5x.  */
+  else
+    {
+      if (n >= 64)
+	return cpymem_copy_mode ();
+      /* fall-thru.  */
+    }
+
+  if (n >= 32)
+    return ((machine_mode) (TARGET_FP_MOVE ? SFmode : SImode));
+  else if (n >= 16)
+    return ((machine_mode) (TARGET_FP_MOVE ? HFmode : HImode));
+  else
+    return QImode;
+}
+
+/* Returns the bit size (of a mode) that is big enough to
+   handle the remaining N-bits of data.
+
+   This function is not expected to be called for Ns that
+   are too big for the architecture to swallow.  e.g. for
+   an HS5x target without 64-bit load/store support, any
+   N > 32 is not expected.  */
+
+static int
+cpymem_smallest_bigger_mode_bitsize (int n)
+{
+  if (n <= 8)
+    return 8;		      /* QImode.  */
+  else if (n <= 16)
+    return 16;		      /* H{I|F}mode.  */
+  else if (n <= 32)
+    return 32;		      /* S{I|F}mode.  */
+  else if (n <= 64)
+    {
+      /* a 64-bit arch or a 32-bit arch with double load/stores.  */
+      if (TARGET_64BIT || TARGET_LL64)
+	return 64;	      /* {DI|DF|V2SF}mode.  */
+
+      /* This functions mustn't have been called.  */
+      gcc_unreachable ();
+    }
+  else if (n <= 128)
+    {
+      if (TARGET_64BIT && TARGET_WIDE_LDST)
+	return 128;	      /* {TI|V2DF}mode.  */
+      /* Fall-thru.  */
+    }
+
+  gcc_unreachable ();
+}
+
 /* Expand cpymem, as if from a __builtin_memcpy.  Return true if
    we succeed, otherwise return false.  */
 
@@ -6058,7 +6211,7 @@ arc64_expand_cpymem (rtx *operands)
   rtx dst = operands[0];
   rtx src = operands[1];
   rtx base;
-  machine_mode cur_mode = BLKmode, next_mode;
+  machine_mode cur_mode;
   bool speed_p = !optimize_function_for_size_p (cfun);
 
   /* When optimizing for size, give a better estimate of the length of a
@@ -6079,12 +6232,7 @@ arc64_expand_cpymem (rtx *operands)
   /* Try to keep the number of instructions low.  For all cases we will do at
      most two moves for the residual amount, since we'll always overlap the
      remainder.  */
-  int divisor;
-  if (TARGET_64BIT)
-    divisor = TARGET_WIDE_LDST ? 16 : 8;
-  else
-    divisor = TARGET_LL64 ? 8 : 4;
-
+  const int divisor = GET_MODE_SIZE (cpymem_copy_mode ());
   if (((n / divisor) + (n % divisor ? 2 : 0)) > max_num_moves)
     return false;
 
@@ -6097,20 +6245,9 @@ arc64_expand_cpymem (rtx *operands)
   /* Convert n to bits to make the rest of the code simpler.  */
   n = n * BITS_PER_UNIT;
 
-  /* Maximum amount to copy in one go.  */
-  const int copy_limit
-    = DOUBLE_LOAD_STORE ? (2 * BITS_PER_WORD) : BITS_PER_WORD;
-
   while (n > 0)
     {
-      /* Find the largest mode in which to do the copy in without over reading
-	 or writing.  */
-      opt_scalar_int_mode mode_iter;
-      FOR_EACH_MODE_IN_CLASS (mode_iter, MODE_INT)
-	if (GET_MODE_BITSIZE (mode_iter.require ()) <= MIN (n, copy_limit))
-	  cur_mode = mode_iter.require ();
-
-      gcc_assert (cur_mode != BLKmode);
+      cur_mode = cpymem_copy_mode_for_n (n);
 
       mode_bits = GET_MODE_BITSIZE (cur_mode);
       arc64_copy_one_block_and_progress_pointers (&src, &dst, cur_mode);
@@ -6120,11 +6257,10 @@ arc64_expand_cpymem (rtx *operands)
       /* Do certain trailing copies as overlapping if it's going to be
 	 cheaper.  i.e. less instructions to do so.  For instance doing a 15
 	 byte copy it's more efficient to do two overlapping 8 byte copies than
-	 8 + 6 + 1.  */
-      if (n > 0 && n <= 8 * BITS_PER_UNIT)
+	 8 + 4 + 2 + 1.  */
+      if (n > 0 && n < (BITS_PER_UNIT * divisor))
 	{
-	  next_mode = smallest_mode_for_size (n, MODE_INT);
-	  int n_bits = GET_MODE_BITSIZE (next_mode);
+	  int n_bits = cpymem_smallest_bigger_mode_bitsize (n);
 	  src = arc64_move_pointer (src, (n - n_bits) / BITS_PER_UNIT);
 	  dst = arc64_move_pointer (dst, (n - n_bits) / BITS_PER_UNIT);
 	  n = n_bits;
