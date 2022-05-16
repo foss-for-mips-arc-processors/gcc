@@ -979,7 +979,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
 	  scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD);
 
 	  /* Adjust the offset as we may need to split this address.  */
-	  ioffset += UNITS_PER_WORD;
+	  if (ioffset > 0)
+	    ioffset += UNITS_PER_WORD;
 	}
       scaling_mode = scaling_p ? scaling_mode : QImode;
 
