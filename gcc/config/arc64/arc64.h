@@ -706,8 +706,11 @@ extern const enum reg_class arc64_regno_to_regclass[];
   arc64_asm_preferred_eh_data_format ((CODE), (GLOBAL))
 
 /* Specs.  */
+
+/* Support for a compile-time defalt CPU or FPU.  */
 #define OPTION_DEFAULT_SPECS			\
-  { "fpu", "%{!mfpu=*:-mfpu=%(VALUE)}"}
+  { "fpu", "%{!mfpu=*:-mfpu=%(VALUE)}"},	\
+  { "cpu", "%{!mcpu=*:-mcpu=%(VALUE)}"}
 
 #define CPP_SPEC "%(subtarget_cpp_spec)"
 

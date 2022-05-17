@@ -4388,7 +4388,7 @@ case "${target}" in
 		;;
 
 	arc[6432]*-*-*)
-		supported_defaults="fpu"
+		supported_defaults="fpu cpu"
 		case "$with_fpu" in
 		"" | fpus | fpud)
 			# OK
@@ -4398,6 +4398,15 @@ case "${target}" in
 			     "--with-fpu=$with-fpu" 1>&2
 			exit 1
 			;;
+		esac
+
+		case "$with_cpu" in
+		"" | hs5* | hs6*)
+		   # OK
+		   ;;
+		*)
+		   echo "Unknown cpu used in --with-cpu=$with_cpu" 1>&2
+		   exit 1
 		esac
 		;;
 
