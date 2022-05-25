@@ -2453,15 +2453,19 @@ arc64_print_format_registers(FILE *stream,
 			     unsigned regno,
 			     enum machine_mode mode)
 {
-  unsigned int  j, nregs = arc64_hard_regno_nregs (regno, mode);
+  unsigned int  j, nregs;
   unsigned int ll = 0;
-  for (j = regno+nregs; j > regno; j--)
+
+  nregs = arc64_hard_regno_nregs (regno, mode);
+  /* Make sure BLKmode has a number of regs attached.  */
+  nregs = nregs ? nregs : 2;
+  for (j = regno + nregs; j > regno; j--)
     {
-      asm_fprintf (stream,"%s", reg_names[j-1]);
-      ll += strlen (reg_names[j-1]);
+      asm_fprintf (stream,"%s", reg_names[j - 1]);
+      ll += strlen (reg_names[j - 1]);
     }
   asm_fprintf (stream,"`");
-  for (j = ll; j <20; j++)
+  for (j = ll; j < 20; j++)
     asm_fprintf (stream, " ");
 
   asm_fprintf (stream,"\t(%d)\n",
