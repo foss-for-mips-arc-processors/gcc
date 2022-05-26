@@ -1197,6 +1197,7 @@ arc64_layout_arg (struct arc64_arg_info *info, cumulative_args_t pcum_v,
   CUMULATIVE_ARGS *pcum = get_cumulative_args (pcum_v);
   HOST_WIDE_INT size;
   unsigned int nregs;
+  bool record_p = type ? (TREE_CODE (type) == RECORD_TYPE) : false;
 
   memset (info, 0, sizeof (*info));
   info->off_fpr = pcum->fregs;
@@ -1204,33 +1205,44 @@ arc64_layout_arg (struct arc64_arg_info *info, cumulative_args_t pcum_v,
 
   /* Find out the size of argument.  */
   size = type ? int_size_in_bytes (type) : GET_MODE_SIZE (mode);
+
+  /* When named, we can pass FP types into FP registers if they exists and they
+     have the right size, unless a record type is used.  */
+  if (named
+      && !record_p
+      && arc64_use_fp_regs (mode))
+    {
+      size = ROUND_UP (size, UNITS_PER_FP_REG);
+      nregs = size / UNITS_PER_FP_REG;
+
+      if (info->off_fpr + nregs <= MAX_ARC64_PARM_REGS)
+	{
+	  int fregno = F0_REGNUM + info->off_fpr;
+	  info->nfpr = nregs;
+	  switch (GET_MODE_CLASS (mode))
+	    {
+	    case MODE_VECTOR_FLOAT:
+	      /* FIXME! for double-sized vectors, we may need to use double
+		 register.  */
+	    case MODE_FLOAT:
+	      return gen_rtx_REG (mode, fregno);
+
+	    case MODE_COMPLEX_FLOAT:
+	      gcc_assert (nregs == 2);
+	      return arc64_gen_fp_pair (mode, fregno, GET_MODE_INNER (mode), 0,
+					fregno + 1, GET_MODE_INNER (mode),
+					GET_MODE_UNIT_SIZE (mode));
+
+	    default:
+	      gcc_unreachable ();
+	    }
+	}
+      /* No free FP-reg, continue using R-regs for the remaining FP
+	 arguments.  */
+    }
+
   size = ROUND_UP (size, UNITS_PER_WORD);
   nregs = size / UNITS_PER_WORD;
-
-  /* When named, we can pass FP types into FP registers if they
-     exists and they have the right size.  */
-  if (named && arc64_use_fp_regs (mode)
-      && (info->off_fpr + nregs < MAX_ARC64_PARM_REGS))
-    {
-      int fregno = F0_REGNUM + info->off_fpr;
-      info->nfpr = nregs;
-      switch (GET_MODE_CLASS (mode))
-	{
-	case MODE_VECTOR_FLOAT:
-	  /* FIXME! for double-sized vectors, we may need to use double
-	     register.  */
-	case MODE_FLOAT:
-	  return gen_rtx_REG (mode, fregno);
-
-	case MODE_COMPLEX_FLOAT:
-	  return arc64_gen_fp_pair (mode, fregno, GET_MODE_INNER (mode), 0,
-				    fregno + 1, GET_MODE_INNER (mode),
-				    GET_MODE_UNIT_SIZE (mode));
-
-	default:
-	  gcc_unreachable ();
-	}
-    }
 
   /* Partition the argument between register and stack.  */
   gcc_assert (info->nfpr == 0);
