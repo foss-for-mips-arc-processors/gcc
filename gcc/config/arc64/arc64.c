@@ -2503,13 +2503,13 @@ arc64_output_function_prologue (FILE *f)
 	       cfun->machine->uses_anonymous_args);
   asm_fprintf (f, "\t# size = %wd bytes\n",
 	       frame->frame_size);
-  asm_fprintf (f, "\t# outargs = %wd bytes\n",
+  asm_fprintf (f, "\t# + outargs = %wd bytes\n",
 	       frame->saved_outargs_size);
-  asm_fprintf (f, "\t# locals = %wd bytes\n",
+  asm_fprintf (f, "\t# + locals  = %wd bytes\n",
 	       frame->saved_locals_size);
-  asm_fprintf (f, "\t# regs = %wd bytes\n",
+  asm_fprintf (f, "\t# + regs    = %wd bytes\n",
 	       frame->saved_regs_size);
-  asm_fprintf (f, "\t# varargs = %wd bytes\n",
+  asm_fprintf (f, "\t# + varargs = %wd bytes\n",
 	       frame->saved_varargs_size);
 
   if (crtl->calls_eh_return)
@@ -2578,9 +2578,19 @@ arc64_output_function_prologue (FILE *f)
 		    }
 		}
 	    }
+	  else if (GET_CODE (rtl) == CONCAT)
+	    {
+	      rtx op0 = XEXP (rtl, 0);
+	      rtx op1 = XEXP (rtl, 1);
+	      if (REG_P (op0))
+		arc64_print_format_registers (f, REGNO (op0), GET_MODE (op0));
+	      asm_fprintf(f,"\t#\t\t\t+`");
+	      if (REG_P (op1))
+		arc64_print_format_registers (f, REGNO (op1), GET_MODE (op1));
+	    }
 	  else
 	    {
-	      asm_fprintf(f,"N.A. `\n");
+	      asm_fprintf(f,"N.A.`\n");
 	    }
 	}
       parm = TREE_CHAIN (parm);
