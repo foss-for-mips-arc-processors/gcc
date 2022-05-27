@@ -2584,9 +2584,13 @@ arc64_output_function_prologue (FILE *f)
 	      rtx op1 = XEXP (rtl, 1);
 	      if (REG_P (op0))
 		arc64_print_format_registers (f, REGNO (op0), GET_MODE (op0));
+	      else
+		asm_fprintf(f, "MEM`\n");
 	      asm_fprintf(f,"\t#\t\t\t+`");
 	      if (REG_P (op1))
 		arc64_print_format_registers (f, REGNO (op1), GET_MODE (op1));
+	      else
+		asm_fprintf(f, "MEM`\n");
 	    }
 	  else
 	    {
