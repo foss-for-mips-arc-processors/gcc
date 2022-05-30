@@ -4949,8 +4949,9 @@ arc64_gen_compare_reg (enum rtx_code code, rtx x, rtx y)
   machine_mode mode = SELECT_CC_MODE (code, x, y);
   rtx cc_reg = gen_rtx_REG (mode, CC_REGNUM);
 
-  if (!REG_P (x) && !REG_P (y))
+  if (CONSTANT_P (x) && CONSTANT_P (y))
     x = force_reg (word_mode, x);
+
   emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
   return cc_reg;
 }
