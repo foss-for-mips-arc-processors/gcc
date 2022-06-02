@@ -98,13 +98,12 @@
 
 
 (define_insn "*sub<mode>_insn"
-  [(set (           match_operand:GPI 0 "register_operand"  "=q,    q,    q,     r,     r,    r,     r,    r,    r,    r,r")
-	(minus:GPI (match_operand:GPI 1 "nonmemory_operand" " 0,    0,    q,     0,rU06S0,    0,     r,U06S0,S12S0,S32S0,r")
-		   (match_operand:GPI 2 "nonmemory_operand" " q,U05S0,U03S0,rU06Sx,     0,S12S0,rU06Sx,    r,    0,    r,S32S0")))]
+  [(set (           match_operand:GPI 0 "register_operand"  "=q,    q,     r,     r,    r,     r,    r,    r,    r,r")
+	(minus:GPI (match_operand:GPI 1 "nonmemory_operand" " 0,    0,     0,rU06S0,    0,     r,U06S0,S12S0,S32S0,r")
+		   (match_operand:GPI 2 "nonmemory_operand" " q,U05S0,rU06Sx,     0,S12S0,rU06Sx,    r,    0,    r,S32S0")))]
   "register_operand (operands[1], <MODE>mode)
    || register_operand (operands[2], <MODE>mode)"
   "@
-   sub<sfxtab>%?\\t%0,%1,%2
    sub<sfxtab>%?\\t%0,%1,%2
    sub<sfxtab>%?\\t%0,%1,%2
    sub%s2<sfxtab>%?\\t%0,%1,%S2
@@ -115,8 +114,8 @@
    rsub<sfxtab>%?\\t%0,%2,%1
    sub<sfxtab>%?\\t%0,%1,%2
    sub<sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "iscompact"  "yes,maybe,maybe,no,no,no,no,no,no,no,no")
-   (set_attr "length"     "2,*,*,4,4,4,4,4,4,8,8")
+  [(set_attr "iscompact"  "yes,maybe,no,no,no,no,no,no,no,no")
+   (set_attr "length"     "2,*,4,4,4,4,4,4,8,8")
    (set_attr "type"       "sub")]
   )
 
@@ -135,13 +134,12 @@
   )
 
 (define_insn "*add<mode>_insn"
-  [(set (          match_operand:GPI 0 "register_operand"  "=q, q,q,    q,     r,    r,    r,     r,    r,r")
-	(plus:GPI (match_operand:GPI 1 "register_operand"  "%0, 0,q,    q,     0,    0,    0,     r,    r,r")
-		  (match_operand:GPI 2 "nonmemory_operand" " q,qh,q,U03S0,rU06Sx,N06Sx,S12Sx,rU06Sx,N06Sx,S32S0")))]
+  [(set (          match_operand:GPI 0 "register_operand"  "=q, q,q,     r,    r,    r,     r,    r,r")
+	(plus:GPI (match_operand:GPI 1 "register_operand"  "%0, 0,q,     0,    0,    0,     r,    r,r")
+		  (match_operand:GPI 2 "nonmemory_operand" " q,qh,q,rU06Sx,N06Sx,S12Sx,rU06Sx,N06Sx,S32S0")))]
   "register_operand (operands[1], <MODE>mode)
    || register_operand (operands[2], <MODE>mode)"
   "@
-   add<sfxtab>%?\\t%0,%1,%2
    add<sfxtab>%?\\t%0,%1,%2
    add<sfxtab>%?\\t%0,%1,%2
    add<sfxtab>%?\\t%0,%1,%2
@@ -151,21 +149,20 @@
    add%s2<sfxtab>%?\\t%0,%1,%S2
    sub%s2<sfxtab>%?\\t%0,%1,%N2
    add<sfxtab>%?\\t%0,%1,%2"
-  [(set_attr "iscompact"  "yes,maybe,maybe,maybe,no,no,no,no,no,no")
-   (set_attr "length"     "2,*,*,*,4,4,4,4,4,8")
+  [(set_attr "iscompact"  "yes,maybe,maybe,no,no,no,no,no,no")
+   (set_attr "length"     "2,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")]
   )
 
 ;; zero extend of the above
 (define_insn "*addsi3_zextend"
-  [(set (match_operand:DI 0 "register_operand"  "=q, q,q,    q,     r,    r,    r,     r,    r,r")
+  [(set (match_operand:DI 0 "register_operand"            "=q, q,q,    r,    r,    r,     r,    r,r")
 	(zero_extend:DI
-	 (plus:SI (match_operand:SI 1 "register_operand"  "%0, 0,q,    q,     0,    0,    0,     r,    r,r")
-		  (match_operand:SI 2 "nonmemory_operand" " q,qh,q,U03S0,rU06Sx,N06Sx,S12Sx,rU06Sx,N06Sx,S32S0"))))]
+	 (plus:SI (match_operand:SI 1 "register_operand"  "%0, 0,q,     0,    0,    0,     r,    r,r")
+		  (match_operand:SI 2 "nonmemory_operand" " q,qh,q,rU06Sx,N06Sx,S12Sx,rU06Sx,N06Sx,S32S0"))))]
   "register_operand (operands[1], SImode)
    || register_operand (operands[2], SImode)"
   "@
-   add%?\\t%0,%1,%2
    add%?\\t%0,%1,%2
    add%?\\t%0,%1,%2
    add%?\\t%0,%1,%2
@@ -175,8 +172,8 @@
    add%s2%?\\t%0,%1,%S2
    sub%s2%?\\t%0,%1,%N2
    add%?\\t%0,%1,%2"
-  [(set_attr "iscompact"  "yes,maybe,maybe,maybe,no,no,no,no,no,no")
-   (set_attr "length"     "2,*,*,*,4,4,4,4,4,8")
+  [(set_attr "iscompact"  "yes,maybe,maybe,no,no,no,no,no,no")
+   (set_attr "length"     "2,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")])
 
 ;; This pattern is needed because the GT (pnz) is not reversible and I
