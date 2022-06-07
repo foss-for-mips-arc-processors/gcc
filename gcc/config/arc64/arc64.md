@@ -379,7 +379,7 @@
 ;; Same like above but without -1 used for fp loads/stores
 (define_mode_attr sizef [(HF "16") (SF "32") (DF "64")
 			 (V2HF "32") (V4HF "64") (V2SF "64")
-			 (V8HF "128") (V4SF "128") (V2DF "128")])
+			 (V8HF "d64") (V4SF "d64") (V2DF "d64")])
 
 ;; Used to implement predicated sign extension patterns
 (define_mode_attr sexsft [(QI "24") (HI "16") (SI "8")])
