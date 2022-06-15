@@ -1376,7 +1376,7 @@
 	(unspec:DI [(match_operand:SI 1 "register_operand" "r")
 		    (match_operand:SI 2 "register_operand" "r")]
 		   ARC64_UNSPEC_VPACK2WL))]
-  "TARGET_64BIT"
+  "TARGET_SIMD && TARGET_64BIT"
   "vpack2wl\\t%0,%1,%2"
   [(set_attr "length" "4")
    (set_attr "type" "vpack")])
@@ -1453,7 +1453,7 @@
 	 (ashift:DI (match_operand:DI 1 "register_operand" "r")
 		    (const_int 32))
 	 (zero_extend:DI (match_operand:SI 2  "register_operand" "r"))))]
-  "TARGET_64BIT"
+  "TARGET_SIMD && TARGET_64BIT"
   "vpack2wl\\t%0,%2,%1"
   [(set_attr "type" "vpack")
    (set_attr "length" "4")])
