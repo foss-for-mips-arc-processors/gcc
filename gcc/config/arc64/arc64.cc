@@ -3728,8 +3728,6 @@ arc64_simd_vpack (struct e_vec_perm_d *d)
       break;
 
     case E_V2HImode:
-      if (!TARGET_EXP)
-	return false;
       break;
 
     default:
