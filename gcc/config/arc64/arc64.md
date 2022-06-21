@@ -815,7 +815,7 @@ xorl"
 
 (define_insn "*arc64_movhi"
   [(set
-    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,Ustor,Ucnst, r,Ustor")
+    (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,Ustw6,Ucnst, r,Ustor")
     (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0,    i, m, r"))
    ]
   "register_operand (operands[0], HImode)
