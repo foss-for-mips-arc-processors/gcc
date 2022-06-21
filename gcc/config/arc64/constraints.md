@@ -83,6 +83,12 @@
   (and (match_code "mem")
        (match_test "arc64_legitimate_store_address_p (mode, XEXP (op, 0))")))
 
+(define_memory_constraint "Ustw6" "@internal
+   A valid memory operand for restricted storing of w6 immediate"
+  (and (match_code "mem")
+       (match_test "!MEM_VOLATILE_P (op) || !TARGET_VOLATILE_DI")
+       (match_test "arc64_legitimate_store_address_p (mode, XEXP (op, 0))")))
+
 (define_constraint "Ustk<"
   "@internal
    Stack pre-decrement"
