@@ -1681,7 +1681,10 @@ arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
      'U': Load/store update or scaling indicator.
      'm': output condition code without 'dot'.
      'M': output inverse condition code without 'dot'.
+     'w': output proper condition code for emulated brcc with u6 immediate.
+     'W': output proper condition code for emulated brcc with r/limm.
      '?': Short instruction suffix.
+     '*': Delay slot suffix
      'L': Lower 32bit of immediate or symbol.
      'H': Higher 32bit of an immediate, 64b-register or symbol.
      'C': Constant address, switches on/off @plt.
@@ -1697,10 +1700,20 @@ static void
 arc64_print_operand (FILE *file, rtx x, int code)
 {
   HOST_WIDE_INT ival;
-  static const char * const arc_condition_codes[] =
+  const char * const arc_condition_codes[] =
     {
      "al", 0, "eq", "ne", "p", "n", "lo", "hs", "v", "nv",
      "gt", "le", "ge", "lt", "hi", "ls", "pnz", 0
+    };
+  const char * const ebrcc_u6ccodes[] =
+    {
+     "na", "na", "na", "na", "na", "na", "na", "na", "na", "na",
+     "ge", "lt", "na", "na", "hs", "lo", "na", "na"
+    };
+  const char * const ebrcc_rccodes[] =
+    {
+     "na", "na", "na", "na", "na", "na", "na", "na", "na", "na",
+     "lt", "ge", "na", "na", "lo", "hs", "na", "na"
     };
 
   int scalled = 0;
@@ -1834,6 +1847,14 @@ arc64_print_operand (FILE *file, rtx x, int code)
     case 'M':
       fputs (arc_condition_codes[ARC_INVERSE_CONDITION_CODE
 				 (get_arc64_condition_code (x))], file);
+      break;
+
+    case 'w':
+      fputs (ebrcc_u6ccodes[get_arc64_condition_code (x)], file);
+      break;
+
+    case 'W':
+      fputs (ebrcc_rccodes[get_arc64_condition_code (x)], file);
       break;
 
     case 'C':
