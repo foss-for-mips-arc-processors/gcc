@@ -256,6 +256,9 @@
 (define_special_predicate "brcc_comparison_operator"
   (match_code "eq, ne, lt, ge, ltu, geu"))
 
+(define_special_predicate "ebrcc_comparison_operator"
+  (match_code "gt, gtu, le, leu"))
+
 ;; Return true if the symbol requires a @plt34 reloc
 (define_predicate "plt34_symbol_p"
   (and (match_code "symbol_ref")

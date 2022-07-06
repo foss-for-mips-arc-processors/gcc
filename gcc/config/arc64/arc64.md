@@ -1765,7 +1765,7 @@ xorl"
 			  (match_operand:GPI 2 "nonmemory_operand" "U0000,U06S0r,S32S0")])
 	 (label_ref (match_operand 0 "" ""))
 	 (pc)))
-   (clobber (reg:CC_ZN CC_REGNUM))]
+   (clobber (reg:CC CC_REGNUM))]
   "!CROSSING_JUMP_P (insn) && (TARGET_BRCC || reload_completed)"
   {
    switch (get_attr_length (insn))
@@ -1808,13 +1808,61 @@ xorl"
 	      (const_int 12)))
    ])
 
-;; Peephole pattern to match BRcc instructions.
+;; BRcc is not complete, emulate missing variants:
+;; brgt rb,rc,label => brlt rc,rb,label
+;; brgt rb,u6,label => brge rb,u6+1,label
+;; brhi rb,rc,label => brlo rc,rb,label
+;; brhi rb,u6,label => brhs rb,u6+1,label
+;; brle rb,rc,label => brge rc,rb,label
+;; brle rb,u6,label => brlt rb,u6+1,label
+;; brls rb,rc,label => brhs rc,rb,label
+;; brls rb,u6,label => brlo rb,u6+1,label
+(define_insn "*emu_brcc"
+  [(set (pc)
+	(if_then_else
+	 (match_operator 3 "ebrcc_comparison_operator"
+			 [(match_operand:GPI 1 "register_operand"         "r,r,r")
+			  (match_operand:GPI 2 "arc64_nonmem_operand" "U06M1,r,n")])
+	 (label_ref (match_operand 0 "" ""))
+	 (pc)))
+   (clobber (reg:CC CC_REGNUM))]
+  "!CROSSING_JUMP_P (insn) && reload_completed"
+  {
+    switch (get_attr_length (insn))
+      {
+      case 4:
+      case 8:
+	if (which_alternative == 0)
+	  {
+	    return \"br%w3<sfxtab>%*\\t%1,%2 + 1,%l0\";
+	  }
+	return \"br%W3<sfxtab>%*\\t%2,%1,%l0\";
+      default:
+	return \"cmp<sfxtab>\\t%1,%2\\n\\tb%m3%*\\t%l0\";
+      }
+  }
+  [(set_attr "type" "brcc")
+   (set (attr "length")
+	(cond [(and (ge (minus (match_dup 0) (pc)) (const_int -254))
+		    (le (minus (match_dup 0) (pc)) (const_int 244))
+		    (ior (eq (symbol_ref "which_alternative") (const_int 0))
+			 (eq (symbol_ref "which_alternative") (const_int 1))))
+	       (const_int 4)
+	       (and (ge (minus (match_dup 0) (pc)) (const_int -254))
+		    (le (minus (match_dup 0) (pc)) (const_int 244))
+		    (eq_attr "delay_slot_filled" "no")
+		    (eq (symbol_ref "which_alternative") (const_int 2)))
+	       (const_int 8)]
+	      (const_int 12)))
+   ])
+
+;; Peephole pattern for matching BRcc instructions.
 (define_peephole2
   [(set (match_operand 0 "cc_register")
 	(compare:CC (match_operand:GPI 1 "register_operand")
 		    (match_operand:GPI 2 "nonmemory_operand")))
    (set (pc) (if_then_else
-	      (match_operator 3 "brcc_comparison_operator"
+	      (match_operator 3 "arc64_comparison_operator"
 			      [(match_dup 0) (const_int 0)])
 	      (label_ref (match_operand 4 ""))
 	      (pc)))]
@@ -1824,7 +1872,7 @@ xorl"
 		    (match_op_dup 3 [(match_dup 1) (match_dup 2)])
 		    (label_ref (match_dup 4))
 		    (pc)))
-	      (clobber (reg:CC_ZN CC_REGNUM))])])
+	      (clobber (reg:CC CC_REGNUM))])])
 
 ;; Similar like the one above.
 (define_peephole2
@@ -1842,7 +1890,7 @@ xorl"
 		    (match_op_dup 2 [(match_dup 1) (const_int 0)])
 		    (label_ref (match_dup 3))
 		    (pc)))
-	      (clobber (reg:CC_ZN CC_REGNUM))])])
+	      (clobber (reg:CC CC_REGNUM))])])
 
 ;; -------------------------------------------------------------------
 ;; Sign/Zero extension
