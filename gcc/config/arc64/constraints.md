@@ -123,7 +123,7 @@
   "@internal
    An unsigned 6-bit integer constant, up to 62."
   (and (match_code "const_int")
-       (match_test "UNSIGNED_INT6 (ival - 1)")))
+       (match_test "UNSIGNED_INT6 (ival + 1)")))
 
 (define_constraint "SymMV"
   "@internal
