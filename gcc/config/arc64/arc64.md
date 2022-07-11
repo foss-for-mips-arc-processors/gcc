@@ -264,6 +264,10 @@
 ;; All 2xreg wide vectors
 ;; All 2xfp Vectors
 (define_mode_iterator W2xF [(V2DF "ARC64_VFP_128")])
+(define_mode_iterator W2xI [V2DI])
+
+;; All 2xinsn/vector vectors
+(define_mode_iterator W2x2 [V8HI V4SI])
 
 ;; All HF and SF vectors
 (define_mode_iterator V1FRF [(V2HF "ARC64_VFP_32")
@@ -395,11 +399,17 @@
 
 ;; Define element mode for each vector mode.
 (define_mode_attr VEL [(V2HI "HI") (V4HI "HI") (V2SI "SI")
+		       (V8HI "HI") (V4SI "SI") (V2DI "DI")
 		       (V2HF "HF") (V4HF "HF") (V2SF "SF")
 		       (V8HF "HF") (V4SF "SF") (V2DF "DF")])
 (define_mode_attr vel [(V2HI "hi") (V4HI "hi") (V2SI "si")
+		       (V8HI "hi") (V4SI "si") (V2DI "di")
 		       (V2HF "hf") (V4HF "hf") (V2SF "sf")
 		       (V8HF "hf") (V4SF "sf") (V2DF "df")])
+
+; Define half size mode of each vector mode.
+(define_mode_attr HLF [(V8HI "V4HI") (V4SI "V2SI") (V2DI "DI")])
+(define_mode_attr hlf [(V8HI "v4hi") (V4SI "v2si") (V2DI "di")])
 
 ;; Define element mode for each double-r mode.
 (define_mode_attr REL [(DI "SI") (TI "DI")])
@@ -513,6 +523,13 @@
 			 (minus    "sub")
 			 (smax      "max")
 			 (smin      "min")])
+
+(define_code_attr insntab [(smin  "min")
+			   (smax  "max")
+			   (plus  "add")
+			   (minus "sub")
+			   (mult  "mpy")
+			   (div   "div")])
 
 ;; Map rtl objects to arc's bit operation instructions
 (define_code_attr bit_optab [(ior    "bset")
