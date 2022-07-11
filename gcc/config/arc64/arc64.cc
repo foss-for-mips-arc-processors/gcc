@@ -3444,6 +3444,12 @@ arc64_vector_mode_supported_p (machine_mode mode)
     case E_V2SImode:
       return TARGET_SIMD;
 
+      /* 128-bit SIMD vectors.  */
+    case E_V8HImode:
+    case E_V4SImode:
+    case E_V2DImode:
+      return TARGET_WIDE_LDST;
+
     default:
       return false;
     }
@@ -3482,6 +3488,9 @@ arc64_preferred_simd_mode (scalar_mode mode)
     case E_SImode:
       return TARGET_SIMD ? V2SImode : word_mode;
 
+    case E_DImode:
+      return TARGET_WIDE_LDST ? V2DImode : word_mode;
+
     default:
       return word_mode;
     }
@@ -3493,26 +3502,38 @@ arc64_preferred_simd_mode (scalar_mode mode)
 static unsigned int
 arc64_autovectorize_vector_modes (vector_modes *modes, bool)
 {
+  unsigned int flags = 0;
   if (ARC64_VFP_128)
     {
-      modes->quick_push (V8HFmode);
-      modes->quick_push (V4SFmode);
-      modes->quick_push (V2DFmode);
+      modes->safe_push (V8HFmode);
+      modes->safe_push (V4SFmode);
+      modes->safe_push (V2DFmode);
     }
   else if (ARC64_VFP_64)
     {
-      modes->quick_push (V4HFmode);
-      modes->quick_push (V2SFmode);
+      modes->safe_push (V4HFmode);
+      modes->safe_push (V2SFmode);
     }
   else if (ARC64_VFP_32)
-    modes->quick_push (V2HFmode);
+    modes->safe_push (V2HFmode);
 
   if (TARGET_SIMD)
     {
-      modes->quick_push (V4HImode);
-      modes->quick_push (V2SImode);
+      modes->safe_push (V4HImode);
+      modes->safe_push (V2SImode);
     }
-  return 0;
+
+  if (TARGET_WIDE_LDST)
+    {
+      modes->safe_push (V8HImode);
+      modes->safe_push (V4SImode);
+      modes->safe_push (V2DImode);
+      /* Consider enabling VECT_COMPARE_COSTS when we have multiple
+	 vector types for the same element type.  */
+      flags |= VECT_COMPARE_COSTS;
+    }
+
+  return flags;
 }
 
 /* Vectorization costs.  */
@@ -3643,12 +3664,23 @@ arc64_simd_dup (struct e_vec_perm_d *d)
 
   if (!TARGET_64BIT
       || !d->one_vector_p
-      || vmode == E_V2HImode
       || d->perm.encoding ().encoded_nelts () != 1
       || !d->perm[0].is_constant (&elt)
       /* elt is zero, then the vec_dup pattern does as good as we do here.  */
       || elt == 0)
     return false;
+
+  switch (vmode)
+    {
+    case E_V2HImode:
+    case E_V8HImode:
+    case E_V4SImode:
+    case E_V2DImode:
+      return false;
+
+    default:
+      break;
+    }
 
   if (d->testing_p)
     return true;
@@ -3794,14 +3826,21 @@ arc64_simd_swapl (struct e_vec_perm_d *d)
   unsigned int unspec;
 
   if (GET_MODE_UNIT_SIZE (vmode) > 4
+      || !d->one_vector_p
+      || !d->perm.series_p (0, 1, nelt - 1, -1)
       || !TARGET_64BIT)
     return false;
 
-  if (!d->one_vector_p)
-    return false;
+  switch (vmode)
+    {
+    case E_V8HImode:
+    case E_V4SImode:
+    case E_V2DImode:
+      return false;
 
-  if (!d->perm.series_p (0, 1, nelt - 1, -1))
-    return false;
+    default:
+      break;
+    }
 
   /* Success! */
   if (d->testing_p)
