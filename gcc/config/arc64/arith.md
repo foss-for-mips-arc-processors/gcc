@@ -2312,6 +2312,29 @@
    (set_attr "type" "<mntab>")])
 
 ;; -------------------------------------------------------------------
+;; 128b integer SIMD instructions
+;; -------------------------------------------------------------------
+
+(define_expand "mov<mode>"
+  [(set (match_operand:V128I 0 "nonimmediate_operand")
+	(match_operand:V128I 1 "general_operand"))]
+  "TARGET_WIDE_LDST"
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
+
+(define_expand "movmisalign<mode>"
+  [(set (match_operand:V128I 0 "nonimmediate_operand")
+	(match_operand:V128I 1 "general_operand"))]
+  "TARGET_WIDE_LDST && !STRICT_ALIGNMENT"
+  "
+   if (arc64_prepare_move_operands (operands[0], operands[1], <MODE>mode))
+    DONE;
+  ")
+
+;; N.B.: All V128I move patterns are combined with TI mov pattern
+;; -------------------------------------------------------------------
 ;; FP SIMD instructions
 ;; -------------------------------------------------------------------
 
