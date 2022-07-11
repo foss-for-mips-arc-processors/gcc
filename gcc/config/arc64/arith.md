@@ -2333,6 +2333,92 @@
     DONE;
   ")
 
+(define_insn_and_split "<optab><mode>3"
+  [(set (match_operand:W2xI 0 "register_operand" "=r")
+	(DOPF:W2xI (match_operand:W2xI 1 "register_operand" "r")
+		   (match_operand:W2xI 2 "register_operand" "r")))]
+  "TARGET_64BIT"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  {
+   rtx high_dest = gen_highpart (<VEL>mode, operands[0]);
+   rtx low_dest = gen_lowpart (<VEL>mode, operands[0]);
+   rtx high_op1 = gen_highpart (<VEL>mode, operands[1]);
+   rtx low_op1 = gen_lowpart (<VEL>mode, operands[1]);
+   rtx high_op2 = gen_highpart (<VEL>mode, operands[2]);
+   rtx low_op2 = gen_lowpart (<VEL>mode, operands[2]);
+   emit_insn (gen_<optab><vel>3 (low_dest, low_op1,  low_op2));
+   emit_insn (gen_<optab><vel>3 (high_dest, high_op1,  high_op2));
+   DONE;
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "<insntab>")])
+
+(define_insn_and_split "<optab><mode>3"
+  [(set (match_operand:W2x2 0 "register_operand" "=r")
+	(ADDSUB:W2x2 (match_operand:W2x2 1 "register_operand" "r")
+		     (match_operand:W2x2 2 "register_operand" "r")))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  {
+   rtx high_dest = gen_highpart (<HLF>mode, operands[0]);
+   rtx low_dest = gen_lowpart (<HLF>mode, operands[0]);
+   rtx high_op1 = gen_highpart (<HLF>mode, operands[1]);
+   rtx low_op1 = gen_lowpart (<HLF>mode, operands[1]);
+   rtx high_op2 = gen_highpart (<HLF>mode, operands[2]);
+   rtx low_op2 = gen_lowpart (<HLF>mode, operands[2]);
+   emit_insn (gen_<optab><hlf>3 (low_dest, low_op1,  low_op2));
+   emit_insn (gen_<optab><hlf>3 (high_dest, high_op1,  high_op2));
+   DONE;
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "<insntab>")])
+
+(define_insn_and_split "<optab>v4si3"
+  [(set (match_operand:V4SI 0 "register_operand" "=r")
+	(MINMAX:V4SI (match_operand:V4SI 1 "register_operand" "r")
+		     (match_operand:V4SI 2 "register_operand" "r")))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  {
+   rtx high_dest = gen_highpart (V2SImode, operands[0]);
+   rtx low_dest  = gen_lowpart  (V2SImode, operands[0]);
+   rtx high_op1  = gen_highpart (V2SImode, operands[1]);
+   rtx low_op1   = gen_lowpart  (V2SImode, operands[1]);
+   rtx high_op2  = gen_highpart (V2SImode, operands[2]);
+   rtx low_op2   = gen_lowpart  (V2SImode, operands[2]);
+   emit_insn (gen_<optab>v2si3 (low_dest, low_op1,  low_op2));
+   emit_insn (gen_<optab>v2si3 (high_dest, high_op1,  high_op2));
+   DONE;
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "<insntab>")])
+
+(define_insn "reduc_plus_scal_v4si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(unspec:SI [(match_operand:V4SI 1 "register_operand" "r")]
+		   ARC64_UNSPEC_DMPYWH))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "dmpywh\\t0,%L1,1\\n\\tdmachwh\\t%0,%H1,1"
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
+(define_insn "reduc_plus_scal_v8hi"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+	(unspec:HI [(match_operand:V8HI 1 "register_operand" "r")]
+		   ARC64_UNSPEC_QMPYH))
+   (clobber (reg:DI R58_REGNUM))]
+  "TARGET_SIMD && TARGET_64BIT"
+  "qmpyh\\t0,%L1,1\\n\\tqmach\\t%0,%H1,1"
+  [(set_attr "length" "8")
+   (set_attr "type" "mac")])
+
 ;; N.B.: All V128I move patterns are combined with TI mov pattern
 ;; -------------------------------------------------------------------
 ;; FP SIMD instructions
