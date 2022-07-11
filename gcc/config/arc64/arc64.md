@@ -234,6 +234,12 @@
 ;; All 64b int vectors
 (define_mode_iterator V64I [V4HI V2SI])
 
+;; All 128b int vectors
+(define_mode_iterator V128I [V8HI V4SI V2DI])
+
+;; All 128b int moves
+(define_mode_iterator A128 [TI V8HI V4SI V2DI])
+
 ;; All fp vectors
 (define_mode_iterator VALLF [(V2HF "ARC64_VFP_32")
 			     (V4HF "ARC64_VFP_64") (V2SF "ARC64_VFP_64")
@@ -923,21 +929,21 @@ xorl"
    (set_attr "length" "4,*,*,4,4,4,8,*,*")])
 
 ;; move 128bit
-(define_insn_and_split "*arc64_movti"
-  [(set (match_operand:TI 0 "arc64_dest_operand"  "=r,r,Ustor")
-	(match_operand:TI 1 "nonimmediate_operand" "r,m,r"))]
+(define_insn_and_split "*mov<mode>_insn"
+  [(set (match_operand:A128 0 "arc64_dest_operand"  "=r,r,Ustor")
+	(match_operand:A128 1 "nonimmediate_operand" "r,m,r"))]
   "TARGET_WIDE_LDST
-   && (register_operand (operands[0], TImode)
-       || register_operand (operands[1], TImode))"
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
   "@
    #
    lddl%U1\\t%0,%1
    stdl%U0\\t%1,%0"
    "&& reload_completed
-    && arc64_split_double_move_p (operands, TImode)"
+    && arc64_split_double_move_p (operands, <MODE>mode)"
    [(const_int 0)]
    {
-    arc64_split_double_move (operands, TImode);
+    arc64_split_double_move (operands, <MODE>mode);
     DONE;
    }
   [(set_attr "type" "move,ld,st")
