@@ -2789,6 +2789,22 @@ xorl"
   [(set_attr "type"       "xbfu")
    (set_attr "length"     "8")])
 
+;; Handle (a & (1 << BIT_NO)) ? 0 : -1
+(define_split
+  [(set (match_operand:GPI 0 "register_operand")
+	(neg:GPI
+	 (eq:GPI
+	  (zero_extract:GPI
+	   (match_operand:GPI 1 "register_operand")
+           (const_int 1)
+           (match_operand 2))
+          (const_int 0))))]
+  ""
+  [(set (match_dup 0) (zero_extract:GPI (match_dup 1)
+					(const_int 1)
+					(match_dup 2)))
+   (set (match_dup 0) (plus:GPI (match_dup 0) (const_int -1)))])
+
 (define_insn "bswap<mode>2"
   [(set (match_operand:GPI 0 "register_operand"  "=r,r")
 	(bswap:GPI
