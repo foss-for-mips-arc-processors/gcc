@@ -2405,7 +2405,7 @@
 		   ARC64_UNSPEC_DMPYWH))
    (clobber (reg:DI R58_REGNUM))]
   "TARGET_SIMD && TARGET_64BIT"
-  "dmpywh\\t0,%L1,1\\n\\tdmachwh\\t%0,%H1,1"
+  "dmpywh\\t0,%L1,1\\n\\tdmacwh\\t%0,%H1,1"
   [(set_attr "length" "8")
    (set_attr "type" "mac")])
 
