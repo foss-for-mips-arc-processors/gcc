@@ -3936,7 +3936,7 @@ foo:	.long	25
 	lda	$3,foo($2)			!tprello
 	lda	$4,foo($29)			!tprel'
 	;;
-  arc-*-*|arc[eb]*-*-*)
+  arc-*-*|arc[eb32]*-*-*)
     conftest_s='
 	add_s r0,r0, @foo@tpoff'
 	;;
