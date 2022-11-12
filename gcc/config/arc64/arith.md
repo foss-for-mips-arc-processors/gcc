@@ -313,6 +313,18 @@
    (set_attr "type"       "<mntab>")]
   )
 
+(define_insn "*bclr<mode>"
+  [(set (match_operand:GPI 0 "register_operand" "=r,r")
+	(and:GPI
+	 (not:GPI
+	  (ashift:GPI (const_int 1)
+		      (match_operand:GPI 2 "nonmemory_operand" "rU06S0,rU06S0")))
+	 (match_operand:GPI 1 "nonmemory_operand" "r,S32S0")))]
+  ""
+  "bclr\\t%0,%1,%2"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "bclr")])
+
 ;; It may be worth to have a separate pattern for AND to take
 ;; advantage of TST_S instruction.
 (define_insn "*<optab><mode>_cmp0_noout"
