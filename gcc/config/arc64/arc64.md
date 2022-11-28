@@ -1539,7 +1539,8 @@ xorl"
    (set (match_dup 0)
 	(plus:P (match_dup 0)
 		(const_int -1)))
-   (clobber (match_scratch:P 2 "=X,r"))]
+   (clobber (match_scratch:P 2 "=X,r"))
+   (clobber (reg:CC_ZN CC_REGNUM))]
   ""
   "*
 {
