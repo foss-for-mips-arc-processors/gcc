@@ -1450,10 +1450,17 @@ df_analyze_loop (class loop *loop)
   bitmap blocks = BITMAP_ALLOC (&df_bitmap_obstack);
   for (int i = 0; i < df->n_blocks; ++i)
     bitmap_set_bit (blocks, df->postorder[i]);
+
+  /* Iterate over loop's exit edges and add theirs destinations BB
+     indexes.  */
+  struct loop_exit *exit;
+  for (exit = loop->exits->next; exit->e; exit = exit->next)
+    bitmap_set_bit (blocks, exit->e->dest->index);
+
   df_set_blocks (blocks);
   BITMAP_FREE (blocks);
 
-  df_analyze_1 ();
+  df_analyze ();
 }
 
 
