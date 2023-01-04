@@ -434,9 +434,9 @@
 (define_insn "*btst<mode>"
   [(set (reg:CC_ZN CC_REGNUM)
 	(compare:CC_ZN (zero_extract:GPI
-			(match_operand:GPI 0 "register_operand"   "q,r")
+			(match_operand:GPI 0 "register_operand"  "q,r")
 			(const_int 1)
-			(match_operand 1 "const_int_operand" "U05S0,S12S0"))
+			(match_operand 1 "nonmemory_operand" "U05S0,rS12S0"))
 		       (const_int 0)))]
   ""
   "btst<sfxtab>%?\\t%0,%1"
