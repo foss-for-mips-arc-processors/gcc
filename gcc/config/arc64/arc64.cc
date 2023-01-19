@@ -6456,6 +6456,61 @@ arc64_cannot_force_const_mem (machine_mode mode ATTRIBUTE_UNUSED,
   return contains_symbol_ref_p (x) || tls_referenced_p (x);
 }
 
+/* Implement target hook TARGET_ARRAY_MODE_SUPPORTED_P.  */
+
+static bool
+arc64_array_mode_supported_p (machine_mode mode,
+			      unsigned HOST_WIDE_INT nelems)
+{
+  switch (mode)
+    {
+    case E_HImode:
+      if (TARGET_SIMD && (nelems >= 2) && (nelems <= 4))
+	return true;
+      if (TARGET_SIMD && TARGET_WIDE_LDST)
+	return (nelems == 8);
+      return false;
+
+    case E_SImode:
+      if (TARGET_SIMD)
+	return (nelems == 2);
+      if (TARGET_SIMD && TARGET_WIDE_LDST)
+	return (nelems == 8);
+      return false;
+
+    case E_DImode:
+      if (TARGET_SIMD && TARGET_WIDE_LDST)
+	return (nelems == 2);
+      return false;
+
+    case E_HFmode:
+      if (ARC64_VFP_32)
+	return (nelems == 2);
+      if (ARC64_VFP_64)
+	return (nelems == 4);
+      if (ARC64_VFP_128)
+	return (nelems == 8);
+      return false;
+
+    case E_SFmode:
+      if (ARC64_VFP_64)
+	return (nelems == 2);
+      if (ARC64_VFP_128)
+	return (nelems == 4);
+      return false;
+
+    case E_DFmode:
+      if (ARC64_VFP_128)
+	return (nelems == 2);
+      return false;
+
+    default:
+      break;
+    }
+
+  return false;
+}
+
 /* Generate RTL for conditional branch with rtx comparison CODE in mode
    CC_MODE.  */
 
@@ -6800,6 +6855,9 @@ arc64_libgcc_floating_mode_supported_p
 
 #undef TARGET_SCHED_ISSUE_RATE
 #define TARGET_SCHED_ISSUE_RATE arc64_sched_issue_rate
+
+#undef TARGET_ARRAY_MODE_SUPPORTED_P
+#define TARGET_ARRAY_MODE_SUPPORTED_P arc64_array_mode_supported_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
