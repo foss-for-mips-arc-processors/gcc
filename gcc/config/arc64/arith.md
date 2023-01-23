@@ -2131,9 +2131,7 @@
   {
     rtx tmp = gen_reg_rtx (V2SImode);
 
-    emit_move_insn (tmp, gen_rtx_UNSPEC (V2SImode,
-					 gen_rtvec (1, operands[2]),
-					 ARC64_UNSPEC_SWAPL));
+    emit_insn (gen_arc64_swaplv2si (tmp, operands[2]));
     operands[2] = tmp;
   })
 
@@ -2174,9 +2172,7 @@
   {
     rtx tmp = gen_reg_rtx (V2SImode);
 
-    emit_move_insn (tmp, gen_rtx_UNSPEC (V2SImode,
-					 gen_rtvec (1, operands[2]),
-					 ARC64_UNSPEC_SWAPL));
+    emit_insn (gen_arc64_swaplv2si (tmp, operands[2]));
     operands[2] = tmp;
   })
 
