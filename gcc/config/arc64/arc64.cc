@@ -4845,7 +4845,6 @@ arc64_override_options (void)
 	    {
 	      target_flags |= MASK_LL64;
 	    }
-	  target_flags |= MASK_SIMD;
 	}
     }
 
