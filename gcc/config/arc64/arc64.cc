@@ -4831,7 +4831,7 @@ arc64_override_options (void)
       else if (strncmp (p, "hs6", 3) == 0)
 	TARGET_64BIT = true;
       else
-	error ("%<-mcpu=%s%>s is not a valid CPU option.", arcv3_cpu_string);
+	error ("%<-mcpu=%s%>s is not a valid CPU option", arcv3_cpu_string);
       p += 3;
       if ( *p == '8')
 	{
@@ -4849,8 +4849,7 @@ arc64_override_options (void)
   if (TARGET_LL64 && TARGET_64BIT)
     {
       target_flags &= ~MASK_LL64;
-      warning (0, "Option -mll64 is ignored because the target"
-	          " is not 32-bit.");
+      warning (0, "Option %<-mll64%> is ignored because the target is not 32-bit");
     }
 }
 
