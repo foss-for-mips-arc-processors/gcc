@@ -1749,7 +1749,14 @@ arc64_print_operand (FILE *file, rtx x, int code)
       /* FIXME! consider volatile accesses as .di accesses, everything
 	 under an option.  */
       if (MEM_VOLATILE_P (x) && TARGET_VOLATILE_DI)
-	fputs (".di", file);
+	{
+	  if (TARGET_ARCH64
+	      && GET_MODE (x) == E_DImode)
+	    warning (OPT_Waddress, "Direct access using 64bit load/store "
+		     "instructions is not permitted.");
+	  else
+	    fputs (".di", file);
+	}
 
       switch (GET_CODE (XEXP (x, 0)))
 	{
