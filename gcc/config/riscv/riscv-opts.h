@@ -62,6 +62,7 @@ enum riscv_microarchitecture_type {
   mips_p8700,
   tt_ascalon_d8,
   arcv_rmx100,
+  arcv_rhx100,
 };
 extern enum riscv_microarchitecture_type riscv_microarchitecture;
 
