@@ -270,6 +270,7 @@ enum riscv_fusion_pairs
   RISCV_FUSE_AUIPC_LD = (1 << 7),
   RISCV_FUSE_LDPREINCREMENT = (1 << 8),
   RISCV_FUSE_ALIGNED_STD = (1 << 9),
+  RISCV_FUSE_ARCV = (1 << 10),
 };
 
 /* Costs of various operations on the different architectures.  */
@@ -512,6 +513,23 @@ static const struct riscv_tune_param xiangshan_nanhu_tune_info = {
   true,						/* slow_unaligned_access */
   false,					/* use_divmod_expansion */
   RISCV_FUSE_ZEXTW | RISCV_FUSE_ZEXTH,          /* fusible_ops */
+  NULL,						/* vector cost */
+};
+
+/* Costs to use when optimizing for Synopsys RHX-100.  */
+static const struct riscv_tune_param arcv_rhx100_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
+  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},	/* int_mul */
+  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
+  4,						/* issue_rate */
+  9,						/* branch_cost */
+  2,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* use_divmod_expansion */
+  RISCV_FUSE_ARCV,				/* fusible_ops */
   NULL,						/* vector cost */
 };
 
@@ -8623,6 +8641,89 @@ riscv_fusion_enabled_p(enum riscv_fusion_pairs op)
   return tune_param->fusible_ops & op;
 }
 
+/* Return TRUE if two addresses can be fused.  */
+
+static bool
+arcv_fused_addr_p (rtx addr0, rtx addr1)
+{
+  rtx base0, base1, tmp;
+  HOST_WIDE_INT off0 = 0, off1 = 0;
+
+  if (GET_CODE (addr0) == PLUS)
+    {
+      base0 = XEXP (addr0, 0);
+      tmp = XEXP (addr0, 1);
+      gcc_assert (CONST_INT_P (tmp));
+      off0 = INTVAL (tmp);
+    }
+  else if (REG_P (addr0))
+    base0 = addr0;
+  else
+    return false;
+
+  if (GET_CODE (addr1) == PLUS)
+    {
+      base1 = XEXP (addr1, 0);
+      tmp = XEXP (addr1, 1);
+      gcc_assert (CONST_INT_P (tmp));
+      off1 = INTVAL (tmp);
+    }
+  else if (REG_P (addr1))
+    base1 = addr1;
+  else
+    return false;
+
+  /* Check if we have the same base.  */
+  gcc_assert (REG_P (base0) && REG_P (base1));
+  if (REGNO (base0) != REGNO (base1))
+    return false;
+
+  /* Offsets have to be aligned to word boundary and adjacent in memory,
+     but the memory operations can be narrower.  */
+  if ((off0 % UNITS_PER_WORD == 0) && (abs (off1 - off0) == UNITS_PER_WORD))
+    return true;
+
+  return false;
+}
+
+/* Return true if PREV and CURR should be kept together during scheduling.  */
+
+static bool
+arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+  /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
+  bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
+
+  /* Don't handle anything with a jump.  */
+  if (!simple_sets_p)
+    return false;
+
+  /* Fuse adjacent loads and stores.  */
+  if (get_attr_type (prev) == TYPE_LOAD
+      && get_attr_type (curr) == TYPE_LOAD)
+    {
+      rtx addr0 = XEXP (SET_SRC (prev_set), 0);
+      rtx addr1 = XEXP (SET_SRC (curr_set), 0);
+
+      if (arcv_fused_addr_p (addr0, addr1))
+	return true;
+    }
+
+  if (get_attr_type (prev) == TYPE_STORE
+      && get_attr_type (curr) == TYPE_STORE)
+    {
+      rtx addr0 = XEXP (SET_DEST (prev_set), 0);
+      rtx addr1 = XEXP (SET_DEST (curr_set), 0);
+
+      if (arcv_fused_addr_p (addr0, addr1))
+	return true;
+    }
+
+  return false;
+}
+
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
    should be kept together during scheduling.  */
 
@@ -8856,6 +8957,9 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	    return true;
 	}
     }
+
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return arcv_macro_fusion_pair_p (prev, curr);
 
   return false;
 }
