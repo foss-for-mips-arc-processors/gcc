@@ -4462,7 +4462,8 @@ proc check_effective_target_vect_int { } {
 	 || [is-effective-target arm_neon]
 	 || ([istarget mips*-*-*]
 	     && ([et-is-effective-target mips_loongson_mmi]
-	     || [et-is-effective-target mips_msa]))
+		 || [et-is-effective-target mips_msa]))
+	 || ([istarget arc64-*-])
 	 || ([istarget s390*-*-*]
 	     && [check_effective_target_s390_vx])
 	 || ([istarget riscv*-*-*]
@@ -4549,6 +4550,7 @@ proc check_effective_target_vect_complex_add_byte { } {
 	  && [check_effective_target_aarch64_little_endian])
 	 || ([check_effective_target_arm_v8_1m_mve_fp_ok]
 	     && [check_effective_target_arm_little_endian])
+	 || ([istarget arc64-*-*])
 	}}]
 }
 
@@ -4564,6 +4566,7 @@ proc check_effective_target_vect_complex_add_short { } {
 	  && [check_effective_target_aarch64_little_endian])
 	 || ([check_effective_target_arm_v8_1m_mve_fp_ok]
 	     && [check_effective_target_arm_little_endian])
+	 || ([istarget arc64-*-*])
 	}}]
 }
 
@@ -4612,6 +4615,7 @@ proc check_effective_target_vect_complex_add_half { } {
 	      && [check_effective_target_aarch64_little_endian])
 	 || ([check_effective_target_arm_v8_1m_mve_fp_ok]
 	     && [check_effective_target_arm_little_endian])
+	 || ([check_effective_target_arc64_fp16_vfloat])
 	}}]
 }
 
@@ -4630,6 +4634,7 @@ proc check_effective_target_vect_complex_add_float { } {
 	      && [check_effective_target_aarch64_little_endian])
 	 || ([check_effective_target_arm_v8_1m_mve_fp_ok]
 	     && [check_effective_target_arm_little_endian])
+	 || ([check_effective_target_arc64_fp32_vfloat])
 	}}]
 }
 
@@ -4645,6 +4650,7 @@ proc check_effective_target_vect_complex_add_double { } {
 	  && [check_effective_target_aarch64_little_endian])
 	 || ([check_effective_target_aarch64_sve2]
 	      && [check_effective_target_aarch64_little_endian]))
+	 || ([check_effective_target_arc64_fp64_vfloat])
 	}}]
 }
 
@@ -4932,6 +4938,40 @@ proc check_effective_target_arc64_atomic { } {
 	#endif
     }]
 }
+
+proc check_effective_target_arc64_fp16_vfloat { } {
+    if { ![istarget arc64-*-*] } {
+	return 0;
+    }
+    return [check_no_compiler_messages arc_fp16_vfloat assembly {
+	#if !defined(__ARC_FPU_SP__)
+	#error NO_16b_FLOATS
+	#endif
+    }]
+}
+
+proc check_effective_target_arc64_fp32_vfloat { } {
+    if { ![istarget arc64-*-*] } {
+	return 0;
+    }
+    return [check_no_compiler_messages arc_fp32_vfloat assembly {
+	#if !defined(__ARC_FPU_SP__)
+	#error NO_32b_FLOATS
+	#endif
+    }]
+}
+
+proc check_effective_target_arc64_fp64_vfloat { } {
+    if { ![istarget arc64-*-*] } {
+	return 0;
+    }
+    return [check_no_compiler_messages arc_fp64_vfloat assembly {
+	#if !defined(__ARC_FPU_DP__) && !defined(__ARC64_WIDE_VECTOR)
+	#error NO_64b_FLOATS
+	#endif
+    }]
+}
+
 
 # Return 1 if this is an arm target using 32-bit instructions
 proc check_effective_target_arm32 { } {
@@ -8241,6 +8281,7 @@ proc check_effective_target_vect_perm { } {
 		     || [et-is-effective-target mips_msa]))
 	     || ([istarget s390*-*-*]
 		 && [check_effective_target_s390_vx])
+	     || ([istarget arc64-*-*])
 	     || [istarget amdgcn-*-*]
 	     || ([istarget riscv*-*-*]
 		 && [check_effective_target_riscv_v])
@@ -12325,6 +12366,9 @@ proc check_vect_support_and_set_flags { } {
       } else {
 	  set dg-do-what-default compile
       }
+    } elseif [istarget arc64-*-*] {
+	lappend DEFAULT_VECTCFLAGS "-ffast-math"
+	set dg-do-what-default run
     } else {
 	return 0
     }
