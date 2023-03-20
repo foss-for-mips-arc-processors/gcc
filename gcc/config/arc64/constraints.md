@@ -383,6 +383,25 @@
     (match_code "const_int")
     (match_test "SIGNED_INT16 (ival)")))
 
+(define_constraint "BSETX" "@internal
+  A 1-bit + 32b integer constant suitable for BSET instruction"
+  (and
+    (match_code "const_int")
+    (match_test "SINGLE_BIT_MASK_OPERAND (zext_hwi (ival >> 32, 32))")
+    (match_test "UNSIGNED_INT32 (zext_hwi (ival, 32))")))
+
+(define_constraint "BCLRX" "@internal
+  A 1-bit + 32b integer constant suitable for BCLR instruction"
+  (and
+    (match_code "const_int")
+    (match_test "SINGLE_BIT_MASK_OPERAND (zext_hwi ((~ival) >> 32, 32))")
+    (match_test "(sext_hwi (ival, 32)) < 0")))
+
+(define_constraint "U38S0" "@internal
+  A 38-bit integer constant suitable for VPACK2WL instruction"
+  (and
+    (match_code "const_int")
+    (match_test "UNSIGNED (ival, 38)")))
 
 ; TODO: Below this line definition should be corrected
 (define_constraint "SR_R0"
