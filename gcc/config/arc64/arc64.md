@@ -969,8 +969,8 @@ xorl"
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,r,    r,         r,    r,Ucnst,    r,r,Ustk<,Ustor")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,r,S12S0,S32S0SymMV,SyPic,S32S0,Ustk>,m,    r, r"))]
+   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,    r,    r,r,    r,         r,    r,    r,Ucnst,    r,r,Ustk<,Ustor")
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,BCLRX,BSETX,r,S12S0,S32S0SymMV,U38S0,SyPic,S32S0,Ustk>,m,    r, r"))]
    "TARGET_64BIT
     && (register_operand (operands[0], DImode)
         || register_operand (operands[1], DImode)
@@ -979,17 +979,20 @@ xorl"
    "@
     movl_s\\t%0,%1
     movl_s\\t%0,%1
+    bclrl\\t%0,%q1,%t1
+    bsetl\\t%0,%L1,%T1
     movl\\t%0,%1
     movl\\t%0,%1
     movl\\t%0,%1
+    vpack2wl\\t%0,%L1,%H1
     addl\\t%0,pcl,%1
     stl%U0\\t%1,%0
     popl_s\\t%0
     ldl%U1\\t%0,%1
     pushl_s\\t%1
     stl%U0\\t%1,%0"
-   [(set_attr "type" "move,move,move,move,move,addl,st,ld,ld,st,st")
-    (set_attr "length" "2,2,4,4,8,8,8,2,*,2,*")]
+   [(set_attr "type" "move,move,bclr,bset,move,move,move,vpack,addl,st,ld,ld,st,st")
+    (set_attr "length" "2,2,8,8,4,4,8,8,8,8,2,*,2,*")]
 )
 
 ;; Hi/Low moves for constant and symbol loading.
