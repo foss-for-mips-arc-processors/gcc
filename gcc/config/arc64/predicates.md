@@ -18,6 +18,33 @@
 ;; along with GCC; see the file COPYING3.  If not see
 ;; <http://www.gnu.org/licenses/>.
 
+;; A legitimate CONST_INT operand that takes more than one instruction
+;; to load
+(define_predicate "splittable_const_int_operand"
+  (match_code "const_int")
+{
+  /* ARC32 can fit all.  */
+  if (!TARGET_64BIT)
+    return false;
+
+  /* Check if we can fit it in a standard LIMM/XLIMM field.  */
+  if (SIGNED_INT32 (INTVAL (op)) || UNSIGNED_INT32 (INTVAL (op)))
+    return false;
+
+  /* Check if the constant can be loaded in a single bsetl/bclrl instruction.  */
+  if ((SINGLE_BIT_MASK_OPERAND (zext_hwi (INTVAL (op) >> 32, 32))
+       && UNSIGNED_INT32 (zext_hwi (INTVAL (op), 32)))
+      || (SINGLE_BIT_MASK_OPERAND (zext_hwi ((~INTVAL (op)) >> 32, 32))
+	  && (sext_hwi (INTVAL (op), 32) < 0)))
+    return false;
+
+  /* Check if the constant can be loaded in a single vpack2wl instruction.  */
+  if (UNSIGNED (INTVAL (op), 38))
+    return false;
+
+  return true;
+})
+
 ;; Place holder for mov operand predicate
 (define_predicate "arc64_movl_operand"
   (and (match_code "unspec,reg, subreg, mem, const, const_int, symbol_ref, label_ref")
@@ -30,8 +57,7 @@
 		 (ior (match_test "XINT (op,1) == ARC64_UNSPEC_PCREL")
 		      (match_test "XINT (op,1) == ARC64_UNSPEC_TLS_GD")))
 	    (and (match_code "const_int")
-		 (ior (match_test "UNSIGNED_INT32 (INTVAL (op))")
-		      (match_test "SIGNED_INT32 (INTVAL (op))"))))))
+		 (match_test "!splittable_const_int_operand (op, mode)")))))
 
 (define_predicate "arc64_movf_operand"
   (and (match_code "reg, subreg, mem, const, const_double")
