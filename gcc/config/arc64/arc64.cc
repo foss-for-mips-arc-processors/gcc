@@ -1110,8 +1110,8 @@ arc64_legitimate_constant1_p (machine_mode mode, rtx x, bool nosym)
 {
   switch (GET_CODE (x))
     {
-    case CONST_DOUBLE:
     case CONST_INT:
+    case CONST_DOUBLE:
     case CONST_WIDE_INT:
     case HIGH:
       if (GET_MODE_SIZE (mode) > UNITS_PER_WORD)
@@ -1690,6 +1690,9 @@ arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
      'C': Constant address, switches on/off @plt.
      's': Scalled immediate.
      'S': Scalled immediate, to be used in pair with 's'.
+     'T': Like 's' but the immediate is not limited to sub123 type insns.
+     't': Like 'T' but the input immediate is bitwise complemented.
+     'q': Sign extended lower 32bit of an immediate.
      'N': Negative immediate, to be used in pair with 's'.
      'V': 2x16b vector immediate, hi lane is zero.
      'P': Constant address, swithces on/off _s to be used with 'C'
@@ -1718,6 +1721,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 
   int scalled = 0;
   int sign = 1;
+  bool invert = false;
   machine_mode effective_mode;
 
   switch (code)
@@ -1809,7 +1813,7 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	  return;
 	}
       ival = INTVAL (x);
-      ival &= 0xffffffffULL;
+      ival = zext_hwi (ival, 32);
       fprintf (file,"0x%08" PRIx32, (uint32_t) ival);
       break;
 
@@ -1897,6 +1901,36 @@ arc64_print_operand (FILE *file, rtx x, int code)
 	}
       if (arc64_use_plt34_p (x))
 	fputs ("_s", file);
+      break;
+
+    case 't':
+      invert = true;
+      /* FALLTHRU */
+    case 'T':
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%s code");
+	  return;
+	}
+      ival = INTVAL (x);
+      if (invert)
+	  ival = ~ival;
+
+      ival = zext_hwi (ival >> 32, 32) << 32;
+      ival = ctz_hwi (ival);
+
+      asm_fprintf (file, "%d", (int) ival);
+      break;
+
+    case 'q':
+      if (!CONST_INT_P (x))
+	{
+	  output_operand_lossage ("invalid operand for %%s code");
+	  return;
+	}
+      ival = INTVAL (x);
+      ival = sext_hwi (ival, 32);
+      asm_fprintf (file, "%d", (int) ival);
       break;
 
     case 's':
@@ -5042,7 +5076,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	{
 	case CONST_INT:
 	  gcc_assert (mode == Pmode);
-	  if (!SIGNED_INT32 (INTVAL (op1)) && !UNSIGNED_INT32 (INTVAL (op1)))
+	  if (splittable_const_int_operand (op1, mode))
 	    {
 	      HOST_WIDE_INT val;
 	      /* We have a large 64bit immediate:
