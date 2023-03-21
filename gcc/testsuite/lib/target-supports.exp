@@ -4543,8 +4543,8 @@ proc check_effective_target_arc_atomic { } {
 
 # Return 1 if this is a compiler supporting ARC atomic operations
 proc check_effective_target_arc64_atomic { } {
-    return [check_no_compiler_messages arc_atomic assembly {
-	#if !defined(__ARC64_ATOMIC__)
+    return [check_no_compiler_messages arc64_atomic assembly {
+	#if !defined(__ARC64_ATOMIC_1__) && !defined(__ARC64_ATOMIC_2__)
 	#error NO_ATOMIC64
 	#endif
     }]
