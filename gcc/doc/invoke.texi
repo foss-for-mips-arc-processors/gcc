@@ -841,8 +841,8 @@ Objective-C and Objective-C++ Dialects}.
 -mdiv-rem  -mcode-density  -mll64  -mfpu=@var{fpu}  -mrf16  -mbranch-index}
 
 @emph{ARC64 Options}
-@gccoptlist{-mcmodel=@var{code-model} -matomic=@var{opt} -mfpu=@var{fpu} @gol
--mdiv-rem -mbitscan -mcpu=@var{cpu} -munaligned-access -mvolatile-di @gol
+@gccoptlist{-mcmodel=@var{code-model} -matomic=@var{opt} -mfpu=@var{fpu}
+-mdiv-rem -mbitscan -mcpu=@var{cpu} -munaligned-access -mvolatile-di
 -mcode-density -msimd -mwide -m128 -mbrcc}
 
 @emph{ARM Options}
