@@ -4429,10 +4429,14 @@ arc64_simd_lane_pack (struct e_vec_perm_d *d)
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
 
 static bool
-arc64_vectorize_vec_perm_const (machine_mode vmode, rtx target, rtx op0,
-				rtx op1, const vec_perm_indices &sel)
+arc64_vectorize_vec_perm_const (machine_mode vmode, machine_mode op_mode,
+                                rtx target, rtx op0, rtx op1,
+                                const vec_perm_indices &sel)
 {
   struct e_vec_perm_d d;
+
+  if (vmode != op_mode)
+    return false;
 
   /* Check whether the mask can be applied to a single vector.  */
   if (sel.ninputs () == 1
