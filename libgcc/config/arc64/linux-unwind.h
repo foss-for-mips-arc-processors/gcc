@@ -122,14 +122,14 @@ arc_fallback_frame_state (struct _Unwind_Context *context,
     {
       if (reg_offset_map[i] == SKIP)
 	continue;
-      fs->regs.reg[reg_offset_map[i]].how = REG_SAVED_OFFSET;
+      fs->regs.how[reg_offset_map[i]] = REG_SAVED_OFFSET;
       fs->regs.reg[reg_offset_map[i]].loc.offset
 	= ((_Unwind_Ptr)&(regs[i])) - new_cfa;
     }
 
   fs->signal_frame = 1;
   fs->retaddr_column = __LIBGCC_DWARF_ALT_FRAME_RETURN_COLUMN__;
-  fs->regs.reg[fs->retaddr_column].how = REG_SAVED_VAL_OFFSET;
+  fs->regs.how[fs->retaddr_column] = REG_SAVED_VAL_OFFSET;
   fs->regs.reg[fs->retaddr_column].loc.offset =
     ((_Unwind_Ptr) (regs[REG_RET])) - new_cfa;
 
