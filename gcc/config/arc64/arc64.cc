@@ -1462,7 +1462,8 @@ arc64_setup_incoming_varargs (cumulative_args_t cum_v,
   /* The caller has advanced CUM up to, but not beyond, the last named
      argumend.  Advance a local copu of CUM past the last "real" named
      argument, to find out how many registers are left over.  */
-  arc64_function_arg_advance (pack_cumulative_args (&cum), arg);
+  if (!TYPE_NO_NAMED_ARGS_STDARG_P (TREE_TYPE (current_function_decl)))
+    arc64_function_arg_advance (pack_cumulative_args (&cum), arg);
 
   cfun->machine->uses_anonymous_args = 1;
   if (!FUNCTION_ARG_REGNO_P (cum.iregs))
