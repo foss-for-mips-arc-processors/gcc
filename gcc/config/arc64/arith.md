@@ -1916,12 +1916,15 @@
 (define_expand "vec_duplicatev4hi"
   [(set (match_operand:V4HI 0 "register_operand")
 	(vec_duplicate:V4HI (match_operand:HI 1 "register_operand")))]
- "TARGET_SIMD && TARGET_64BIT"
+ "TARGET_SIMD"
  {
-   rtx tmp = gen_reg_rtx (V2SImode);
-   emit_insn (gen_arc64_duplicate_v2hi(tmp, operands[1]));
-   emit_insn (gen_arc64_pack4hi(operands[0], tmp, tmp));
-   DONE;
+  if (TARGET_64BIT)
+    {
+      rtx tmp = gen_reg_rtx (V2SImode);
+      emit_insn (gen_arc64_duplicate_v2hi(tmp, operands[1]));
+      emit_insn (gen_arc64_pack4hi(operands[0], tmp, tmp));
+      DONE;
+    }
  })
 
 (define_insn "arc64_duplicate_v2hi"
