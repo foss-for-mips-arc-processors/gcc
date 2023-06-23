@@ -99,3 +99,18 @@
   [(set_attr "length" "8")
    (set_attr "type" "<mntab>")])
 
+
+(define_insn_and_split "arc64_vdup_v4hi"
+  [(set (match_operand:V4HI 0 "register_operand")
+	(vec_duplicate:V4HI (match_operand:HI 1 "register_operand")))]
+ "TARGET_SIMD && !TARGET_64BIT"
+ "#"
+ "&& reload_completed"
+ [(set (match_dup 2) (vec_duplicate:V2HI (match_dup 1)))
+  (set (match_dup 3) (vec_duplicate:V2HI (match_dup 1)))]
+ {
+  operands[2] = gen_lowpart (V2HImode, operands[0]);
+  operands[3] = gen_highpart (V2HImode, operands[0]);
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "vpack")])
