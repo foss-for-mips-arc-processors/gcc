@@ -93,6 +93,7 @@
   "@internal
    Stack pre-decrement"
   (and (match_code "mem")
+       (match_test "GET_MODE (op) == Pmode")
        (match_test "GET_CODE (XEXP (op, 0)) == PRE_DEC")
        (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
        (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REGNUM")))
@@ -101,6 +102,7 @@
   "@internal
    Stack post-increment"
   (and (match_code "mem")
+       (match_test "GET_MODE (op) == Pmode")
        (match_test "GET_CODE (XEXP (op, 0)) == POST_INC")
        (match_test "REG_P (XEXP (XEXP (op, 0), 0))")
        (match_test "REGNO (XEXP (XEXP (op, 0), 0)) == SP_REGNUM")))
@@ -421,6 +423,12 @@
    @code{SP} register."
   (and (match_code "reg")
        (match_test "REGNO (op) == SP_REGNUM")))
+
+(define_constraint "RBLNK"
+  "@internal
+   @code{BLINK} register."
+  (and (match_code "reg")
+       (match_test "REGNO (op) == BLINK_REGNUM")))
 
 ; TODO: FIX THIS
 (define_constraint "SR_GP"
