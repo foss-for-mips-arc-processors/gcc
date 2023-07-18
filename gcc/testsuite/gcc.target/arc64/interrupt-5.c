@@ -72,8 +72,8 @@ void isr_0 (void)
 /* 3. hs5x output without double loads and stores.  */
 /* { dg-final { scan-assembler "st.a\\s+r58,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r30,"    { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r13,"    { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r12,"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r13"   { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r12"   { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r11,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r10,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r9,"     { target { hs5x && { ! doubleaccess } } } } } */
@@ -82,16 +82,16 @@ void isr_0 (void)
 /* { dg-final { scan-assembler "st.a\\s+r6,"     { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r5,"     { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "st.a\\s+r4,"     { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r3,"     { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r2,"     { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r1,"     { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+r0,"     { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "st.a\\s+blink,"  { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+blink," { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r0,"    { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r1,"    { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r2,"    { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r3,"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r3"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r2"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r1"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+r0"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "push_s\\s+blink" { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+blink"  { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r0"     { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r1"     { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r2"     { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r3"     { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r4,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r5,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r6,"    { target { hs5x && { ! doubleaccess } } } } } */
@@ -100,8 +100,8 @@ void isr_0 (void)
 /* { dg-final { scan-assembler "ld.ab\\s+r9,"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r10,"   { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r11,"   { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r12,"   { target { hs5x && { ! doubleaccess } } } } } */
-/* { dg-final { scan-assembler "ld.ab\\s+r13,"   { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r12"    { target { hs5x && { ! doubleaccess } } } } } */
+/* { dg-final { scan-assembler "pop_s\\s+r13"    { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r30,"   { target { hs5x && { ! doubleaccess } } } } } */
 /* { dg-final { scan-assembler "ld.ab\\s+r58,"   { target { hs5x && { ! doubleaccess } } } } } */
 
