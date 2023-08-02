@@ -948,14 +948,16 @@ xorl"
 
 ;; move 128bit
 (define_insn_and_split "*mov<mode>_insn"
-  [(set (match_operand:A128 0 "arc64_dest_operand"  "=r,r,Ustor")
-	(match_operand:A128 1 "nonimmediate_operand" "r,m,r"))]
+  [(set (match_operand:A128 0 "arc64_dest_operand"  "=r,r,r,Ustk<,Ustor")
+	(match_operand:A128 1 "nonimmediate_operand" "r,Ustk>,m,r,r"))]
   "TARGET_WIDE_LDST
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
   "@
    #
+   popdl_s\\t%0
    lddl%U1\\t%0,%1
+   pushdl_s\\t%1
    stdl%U0\\t%1,%0"
    "&& reload_completed
     && arc64_split_double_move_p (operands, <MODE>mode)"
@@ -964,8 +966,8 @@ xorl"
     arc64_split_double_move (operands, <MODE>mode);
     DONE;
    }
-  [(set_attr "type" "move,ld,st")
-   (set_attr "length" "8,*,*")])
+  [(set_attr "type" "move,ld,ld,st,st")
+   (set_attr "length" "8,2,*,2,*")])
 ;;
 ;; Short insns: movl_s g,h; movl_s b,u8
 ;; Long insns: movl, stl, ldl
