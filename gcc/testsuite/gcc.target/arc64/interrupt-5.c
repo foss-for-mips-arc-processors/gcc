@@ -50,22 +50,22 @@ void isr_0 (void)
 /* 2. hs6x output with double loads and stores.  */
 /* { dg-final { scan-assembler "pushl_s\\s+r58\n"   { target { hs6x && doubleaccess } } } } */
 /* { dg-final { scan-assembler "pushl_s\\s+r30\n"   { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r12,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r10,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r8,"      { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r6,"      { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r4,"      { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r2,"      { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "stdl.a\\s+r0,"      { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r12\n"  { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r10\n"  { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r8\n"   { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r6\n"   { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r4\n"   { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r2\n"   { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "pushdl_s\\s+r0\n"   { target { hs6x && doubleaccess } } } } */
 /* { dg-final { scan-assembler "pushl_s\\s+blink\n" { target { hs6x && doubleaccess } } } } */
 /* { dg-final { scan-assembler "popl_s\\s+blink\n"  { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r0,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r2,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r4,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r6,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r8,"     { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r10,"    { target { hs6x && doubleaccess } } } } */
-/* { dg-final { scan-assembler "lddl.ab\\s+r12,"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r0\n"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r2\n"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r4\n"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r6\n"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r8\n"    { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r10\n"   { target { hs6x && doubleaccess } } } } */
+/* { dg-final { scan-assembler "popdl_s\\s+r12\n"   { target { hs6x && doubleaccess } } } } */
 /* { dg-final { scan-assembler "popl_s\\s+r30\n"    { target { hs6x && doubleaccess } } } } */
 /* { dg-final { scan-assembler "popl_s\\s+r58\n"    { target { hs6x && doubleaccess } } } } */
 
