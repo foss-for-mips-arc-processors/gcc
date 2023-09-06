@@ -419,6 +419,8 @@
       return code == EQ || code == NE;
     case E_CC_Cmode:
       return code == LTU || code == GEU;
+    case E_CC_Vmode:
+      return code == EQ || code == NE;
     case E_CC_FP_GTmode:
       return code == GT || code == UNLE;
     case E_CC_FP_GEmode:
@@ -451,7 +453,12 @@
 })
 
 (define_predicate "equality_comparison_operator"
-  (match_code "eq, ne"))
+  (match_code "eq, ne")
+  {
+    machine_mode opmode = GET_MODE (XEXP (op, 0));
+    return opmode != CC_Vmode;
+  }
+)
 
 (define_predicate "ge_lt_comparison_operator"
   (match_code "ge, lt"))
@@ -504,7 +511,8 @@
       || (mode == CC_ZNmode && rmode == CC_Zmode)
       || (mode == CCmode && rmode == CC_Zmode)
       || (mode == CCmode && rmode == CC_ZNmode)
-      || (mode == CCmode && rmode == CC_Cmode))
+      || (mode == CCmode && rmode == CC_Cmode)
+      || (mode == CCmode && rmode == CC_Vmode))
     return TRUE;
 
   return FALSE;
@@ -524,7 +532,7 @@
       if (GET_MODE (op) == CC_ZNmode)
 	return 1;
       /* Fall through.  */
-    case E_CC_ZNmode: case E_CC_Cmode:
+    case E_CC_ZNmode: case E_CC_Cmode: case E_CC_Vmode:
       return GET_MODE (op) == CCmode;
     default:
       gcc_unreachable ();
