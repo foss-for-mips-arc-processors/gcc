@@ -11730,6 +11730,9 @@ expand_reversed_crc_using_clmul (rtx *operands)
 #undef TARGET_GET_RAW_RESULT_MODE
 #define TARGET_GET_RAW_RESULT_MODE riscv_get_raw_result_mode
 
+#undef TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS
+#define TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS true
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 #include "gt-riscv.h"
