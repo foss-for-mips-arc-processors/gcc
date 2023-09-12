@@ -1358,10 +1358,14 @@ arc-*-linux* | arceb-*-linux*)
 arc32-*-elf*)
 	tm_file="elfos.h newlib-stdint.h arc64/elf.h arc64/elf32.h ${tm_file}"
 	tmake_file="${tmake_file} arc64/t-multilib32 arc64/t-arc64"
+	gnu_ld=yes
+	gas=yes
 	;;
 arc64-*-elf*)
 	tm_file="elfos.h newlib-stdint.h arc64/elf.h arc64/elf64.h ${tm_file}"
 	tmake_file="${tmake_file} arc64/t-multilib arc64/t-arc64"
+	gnu_ld=yes
+	gas=yes
 	;;
 arc32-*-linux*)
 	tm_file="elfos.h gnu-user.h linux.h arc64/linux.h arc64/linux32.h linux-android.h glibc-stdint.h ${tm_file}"
@@ -1369,6 +1373,8 @@ arc32-*-linux*)
 	# Force .init_array support.  The configure script cannot always
 	# automatically detect that GAS supports it, yet we require it.
 	gcc_cv_initfini_array=yes
+	gnu_ld=yes
+	gas=yes
 	;;
 arc64-*-linux*)
 	tm_file="elfos.h gnu-user.h linux.h arc64/linux.h arc64/linux64.h linux-android.h glibc-stdint.h ${tm_file}"
@@ -1376,6 +1382,8 @@ arc64-*-linux*)
 	# Force .init_array support.  The configure script cannot always
 	# automatically detect that GAS supports it, yet we require it.
 	gcc_cv_initfini_array=yes
+	gnu_ld=yes
+	gas=yes
 	;;
 arm-wrs-vxworks7*)
 	# We only support VxWorks 7 now on ARM, post SR600.  Pre SR600
