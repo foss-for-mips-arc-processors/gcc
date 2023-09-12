@@ -1313,6 +1313,8 @@ arc-*-elf* | arceb-*-elf*)
 	if test "x$with_cpu" != x; then
 		tm_defines="${tm_defines} TARGET_CPU_BUILD=PROCESSOR_$with_cpu"
 	fi
+	gnu_ld=yes
+	gas=yes
 	if test x${with_endian} = x; then
 		case ${target} in
 		arc*be-*-* | arc*eb-*-*)	with_endian=big ;;
@@ -1334,6 +1336,8 @@ arc-*-linux* | arceb-*-linux*)
 	if test "x$with_cpu" != x; then
 		tm_defines="${tm_defines} TARGET_CPU_BUILD=PROCESSOR_$with_cpu"
 	fi
+	gnu_ld=yes
+	gas=yes
 	if test x${with_endian} = x; then
 		case ${target} in
 		arc*be-*-* | arc*eb-*-*)	with_endian=big ;;
