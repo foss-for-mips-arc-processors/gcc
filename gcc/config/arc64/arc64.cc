@@ -6903,6 +6903,9 @@ arc64_libgcc_floating_mode_supported_p
 #undef TARGET_ARRAY_MODE_SUPPORTED_P
 #define TARGET_ARRAY_MODE_SUPPORTED_P arc64_array_mode_supported_p
 
+#undef TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS
+#define TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS true
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 #include "gt-arc64.h"
