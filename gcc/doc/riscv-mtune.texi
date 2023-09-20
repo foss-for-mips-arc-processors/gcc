@@ -54,6 +54,8 @@ particular CPU name.  Permissible values for this option are:
 
 @samp{arc-v-rmx-100-series},
 
+@samp{arc-v-rmx-500-series},
+
 @samp{arc-v-rhx-100-series},
 
 @samp{generic-ooo},
