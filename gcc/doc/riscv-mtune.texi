@@ -64,6 +64,8 @@ particular CPU name.  Permissible values for this option are:
 
 @samp{spacemit-a100},
 
+@samp{arc-v-rmx-500-series},
+
 @samp{arc-v-rhx-100-series},
 
 @samp{arc-v-rpx-100-series},

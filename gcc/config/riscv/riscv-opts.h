@@ -68,6 +68,7 @@ enum riscv_microarchitecture_type {
   andes_45_series,
   spacemit_x60,
   arcv_rmx100,
+  arcv_rmx500,
   arcv_rhx100,
   arcv_rpx100,
   xt_c908
