@@ -3526,9 +3526,9 @@ arc64_preferred_simd_mode (scalar_mode mode)
       return word_mode;
 
     case E_HImode:
-      return TARGET_SIMD ? V4HImode : word_mode;
+      return TARGET_WIDE_LDST ? V8HImode : (TARGET_SIMD ? V4HImode : word_mode);
     case E_SImode:
-      return TARGET_SIMD ? V2SImode : word_mode;
+      return TARGET_WIDE_LDST ? V4SImode : (TARGET_SIMD ? V2SImode : word_mode);
 
     case E_DImode:
       return TARGET_WIDE_LDST ? V2DImode : word_mode;
