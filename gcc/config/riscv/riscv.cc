@@ -8755,6 +8755,16 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return true;
     }
 
+  /* Fuse load-immediate with a store of the destination register.  */
+  if (get_attr_type (prev) == TYPE_MOVE
+      && get_attr_move_type (prev) == MOVE_TYPE_CONST
+      && get_attr_type (curr) == TYPE_STORE
+      && ((REG_P (SET_SRC (curr_set))
+	   && SET_DEST (prev_set) == SET_SRC (curr_set))
+	  || (SUBREG_P (SET_SRC (curr_set))
+	      && SET_DEST (prev_set) == SUBREG_REG (SET_SRC (curr_set)))))
+    return true;
+
   return false;
 }
 
