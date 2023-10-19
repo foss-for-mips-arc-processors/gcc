@@ -705,6 +705,12 @@ typedef enum
 
 typedef insn_code (*code_for_push_pop_t) (machine_mode);
 
+bool
+riscv_is_micro_arch (enum riscv_microarchitecture_type arch)
+{
+  return (riscv_microarchitecture == arch);
+}
+
 void riscv_frame_info::reset(void)
 {
   total_size = 0;
