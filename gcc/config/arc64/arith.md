@@ -176,24 +176,6 @@
    (set_attr "length"     "2,*,*,4,4,4,4,4,8")
    (set_attr "type"       "add")])
 
-;; This pattern is needed because the GT (pnz) is not reversible and I
-;; cannot convert CCmode to CC_ZNmode.
-(define_insn "*<ADDSUB:optab><GPI:mode>3_f"
-  [(set (reg:CC CC_REGNUM)
-	(compare:CC
-	 (ADDSUB:GPI
-	  (match_operand:GPI 1 "arc64_nonmem_operand" "0,    0,    0,    r,r,S32S0,    r")
-	  (match_operand:GPI 2 "arc64_nonmem_operand" "r,U06S0,S12S0,U06S0,r,    r,S32S0"))
-	 (const_int 0)))
-   (set (match_operand:GPI 0 "register_operand"      "=r,    r,    r,    r,r,    r,    r")
-	(ADDSUB:GPI (match_dup 1) (match_dup 2)))]
-  "register_operand (operands[1], <MODE>mode)
-   || register_operand (operands[2], <MODE>mode)"
-  "<ADDSUB:optab><GPI:sfxtab>.f\\t%0,%1,%2"
-  [(set_attr "predicable" "yes,yes,no,no,no,no,no")
-   (set_attr "length"     "4,4,4,4,4,8,8")
-   (set_attr "type"       "<ADDSUB:optab><GPI:sfxtab>")])
-
 ;; Arithmetic patterns used by the combiner.
 (define_insn "*bic<mode>3"
   [(set (                  match_operand:GPI 0 "register_operand"  "=q,r,r,    r")
