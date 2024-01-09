@@ -940,7 +940,7 @@
    ")
 
 (define_insn "*mpyd<ANY_EXTEND:su_optab>"
-  [(set (match_operand:DI 0 "register_operand" "=r")
+  [(set (match_operand:DI 0 "arc64_reg_pair_operand" "=r")
 	(mult:DI
 	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r"))
 	 (ANY_EXTEND:DI (match_operand:SI 2 "register_operand" "r"))))
@@ -961,7 +961,7 @@
    (set_attr "type" "mpy")])
 
 (define_insn "*mpyd<ANY_EXTEND:su_optab>i"
-  [(set (match_operand:DI 0 "register_operand" "=r,r,r")
+  [(set (match_operand:DI 0 "arc64_reg_pair_operand" "=r,r,r")
 	(mult:DI
 	 (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "r,0,r"))
 	 (match_operand:SI 2 "<su_optab>signed32b_operand" "U06S0,S12S0,i")))
@@ -1076,7 +1076,7 @@
   (set_attr "type" "mac")])
 
 (define_insn_and_split "<ANY_EXTEND:su_optab>macd"
-  [(set (match_operand:DI 0 "register_operand" "=r,r,r,r")
+  [(set (match_operand:DI 0 "arc64_reg_pair_operand" "=r,r,r,r")
 	(plus:DI
 	 (mult:DI
 	  (ANY_EXTEND:DI (match_operand:SI 1 "register_operand" "%r,0,r,r"))
