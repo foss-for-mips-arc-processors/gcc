@@ -89,6 +89,20 @@
 	    (match_test "UNSIGNED_INT32 (INTVAL (op))")
 	    (match_test "INTVAL (op) > 0"))))
 
+;; 32bit variants need to operate 64bit datum using register pairs.
+(define_predicate "arc64_reg_pair_operand"
+  (match_code "reg")
+  {
+    if (TARGET_64BIT)
+      return register_operand (op, mode);
+
+    if (!register_operand (op, mode))
+      return 0;
+
+    return (REG_P (op) && ((REGNO (op) >= FIRST_PSEUDO_REGISTER)
+			   || ((REGNO (op) & 1) == 0)));
+  })
+
 ;; Used for HIGH or LO_SUM patterns
 (define_predicate "arc64_immediate_or_pic"
   (ior (match_operand 0 "immediate_operand")
