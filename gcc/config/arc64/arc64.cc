@@ -3210,7 +3210,11 @@ arc64_reorg (void)
 	}
 
       gcc_assert (REGNO (SET_DEST (PATTERN (insn))) == R58_REGNUM);
-      rtx_insn *nxt = next_real_insn (insn);
+      rtx_insn *nxt = next_nonnote_nondebug_insn_bb (insn);
+
+      /* Sanity check: is it a real instruction?  */
+      if (nxt == 0 || !INSN_P (nxt))
+	continue;
 
       /* 2nd Check if it is a move instruction.  */
       tmp = PATTERN (nxt);
