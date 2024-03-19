@@ -933,8 +933,10 @@ arc64_legitimate_address_1_p (machine_mode mode,
   if (REG_P (x))
     return true;
 
+  /* For now, we can only handle numbers that are 32-bit long.
+     With some address scaling trick we could go higher.  */
   if (CONST_INT_P (x))
-    return true;
+    return UNSIGNED_INT32 (INTVAL (x));
 
   if (CONSTANT_P (x))
     {
