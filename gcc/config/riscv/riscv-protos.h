@@ -756,6 +756,7 @@ extern unsigned int th_int_get_save_adjustment (void);
 extern rtx th_int_adjust_cfi_prologue (unsigned int);
 extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
 
+extern bool riscv_macro_fusion_p ();
 extern bool riscv_is_micro_arch (enum riscv_microarchitecture_type);
 
 #ifdef RTX_CODE
