@@ -8667,7 +8667,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 /* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
    instruction fusion of some sort.  */
 
-static bool
+bool
 riscv_macro_fusion_p (void)
 {
   return tune_param->fusible_ops != RISCV_FUSE_NOTHING;
@@ -8736,7 +8736,18 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
   bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
 
-  /* Don't handle anything with a jump.  */
+ /* Fuse load-immediate with a dependent conditional branch.  */
+ if (get_attr_type (prev) == TYPE_MOVE
+     && get_attr_move_type (prev) == MOVE_TYPE_CONST
+     && any_condjump_p (curr))
+    {
+      rtx comp = XEXP (SET_SRC (curr_set), 0);
+
+      return (REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == SET_DEST (prev_set))
+	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == SET_DEST (prev_set));
+    }
+
+  /* Don't handle anything with a jump past this point.  */
   if (!simple_sets_p)
     return false;
 
