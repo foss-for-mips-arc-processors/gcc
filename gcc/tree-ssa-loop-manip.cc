@@ -1465,3 +1465,81 @@ canonicalize_loop_ivs (class loop *loop, tree *nit, bool bump_in_latch)
 
   return var_before;
 }
+
+/* Remove and destroy the loop LOOP.
+   Brought this function from th tree-loop-distribution.cc.  */
+
+void
+destroy_loop (class loop *loop)
+{
+  unsigned nbbs = loop->num_nodes;
+  edge exit = single_exit (loop);
+  basic_block src = loop_preheader_edge (loop)->src, dest = exit->dest;
+  basic_block *bbs;
+  unsigned i;
+
+  bbs = get_loop_body_in_dom_order (loop);
+
+  gimple_stmt_iterator dst_gsi = gsi_after_labels (exit->dest);
+  bool safe_p = single_pred_p (exit->dest);
+  for (unsigned i = 0; i < nbbs; ++i)
+    {
+      /* We have made sure to not leave any dangling uses of SSA
+	 names defined in the loop.  With the exception of virtuals.
+	 Make sure we replace all uses of virtual defs that will remain
+	 outside of the loop with the bare symbol as delete_basic_block
+	 will release them.  */
+      for (gphi_iterator gsi = gsi_start_phis (bbs[i]); !gsi_end_p (gsi);
+	   gsi_next (&gsi))
+	{
+	  gphi *phi = gsi.phi ();
+	  if (virtual_operand_p (gimple_phi_result (phi)))
+	    mark_virtual_phi_result_for_renaming (phi);
+	}
+      for (gimple_stmt_iterator gsi = gsi_start_bb (bbs[i]); !gsi_end_p (gsi);)
+	{
+	  gimple *stmt = gsi_stmt (gsi);
+	  tree vdef = gimple_vdef (stmt);
+	  if (vdef && TREE_CODE (vdef) == SSA_NAME)
+	    mark_virtual_operand_for_renaming (vdef);
+	  /* Also move and eventually reset debug stmts.  We can leave
+	     constant values in place in case the stmt dominates the exit.
+	     ???  Non-constant values from the last iteration can be
+	     replaced with final values if we can compute them.  */
+	  if (gimple_debug_bind_p (stmt))
+	    {
+	      tree val = gimple_debug_bind_get_value (stmt);
+	      gsi_move_before (&gsi, &dst_gsi);
+	      if (val
+		  && (!safe_p
+		      || !is_gimple_min_invariant (val)
+		      || !dominated_by_p (CDI_DOMINATORS, exit->src, bbs[i])))
+		{
+		  gimple_debug_bind_reset_value (stmt);
+		  update_stmt (stmt);
+		}
+	    }
+	  else
+	    gsi_next (&gsi);
+	}
+    }
+
+  redirect_edge_pred (exit, src);
+  exit->flags &= ~(EDGE_TRUE_VALUE|EDGE_FALSE_VALUE);
+  exit->flags |= EDGE_FALLTHRU;
+  cancel_loop_tree (loop);
+  rescan_loop_exit (exit, false, true);
+
+  i = nbbs;
+  do
+    {
+      --i;
+      delete_basic_block (bbs[i]);
+    }
+  while (i != 0);
+
+  free (bbs);
+
+  set_immediate_dominator (CDI_DOMINATORS, dest,
+			   recompute_dominator (CDI_DOMINATORS, dest));
+}
