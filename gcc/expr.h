@@ -369,6 +369,15 @@ extern rtx expr_size (tree);
 extern bool mem_ref_refers_to_non_mem_p (tree);
 extern bool non_mem_decl_p (tree);
 
+/* Reflect the VALUE.
+   If we have 0000 0000 0101 0111, we will get 1110 1010.  */
+extern unsigned HOST_WIDE_INT reflect (unsigned HOST_WIDE_INT);
+
+/* Return the quotient of the polynomial long division of x^2N by POLYNOMIAL
+   in GF (2^N).  */
+extern unsigned HOST_WIDE_INT
+gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT, size_t);
+
 /* Generate table-based CRC.  */
 extern void generate_reflecting_code_standard (rtx *, int);
 extern void expand_crc_table_based (rtx, rtx, rtx, rtx, machine_mode);
