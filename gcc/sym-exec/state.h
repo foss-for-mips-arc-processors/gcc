@@ -219,9 +219,6 @@ class state {
   /* Shifts number left by size of shift_value.  */
   value *shift_left_by_const (const value *number, size_t shift_value);
 
-  /* Checks if all bits of the given value have constant bit type.  */
-  bool is_bit_vector (const value *var);
-
   /* Adds two bits and carry value.
      Resturn result and stores new carry bit in "carry".  */
   static value_bit *full_adder (value_bit *var1, value_bit *var2,
@@ -235,6 +232,14 @@ class state {
 
   /* Make a copy of given bits.  */
   static vec<value_bit *> *make_copy (vec<value_bit *> *bits);
+
+  /* Create LFSR value for the reversed CRC.  */
+  static void create_reversed_lfsr (value &lfsr, const value &crc,
+				    const value &polynomial);
+
+  /* Create LFSR value for the forward CRC.  */
+  static void create_forward_lfsr (value &lfsr, const value &crc,
+				   const value &polynomial);
 
  public:
   state () = default;
@@ -286,6 +291,9 @@ class state {
 
   /* Prints added conditions.  */
   void print_conditions ();
+
+  /* Checks if all bits of the given value have constant bit type.  */
+  static bool is_bit_vector (const value *var);
 
   /* Returns the number represented by the value.  */
   static unsigned HOST_WIDE_INT
