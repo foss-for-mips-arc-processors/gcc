@@ -1673,6 +1673,9 @@ extern void maybe_remove_unused_call_args (struct function *, gimple *);
 extern bool gimple_inexpensive_call_p (gcall *);
 extern bool stmt_can_terminate_bb_p (gimple *);
 extern location_t gimple_or_expr_nonartificial_location (gimple *, tree);
+extern void set_gimple_stmts_not_visited (basic_block);
+extern void set_phi_stmts_not_visited (basic_block);
+extern void set_bbs_stmts_not_visited (const basic_block *, unsigned);
 gcall *gimple_build_builtin_unreachable (location_t);
 
 /* Return the disposition for a warning (or all warnings by default)
