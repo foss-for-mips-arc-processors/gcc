@@ -14096,6 +14096,73 @@ int_expr_size (const_tree exp)
   return tree_to_shwi (size);
 }
 
+/* Reflect the VALUE.
+   If we have 0000 0000 0101 0111, we will get 1110 1010.  */
+
+unsigned HOST_WIDE_INT
+reflect (unsigned HOST_WIDE_INT value)
+{
+  unsigned HOST_WIDE_INT reflectedValue = 0;
+  /* Looping through each bit in the byte.  */
+  for (size_t i = 0; value || !(i == 8 || i == 16 || i == 32 || i == 64); i++)
+    {
+      reflectedValue <<= 1;
+      /* Add the least significant bit of the original value to the
+	 reflected value.  */
+      reflectedValue |= (value & 1);
+      value >>= 1;
+    }
+  return reflectedValue;
+}
+
+/* Return the quotient of polynomial long division of x^2N by POLYNOMIAL
+   in GF (2^N).  */
+
+unsigned HOST_WIDE_INT
+gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT polynomial, size_t n)
+{
+  vec<short> x2n;
+  vec<bool> pol, q;
+  /* Create vector of bits, for the polynomial.  */
+  pol.create (n + 1);
+  for (size_t i = 0; i < n; i++)
+    {
+      pol.quick_push (polynomial & 1);
+      polynomial >>= 1;
+    }
+  pol.quick_push (1);
+
+  /* Create vector for x^2n polynomial.  */
+  x2n.create (2 * n - 1);
+  for (size_t i = 0; i < 2 * (n - 1); i++)
+    x2n.safe_push (0);
+  x2n.safe_push (1);
+
+  q.create (n);
+  for (size_t i = 0; i < n; i++)
+    q.quick_push (0);
+
+  /* Calculate the quotient of x^2n/polynomial.  */
+  for (int i = n - 1; i >= 0; i--)
+    {
+      int d = x2n[i + n - 1];
+      if (d == 0)
+	continue;
+      for (int j = i + n - 1; j >= i; j--)
+	x2n[j] ^= (pol[j - i]);
+      q[i] = 1;
+    }
+
+  /* Get the number from the vector of 0/1s.  */
+  unsigned HOST_WIDE_INT quotient = 0;
+  for (size_t i = 0; i < q.length (); i++)
+    {
+      quotient <<= 1;
+      quotient = quotient | q[q.length () - i - 1];
+    }
+  return quotient;
+}
+
 /* Calculate CRC for the initial CRC and given POLYNOMIAL.
    CRC_BITS is CRC size.  */
 
