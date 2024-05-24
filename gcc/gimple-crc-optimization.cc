@@ -209,6 +209,24 @@ class crc_optimization {
   /* Returns phi statement which may hold the calculated CRC.  */
   gphi *get_output_phi ();
 
+  /* Returns data argument to pass to the CRC IFN.
+     If there is data from the code - use it (this is the case,
+     when data isn't xor-ed with CRC before the loop).
+     Otherwise, generate a new variable for the data with 0 value
+     (the case, when data is xor-ed with CRC before the loop).
+     For the CRC calculation, it doesn't matter CRC is calculated for the
+     (CRC^data, 0) or (CRC, data).  */
+  tree get_data ();
+
+  /* Replaces CRC calculation loop with CRC_IFN call.
+     Returns true if replacement is succeeded, otherwise false.  */
+  bool faster_crc_code_generation (function *fun, value *polynomial,
+				   gphi *output_crc);
+
+  /* Build tree for the POLYNOMIAL (from its binary representation)
+   without the leading 1.  */
+  tree build_polynomial_without_1 (tree crc_arg, value *polynomial);
+
  public:
   unsigned int execute (function *fun);
 };
@@ -1065,6 +1083,178 @@ crc_optimization::get_output_phi ()
   return nullptr;
 }
 
+/* Build tree for the POLYNOMIAL (from its binary representation)
+   without the leading 1.  */
+
+tree
+crc_optimization::build_polynomial_without_1 (tree crc_arg, value *polynomial)
+{
+  unsigned HOST_WIDE_INT cst_polynomial = 0;
+  for (size_t i = 0; i < (*polynomial).length (); i++)
+    {
+      value_bit *const_bit;
+      if (m_is_bit_forward)
+	const_bit = (*polynomial)[(*polynomial).length () - 1 - i];
+      else
+	const_bit = (*polynomial)[i];
+      cst_polynomial <<= 1;
+      cst_polynomial ^= (as_a<bit *> (const_bit))->get_val () ? 1 : 0;
+    }
+  return build_int_cstu (TREE_TYPE (crc_arg), cst_polynomial);
+}
+
+/* Returns data argument to pass to the CRC IFN.
+   If there is data from the code - use it (this is the case,
+   when data isn't xor-ed with CRC before the loop).
+   Otherwise, generate a new variable for the data with 0 value
+   (the case, when data is xor-ed with CRC before the loop).
+   For the CRC calculation, it doesn't matter CRC is calculated for the
+   (CRC^data, 0) or (CRC, data).  */
+
+tree
+crc_optimization::get_data ()
+{
+  unsigned HOST_WIDE_INT
+  data_size = tree_to_uhwi (m_crc_loop->nb_iterations) + 1;
+
+  /* If we have the data, use it.  */
+  if (m_phi_for_data)
+    {
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file,
+		 "Data and CRC are xor-ed in the for loop.  Initializing data "
+		 "with its value.\n");
+      tree data_arg = PHI_ARG_DEF (m_phi_for_data, 1);
+      if (TYPE_PRECISION (TREE_TYPE (data_arg)) == data_size)
+	return data_arg;
+      else
+	{
+	  if (dump_file && (dump_flags & TDF_DETAILS))
+	    fprintf (dump_file,
+		     "Loop iteration number and data's size differ.\n");
+	  return nullptr;
+	}
+    }
+
+  /* Create a new variable for the data.  */
+
+  if (dump_file && (dump_flags & TDF_DETAILS))
+    fprintf (dump_file,
+	     "Data and CRC are xor-ed before for loop.  Initializing data "
+	     "with 0.\n");
+  tree type = nullptr;
+  /* Determine the data's size with the loop iteration count.
+     We assume that loop iteration count depends on the data's size.  */
+  if (data_size == TYPE_PRECISION (intQI_type_node))
+    type = intQI_type_node;
+  else if (data_size == TYPE_PRECISION (intHI_type_node))
+    type = intHI_type_node;
+  else if (data_size == TYPE_PRECISION (intSI_type_node))
+    type = intSI_type_node;
+  else if (data_size == TYPE_PRECISION (intDI_type_node))
+    type = intDI_type_node;
+  else if (data_size == TYPE_PRECISION (intTI_type_node))
+    type = intTI_type_node;
+  else
+    {
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file, "Couldn't determine the data's size.\n");
+      return nullptr;
+    }
+  return build_int_cstu (type, 0);
+
+}
+
+/* Replaces CRC calculation loop with CRC_IFN call.
+   Returns true if replacement is succeeded, otherwise false.
+
+   First the function determines CRC, data and the polynomial
+   and depending on the CRC type, instead of the loop generates:
+   output_crc = IFN_CRC(_REV) (CRC, data, polynomial);  */
+
+bool
+crc_optimization::faster_crc_code_generation (function *fun,
+					      value *polynomial,
+					      gphi *output_crc)
+{
+  if (!output_crc)
+    {
+      if (dump_file)
+	fprintf (dump_file, "Couldn't determine output CRC.\n");
+      return false;
+    }
+
+  gcc_assert (m_phi_for_crc);
+
+  tree crc_arg = PHI_ARG_DEF (m_phi_for_crc, 1);
+  if (TYPE_MODE (TREE_TYPE (crc_arg)) > word_mode)
+    {
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file, "word_mode is less than CRC mode.\n");
+      return false;
+    }
+
+  tree data_arg = get_data ();
+  tree polynomial_arg = build_polynomial_without_1 (crc_arg, polynomial);
+
+  if (!crc_arg || !data_arg || !polynomial_arg)
+    {
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file, "crc_arg, data_arg or polynomial_arg is null.\n");
+      return false;
+    }
+
+  /* We don't support the case where data is larger than the CRC.  */
+  if (TYPE_PRECISION (TREE_TYPE (crc_arg))
+      < TYPE_PRECISION (TREE_TYPE (data_arg)))
+    return false;
+
+  internal_fn ifn;
+  if (m_is_bit_forward)
+    ifn = IFN_CRC;
+  else
+    ifn = IFN_CRC_REV;
+
+  tree phi_result = gimple_phi_result (output_crc);
+  location_t loc;
+  loc = EXPR_LOCATION (phi_result);
+
+  /* Add IFN call and return the value.  */
+  gcall *call
+      = gimple_build_call_internal (ifn, 3,
+				    crc_arg,
+				    data_arg,
+				    polynomial_arg);
+
+  gimple_call_set_lhs (call, phi_result);
+  gimple_set_location (call, loc);
+  gimple_stmt_iterator si = gsi_start_bb (output_crc->bb);
+  gsi_insert_before (&si, call, GSI_SAME_STMT);
+  use_operand_p imm_use_p;
+  destroy_loop (m_crc_loop);
+
+  gimple_stmt_iterator gsi = gsi_start_phis (output_crc->bb);
+  gsi_remove (&gsi, true);
+
+  imm_use_iterator iterator;
+  gimple *stmt;
+  FOR_EACH_IMM_USE_STMT (stmt, iterator, phi_result)
+    {
+      FOR_EACH_IMM_USE_ON_STMT (imm_use_p, iterator)
+	SET_USE (imm_use_p, phi_result);
+      update_stmt (stmt);
+    }
+
+  /* Fix up CFG.  */
+  remove_unused_locals ();
+  scev_reset ();
+  mark_virtual_operands_for_renaming (fun);
+  free_dominance_info (fun, CDI_DOMINATORS);
+  calculate_dominance_info (CDI_DOMINATORS);
+  rewrite_into_loop_closed_ssa (NULL, TODO_update_ssa);
+  return true;
+}
+
 unsigned int
 crc_optimization::execute (function *fun)
 {
@@ -1110,6 +1300,12 @@ crc_optimization::execute (function *fun)
 	  if (dump_file)
 	    fprintf (dump_file, "The loop with %d header BB index "
 				"calculates CRC!\n", m_crc_loop->header->index);
+
+	  if (!faster_crc_code_generation (fun, polynom_value, output_crc))
+	    {
+	      if (dump_file)
+		fprintf (dump_file, "Couldn't generate faster CRC code.\n");
+	    }
 	}
     }
   return 0;
