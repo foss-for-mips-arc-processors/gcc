@@ -189,6 +189,7 @@ init_internal_fns ()
 #define mask_fold_left_direct { 1, 1, false }
 #define mask_len_fold_left_direct { 1, 1, false }
 #define check_ptrs_direct { 0, 0, false }
+#define crc_direct { 1, -1, true }
 
 const direct_internal_fn_info direct_internal_fn_array[IFN_LAST + 1] = {
 #define DEF_INTERNAL_FN(CODE, FLAGS, FNSPEC) not_direct,
@@ -3921,6 +3922,59 @@ expand_convert_optab_fn (internal_fn fn, gcall *stmt, convert_optab optab,
   expand_fn_using_insn (stmt, icode, 1, nargs);
 }
 
+/* Expand CRC call STMT.  */
+
+static void
+expand_crc_optab_fn (internal_fn fn, gcall *stmt, convert_optab optab)
+{
+    tree lhs = gimple_call_lhs (stmt);
+    tree rhs1 = gimple_call_arg (stmt, 0); // crc
+    tree rhs2 = gimple_call_arg (stmt, 1); // data
+    tree rhs3 = gimple_call_arg (stmt, 2); // polynomial
+
+    tree result_type = TREE_TYPE (lhs);
+    tree data_type = TREE_TYPE (rhs2);
+
+    gcc_assert (TYPE_MODE (result_type) >= TYPE_MODE (data_type));
+    gcc_assert (word_mode >= TYPE_MODE (result_type));
+
+    rtx dest = expand_expr (lhs, NULL_RTX, VOIDmode, EXPAND_WRITE);
+    rtx crc = expand_normal (rhs1);
+    rtx data = expand_normal (rhs2);
+    gcc_assert (TREE_CODE (rhs3) == INTEGER_CST);
+    rtx polynomial = gen_rtx_CONST_INT (TYPE_MODE (result_type),
+				 TREE_INT_CST_LOW (rhs3));
+
+    /* Use target specific expansion if it exists.
+       Otherwise, generate table-based CRC.  */
+  if (direct_internal_fn_supported_p
+      (fn, tree_pair (data_type, result_type), OPTIMIZE_FOR_SPEED))
+    {
+      class expand_operand ops[4];
+      create_output_operand (&ops[0], dest, TYPE_MODE (result_type));
+      create_input_operand (&ops[1], crc, TYPE_MODE (result_type));
+      create_input_operand (&ops[2], data, TYPE_MODE (data_type));
+      create_input_operand (&ops[3], polynomial, TYPE_MODE (result_type));
+      insn_code icode = convert_optab_handler (optab, TYPE_MODE (data_type),
+					       TYPE_MODE (result_type));
+      expand_insn (icode, 4, ops);
+      if (!rtx_equal_p (dest, ops[0].value))
+	emit_move_insn (dest, ops[0].value);
+    }
+  else
+    {
+      /* If it's IFN_CRC generate bit-forward CRC.  */
+      if (fn == IFN_CRC)
+	expand_crc_table_based (dest, crc, data, polynomial,
+				TYPE_MODE (data_type));
+      else
+	/* If it's IFN_CRC_REV generate bit-reversed CRC.  */
+	expand_reversed_crc_table_based (dest, crc, data, polynomial,
+					 TYPE_MODE (data_type),
+					 generate_reflecting_code_standard);
+    }
+}
+
 /* Expanders for optabs that can use expand_direct_optab_fn.  */
 
 #define expand_unary_optab_fn(FN, STMT, OPTAB) \
@@ -4057,6 +4111,7 @@ multi_vector_optab_supported_p (convert_optab optab, tree_pair types,
 #define direct_cond_len_unary_optab_supported_p direct_optab_supported_p
 #define direct_cond_len_binary_optab_supported_p direct_optab_supported_p
 #define direct_cond_len_ternary_optab_supported_p direct_optab_supported_p
+#define direct_crc_optab_supported_p convert_optab_supported_p
 #define direct_mask_load_optab_supported_p convert_optab_supported_p
 #define direct_load_lanes_optab_supported_p multi_vector_optab_supported_p
 #define direct_mask_load_lanes_optab_supported_p multi_vector_optab_supported_p
