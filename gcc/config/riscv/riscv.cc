@@ -11031,6 +11031,243 @@ riscv_get_raw_result_mode (int regno)
   return default_get_reg_raw_mode (regno);
 }
 
+/* Implements the unsigned saturation add standard name usadd for int mode.
+
+   z = SAT_ADD(x, y).
+   =>
+   1. sum = x + y.
+   2. sum = truncate (sum) for QI and HI only.
+   3. lt = sum < x.
+   4. lt = -lt.
+   5. z = sum | lt.  */
+
+void
+riscv_expand_usadd (rtx dest, rtx x, rtx y)
+{
+  machine_mode mode = GET_MODE (dest);
+  rtx xmode_sum = gen_reg_rtx (Xmode);
+  rtx xmode_lt = gen_reg_rtx (Xmode);
+  rtx xmode_x = gen_lowpart (Xmode, x);
+  rtx xmode_y = gen_lowpart (Xmode, y);
+  rtx xmode_dest = gen_reg_rtx (Xmode);
+
+  /* Step-1: sum = x + y  */
+  if (mode == SImode && mode != Xmode)
+    { /* Take addw to avoid the sum truncate.  */
+      rtx simode_sum = gen_reg_rtx (SImode);
+      riscv_emit_binary (PLUS, simode_sum, x, y);
+      emit_move_insn (xmode_sum, gen_lowpart (Xmode, simode_sum));
+    }
+  else
+    riscv_emit_binary (PLUS, xmode_sum, xmode_x, xmode_y);
+
+  /* Step-1.1: truncate sum for HI and QI as we have no insn for add QI/HI.  */
+  if (mode == HImode || mode == QImode)
+    {
+      int shift_bits = GET_MODE_BITSIZE (Xmode)
+		       - GET_MODE_BITSIZE (mode).to_constant ();
+
+      gcc_assert (shift_bits > 0);
+
+      riscv_emit_binary (ASHIFT, xmode_sum, xmode_sum, GEN_INT (shift_bits));
+      riscv_emit_binary (LSHIFTRT, xmode_sum, xmode_sum, GEN_INT (shift_bits));
+    }
+
+  /* Step-2: lt = sum < x  */
+  riscv_emit_binary (LTU, xmode_lt, xmode_sum, xmode_x);
+
+  /* Step-3: lt = -lt  */
+  riscv_emit_unary (NEG, xmode_lt, xmode_lt);
+
+  /* Step-4: xmode_dest = sum | lt  */
+  riscv_emit_binary (IOR, xmode_dest, xmode_lt, xmode_sum);
+
+  /* Step-5: dest = xmode_dest */
+  emit_move_insn (dest, gen_lowpart (mode, xmode_dest));
+}
+
+/* Generate instruction sequence
+   which reflects the value of the OP using bswap and brev8 instructions.
+   OP's mode may be less than word_mode, to get the correct number,
+   after reflecting we shift right the value by SHIFT_VAL.
+   E.g. we have 1111 0001, after reflection (target 32-bit) we will get
+   1000 1111 0000 0000, if we shift-out 16 bits,
+   we will get the desired one: 1000 1111.  */
+
+void
+generate_reflecting_code_using_brev (rtx *op, int shift_val)
+{
+
+  riscv_expand_op (BSWAP, word_mode, *op, *op, *op);
+  riscv_expand_op (LSHIFTRT, word_mode, *op, *op,
+		   gen_int_mode (shift_val, word_mode));
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_brev8_di (*op, *op));
+  else
+    emit_insn (gen_riscv_brev8_si (*op, *op));
+}
+
+
+/* Generate assembly to calculate CRC using clmul instruction.
+   The following code will be generated when the CRC and data sizes are equal:
+     li      a4,quotient
+     li      a5,polynomial
+     xor     a0,a1,a0
+     clmul   a0,a0,a4
+     srli    a0,a0,crc_size
+     clmul   a0,a0,a5
+     slli    a0,a0,word_mode_size - crc_size
+     srli    a0,a0,word_mode_size - crc_size
+     ret
+   crc_size may be 8, 16, 32.
+   Some instructions will be added for the cases when CRC's size is larger than
+   data's size.
+   OPERANDS[1] is input CRC,
+   OPERANDS[2] is data (message),
+   OPERANDS[3] is the polynomial without the leading 1.  */
+
+void
+expand_crc_using_clmul (rtx *operands)
+{
+  /* Check and keep arguments.  */
+  gcc_assert (!CONST_INT_P (operands[0]));
+  gcc_assert (CONST_INT_P (operands[3]));
+  unsigned HOST_WIDE_INT
+      crc_size = GET_MODE_BITSIZE (GET_MODE (operands[0])).to_constant ();
+  gcc_assert (crc_size <= 32);
+  unsigned HOST_WIDE_INT
+      data_size = GET_MODE_BITSIZE (GET_MODE (operands[2])).to_constant ();
+
+  /* Calculate the quotient.  */
+  unsigned HOST_WIDE_INT
+      q = gf2n_poly_long_div_quotient (UINTVAL (operands[3]), crc_size + 1);
+
+  rtx crc_extended = gen_rtx_ZERO_EXTEND (word_mode, operands[1]);
+  rtx crc = gen_reg_rtx (word_mode);
+  if (crc_size > data_size)
+    riscv_expand_op (LSHIFTRT, word_mode, crc, crc_extended,
+		     gen_int_mode (crc_size - data_size, word_mode));
+  else
+    crc = gen_rtx_ZERO_EXTEND (word_mode, operands[1]);
+  rtx t0 = gen_reg_rtx (word_mode);
+  riscv_emit_move (t0, gen_int_mode (q, word_mode));
+  rtx t1 = gen_reg_rtx (word_mode);
+  riscv_emit_move (t1, operands[3]);
+
+  rtx a0 = gen_reg_rtx (word_mode);
+  rtx data = gen_rtx_ZERO_EXTEND (word_mode, operands[2]);
+  riscv_expand_op (XOR, word_mode, a0, crc, data);
+
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_clmul_di (a0, a0, t0));
+  else
+    emit_insn (gen_riscv_clmul_si (a0, a0, t0));
+
+  riscv_expand_op (LSHIFTRT, word_mode, a0, a0, gen_int_mode (crc_size,
+							      word_mode));
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_clmul_di (a0, a0, t1));
+  else
+    emit_insn (gen_riscv_clmul_si (a0, a0, t1));
+
+  if (crc_size > data_size)
+    {
+      rtx crc_part = gen_reg_rtx (word_mode);
+      riscv_expand_op (ASHIFT, word_mode, crc_part, operands[1],
+		       gen_int_mode (data_size, word_mode));
+      riscv_expand_op (XOR, word_mode, a0, a0, crc_part);
+    }
+
+  if (crc_size == 32 && word_mode == DImode)
+    {
+      /* For the original 32-bit CRC function, uint32 value is sign extended to
+	  64 bit, sign extend here too, to get the same value for the optimized
+	  and not optimized cases.  */
+      rtx a_low = gen_lowpart_SUBREG (GET_MODE (operands[0]), a0);
+      a0 = gen_rtx_SIGN_EXTEND (word_mode, a_low);
+    }
+  else
+    {
+      /* Zero upper bits beyond crc_size.  */
+      unsigned HOST_WIDE_INT word_mode_size = GET_MODE_BITSIZE (word_mode);
+      rtx num_shift = gen_int_mode (word_mode_size - crc_size, word_mode);
+      riscv_expand_op (ASHIFT, word_mode, a0, a0, num_shift);
+      riscv_expand_op (LSHIFTRT, word_mode, a0, a0, num_shift);
+    }
+  rtx tgt = simplify_gen_subreg (word_mode, operands[0],
+				 GET_MODE (operands[0]), 0);
+  riscv_emit_move (tgt, a0);
+}
+
+/* Generate assembly to calculate reversed CRC using clmul instruction.
+   OPERANDS[1] is input CRC,
+   OPERANDS[2] is data (message),
+   OPERANDS[3] is the polynomial without the leading 1.  */
+
+void
+expand_reversed_crc_using_clmul (rtx *operands)
+{
+  /* Check and keep arguments.  */
+  gcc_assert (!CONST_INT_P (operands[0]));
+  gcc_assert (CONST_INT_P (operands[3]));
+  unsigned HOST_WIDE_INT
+      crc_size = GET_MODE_BITSIZE (GET_MODE (operands[0])).to_constant ();
+  gcc_assert (crc_size <= 32);
+  unsigned HOST_WIDE_INT
+      data_size = GET_MODE_BITSIZE (GET_MODE (operands[2])).to_constant ();
+
+  /* Calculate the quotient.  */
+  unsigned HOST_WIDE_INT
+      q = gf2n_poly_long_div_quotient (UINTVAL (operands[3]), crc_size + 1);
+  /* Reflect the calculated quotient.  */
+  q = reflect (q);
+  rtx t0 = gen_reg_rtx (word_mode);
+  riscv_emit_move (t0, gen_int_mode (q >> (data_size - 4), word_mode));
+
+  /* Reflect the polynomial.  */
+  unsigned HOST_WIDE_INT polynomial = reflect (UINTVAL (operands[3]));
+  rtx t1 = gen_reg_rtx (word_mode);
+  riscv_emit_move (t1, gen_int_mode (polynomial << 1, word_mode));
+
+  rtx crc = gen_rtx_ZERO_EXTEND (word_mode, operands[1]);
+  rtx data = gen_rtx_ZERO_EXTEND (word_mode, operands[2]);
+  rtx a0 = gen_reg_rtx (word_mode);
+  riscv_expand_op (XOR, word_mode, a0, crc, data);
+
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_clmul_di (a0, a0, t0));
+  else
+    emit_insn (gen_riscv_clmul_si (a0, a0, t0));
+  rtx num_shift = gen_int_mode (GET_MODE_BITSIZE (word_mode) - crc_size - 3,
+				word_mode);
+  riscv_expand_op (ASHIFT, word_mode, a0, a0, num_shift);
+
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_clmulh_di (a0, a0, t1));
+  else
+    emit_insn (gen_riscv_clmulh_si (a0, a0, t1));
+
+  if (crc_size > data_size)
+    {
+      rtx data_size_shift = gen_int_mode (data_size, word_mode);
+      rtx crc_part = gen_reg_rtx (word_mode);
+      riscv_expand_op (LSHIFTRT, word_mode, crc_part, crc, data_size_shift);
+      riscv_expand_op (XOR, word_mode, a0, a0, crc_part);
+    }
+
+  if (crc_size == 32 && word_mode == DImode)
+    {
+      /* For the original 32-bit CRC function, uint32 value is sign extended
+	 to 64 bit, sign extend here too, to get the same value for the
+	 optimized and not optimized cases.  */
+      rtx a_low = gen_lowpart_SUBREG (GET_MODE (operands[0]), a0);
+      a0 = gen_rtx_SIGN_EXTEND (word_mode, a_low);
+    }
+  rtx tgt = simplify_gen_subreg (word_mode, operands[0],
+				 GET_MODE (operands[0]), 0);
+  riscv_emit_move (tgt, a0);
+}
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.half\t"
