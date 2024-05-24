@@ -3426,6 +3426,44 @@ gimple_or_expr_nonartificial_location (gimple *stmt, tree expr)
   return expansion_point_location_if_in_system_header (loc);
 }
 
+/* Set GIMPLE_PHI statements of the BB not visited.  */
+
+void
+set_phi_stmts_not_visited (basic_block bb)
+{
+  for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
+       gsi_next (&gsi))
+    {
+      gphi *stmt = gsi.phi ();
+      gimple_set_visited (stmt, false);
+    }
+}
+
+/* Set GIMPLE statements of the BB not visited.  */
+
+void
+set_gimple_stmts_not_visited (basic_block bb)
+{
+  for (gimple_stmt_iterator gsi = gsi_start_bb (bb); !gsi_end_p (gsi);
+       gsi_next (&gsi))
+    {
+      gimple *stmt = gsi_stmt (gsi);
+      gimple_set_visited (stmt, false);
+    }
+}
+
+/* Set GIMPLE_PHI and GIMPLE statements of BBS not visited.  */
+
+void
+set_bbs_stmts_not_visited (const basic_block *bbs, unsigned bb_num)
+{
+  for (unsigned int i = 0; i < bb_num; i++)
+    {
+      basic_block bb = bbs[i];
+      set_phi_stmts_not_visited (bb);
+      set_gimple_stmts_not_visited (bb);
+    }
+}
 
 #if CHECKING_P
 
