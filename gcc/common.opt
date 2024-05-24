@@ -1747,6 +1747,12 @@ Common Var(flag_gcse_after_reload) Optimization
 Perform global common subexpression elimination after register allocation has
 finished.
 
+fgimple-crc-optimization
+Common Var(flag_gimple_crc_optimization) Optimization
+Detect loops calculating CRC and replace with faster implementation.
+If the target supports carry-less-multiplication instruction, generate CRC using
+it; otherwise generate table-based CRC.
+
 Enum
 Name(dwarf_gnat_encodings) Type(int)
 
