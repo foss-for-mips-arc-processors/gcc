@@ -9025,6 +9025,78 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+/* If INSN is a load or store of address in the form of [base+offset],
+   extract the two parts and set to BASE and OFFSET.  IS_LOAD is set
+   to TRUE if it's a load.  Return TRUE if INSN is such an instruction,
+   otherwise return FALSE.  */
+
+static bool
+fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, bool *is_load)
+{
+  rtx x, dest, src;
+
+  gcc_assert (INSN_P (insn));
+  x = PATTERN (insn);
+  if (GET_CODE (x) != SET)
+    return false;
+
+  src = SET_SRC (x);
+  dest = SET_DEST (x);
+  if (REG_P (src) && MEM_P (dest))
+    {
+      *is_load = false;
+      extract_base_offset_in_addr (dest, base, offset);
+    }
+  else if (MEM_P (src) && REG_P (dest))
+    {
+      *is_load = true;
+      extract_base_offset_in_addr (src, base, offset);
+    }
+  else
+    return false;
+
+  return (*base != NULL_RTX && *offset != NULL_RTX);
+}
+
+static void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
+			     int *pri)
+{
+  int tmp, off_val;
+  bool is_load;
+  rtx base, offset;
+
+  gcc_assert (INSN_P (insn));
+
+  tmp = max_pri - 1;
+  if (!fusion_load_store (insn, &base, &offset, &is_load))
+    {
+      *pri = tmp;
+      *fusion_pri = tmp;
+      return;
+    }
+
+  tmp /= 2;
+
+  /* INSN with smaller base register goes first.  */
+  tmp -= ((REGNO (base) & 0xff) << 20);
+
+  /* INSN with smaller offset goes first.  */
+  off_val = (int)(INTVAL (offset));
+
+  /* Put loads/stores operating on adjacent words into the same
+   * scheduling group.  */
+  *fusion_pri = tmp - ((off_val / (UNITS_PER_WORD * 2)) << 1) + is_load;
+
+  if (off_val >= 0)
+    tmp -= (off_val & 0xfffff);
+  else
+    tmp += ((- off_val) & 0xfffff);
+
+  *pri = tmp;
+  return;
+}
+
 /* Adjust the cost/latency of instructions for scheduling.
    For now this is just used to change the latency of vector instructions
    according to their LMUL.  We assume that an insn with LMUL == 8 requires
@@ -11465,6 +11537,9 @@ expand_reversed_crc_using_clmul (rtx *operands)
 #define TARGET_SCHED_MACRO_FUSION_P riscv_macro_fusion_p
 #undef TARGET_SCHED_MACRO_FUSION_PAIR_P
 #define TARGET_SCHED_MACRO_FUSION_PAIR_P riscv_macro_fusion_pair_p
+
+#undef TARGET_SCHED_FUSION_PRIORITY
+#define TARGET_SCHED_FUSION_PRIORITY riscv_sched_fusion_priority
 
 #undef  TARGET_SCHED_VARIABLE_ISSUE
 #define TARGET_SCHED_VARIABLE_ISSUE riscv_sched_variable_issue
