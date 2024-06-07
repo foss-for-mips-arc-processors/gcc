@@ -297,7 +297,7 @@ static tree arc64_interrupt_attribute (tree *, tree, tree, int, bool *);
 
 /* { name, min_len, max_len, decl_req, type_req, fn_type_req,
    affects_type_identity, handler, exclude } */
-const struct attribute_spec arc64_attribute_table[] =
+TARGET_GNU_ATTRIBUTES (arc64_attribute_table,
 {
   /* Functions which are used for ISR, return address is using ILINK reg.  */
   { "interrupt", 0, 1, false, true, true, false, arc64_interrupt_attribute,
@@ -306,10 +306,8 @@ const struct attribute_spec arc64_attribute_table[] =
   /* Function which are not having the prologue and epilogue generated
      by the compiler.  */
   { "naked", 0, 0, true, false, false,  false, arc64_fndecl_attribute,
-    NULL },
-
-  { NULL, 0, 0, false, false, false, false, NULL, NULL }
-};
+    NULL }
+});
 
 /* Local variable true if we output scalled address.  */
 static bool scalled_p = false;
@@ -922,7 +920,10 @@ arc64_get_symbol_type (rtx x)
 }
 
 /* Helper legitimate address. Extra takes an input to discriminate
-   among load or store addresses.  */
+   among load or store addresses.
+
+   This function must handle the "true" cases returned from
+   arc64_legitimate_constant1_p(). */
 static bool
 arc64_legitimate_address_1_p (machine_mode mode,
 			      rtx x,
@@ -953,7 +954,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
 	    return false;
 	  /* fall thru  */
 	}
-      if (GET_CODE (XEXP (x, 0)) == PLUS
+      if (GET_CODE (x) == CONST		  /* Avoid {SYMBOL,LABEL}_REFs */
+	  && GET_CODE (XEXP (x, 0)) == PLUS
 	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
 	  /* Reloc addendum is only 32bit.   */
 	  && UNSIGNED_INT32 (INTVAL (XEXP (XEXP (x, 0), 1))))
@@ -1100,7 +1102,8 @@ arc64_legitimate_address_1_p (machine_mode mode,
 static bool
 arc64_legitimate_address_p (machine_mode mode,
 			    rtx x,
-			    bool strict ATTRIBUTE_UNUSED)
+			    bool strict ATTRIBUTE_UNUSED,
+			    code_helper = ERROR_MARK)
 {
   /* Allow all the addresses accepted by load.  */
   return arc64_legitimate_address_1_p (mode, x, strict, true, true);
