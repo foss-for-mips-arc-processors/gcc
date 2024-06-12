@@ -8772,6 +8772,38 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return true;
     }
 
+  /* Fuse load/store + register post-{inc,dec}rement:
+   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X rs1) (const_int))))
+   *   or
+   * prev (st) == (set (mem:X (plus:X (reg:X rs1) (const_int))) (reg:X rs2))
+   * ...
+   */
+  if ((GET_CODE (SET_SRC (curr_set)) == PLUS
+       || GET_CODE (SET_SRC (curr_set)) == MINUS)
+      && REG_P (XEXP (SET_SRC (curr_set), 0))
+      && ((get_attr_type (prev) == TYPE_LOAD
+	   && REG_P (XEXP (SET_SRC (prev_set), 0))
+	   && REGNO (XEXP (SET_SRC (prev_set), 0))
+	      == REGNO (XEXP (SET_SRC (curr_set), 0))
+	   && REGNO (XEXP (SET_SRC (prev_set), 0))
+	      != REGNO (SET_DEST (prev_set))
+	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))
+   /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	   && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+   /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	       || REGNO (SET_DEST (prev_set))
+		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
+      || (get_attr_type (prev) == TYPE_STORE
+	  && REG_P (XEXP (SET_DEST (prev_set), 0))
+	  && REGNO (XEXP (SET_DEST (prev_set), 0))
+	     == REGNO (XEXP (SET_SRC (curr_set), 0))
+   /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	  && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+   /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	      || REGNO (XEXP (SET_DEST (prev_set), 0))
+		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
+    return true;
+
   /* Fuse load-immediate with a store of the destination register.  */
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
