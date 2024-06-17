@@ -8804,6 +8804,22 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
     return true;
 
+  /* Fuse load/store with lui:
+   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X) (const_int))))
+   *   or
+   * prev (st) == (set (mem:X (plus:X (reg:X) (const_int))) (reg:X rD))
+   *
+   * curr (lui) == (set (reg:X rd2) (const_int UPPER_IMM_20))
+   */
+  if (((get_attr_type (curr) == TYPE_MOVE
+	 && GET_CODE (SET_SRC (curr_set)) == HIGH)
+       || (CONST_INT_P (SET_SRC (curr_set))
+	     && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
+      && ((get_attr_type (prev) == TYPE_LOAD
+	    && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
+	  || get_attr_type (prev) == TYPE_STORE))
+    return true;
+
   /* Fuse load-immediate with a store of the destination register.  */
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
