@@ -179,6 +179,12 @@ fi
 # Checks for compiler support that doesn't require linking.
 GLIBCXX_CHECK_COMPILER_FEATURES
 
+# Check for fenv.h and complex.h before GLIBCXX_CHECK_C99_TR1
+# and GLIBCXX_ENABLE_C99 so that the check is done with the C compiler
+# (not C++). Checking with C++ can break a canadian cross build if either
+# file does not exist in C but does in C++.
+AC_CHECK_HEADERS(fenv.h complex.h)
+
 # Enable all the variable C++ runtime options that don't require linking.
 GLIBCXX_ENABLE_CSTDIO
 GLIBCXX_ENABLE_CLOCALE
@@ -214,12 +220,6 @@ GLIBCXX_CHECK_S_ISREG_OR_S_IFREG
 # For xsputn_2().
 AC_CHECK_HEADERS(sys/uio.h)
 GLIBCXX_CHECK_WRITEV
-
-# Check for fenv.h and complex.h before GLIBCXX_CHECK_C99_TR1
-# so that the check is done with the C compiler (not C++).
-# Checking with C++ can break a canadian cross build if either
-# file does not exist in C but does in C++.
-AC_CHECK_HEADERS(fenv.h complex.h)
 
 # For C99 support to TR1.
 GLIBCXX_CHECK_C99_TR1
