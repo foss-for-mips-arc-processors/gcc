@@ -3723,7 +3723,35 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC"
+  "TARGET_XTHEADMAC || (riscv_is_micro_arch (arcv_rhx100)
+			&& !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
+  {
+    if (riscv_is_micro_arch (arcv_rhx100))
+      {
+	rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+	emit_insn (gen_extendhisi2 (tmp0, operands[1]));
+	emit_insn (gen_extendhisi2 (tmp1, operands[2]));
+	emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+	DONE;
+      }
+  }
+)
+
+(define_expand "umaddhisi4"
+  [(set (match_operand:SI 0 "register_operand")
+	(plus:SI
+	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
+		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
+	  (match_operand:SI 3 "register_operand")))]
+  "riscv_is_micro_arch (arcv_rhx100)
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  {
+    rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+    emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
+    emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
+    emit_insn (gen_madd_split (operands[0], tmp0, tmp1, operands[3]));
+    DONE;
+  }
 )
 
 (define_expand "msubhisi4"
@@ -3733,6 +3761,33 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))))]
   "TARGET_XTHEADMAC"
+)
+
+(define_insn_and_split "madd_split"
+  [(set (match_operand:SI 0 "register_operand" "=&r,r")
+     (plus:SI
+	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
+		 (match_operand:SI 2 "register_operand" "r,r"))
+	(match_operand:SI 3 "register_operand" "r,?0")))
+    (clobber (match_scratch:SI 4 "=&r,&r"))]
+  "riscv_is_micro_arch (rhx) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+  "{
+     if (REGNO (operands[0]) == REGNO (operands[3]))
+       {
+	 emit_insn (gen_mulsi3 (operands[4], operands[1], operands[2]));
+	 emit_insn (gen_addsi3 (operands[0], operands[3], operands[4]));
+       }
+     else
+       {
+	 emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
+	 emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
+       }
+    DONE;
+   }"
+  [(set_attr "type" "imul")]
 )
 
 ;; String compare with length insn.
