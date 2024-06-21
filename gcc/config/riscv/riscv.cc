@@ -8830,6 +8830,13 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	      && SET_DEST (prev_set) == SUBREG_REG (SET_SRC (curr_set)))))
     return true;
 
+  if (GET_CODE (SET_SRC (prev_set)) == MULT
+      && GET_CODE (SET_SRC (curr_set)) == PLUS
+      && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
+      && (REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0))
+	|| REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 1))))
+    return true;
+
   return false;
 }
 

@@ -488,7 +488,7 @@
    vslideup,vslidedown,vislide1up,vislide1down,vfslide1up,vfslide1down,
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
-   vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c"
+   vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,imul_fused"
   (cond [(eq_attr "got" "load") (const_string "load")
 
 	 ;; If a doubleword move uses these expensive instructions,
@@ -3749,7 +3749,7 @@
     rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
     emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
     emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
-    emit_insn (gen_madd_split (operands[0], tmp0, tmp1, operands[3]));
+    emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
     DONE;
   }
 )
@@ -3763,31 +3763,26 @@
   "TARGET_XTHEADMAC"
 )
 
-(define_insn_and_split "madd_split"
+(define_insn "madd_split_fused"
   [(set (match_operand:SI 0 "register_operand" "=&r,r")
      (plus:SI
 	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
 		 (match_operand:SI 2 "register_operand" "r,r"))
 	(match_operand:SI 3 "register_operand" "r,?0")))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "riscv_is_micro_arch (rhx) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
-  "#"
-  "&& reload_completed"
-  [(const_int 0)]
-  "{
+  "riscv_is_micro_arch (arcv_rhx100)
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
-	 emit_insn (gen_mulsi3 (operands[4], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[3], operands[4]));
+	 return "mul\t%4,%1,%2\n\tadd\t%4,%3,%4\n\tmv\t%0,%4";
        }
      else
        {
-	 emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
+	 return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
        }
-    DONE;
-   }"
-  [(set_attr "type" "imul")]
+  }
+  [(set_attr "type" "imul_fused")]
 )
 
 ;; String compare with length insn.
