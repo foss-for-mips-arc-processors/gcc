@@ -1983,6 +1983,10 @@ ix86_override_options_after_change (void)
   ix86_recompute_optlev_based_flags (&global_options, &global_options_set);
 
   ix86_override_options_after_change_1 (&global_options, &global_options_set);
+  /* Late combine tends to undo some of the effects of STV and RPAD,
+     by combining instructions back to their original form.  */
+  if (!OPTION_SET_P (flag_late_combine_instructions))
+    flag_late_combine_instructions = 0;
 }
 
 /* Clear stack slot assignments remembered from previous functions.
