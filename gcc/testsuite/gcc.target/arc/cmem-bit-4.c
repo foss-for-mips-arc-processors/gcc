@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-skip-if "avoid conflicts with -mcpu options" { *-*-* } { "-mcpu=*" } { "-mcpu=nps400" } } */
 /* { dg-options "-mcpu=nps400 -mcmem -O2" } */
 
 struct strange_bool
