@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-skip-if "avoid conflicts with -mcpu options" { *-*-* } { "-mcpu=*" } { "-mcpu=hs" } } */
 /* { dg-options "-O2 -mcpu=hs" } */
 
 unsigned int shl1(unsigned int x) { return x << 1; }

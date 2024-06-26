@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-skip-if "avoid conflicts with -mcpu options" { *-*-* } { "-mcpu=*" } { "-mcpu=archs" } } */
 /* { dg-options "-mcpu=archs -O2 -mmpy-option=plus_dmpy -w" } */
 
 /* Check how we generate umaddsidi4 patterns.  */
