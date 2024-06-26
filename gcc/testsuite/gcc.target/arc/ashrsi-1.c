@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-skip-if "avoid conflicts with -mcpu options" { *-*-* } { "-mcpu=*" } { "-mcpu=hs" } } */
 /* { dg-options "-O2 -mcpu=hs" } */
 
 int ashr1(int x) { return x >> 1; }
