@@ -5129,7 +5129,7 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	      unsigned HOST_WIDE_INT ival;
 	      scalar_int_mode imode = int_mode_for_mode (mode).require ();
 
-	      gcc_assert (mode == DFmode);
+	      gcc_assert (imode == DImode && mode == DFmode);
 
 	      real_to_target (res, CONST_DOUBLE_REAL_VALUE (op1),
 			      REAL_MODE_FORMAT (mode));
@@ -5139,7 +5139,11 @@ arc64_prepare_move_operands (rtx op0, rtx op1, machine_mode mode)
 	      ival = lo | (hi << 32);
 	      tmp = gen_reg_rtx (imode);
 	      emit_move_insn (tmp, gen_int_mode (ival, imode));
-	      emit_move_insn (op0, gen_lowpart (mode, tmp));
+	      /* NOTE:
+		 This may not work when we have ARC32 + FPUDF configuration.
+		 However, this configuration is not supported as in jun-2024 by
+		 this compiler.  */
+	      emit_insn (gen_floatdidf2 (op0, tmp));
 	      return true;
 	    }
 
