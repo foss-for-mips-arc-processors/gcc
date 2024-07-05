@@ -67,11 +67,6 @@
        (eq_attr "type" "fadd,fmul,fmadd,fcmp"))
   "arcv_rmx100_FPU*2")
 
-(define_insn_reservation "arcv_rmx100_fdiv_insn" 17
-  (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "fdiv,fsqrt"))
-  "arcv_rmx100_FPU*17")
-
 (define_insn_reservation "arcv_rmx100_xfer" 2
   (and (eq_attr "tune" "arcv_rmx100")
        (eq_attr "type" "fmove,mtc,mfc,fcvt,fcvt_f2i,fcvt_i2f"))
@@ -108,3 +103,9 @@
   (and (eq_attr "tune" "arcv_rmx100")
        (eq_attr "type" "fsqrt"))
   "arcv_rmx100_FPU*25")
+
+(define_bypass 1 "arcv_rmx100_mpy32_insn" "arcv_rmx100_*" "arcv_mpy_1c_bypass_p")
+(define_bypass 2 "arcv_rmx100_mpy32_insn" "arcv_rmx100_*" "arcv_mpy_2c_bypass_p")
+
+(define_bypass 9 "arcv_rmx100_div_insn" "arcv_rmx100_*" "arcv_mpy_1c_bypass_p")
+(define_bypass 9 "arcv_rmx100_div_insn" "arcv_rmx100_*" "arcv_mpy_2c_bypass_p")

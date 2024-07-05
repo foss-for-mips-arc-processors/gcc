@@ -8430,6 +8430,30 @@ riscv_store_data_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
   return store_data_bypass_p (out_insn, in_insn);
 }
 
+/* Implement one boolean function for each of the values of the
+   arcv_mpy_option enum, for the needs of rhx100.md.  */
+
+bool
+arcv_mpy_1c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		       rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_1C;
+}
+
+bool
+arcv_mpy_2c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		       rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_2C;
+}
+
+bool
+arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+			rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_10C;
+}
+
 /* Implement TARGET_SECONDARY_MEMORY_NEEDED.
 
    When floating-point registers are wider than integer ones, moves between
