@@ -86,6 +86,13 @@ enum rvv_max_lmul_enum {
   RVV_DYNAMIC = 9
 };
 
+/* ARC-V multiply option.  */
+enum arcv_mpy_option_enum {
+  ARCV_MPY_OPTION_1C = 1,
+  ARCV_MPY_OPTION_2C = 2,
+  ARCV_MPY_OPTION_10C = 8,
+};
+
 enum riscv_multilib_select_kind {
   /* Select multilib by builtin way.  */
   select_by_builtin,
