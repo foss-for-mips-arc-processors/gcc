@@ -3455,7 +3455,8 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if (TARGET_XTHEADBB && outer_code == SET
+      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
+	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
 	{
@@ -8859,6 +8860,13 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
       && (REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0))
 	|| REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 1))))
+    return true;
+
+  /* Fuse logical shift left with logical shift right (bit-extract pattern). */
+  if (GET_CODE (SET_SRC (prev_set)) == ASHIFT
+      && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
+      && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
+      && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0)))
     return true;
 
   return false;

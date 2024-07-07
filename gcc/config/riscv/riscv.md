@@ -488,7 +488,7 @@
    vslideup,vslidedown,vislide1up,vislide1down,vfslide1up,vfslide1down,
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
-   vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,imul_fused"
+   vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,imul_fused,alu_fused"
   (cond [(eq_attr "got" "load") (const_string "load")
 
 	 ;; If a doubleword move uses these expensive instructions,
@@ -3783,6 +3783,23 @@
        }
   }
   [(set_attr "type" "imul_fused")]
+)
+
+(define_insn "*zero_extract_fused"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
+			 (match_operand 2 "const_int_operand")
+			 (match_operand 3 "const_int_operand")))]
+  "riscv_is_micro_arch (arcv_rhx100) && !TARGET_64BIT
+     && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
+  {
+     int amount = INTVAL (operands[2]);
+     int end = INTVAL (operands[3]) + amount;
+     operands[2] = GEN_INT (BITS_PER_WORD - end);
+     operands[3] = GEN_INT (BITS_PER_WORD - amount);
+     return "slli\t%0,%1,%2\n\tsrli\t%0,%0,%3";
+  }
+  [(set_attr "type" "alu_fused")]
 )
 
 ;; String compare with length insn.
