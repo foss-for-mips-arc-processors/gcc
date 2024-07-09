@@ -65,6 +65,7 @@ enum riscv_microarchitecture_type {
   andes_23_series,
   andes_45_series,
   spacemit_x60,
+  arcv_rmx100,
 };
 extern enum riscv_microarchitecture_type riscv_microarchitecture;
 
@@ -87,6 +88,13 @@ enum rvv_max_lmul_enum {
   RVV_M8 = 8,
   /* For dynamic LMUL, we compare COST start with LMUL8.  */
   RVV_DYNAMIC = 9
+};
+
+/* ARC-V multiply option.  */
+enum arcv_mpy_option_enum {
+  ARCV_MPY_OPTION_1C = 1,
+  ARCV_MPY_OPTION_2C = 2,
+  ARCV_MPY_OPTION_10C = 8,
 };
 
 enum riscv_multilib_select_kind {
