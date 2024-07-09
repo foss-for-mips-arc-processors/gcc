@@ -8751,6 +8751,96 @@ arcv_fused_addr_p (rtx addr0, rtx addr1)
   return false;
 }
 
+/* Return true if PREV and CURR constitute an ordered load/store + op/opimm
+   pair, for the purposes of ARCV-specific macro-op fusion.  */
+static bool
+arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  gcc_assert (prev_set);
+  gcc_assert (curr_set);
+
+  /* Fuse load/store + register post-{inc,dec}rement:
+   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X rs1) (const_int))))
+   *   or
+   * prev (st) == (set (mem:X (plus:X (reg:X rs1) (const_int))) (reg:X rs2))
+   * ...
+   */
+  if ((get_attr_type (curr) == TYPE_ARITH
+       || get_attr_type (curr) == TYPE_LOGICAL
+       || get_attr_type (curr) == TYPE_SHIFT
+       || get_attr_type (curr) == TYPE_SLT
+       || get_attr_type (curr) == TYPE_BITMANIP
+       || get_attr_type (curr) == TYPE_MIN
+       || get_attr_type (curr) == TYPE_MAX
+       || get_attr_type (curr) == TYPE_MINU
+       || get_attr_type (curr) == TYPE_MAXU
+       || get_attr_type (curr) == TYPE_CLZ
+       || get_attr_type (curr) == TYPE_CTZ)
+      && REG_P (XEXP (SET_SRC (curr_set), 0))
+      && ((get_attr_type (prev) == TYPE_LOAD
+	   && REG_P (XEXP (SET_SRC (prev_set), 0))
+	   && REGNO (XEXP (SET_SRC (prev_set), 0))
+	      == REGNO (XEXP (SET_SRC (curr_set), 0))
+	   && REGNO (XEXP (SET_SRC (prev_set), 0))
+	      != REGNO (SET_DEST (prev_set))
+	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))
+	   && (/* (set (reg:X rd1) (not (reg:X rs1))) */
+	       GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
+    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	       || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	       || REGNO (SET_DEST (prev_set))
+		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
+      || (get_attr_type (prev) == TYPE_STORE
+	  && REG_P (XEXP (SET_DEST (prev_set), 0))
+	  && REGNO (XEXP (SET_DEST (prev_set), 0))
+	     == REGNO (XEXP (SET_SRC (curr_set), 0))
+	  && (/* (set (reg:X rd1) (not (reg:X rs1))) */
+	      GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
+    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	      || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	      || REGNO (XEXP (SET_DEST (prev_set), 0))
+		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
+    return true;
+
+  return false;
+}
+
+/* Return true if PREV and CURR constitute an ordered load/store + lui pair, for
+   the purposes of ARCV-specific macro-op fusion.  */
+static bool
+arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  gcc_assert (prev_set);
+  gcc_assert (curr_set);
+
+  /* Fuse load/store with lui:
+   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X) (const_int))))
+   *   or
+   * prev (st) == (set (mem:X (plus:X (reg:X) (const_int))) (reg:X rD))
+   *
+   * curr (lui) == (set (reg:X rd2) (const_int UPPER_IMM_20))
+   */
+  if (REG_P (curr)
+      && ((get_attr_type (curr) == TYPE_MOVE
+	   && GET_CODE (SET_SRC (curr_set)) == HIGH)
+	  || (CONST_INT_P (SET_SRC (curr_set))
+	      && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
+      && ((get_attr_type (prev) == TYPE_LOAD
+	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
+	  || get_attr_type (prev) == TYPE_STORE))
+    return true;
+
+  return false;
+}
+
 /* Return true if PREV and CURR should be kept together during scheduling.  */
 
 static bool
@@ -8797,52 +8887,14 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return true;
     }
 
-  /* Fuse load/store + register post-{inc,dec}rement:
-   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X rs1) (const_int))))
-   *   or
-   * prev (st) == (set (mem:X (plus:X (reg:X rs1) (const_int))) (reg:X rs2))
-   * ...
-   */
-  if ((GET_CODE (SET_SRC (curr_set)) == PLUS
-       || GET_CODE (SET_SRC (curr_set)) == MINUS)
-      && REG_P (XEXP (SET_SRC (curr_set), 0))
-      && ((get_attr_type (prev) == TYPE_LOAD
-	   && REG_P (XEXP (SET_SRC (prev_set), 0))
-	   && REGNO (XEXP (SET_SRC (prev_set), 0))
-	      == REGNO (XEXP (SET_SRC (curr_set), 0))
-	   && REGNO (XEXP (SET_SRC (prev_set), 0))
-	      != REGNO (SET_DEST (prev_set))
-	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))
-   /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	   && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-   /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
-	       || REGNO (SET_DEST (prev_set))
-		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
-      || (get_attr_type (prev) == TYPE_STORE
-	  && REG_P (XEXP (SET_DEST (prev_set), 0))
-	  && REGNO (XEXP (SET_DEST (prev_set), 0))
-	     == REGNO (XEXP (SET_SRC (curr_set), 0))
-   /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	  && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-   /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
-	      || REGNO (XEXP (SET_DEST (prev_set), 0))
-		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
+  /* Fuse a pre- or post-update memory operation.  */
+  if (arcv_memop_arith_pair_p (prev, curr)
+      || arcv_memop_arith_pair_p (curr, prev))
     return true;
 
-  /* Fuse load/store with lui:
-   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X) (const_int))))
-   *   or
-   * prev (st) == (set (mem:X (plus:X (reg:X) (const_int))) (reg:X rD))
-   *
-   * curr (lui) == (set (reg:X rd2) (const_int UPPER_IMM_20))
-   */
-  if (((get_attr_type (curr) == TYPE_MOVE
-	 && GET_CODE (SET_SRC (curr_set)) == HIGH)
-       || (CONST_INT_P (SET_SRC (curr_set))
-	     && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
-      && ((get_attr_type (prev) == TYPE_LOAD
-	    && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
-	  || get_attr_type (prev) == TYPE_STORE))
+  /* Fuse a memory operation preceded or followed by a lui.  */
+  if (arcv_memop_lui_pair_p (prev, curr)
+      || arcv_memop_lui_pair_p (curr, prev))
     return true;
 
   /* Fuse load-immediate with a store of the destination register.  */
