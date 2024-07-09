@@ -821,6 +821,31 @@ static const struct riscv_tune_param andes_45_tune_info = {
   true,						/* prefer-agnostic.  */
 };
 
+/* Costs to use when optimizing for Synopsys RMX-100.  */
+static const struct riscv_tune_param arcv_rmx100_tune_info = {
+  {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_add */
+  {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_mul */
+  {COSTS_N_INSNS (17), COSTS_N_INSNS (17)},	/* fp_div */
+  {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* int_mul */
+  {COSTS_N_INSNS (17), COSTS_N_INSNS (17)},	/* int_div */
+  1,						/* issue_rate */
+  4,						/* branch_cost */
+  2,						/* memory_cost */
+  4,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
+  false,					/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
+  true,						/* use_zero_stride_load */
+  false,					/* speculative_sched_vsetvl */
+  RISCV_FUSE_NOTHING,				/* fusible_ops */
+  NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
+  true,						/* prefer-agnostic.  */
+};
+
 /* Costs to use when optimizing for Synopsys RHX-100.  */
 static const struct riscv_tune_param arcv_rhx100_tune_info = {
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
@@ -10712,6 +10737,30 @@ riscv_store_data_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
     }
 
   return store_data_bypass_p (out_insn, in_insn);
+}
+
+/* Implement one boolean function for each of the values of the
+   arcv_mpy_option enum, for the needs of arcv-rmx100.md.  */
+
+bool
+arcv_mpy_1c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		       rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_1C;
+}
+
+bool
+arcv_mpy_2c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		       rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_2C;
+}
+
+bool
+arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+			rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_mpy_option == ARCV_MPY_OPTION_10C;
 }
 
 /* Implement TARGET_SECONDARY_MEMORY_NEEDED.
