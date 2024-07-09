@@ -423,3 +423,20 @@ Specifies whether the fence.tso instruction should be used.
 mautovec-segment
 Target Integer Var(riscv_mautovec_segment) Init(1)
 Enable (default) or disable generation of vector segment load/store instructions.
+
+Enum
+Name(arcv_mpy_option) Type(enum arcv_mpy_option_enum)
+Valid arguments to -mmpy_option=:
+
+EnumValue
+Enum(arcv_mpy_option) String(1c) Value(ARCV_MPY_OPTION_1C)
+
+EnumValue
+Enum(arcv_mpy_option) String(2c) Value(ARCV_MPY_OPTION_2C)
+
+EnumValue
+Enum(arcv_mpy_option) String(10c) Value(ARCV_MPY_OPTION_10C)
+
+mmpy-option=
+Target RejectNegative Joined Enum(arcv_mpy_option) Var(arcv_mpy_option) Init(ARCV_MPY_OPTION_2C)
+The type of MPY unit used by the RMX-100 core (to be used in combination with -mtune=arc-v-rmx-100-series) (default: 2c).
