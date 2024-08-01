@@ -15058,7 +15058,7 @@ static machine_mode
 riscv_c_mode_for_floating_type (enum tree_index ti)
 {
   if (ti == TI_LONG_DOUBLE_TYPE)
-    return TFmode;
+    return TARGET_LONG_DOUBLE_64 ? DFmode : TFmode;
   return default_mode_for_floating_type (ti);
 }
 
