@@ -176,6 +176,7 @@ extern void riscv_split_sum_of_two_s12 (HOST_WIDE_INT, HOST_WIDE_INT *,
 extern void generate_reflecting_code_using_brev (rtx *, int);
 extern void expand_crc_using_clmul (rtx *);
 extern void expand_reversed_crc_using_clmul (rtx *);
+extern bool riscv_vector_float_type_p (const_tree type);
 
 /* Routines implemented in riscv-c.cc.  */
 void riscv_cpu_cpp_builtins (cpp_reader *);
