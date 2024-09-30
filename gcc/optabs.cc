@@ -1684,9 +1684,17 @@ expand_binop (machine_mode mode, optab binoptab, rtx op0, rtx op1,
 
 	    xop0 = widen_operand (xop0, wider_mode, mode, unsignedp, no_extend);
 
-	    /* The second operand of a shift must always be extended.  */
-	    xop1 = widen_operand (xop1, wider_mode, mode, unsignedp,
-				  no_extend && binoptab != ashl_optab);
+	    /* Always extend the second operand whenever (a) it is a
+	       constant operand of a bitwise operator, or (b) the operator
+	       is a shift left.  */
+	    if (wider_mode != mode
+		&& (binoptab == ashl_optab
+		    || (GET_MODE (xop1) == VOIDmode
+			&& (binoptab == ior_optab || binoptab == and_optab
+			    || binoptab == xor_optab))))
+	      no_extend = false;
+
+	    xop1 = widen_operand (xop1, wider_mode, mode, unsignedp, no_extend);
 
 	    temp = expand_binop (wider_mode, binoptab, xop0, xop1, NULL_RTX,
 				 unsignedp, OPTAB_DIRECT);

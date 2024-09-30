@@ -5490,7 +5490,8 @@ expand_and (machine_mode mode, rtx op0, rtx op1, rtx target)
   if (GET_MODE (op0) == VOIDmode && GET_MODE (op1) == VOIDmode)
     tem = simplify_binary_operation (AND, mode, op0, op1);
   if (tem == 0)
-    tem = expand_binop (mode, and_optab, op0, op1, target, 0, OPTAB_LIB_WIDEN);
+    tem = expand_binop (mode, and_optab, op0, op1, target,
+			 LOAD_EXTEND_OP (mode) == ZERO_EXTEND, OPTAB_LIB_WIDEN);
 
   if (target == 0)
     target = tem;
