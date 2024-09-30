@@ -10266,6 +10266,84 @@ riscv_promote_function_mode (const_tree type ATTRIBUTE_UNUSED,
   return smode;
 }
 
+static void
+arcv_propagate_hard_register_copies (void)
+{
+  basic_block bb;
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      rtx_insn *insn;
+      unsigned int reg_originals[FIRST_PSEUDO_REGISTER] = { 0 };
+      rtx set;
+
+      FOR_BB_INSNS (bb, insn)
+	{
+	  if (!INSN_P (insn))
+	    continue;
+
+	  /* A call instruction invalidates all copies.  */
+	  if (CALL_P (insn))
+	    {
+	      for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		reg_originals[i] = 0;
+	    }
+
+	  set = single_set (insn);
+
+	  /* Perform copy->original substitution.  */
+	  if (set && (!REG_P (SET_DEST (set)) || !REG_P (SET_SRC (set))))
+	    {
+	      /* Handle loads...  */
+	      if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
+		{
+		  rtx *op = &XEXP (SET_SRC (set), 0);
+		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+		    op = &XEXP (*op, 0);
+
+		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
+				     reg_originals[REGNO (*op)]), false);
+		}
+
+	      /* ... and stores.  */
+	      if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
+		{
+		  if (reg_originals[REGNO (SET_SRC (set))])
+		    validate_change (insn, &SET_SRC (set),
+				  gen_rtx_REG (GET_MODE (SET_SRC (set)),
+				  reg_originals[REGNO (SET_SRC (set))]), false);
+
+		  rtx *op = &XEXP (SET_DEST (set), 0);
+		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+		    op = &XEXP (*op, 0);
+
+		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
+				     reg_originals[REGNO (*op)]), false);
+		}
+	    }
+
+	  /* Any change of a register invalidates all copies.  */
+	  if (set && REG_P (SET_DEST (set)))
+	    {
+	      for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		if (reg_originals[i] == REGNO (SET_DEST (set)))
+		  reg_originals[i] = 0;
+	    }
+
+	  /* A load to a register means it loses its original.  */
+	   if (set && REG_P (SET_DEST (set)) && !REG_P (SET_SRC (set)))
+	      reg_originals[REGNO (SET_DEST (set))] = 0;
+
+	  /* If it's a copy, remember it in the array.  */
+	  if (set && REG_P (SET_SRC (set)) && REG_P (SET_DEST (set))
+		  && REGNO (SET_SRC (set)) != REGNO (SET_DEST (set)))
+	      reg_originals[REGNO (SET_DEST (set))] = REGNO (SET_SRC (set));
+	}
+    }
+}
+
+
 /* Implement TARGET_MACHINE_DEPENDENT_REORG.  */
 
 static void
@@ -10274,6 +10352,12 @@ riscv_reorg (void)
   /* Do nothing unless we have -msave-restore */
   if (TARGET_SAVE_RESTORE)
     riscv_remove_unneeded_save_restore_calls ();
+
+  /* After bb-reorder, some instructions may be using a copy of
+     a register where the original is available.  Modify those
+     instructions to use the original instead.  */
+  if (riscv_is_micro_arch (arcv_rhx100))
+     arcv_propagate_hard_register_copies ();
 }
 
 /* Return nonzero if register FROM_REGNO can be renamed to register
