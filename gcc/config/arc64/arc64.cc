@@ -2777,17 +2777,20 @@ arc64_output_mi_thunk (FILE *file,
 		       tree function)
 {
   const char *fnname = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (thunk_fndecl));
-  rtx this_rtx, fnaddr, temp1;
+  rtx this_rtx, fnaddr, temp0, temp1;
   rtx_insn *insn;
 
+  machine_mode mode;
   /* Pretend to be a post-reload pass while generating rtl.  */
   reload_completed = 1;
 
   /* Mark the end of the (empty) prologue.  */
   emit_note (NOTE_INSN_PROLOGUE_END);
 
+  temp0 = XEXP (DECL_RTL (function), 0);
+  mode = GET_MODE (temp0);
   /* Determine if we can use a sibcall to call FUNCTION directly.  */
-  fnaddr = gen_rtx_MEM (FUNCTION_MODE, XEXP (DECL_RTL (function), 0));
+  fnaddr = gen_rtx_MEM (FUNCTION_MODE, temp0);
 
   /* We need one temporary register in some cases.  */
   temp1 = gen_rtx_REG (Pmode, R12_REGNUM);
@@ -2824,6 +2827,18 @@ arc64_output_mi_thunk (FILE *file,
       /* Load the offset and add it to THIS_RTX.  */
       emit_insn (gen_rtx_SET (temp1, gen_rtx_MEM (Pmode, addr)));
       emit_insn (gen_add3_insn (this_rtx, this_rtx, temp1));
+    }
+
+  if (arc64_is_long_call_p (temp0) && !REG_P (temp0))
+    {
+      gcc_assert (mode == Pmode || CONST_INT_P (temp0));
+
+      /* Make use of R13_REGNUM to store the sibcall address.
+	 This register is caller saved and can be used locally
+	 as a temporary register.  */
+      XEXP (fnaddr, 0) = copy_to_suggested_reg (temp0,
+						gen_rtx_REG (GET_MODE (temp0),
+						R13_REGNUM), Pmode);
     }
 
   /* Jump to the target function.  */
@@ -5322,7 +5337,17 @@ arc64_expand_call (rtx result, rtx mem, bool sibcall)
      address of the callee into a register before performing the
      branch-and-link.  */
   if (arc64_is_long_call_p (callee) && !REG_P (callee))
-    XEXP (mem, 0) = force_reg (mode, callee);
+    {
+     if (can_create_pseudo_p ())
+       XEXP (mem, 0) = force_reg (mode, callee);
+     else
+     /* Normally at this point no registers can be used for allocation.
+	There are special cases where one can safely use registers e.g.,
+	code generation of wrapper code for C++ virtual function calls
+	with multiple inheritance.
+	See the hook TARGET_ASM_OUTPUT_MI_THUNK.  */
+       error ("No available registers for call address reload");
+    }
 
   call = gen_rtx_CALL (VOIDmode, mem, const0_rtx);
 
