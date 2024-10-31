@@ -2554,7 +2554,16 @@ riscv*-*-elf* | riscv*-*-rtems*)
 	  if test "x${with_multilib_generator}" = xdefault; then
 		  case "x${enable_multilib}" in
 		  xno) ;;
-		  xyes) tmake_file="${tmake_file} riscv/t-elf-multilib" ;;
+		  xyes)
+			case ${target} in
+			*-snps-*)
+			  tmake_file="${tmake_file} riscv/t-arcv"
+			  ;;
+			*)
+			  tmake_file="${tmake_file} riscv/t-elf-multilib"
+			  ;;
+			esac
+			;;
 		  *) echo "Unknown value for enable_multilib"; exit 1
 		  esac
 	  fi
