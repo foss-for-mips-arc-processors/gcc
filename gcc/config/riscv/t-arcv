@@ -1,0 +1,126 @@
+empty =
+space = $(empty) $(empty)
+
+MULTILIB_OPTIONS =
+MULTILIB_DIRNAMES =
+MULTILIB_REQUIRED =
+MULTILIB_REUSE =
+
+# Fallback configurations
+arcv_march_variants  = rv32e
+arcv_march_variants += rv32e_zicsr
+arcv_march_variants += rv32i
+arcv_march_variants += rv32i_zicsr
+arcv_march_variants += rv32ic
+arcv_march_variants += rv32ic_zicsr
+arcv_march_variants += rv32ia
+arcv_march_variants += rv32ia_zicsr
+arcv_march_variants += rv32im
+arcv_march_variants += rv32im_zicsr
+arcv_march_variants += rv32iac
+arcv_march_variants += rv32iac_zicsr
+arcv_march_variants += rv32imc
+arcv_march_variants += rv32imc_zicsr
+arcv_march_variants += rv32imac
+arcv_march_variants += rv32imac_zicsr
+arcv_march_variants += rv32imafc
+arcv_march_variants += rv32imafdc
+arcv_march_variants += rv64i
+arcv_march_variants += rv64i_zicsr
+arcv_march_variants += rv64ia
+arcv_march_variants += rv64imac
+arcv_march_variants += rv64imac_zicsr
+arcv_march_variants += rv64imafdc
+
+# RMX-100 mini
+arcv_march_variants += rv32emac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr
+
+# RMX-100/500
+arcv_march_variants += rv32ic_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32im_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32imc_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zicsr
+arcv_march_variants += rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr
+
+# RHX-100
+arcv_march_variants += rv32imac_zcb_zcmp_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32imafc_zcb_zcmp_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32imafd_zca_zcb_zcmp_zba_zbb_zbs_zicsr
+
+# RPX-100
+arcv_march_variants += rv64imac_zcb_zba_zbb_zbs_zicsr
+arcv_march_variants += rv64imafdc_zcb_zba_zbb_zbs_zicsr
+
+MULTILIB_OPTIONS    += $(subst $(space),/,$(patsubst %,march=%,$(arcv_march_variants)))
+MULTILIB_DIRNAMES   += $(arcv_march_variants)
+
+MULTILIB_OPTIONS    += mabi=ilp32e/mabi=ilp32/mabi=ilp32f/mabi=ilp32d/mabi=lp64/mabi=lp64d
+MULTILIB_DIRNAMES   +=      ilp32e      ilp32      ilp32f      ilp32d      lp64      lp64d
+
+MULTILIB_OPTIONS    += mtune=arc-v-rmx-100-series/mtune=arc-v-rmx-500-series/mtune=arc-v-rhx-100-series
+MULTILIB_DIRNAMES   +=       rmx100                     rmx500                     rhx100
+
+MULTILIB_OPTIONS    += mcmodel=medany
+MULTILIB_DIRNAMES   +=         medany
+
+# Fallback configurations for general targets
+MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32
+
+# Fallback configurations for RMX-100 mini
+MULTILIB_REQUIRED   += march=rv32e/mabi=ilp32e/mtune=arc-v-rmx-100-series
+
+# Fallback configurations for RMX-100
+MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imc_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32iac_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+
+# Fallback configurations for RMX-500
+MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imc_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32iac_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+
+# Fallback configurations for RHX-100
+MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32imafc/mabi=ilp32f/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32imafdc/mabi=ilp32d/mtune=arc-v-rhx-100-series
+
+# Fallback configurations for RPX-100
+MULTILIB_REQUIRED   += march=rv64i/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64ia/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64imac_zicsr/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64imafdc/mabi=lp64d/mtune=arc-v-rmx-100-series/mcmodel=medany
+
+# RMX-100 mini
+MULTILIB_REQUIRED   += march=rv32emac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp32e/mtune=arc-v-rmx-100-series
+
+# RMX-100
+MULTILIB_REQUIRED   += march=rv32ic_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32im_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imc_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
+
+# RMX-500
+MULTILIB_REQUIRED   += march=rv32ic_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32im_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imc_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
+
+# RHX-100
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zcmp_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32imafc_zcb_zcmp_zba_zbb_zbs_zicsr/mabi=ilp32f/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zcmp_zba_zbb_zbs_zicsr/mabi=ilp32d/mtune=arc-v-rhx-100-series
+
+# RPX-100
+MULTILIB_REQUIRED   += march=rv64imac_zcb_zba_zbb_zbs_zicsr/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs_zicsr/mabi=lp64d/mtune=arc-v-rmx-100-series/mcmodel=medany
