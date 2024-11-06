@@ -6421,17 +6421,22 @@ sel_remove_loop_preheader (void)
               edge_iterator ei;
               basic_block prev_bb = bb->prev_bb, next_bb = bb->next_bb;
 
+              bool redirect = true; 
               /* Redirect all incoming edges to next basic block.  */
               for (ei = ei_start (bb->preds); (e = ei_safe_edge (ei)); )
                 {
                   if (! (e->flags & EDGE_FALLTHRU))
-                    redirect_edge_and_branch (e, bb->next_bb);
+                    if (redirect_edge_and_branch (e, bb->next_bb) == NULL){
+		      redirect = false; 
+		      break;
+		    }
                   else
                     redirect_edge_succ (e, bb->next_bb);
                 }
               gcc_assert (BB_NOTE_LIST (bb) == NULL);
-              delete_and_free_basic_block (bb);
-
+	      if(redirect)
+               delete_and_free_basic_block (bb);
+ 
               /* Check if after deleting preheader there is a nonconditional
                  jump in PREV_BB that leads to the next basic block NEXT_BB.
                  If it is so - delete this jump and clear data sets of its
