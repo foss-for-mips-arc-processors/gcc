@@ -9457,15 +9457,15 @@ riscv_sched_reorder2 (FILE *file, int verbose, rtx_insn **ready, int *n_readyp, 
 
     for (int i = 2; i <= *n_readyp; i++)
       {
-	if ((recog_memoized (ready[*n_readyp - i]) >= 0
+	if (recog_memoized (ready[*n_readyp - i]) >= 0
 	    && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
 	    && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
 	    && !SCHED_GROUP_P (ready[*n_readyp - i])
-	    && (!next_insn (ready[*n_readyp - i])
-		|| !SCHED_GROUP_P (next_insn (ready[*n_readyp - i]))))
+	    && ((!next_insn (ready[*n_readyp - i])
+		|| !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
 	|| (next_insn (ready[*n_readyp - i])
 	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_LOAD
-	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_STORE))
+	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_STORE)))
 	  {
 	    std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	    alu_pipe_scheduled_p = 1;
