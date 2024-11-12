@@ -6426,12 +6426,17 @@ sel_remove_loop_preheader (void)
               for (ei = ei_start (bb->preds); (e = ei_safe_edge (ei)); )
                 {
                   if (! (e->flags & EDGE_FALLTHRU))
-                    if (redirect_edge_and_branch (e, bb->next_bb) == NULL){
-		      redirect = false; 
-		      break;
+                    {
+       		      if (redirect_edge_and_branch (e, bb->next_bb) == NULL)
+		        {
+		          redirect = false;
+		          break;
+		       }
 		    }
                   else
-                    redirect_edge_succ (e, bb->next_bb);
+		    {
+                      redirect_edge_succ (e, bb->next_bb);
+		    }
                 }
               gcc_assert (BB_NOTE_LIST (bb) == NULL);
 	      if(redirect)

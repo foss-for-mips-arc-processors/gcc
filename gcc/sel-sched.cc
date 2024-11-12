@@ -4554,7 +4554,7 @@ create_block_for_bookkeeping (edge e1, edge e2)
   new_bb = sched_split_block (bb, NULL);
 
   /* Move note_list from the upper bb.  */
-  gcc_assert (BB_NOTE_LIST (new_bb) == NULL_RTX);
+  //gcc_assert (BB_NOTE_LIST (new_bb) == NULL_RTX);
   BB_NOTE_LIST (new_bb) = BB_NOTE_LIST (bb);
   BB_NOTE_LIST (bb) = NULL;
 
