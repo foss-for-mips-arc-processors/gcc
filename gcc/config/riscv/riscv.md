@@ -641,7 +641,7 @@
 ;; Microarchitectures we know how to tune for.
 ;; Keep this in sync with enum riscv_microarchitecture.
 (define_attr "tune"
-  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,rmx100,rmx500,rhx,generic_ooo"
+  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,arcv_rmx100,rmx500,rhx100,generic_ooo"
   (const (symbol_ref "((enum attr_tune) riscv_microarchitecture)")))
 
 ;; Describe a user's asm statement.
@@ -3899,6 +3899,6 @@
 (include "zc.md")
 (include "corev.md")
 (include "xiangshan.md")
-(include "rmx100.md")
+(include "arcv-rmx100.md")
 (include "rmx500.md")
 (include "rhx.md")

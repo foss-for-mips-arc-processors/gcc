@@ -636,7 +636,7 @@ Enum(arcv_mpy_option) String(10c) Value(ARCV_MPY_OPTION_10C)
 
 -param=arcv-mpy-option=
 Target RejectNegative Joined Enum(arcv_mpy_option) Var(arcv_mpy_option) Init(ARCV_MPY_OPTION_2C)
-The type of MPY unit used by the RMX-100 core (to be used in combination with -mtune=rmx100) (default: 2c).
+The type of MPY unit used by the RMX-100 core (to be used in combination with -mtune=arc-v-rmx-100-series) (default: 2c).
 
 mlong-double-64
 Target RejectNegative Negative(mlong-double-128) Mask(LONG_DOUBLE_64)
