@@ -641,7 +641,7 @@
 ;; Microarchitectures we know how to tune for.
 ;; Keep this in sync with enum riscv_microarchitecture.
 (define_attr "tune"
-  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,arcv_rmx100,arcv_rmx500,rhx100,generic_ooo"
+  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,arcv_rmx100,arcv_rmx500,arcv_rhx100,generic_ooo"
   (const (symbol_ref "((enum attr_tune) riscv_microarchitecture)")))
 
 ;; Describe a user's asm statement.
@@ -3724,9 +3724,9 @@
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
   "TARGET_XTHEADMAC ||
-     (riscv_is_micro_arch (rhx) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
+     (riscv_is_micro_arch (arcv_rhx100) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
   {
-    if (riscv_is_micro_arch (rhx))
+    if (riscv_is_micro_arch (arcv_rhx100))
       {
         rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
         emit_insn (gen_extendhisi2 (tmp0, operands[1]));
@@ -3743,7 +3743,7 @@
 	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
 		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "riscv_is_micro_arch (rhx) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "riscv_is_micro_arch (arcv_rhx100) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
   {
     rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
     emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
@@ -3769,7 +3769,7 @@
                  (match_operand:SI 2 "register_operand" "r,r"))
         (match_operand:SI 3 "register_operand" "r,?0")))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "riscv_is_micro_arch (rhx) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "riscv_is_micro_arch (arcv_rhx100) && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
   {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
@@ -3788,7 +3788,7 @@
         (zero_extract:SI (match_operand:SI 1 "register_operand" "r")
                          (match_operand 2 "const_int_operand")
                          (match_operand 3 "const_int_operand")))]
-  "riscv_is_micro_arch (rhx) && !TARGET_64BIT
+  "riscv_is_micro_arch (arcv_rhx100) && !TARGET_64BIT
      && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
   {
      int amount = INTVAL (operands[2]);
@@ -3901,4 +3901,4 @@
 (include "xiangshan.md")
 (include "arcv-rmx100.md")
 (include "arcv-rmx500.md")
-(include "rhx.md")
+(include "arcv-rhx100.md")

@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O2 -mtune=rhx" } */
+/* { dg-options "-O2 -mtune=arc-v-rhx-100-series" } */
 
 int
 f (int x)

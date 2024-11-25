@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
 /* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-Oz" "-Os" } } */
-/* { dg-options "-mtune=rhx -march=rv32im_zbs -mabi=ilp32" } */
+/* { dg-options "-mtune=arc-v-rhx-100-series -march=rv32im_zbs -mabi=ilp32" } */
 
 #define bit_extract(x,start,amt) (((x)>>(start)) & (~(0xffffffff << (amt))))
 

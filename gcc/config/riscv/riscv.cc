@@ -556,8 +556,8 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   NULL,						/* vector cost */
 };
 
-/* Costs to use when optimizing for Synopsys RHX.  */
-static const struct riscv_tune_param rhx_tune_info = {
+/* Costs to use when optimizing for Synopsys RHX-100.  */
+static const struct riscv_tune_param arcv_rhx100_tune_info = {
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
   {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
@@ -3460,7 +3460,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((riscv_is_micro_arch (rhx) || TARGET_XTHEADBB)
+      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -9313,7 +9313,7 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 			 unsigned int)
 {
-  if (riscv_is_micro_arch (rhx) && dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
+  if (riscv_is_micro_arch (arcv_rhx100) && dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
     return cost + 1;
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
@@ -10551,7 +10551,7 @@ riscv_reorg (void)
   /* After bb-reorder, some instructions may be using a copy of
      a register where the original is available.  Modify those
      instructions to use the original instead.  */
-  if (riscv_is_micro_arch (rhx))
+  if (riscv_is_micro_arch (arcv_rhx100))
      arcv_replace_register_copies ();
 }
 

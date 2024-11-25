@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
 /* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" } } */
-/* { dg-options "-mtune=rhx -march=rv32im" } */
+/* { dg-options "-mtune=arc-v-rhx-100-series -march=rv32im" } */
 
 int
 f (int x, int y, int z, int v, int w)
