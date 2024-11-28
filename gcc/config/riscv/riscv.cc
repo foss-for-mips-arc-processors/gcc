@@ -8749,35 +8749,71 @@ riscv_fusion_enabled_p(enum riscv_fusion_pairs op)
   return tune_param->fusible_ops & op;
 }
 
+/* Return TRUE if the target microarchitecture supports macro-op
+   fusion for two memory operations of mode MODE (the direction
+   of transfer is determined by the IS_LOAD parameter).  */
+
+static bool
+pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
+{
+  if (!riscv_is_micro_arch (arcv_rhx100))
+    return true;
+
+  return ((is_load && (mode == SImode
+		     || mode == HImode
+		     || mode == QImode))
+	 || (!is_load && mode == SImode));
+}
+
 /* Return TRUE if two addresses can be fused.  */
 
 static bool
-arcv_fused_addr_p (rtx addr0, rtx addr1)
+arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
 {
   rtx base0, base1, tmp;
   HOST_WIDE_INT off0 = 0, off1 = 0;
 
-  if (GET_CODE (addr0) == PLUS)
+  if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
+    addr0 = XEXP (addr0, 0);
+
+  if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
+    addr1 = XEXP (addr1, 0);
+
+  if (!MEM_P (addr0) || !MEM_P (addr1))
+    return false;
+
+  /* Require the accesses to have the same mode.  */
+  if (GET_MODE (addr0) != GET_MODE (addr1))
+    return false;
+
+  /* Check if the mode is allowed.  */
+  if (!pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
+    return false;
+
+  rtx reg0 = XEXP (addr0, 0);
+  rtx reg1 = XEXP (addr1, 0);
+
+  if (GET_CODE (reg0) == PLUS)
     {
-      base0 = XEXP (addr0, 0);
-      tmp = XEXP (addr0, 1);
+      base0 = XEXP (reg0, 0);
+      tmp = XEXP (reg0, 1);
       gcc_assert (CONST_INT_P (tmp));
       off0 = INTVAL (tmp);
     }
-  else if (REG_P (addr0))
-    base0 = addr0;
+  else if (REG_P (reg0))
+    base0 = reg0;
   else
     return false;
 
-  if (GET_CODE (addr1) == PLUS)
+  if (GET_CODE (reg1) == PLUS)
     {
-      base1 = XEXP (addr1, 0);
-      tmp = XEXP (addr1, 1);
+      base1 = XEXP (reg1, 0);
+      tmp = XEXP (reg1, 1);
       gcc_assert (CONST_INT_P (tmp));
       off1 = INTVAL (tmp);
     }
-  else if (REG_P (addr1))
-    base1 = addr1;
+  else if (REG_P (reg1))
+    base1 = reg1;
   else
     return false;
 
@@ -8786,9 +8822,9 @@ arcv_fused_addr_p (rtx addr0, rtx addr1)
   if (REGNO (base0) != REGNO (base1))
     return false;
 
-  /* Offsets have to be aligned to word boundary and adjacent in memory,
-     but the memory operations can be narrower.  */
-  if ((off0 % UNITS_PER_WORD == 0) && (abs (off1 - off0) == UNITS_PER_WORD))
+  /* Fuse adjacent aligned addresses.  */
+  if ((off0 % GET_MODE_SIZE (GET_MODE (addr0)).to_constant () == 0)
+      && (abs (off1 - off0) == GET_MODE_SIZE (GET_MODE (addr0)).to_constant ()))
     return true;
 
   return false;
@@ -8940,20 +8976,14 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
     {
-      rtx addr0 = XEXP (SET_SRC (prev_set), 0);
-      rtx addr1 = XEXP (SET_SRC (curr_set), 0);
-
-      if (arcv_fused_addr_p (addr0, addr1))
+      if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
 	return true;
     }
 
   if (get_attr_type (prev) == TYPE_STORE
       && get_attr_type (curr) == TYPE_STORE)
     {
-      rtx addr0 = XEXP (SET_DEST (prev_set), 0);
-      rtx addr1 = XEXP (SET_DEST (curr_set), 0);
-
-      if (arcv_fused_addr_p (addr0, addr1))
+      if (arcv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
 	return true;
     }
 
@@ -8963,10 +8993,9 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (curr) == TYPE_LOAD
       && get_attr_type (next_insn (curr)) == TYPE_LOAD)
   {
-      rtx addr0 = XEXP (SET_SRC (curr_set), 0);
-      rtx addr1 = XEXP (SET_SRC (single_set (next_insn (curr))), 0);
-
-      if (arcv_fused_addr_p (addr0, addr1))
+      if (arcv_fused_addr_p (SET_SRC (curr_set),
+			     SET_SRC (single_set (next_insn (curr))),
+			     true))
 	return false;
   }
 
@@ -8974,10 +9003,9 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (curr) == TYPE_STORE
       && get_attr_type (next_insn (curr)) == TYPE_STORE)
   {
-      rtx addr0 = XEXP (SET_DEST (curr_set), 0);
-      rtx addr1 = XEXP (SET_DEST (single_set (next_insn (curr))), 0);
-
-      if (arcv_fused_addr_p (addr0, addr1))
+      if (arcv_fused_addr_p (SET_DEST (curr_set),
+			     SET_DEST (single_set (next_insn (curr))),
+			     false))
 	return false;
   }
 
@@ -9250,7 +9278,8 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
    otherwise return FALSE.  */
 
 static bool
-fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, bool *is_load)
+fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, machine_mode *mode,
+		   bool *is_load)
 {
   rtx x, dest, src;
 
@@ -9261,15 +9290,22 @@ fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, bool *is_load)
 
   src = SET_SRC (x);
   dest = SET_DEST (x);
+
+  if ((GET_CODE (src) == SIGN_EXTEND || GET_CODE (src) == ZERO_EXTEND)
+      && MEM_P (XEXP (src, 0)))
+    src = XEXP (src, 0);
+
   if (REG_P (src) && MEM_P (dest))
     {
       *is_load = false;
-      extract_base_offset_in_addr (dest, base, offset);
+      if (extract_base_offset_in_addr (dest, base, offset))
+	*mode = GET_MODE (dest);
     }
   else if (MEM_P (src) && REG_P (dest))
     {
       *is_load = true;
-      extract_base_offset_in_addr (src, base, offset);
+      if (extract_base_offset_in_addr (src, base, offset))
+	*mode = GET_MODE (src);
     }
   else
     return false;
@@ -9284,11 +9320,13 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
   int tmp, off_val;
   bool is_load;
   rtx base, offset;
+  machine_mode mode = SImode;
 
   gcc_assert (INSN_P (insn));
 
   tmp = max_pri - 1;
-  if (!fusion_load_store (insn, &base, &offset, &is_load))
+  if (!fusion_load_store (insn, &base, &offset, &mode, &is_load)
+      || !pair_fusion_mode_allowed_p (mode, is_load))
     {
       *pri = tmp;
       *fusion_pri = tmp;
@@ -9296,6 +9334,11 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
     }
 
   tmp /= 2;
+
+  if (mode == HImode)
+    tmp /= 2;
+  else if (mode == QImode)
+    tmp /= 4;
 
   /* INSN with smaller base register goes first.  */
   tmp -= ((REGNO (base) & 0xff) << 20);
@@ -9305,7 +9348,9 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 
   /* Put loads/stores operating on adjacent words into the same
    * scheduling group.  */
-  *fusion_pri = tmp - ((off_val / (UNITS_PER_WORD * 2)) << 1) + is_load;
+  *fusion_pri = tmp
+		- ((off_val / (GET_MODE_SIZE (mode).to_constant () * 2)) << 1)
+		+ is_load;
 
   if (off_val >= 0)
     tmp -= (off_val & 0xfffff);
