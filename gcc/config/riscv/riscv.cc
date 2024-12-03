@@ -9427,6 +9427,26 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int c
   return new_cost;
 }
 
+static int
+riscv_sched_adjust_priority (rtx_insn *insn, int priority)
+{
+  if (!riscv_is_micro_arch (arcv_rhx100))
+    return priority;
+
+  /* Bump the priority of fused load-store pairs for easier
+     scheduling of the memory pipe.  The specific increase
+     value is determined empirically.  */
+  if (next_insn (insn) && SCHED_GROUP_P (next_insn (insn))
+      && ((get_attr_type (insn) == TYPE_STORE
+	   && get_attr_type (next_insn (insn)) == TYPE_STORE)
+	 || (get_attr_type (insn) == TYPE_LOAD
+	     && get_attr_type (next_insn (insn)) == TYPE_LOAD)))
+    return priority + 1;
+
+  return priority;
+}
+
+
 static void
 riscv_sched_init (FILE *file, int verbose, int max_ready)
 {
@@ -12017,6 +12037,9 @@ expand_reversed_crc_using_clmul (rtx *operands)
 
 #undef  TARGET_SCHED_ADJUST_COST
 #define TARGET_SCHED_ADJUST_COST riscv_sched_adjust_cost
+
+#undef  TARGET_SCHED_ADJUST_PRIORITY
+#define TARGET_SCHED_ADJUST_PRIORITY riscv_sched_adjust_priority
 
 #undef  TARGET_SCHED_REORDER2
 #define TARGET_SCHED_REORDER2 riscv_sched_reorder2
