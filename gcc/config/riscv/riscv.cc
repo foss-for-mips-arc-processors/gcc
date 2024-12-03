@@ -10518,7 +10518,7 @@ arcv_replace_register_copies (void)
   FOR_EACH_BB_FN (bb, cfun)
     {
       rtx_insn *insn;
-      int reg_originals [FIRST_PSEUDO_REGISTER] = { 0 };
+      unsigned int reg_originals [FIRST_PSEUDO_REGISTER] = { 0 };
       rtx set;
 
       FOR_BB_INSNS (bb, insn)
