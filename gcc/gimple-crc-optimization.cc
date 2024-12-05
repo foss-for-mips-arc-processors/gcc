@@ -1336,7 +1336,7 @@ namespace
       /* opt_pass methods: */
       virtual bool gate (function *)
       {
-	return flag_gimple_crc_optimization && !optimize_size;
+	return flag_optimize_crc && !optimize_size;
       }
 
       virtual unsigned int execute (function *);
