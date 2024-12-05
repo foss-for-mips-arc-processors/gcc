@@ -9438,7 +9438,8 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
-  if (next_insn (insn) && SCHED_GROUP_P (next_insn (insn))
+  if (next_insn (insn) && INSN_P (next_insn (insn))
+      && SCHED_GROUP_P (next_insn (insn))
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next_insn (insn)) == TYPE_STORE)
 	 || (get_attr_type (insn) == TYPE_LOAD
