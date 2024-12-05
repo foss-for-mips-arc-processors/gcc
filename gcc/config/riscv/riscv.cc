@@ -8891,12 +8891,13 @@ arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
    *
    * curr (lui) == (set (reg:X rd2) (const_int UPPER_IMM_20))
    */
-  if (((get_attr_type (curr) == TYPE_MOVE
-	 && GET_CODE (SET_SRC (curr_set)) == HIGH)
-       || (CONST_INT_P (SET_SRC (curr_set))
-	     && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
+  if (REG_P (curr)
+      && ((get_attr_type (curr) == TYPE_MOVE
+	   && GET_CODE (SET_SRC (curr_set)) == HIGH)
+	  || (CONST_INT_P (SET_SRC (curr_set))
+	      && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
       && ((get_attr_type (prev) == TYPE_LOAD
-	    && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
+	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
 	  || get_attr_type (prev) == TYPE_STORE))
     return true;
 
