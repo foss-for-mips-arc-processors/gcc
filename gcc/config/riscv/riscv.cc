@@ -9435,6 +9435,10 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
   if (!riscv_is_micro_arch (arcv_rhx100))
     return priority;
 
+  if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
+      || GET_CODE (PATTERN (insn)) == CLOBBER)
+    return priority;
+
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
