@@ -10575,29 +10575,26 @@ arcv_replace_register_copies (void)
 		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
 		    op = &XEXP (*op, 0);
 
-		  if (*op && REG_P (*op))
-		    {
-		      if (reg_originals [REGNO (*op)])
-			*op = gen_rtx_REG (GET_MODE (*op), reg_originals [REGNO (*op)]);
-		    }
+		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
+				     reg_originals[REGNO (*op)]), false);
 		}
 
 	      /* ... and stores.  */
 	      if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
 		{
 		  if (reg_originals [REGNO (SET_SRC (set))])
-		    SET_SRC (set) = gen_rtx_REG (SImode,
-				 reg_originals [REGNO (SET_SRC (set))]);
+		    validate_change (insn, &SET_SRC (set),
+				  gen_rtx_REG (GET_MODE (SET_SRC (set)),
+				  reg_originals[REGNO (SET_SRC (set))]), false);
 
 		  rtx *op = &XEXP (SET_DEST (set), 0);
 		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
 		    op = &XEXP (*op, 0);
 
-		  if (*op && REG_P (*op))
-		    {
-		      if (reg_originals [REGNO (*op)])
-			*op = gen_rtx_REG (GET_MODE (*op), reg_originals [REGNO (*op)]);
-		    }
+		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
+				     reg_originals[REGNO (*op)]), false);
 		}
 	    }
 
