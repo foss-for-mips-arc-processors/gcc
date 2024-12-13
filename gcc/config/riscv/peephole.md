@@ -66,25 +66,3 @@
               (set (match_dup 2)
                    (match_dup 3))])]
 )
-
-;; ARCV: to enable load-imm+condbr fusion, swap comparison operands if necessary
-(define_peephole2
-    [(set (match_operand:X 0 "register_operand" "")
-          (match_operand:X 1 "const_arith_operand" ""))
-     (set (pc)
-          (if_then_else
-           (match_operator 2 "ordered_comparison_operator"
-                [(match_operand:X 3 "register_operand" "")
-                 (match_dup 0)])
-                (label_ref (match_operand 4 "" ""))
-                (pc)))]
-    "riscv_macro_fusion_p ()"
-    [(set (match_dup 0) (match_dup 1))
-     (set (pc)
-          (if_then_else
-            (match_op_dup 2 [(match_dup 0) (match_dup 3)])
-            (label_ref (match_dup 4))
-            (pc)))]
-    {
-      PUT_CODE (operands[2], swap_condition (GET_CODE (operands[2])));
-    })

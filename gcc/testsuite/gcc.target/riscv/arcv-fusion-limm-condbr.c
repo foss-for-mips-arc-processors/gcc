@@ -9,4 +9,4 @@ f (int x)
     goto begin;
 }
 
-/* { dg-final { scan-assembler "\\sli\\sa5,3\n\\sbge\\sa5,a0,.L\[0-9\]+\n" } } */
+/* { dg-final { scan-assembler "\\sli\\sa5,3\n\\sble\\sa0,a5,.L\[0-9\]+\n" } } */
