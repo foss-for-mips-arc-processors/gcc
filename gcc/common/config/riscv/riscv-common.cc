@@ -195,6 +195,22 @@ static const riscv_implied_info_t riscv_implied_info[] =
    {
      return subset_list->xlen () == 32 && subset_list->lookup ("f");
    }},
+  {"zca", "c",
+   [] (const riscv_subset_list *subset_list) -> bool
+   {
+     if (subset_list->xlen () == 32) {
+       if (subset_list->lookup ("d"))
+         return subset_list->lookup ("zcf") && subset_list->lookup ("zcd");
+
+       if (subset_list->lookup ("f"))
+         return subset_list->lookup ("zcf");
+
+       return true;
+     }
+
+     if (subset_list->lookup ("d"))
+       return subset_list->lookup ("zcd");
+   }},
 
   {"smaia", "ssaia"},
   {"smstateen", "ssstateen"},
