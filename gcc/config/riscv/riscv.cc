@@ -8855,18 +8855,22 @@ arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
 	   && REGNO (XEXP (SET_SRC (prev_set), 0))
 	      != REGNO (SET_DEST (prev_set))
 	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))
-	   /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	   && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-	       /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	   && (/* (set (reg:X rd1) (not (reg:X rs1))) */
+	       GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
+	/* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	       || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+	/* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
 	       || REGNO (SET_DEST (prev_set))
 		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
       || (get_attr_type (prev) == TYPE_STORE
 	  && REG_P (XEXP (SET_DEST (prev_set), 0))
 	  && REGNO (XEXP (SET_DEST (prev_set), 0))
 	     == REGNO (XEXP (SET_SRC (curr_set), 0))
-	  /* curr (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	  && (CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-	      /* or curr (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
+	  && (/* (set (reg:X rd1) (not (reg:X rs1))) */
+	      GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
+	/* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+	      || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
+	/* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
 	      || REGNO (SET_DEST (prev_set))
 		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
     return true;
