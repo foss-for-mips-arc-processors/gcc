@@ -8708,13 +8708,15 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 
   if (next_insn (insn) && INSN_P (next_insn (insn))
       && SCHED_GROUP_P (next_insn (insn)))
-    if (get_attr_type (insn) == TYPE_LOAD
-	|| get_attr_type (insn) == TYPE_STORE
-	|| get_attr_type (next_insn (insn)) == TYPE_LOAD
-	|| get_attr_type (next_insn (insn)) == TYPE_STORE)
-      pipeB_scheduled_p = 1;
-    else
-      alu_pipe_scheduled_p = 1;
+    {
+      if (get_attr_type (insn) == TYPE_LOAD
+	  || get_attr_type (insn) == TYPE_STORE
+	  || get_attr_type (next_insn (insn)) == TYPE_LOAD
+	  || get_attr_type (next_insn (insn)) == TYPE_STORE)
+	pipeB_scheduled_p = 1;
+      else
+	alu_pipe_scheduled_p = 1;
+    }
 
   if (get_attr_type (insn) == TYPE_ALU_FUSED || get_attr_type (insn) == TYPE_IMUL_FUSED)
     {
@@ -9452,13 +9454,19 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 
 
 static void
-riscv_sched_init (FILE *file, int verbose, int max_ready)
+riscv_sched_init (FILE *file ATTRIBUTE_UNUSED,
+		  int verbose ATTRIBUTE_UNUSED,
+		  int max_ready ATTRIBUTE_UNUSED)
 {
   last_scheduled_insn = 0;
 }
 
 static int
-riscv_sched_reorder2 (FILE *file, int verbose, rtx_insn **ready, int *n_readyp, int clock)
+riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
+		      int verbose ATTRIBUTE_UNUSED,
+		      rtx_insn **ready,
+		      int *n_readyp,
+		      int clock ATTRIBUTE_UNUSED)
 {
   if (sched_fusion)
     return cached_can_issue_more;
