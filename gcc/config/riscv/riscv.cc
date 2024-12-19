@@ -8769,7 +8769,14 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   rtx base0, base1, tmp;
   HOST_WIDE_INT off0 = 0, off1 = 0;
 
-  gcc_assert (MEM_P (addr0) && MEM_P (addr1));
+  if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
+    addr0 = XEXP (addr0, 0);
+
+  if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
+    addr1 = XEXP (addr1, 0);
+
+  if (!MEM_P (addr0) || !MEM_P (addr1))
+    return false;
 
   /* Require the accesses to have the same mode.  */
   if (GET_MODE (addr0) != GET_MODE (addr1))
@@ -8962,16 +8969,7 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
     {
-      rtx addr0 = SET_SRC (prev_set);
-      rtx addr1 = SET_SRC (curr_set);
-
-      if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
-	addr0 = XEXP (addr0, 0);
-
-      if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
-	addr1 = XEXP (addr1, 0);
-
-      if (arcv_fused_addr_p (addr0, addr1, true))
+      if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
 	return true;
     }
 
@@ -8988,16 +8986,9 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (curr) == TYPE_LOAD
       && get_attr_type (next_insn (curr)) == TYPE_LOAD)
   {
-      rtx addr0 = SET_SRC (curr_set);
-      rtx addr1 = SET_SRC (single_set (next_insn (curr)));
-
-      if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
-	addr0 = XEXP (addr0, 0);
-
-      if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
-	addr1 = XEXP (addr1, 0);
-
-      if (arcv_fused_addr_p (addr0, addr1, true))
+      if (arcv_fused_addr_p (SET_SRC (curr_set),
+			     SET_SRC (single_set (next_insn (curr))),
+			     true))
 	return false;
   }
 
@@ -9006,7 +8997,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (next_insn (curr)) == TYPE_STORE)
   {
       if (arcv_fused_addr_p (SET_DEST (curr_set),
-			SET_DEST (single_set (next_insn (curr))), false))
+			     SET_DEST (single_set (next_insn (curr))),
+			     false))
 	return false;
   }
 
@@ -9321,7 +9313,7 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
   int tmp, off_val;
   bool is_load;
   rtx base, offset;
-  machine_mode mode;
+  machine_mode mode = SImode;
 
   gcc_assert (INSN_P (insn));
 
