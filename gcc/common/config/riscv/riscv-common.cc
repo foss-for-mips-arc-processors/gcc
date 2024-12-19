@@ -187,6 +187,7 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"smaia", "ssaia"},
   {"smstateen", "ssstateen"},
   {"smepmp", "zicsr"},
+  {"smrnmi", "zicsr"},
   {"ssaia", "zicsr"},
   {"sscofpmf", "zicsr"},
   {"ssstateen", "zicsr"},
@@ -351,6 +352,7 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
 
   {"smaia",     ISA_SPEC_CLASS_NONE, 1, 0},
   {"smepmp",    ISA_SPEC_CLASS_NONE, 1, 0},
+  {"smrnmi",    ISA_SPEC_CLASS_NONE, 1, 0},
   {"smstateen", ISA_SPEC_CLASS_NONE, 1, 0},
 
   {"ssaia",     ISA_SPEC_CLASS_NONE, 1, 0},
