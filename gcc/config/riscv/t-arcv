@@ -27,6 +27,7 @@ arcv_march_variants += rv32imafc
 arcv_march_variants += rv32imafdc
 arcv_march_variants += rv64i
 arcv_march_variants += rv64i_zicsr
+arcv_march_variants += rv64ia
 arcv_march_variants += rv64imac
 arcv_march_variants += rv64imac_zicsr
 arcv_march_variants += rv64imafdc
@@ -71,24 +72,28 @@ MULTILIB_REQUIRED   += march=rv32e/mabi=ilp32e/mtune=arc-v-rmx-100-series
 
 # Fallback configurations for RMX-100
 MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32imc_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32iac_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 
 # Fallback configurations for RMX-500
 MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rmx-500-series
 MULTILIB_REQUIRED   += march=rv32imc_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
 MULTILIB_REQUIRED   += march=rv32iac_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
 MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rmx-500-series
 
 # Fallback configurations for RHX-100
 MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rhx-100-series
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rhx-100-series
 MULTILIB_REQUIRED   += march=rv32imac_zicsr/mabi=ilp32/mtune=arc-v-rhx-100-series
 MULTILIB_REQUIRED   += march=rv32imafc/mabi=ilp32f/mtune=arc-v-rhx-100-series
 MULTILIB_REQUIRED   += march=rv32imafdc/mabi=ilp32d/mtune=arc-v-rhx-100-series
 
 # Fallback configurations for RPX-100
 MULTILIB_REQUIRED   += march=rv64i/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64ia/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
 MULTILIB_REQUIRED   += march=rv64imac_zicsr/mabi=lp64/mtune=arc-v-rmx-100-series/mcmodel=medany
 MULTILIB_REQUIRED   += march=rv64imafdc/mabi=lp64d/mtune=arc-v-rmx-100-series/mcmodel=medany
 
