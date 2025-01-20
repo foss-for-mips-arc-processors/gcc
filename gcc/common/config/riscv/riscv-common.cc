@@ -228,6 +228,32 @@ static const riscv_implied_info_t riscv_implied_info[] =
        return subset_list->lookup ("zcb") && subset_list->lookup ("zcmp") &&
 	      subset_list->lookup ("zcmt");
    }},
+  {"zca", "c",
+   [] (const riscv_subset_list *subset_list) -> bool
+   {
+     if (subset_list->xlen () == 32)
+       {
+	 /* For RV32 "zca" implies "c" for one of these combinations of
+	    extensions: "zca", "f_zca_zcf" and "fd_zca_zcf_zcd".  */
+	 if (subset_list->lookup ("d"))
+	   return subset_list->lookup ("zcf") && subset_list->lookup ("zcd");
+
+	 if (subset_list->lookup ("f"))
+	   return subset_list->lookup ("zcf");
+
+	 return true;
+       }
+     else
+       {
+	 /* For RV64 "zca" implies "c" for one of these combinations of
+	    extensions: "zca" and "fd_zca_zcf_zcd" (zcf is not available
+	    for RV64).  */
+	 if (subset_list->xlen () == 64 && subset_list->lookup ("d"))
+	   return subset_list->lookup ("zcd");
+
+	 return true;
+       }
+   }},
 
   {"smaia", "ssaia"},
   {"smstateen", "ssstateen"},
