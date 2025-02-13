@@ -573,6 +573,23 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   NULL,						/* vector cost */
 };
 
+/* Costs to use when optimizing for Synopsys RPX-100.  */
+static const struct riscv_tune_param arcv_rpx100_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
+  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},	/* int_mul */
+  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
+  4,						/* issue_rate */
+  9,						/* branch_cost */
+  2,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* use_divmod_expansion */
+  RISCV_FUSE_ARCV,				/* fusible_ops */
+  NULL,						/* vector cost */
+};
+
 /* Costs to use when optimizing for a generic ooo profile.  */
 static const struct riscv_tune_param generic_ooo_tune_info = {
   {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_add */
