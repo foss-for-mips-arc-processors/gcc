@@ -595,9 +595,14 @@ static const struct riscv_tune_param arcv_rmx100_tune_info = {
   2,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,				/* fusible_ops */
   NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
 };
 
 /* Costs to use when optimizing for Synopsys RMX-500.  */
@@ -612,9 +617,14 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   2,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ARCV,				/* fusible_ops */
   NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
 };
 
 /* Costs to use when optimizing for Synopsys RHX-100.  */
@@ -629,9 +639,14 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   2,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ARCV,				/* fusible_ops */
   NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
 };
 
 /* Costs to use when optimizing for a generic ooo profile.  */
