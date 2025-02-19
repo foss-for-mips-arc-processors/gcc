@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -201,6 +201,7 @@ private:
 
   virtual void visit (ExternalStaticItem &) override;
   virtual void visit (ExternalFunctionItem &) override;
+  virtual void visit (ExternalTypeItem &) override;
   virtual void visit (ExternBlock &) override;
 
   virtual void visit (LiteralPattern &) override;

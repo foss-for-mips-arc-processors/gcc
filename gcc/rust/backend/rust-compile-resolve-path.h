@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -66,6 +66,12 @@ public:
 		bool is_qualified_path);
 
   tree resolved;
+
+private:
+  tree
+  attempt_constructor_expression_lookup (TyTy::BaseType *lookup, Context *ctx,
+					 const Analysis::NodeMapping &mappings,
+					 location_t expr_locus);
 };
 
 } // namespace Compile

@@ -1,6 +1,6 @@
 // The template and inlines for the -*- C++ -*- complex number classes.
 
-// Copyright (C) 1997-2024 Free Software Foundation, Inc.
+// Copyright (C) 1997-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -36,7 +36,12 @@
 #ifndef _GLIBCXX_COMPLEX
 #define _GLIBCXX_COMPLEX 1
 
+#ifdef _GLIBCXX_SYSHDR
 #pragma GCC system_header
+#endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wc++11-extensions" // extern template
 
 #include <bits/c++config.h>
 #include <bits/cpp_type_traits.h>
@@ -47,7 +52,7 @@
 // Get rid of a macro possibly defined in <complex.h>
 #undef complex
 
-#ifdef __clang__
+#ifdef _GLIBCXX_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
@@ -2035,7 +2040,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     __complex_acos(const std::complex<_Tp>& __z)
     {
       const std::complex<_Tp> __t = std::asin(__z);
-      const _Tp __pi_2 = 1.5707963267948966192313216916397514L;
+      const _Tp __pi_2 = (_Tp) 1.5707963267948966192313216916397514L;
       return std::complex<_Tp>(__pi_2 - __t.real(), -__t.imag());
     }
 
@@ -2646,8 +2651,9 @@ _GLIBCXX_END_NAMESPACE_VERSION
 
 #endif  // C++11
 
-#ifdef __clang__
+#ifdef _GLIBCXX_CLANG
 #pragma clang diagnostic pop
 #endif
 
+#pragma GCC diagnostic pop
 #endif  /* _GLIBCXX_COMPLEX */

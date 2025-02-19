@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -46,6 +46,8 @@ public:
   void visit (AST::IdentifierExpr &) override;
   void visit (AST::PathInExpression &) override;
   void visit (AST::TypePath &) override;
+  void visit (AST::StructExprStructBase &) override;
+  void visit (AST::StructExprStructFields &) override;
 
 private:
   /* Setup Rust's builtin types (u8, i32, !...) in the resolver */

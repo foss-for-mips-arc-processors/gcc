@@ -1,6 +1,6 @@
 /* Communication between GCC and libgomp.
 
-   Copyright (C) 2014-2024 Free Software Foundation, Inc.
+   Copyright (C) 2014-2025 Free Software Foundation, Inc.
 
    Contributed by Mentor Embedded.
 
@@ -382,11 +382,29 @@ enum gomp_map_kind
 #define GOMP_DEPEND_MUTEXINOUTSET	4
 #define GOMP_DEPEND_INOUTSET		5
 
+/* Predefined allocator value ranges.  */
+#define GOMP_OMP_PREDEF_ALLOC_MAX	8
+#define GOMP_OMPX_PREDEF_ALLOC_MIN	200
+#define GOMP_OMPX_PREDEF_ALLOC_MAX	200
+
+/* Predefined allocator with access == thread.  */
+#define GOMP_OMP_PREDEF_ALLOC_THREADS	8
+
 /* Flag values for OpenMP 'requires' directive features.  */
+// compiler use only: OMP_REQUIRES_ATOMIC_DEFAULT_MEM_ORDER  0xf
 #define GOMP_REQUIRES_UNIFIED_ADDRESS       0x10
 #define GOMP_REQUIRES_UNIFIED_SHARED_MEMORY 0x20
+// compiler use only: OMP_REQUIRES_DYNAMIC_ALLOCATORS 0x40
 #define GOMP_REQUIRES_REVERSE_OFFLOAD       0x80
+// compiler use only: OMP_REQUIRES_ATOMIC_DEFAULT_MEM_ORDER_USED 0x100
 #define GOMP_REQUIRES_TARGET_USED           0x200
+#define GOMP_REQUIRES_SELF_MAPS             0x400
+
+/* Interop foreign-runtime data;
+   OpenMP defines positive values; reserve 0 and negative for GCC.  */
+#define GOMP_INTEROP_IFR_LAST	7
+#define GOMP_INTEROP_IFR_SEPARATOR ((char)(-__INT8_MAX__-1))
+#define GOMP_INTEROP_IFR_UNKNOWN ((char)(-__INT8_MAX__))
 
 /* HSA specific data structures.  */
 

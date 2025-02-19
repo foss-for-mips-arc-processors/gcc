@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -30,7 +30,7 @@ class ResolveExpr : public ResolverBase
   using Rust::Resolver::ResolverBase::visit;
 
 public:
-  static void go (AST::Expr *expr, const CanonicalPath &prefix,
+  static void go (AST::Expr &expr, const CanonicalPath &prefix,
 		  const CanonicalPath &canonical_prefix,
 		  bool funny_error = false);
 

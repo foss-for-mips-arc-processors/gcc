@@ -1,6 +1,6 @@
 ; Options for the Modula-2 front end.
 ;
-; Copyright (C) 2016-2024 Free Software Foundation, Inc.
+; Copyright (C) 2016-2025 Free Software Foundation, Inc.
 ; Contributed by Gaius Mulley <gaius.mulley@southwales.ac.uk>.
 ;
 ; This file is part of GNU Modula-2.
@@ -133,6 +133,30 @@ set all location values to a specific value (internal switch)
 fm2-debug-trace=
 Modula-2 Joined
 turn on internal debug tracing for quad,token,line,all (internal switch)
+
+fm2-dump=
+Modula-2 Joined
+dump Modula-2 internal intemediate representation specified by: all,quad,decl,gimple
+
+fm2-dump-decl=
+Modula-2 Joined
+dump Modula-2 decls to the filename stem specified
+
+fm2-dump-gimple=
+Modula-2 Joined
+dump Modula-2 gimple to the filename stem specified
+
+fm2-dump-quad=
+Modula-2 Joined
+dump Modula-2 quads to the filename stem specified
+
+fm2-dump-filter=
+Modula-2 Joined
+filter the language dump using a comma separated list of procedures and modules
+
+fm2-file-offset-bits=
+Modula-2 Joined
+override the default 64 bit definition of SYSTEM.COFF_T with the argument specified
 
 fm2-g
 Modula-2

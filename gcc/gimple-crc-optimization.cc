@@ -1,5 +1,5 @@
 /* CRC optimization.
-   Copyright (C) 2022-2024 Free Software Foundation, Inc.
+   Copyright (C) 2022-2025 Free Software Foundation, Inc.
    Contributed by Mariam Arutunian <mariamarutunian@gmail.com>
 
 This file is part of GCC.
@@ -29,27 +29,21 @@ along with GCC; see the file COPYING3.  If not see
 #include "ssa.h"
 #include "gimple-iterator.h"
 #include "tree-cfg.h"
-#include "tree-ssa-loop-niter.h"
 #include "cfgloop.h"
-#include "gimple-range.h"
 #include "tree-scalar-evolution.h"
-#include "hwint.h"
 #include "crc-verification.h"
-#include "internal-fn.h"
-#include "tree-into-ssa.h"
-#include "tree-ssa-loop-manip.h"
-#include "predict.h"
-#include "cfghooks.h"
-#include "tree-ssa.h"
-#include "tree-ssa-live.h"
-#include "tree-dfa.h"
-#include "dominance.h"
-#include "tree-ssa-dce.h"
-#include "tree-cfgcleanup.h"
-#include "tree.h"
 
 class crc_optimization {
  private:
+  /* Record of statements already seen.  */
+  bitmap m_visited_stmts;
+
+  /* Input CRC of the loop.  */
+  tree m_crc_arg;
+
+  /* Input data of the loop.  */
+  tree m_data_arg;
+
   /* The statement doing shift 1 operation before/after xor operation.  */
   gimple *m_shift_stmt;
 
@@ -62,6 +56,9 @@ class crc_optimization {
 
   /* The loop, which probably calculates CRC.  */
   class loop *m_crc_loop;
+
+  /* Polynomial used in CRC calculation.  */
+  unsigned HOST_WIDE_INT m_polynomial;
 
   /* Depending on the value of M_IS_BIT_FORWARD, may be forward or reversed CRC.
      If M_IS_BIT_FORWARD, then it is bit-forward implementation,
@@ -101,11 +98,16 @@ class crc_optimization {
      The loop for CRC calculation may do 8, 16, 24, 32, 64 iterations.  */
   bool satisfies_crc_loop_iteration_count (class loop *func_loop);
 
-  /* Checks whether found XOR_STMT is for calculating CRC.
-     The function CRC_FUN calculates CRC only if there is a shift operation
-     in the crc loop.  */
-  bool xor_calculates_crc (function *crc_fun, basic_block *loop_bbs,
-			   const gimple *xor_stmt);
+  /* This function checks if the XOR_STMT is used for CRC calculation.
+     It verifies the presence of a shift operation in the CRC_FUN function
+     inside the CRC loop.  It examines operands of XOR, its dependencies, the
+     relative position of the shift operation, and the existence of a shift
+     operation in the opposite branch of conditional statements.  It also
+     checks if XOR is performed when MSB/LSB is one.
+     If these conditions are met, the XOR operation may be part of a CRC
+     calculation.  The function returns true if these conditions are fulfilled,
+     otherwise, it returns false.  */
+  bool xor_calculates_crc (function *crc_fun, const gimple *xor_stmt);
 
   /* Returns true if we can get definition of the VARIABLE, and the definition
      it's not outside the loop.  Otherwise, returns false.  */
@@ -138,8 +140,7 @@ class crc_optimization {
      XOR_BB is the basic block, where the xor operation is done.
      PRED_BB is the predecessor basic block of the XOR_BB, it is assumed that
      the last stmt of PRED_BB checks the condition under which xor is done.  */
-  bool crc_cond (basic_block pred_bb, basic_block xor_bb,
-		 basic_block *loop_bbs);
+  bool crc_cond (basic_block pred_bb, basic_block xor_bb);
 
   /* Returns true if xor is done in case the MSB/LSB is 1.
      Otherwise, returns false.
@@ -156,7 +157,7 @@ class crc_optimization {
   /* Checks that the variable used in the condition COND is the assumed CRC
      (or depends on the assumed CRC).
      Also sets data member m_phi_for_data if it isn't set and exists.  */
-  bool is_crc_checked (gcond *cond, basic_block *loop_bbs);
+  bool is_crc_checked (gcond *cond);
 
   /* Returns true if condition COND checks MSB/LSB bit is 1.
      Otherwise, return false.  */
@@ -172,10 +173,11 @@ class crc_optimization {
      then in the opposite block must be another shift.  */
   bool exists_shift_for_opp_xor_shift (basic_block opposite_bb);
 
-  /* Goes down by def-use chain (within the CRC loop) and returns the statement
-     where variable (dependent on xor-ed variable) is shifted with 1.
-     Between xor and shift operations only phi statements are allowed.
-     Otherwise, returns nullptr.  */
+  /* Follow def-use chains of XORED_CRC and return the statement where
+     XORED_CRC is shifted by one bit position.  Only PHI statements are
+     allowed between XORED_CRC and the shift in the def-use chain.
+
+   If no such statement is found, return NULL.  */
   gimple *find_shift_after_xor (tree xored_crc);
 
   /* Returns the statement which does shift 1 operation.
@@ -206,28 +208,38 @@ class crc_optimization {
   /* Swaps m_phi_for_crc and m_phi_for_data if they are mixed.  */
   void swap_crc_and_data_if_needed (gphi *output_crc);
 
+  /* Validates CRC and data arguments and
+   sets them for potential CRC loop replacement.
+
+   The function extracts the CRC and data arguments from PHI nodes and
+   performs several checks to ensure that the CRC and data are suitable for
+   replacing the CRC loop with a more efficient implementation.
+
+  Returns true if the arguments are valid and the loop replacement is possible,
+  false otherwise.  */
+  bool validate_crc_and_data ();
+
+  /* Convert polynomial to unsigned HOST_WIDE_INT.  */
+  void construct_constant_polynomial (value *polynomial);
+
   /* Returns phi statement which may hold the calculated CRC.  */
   gphi *get_output_phi ();
 
-  /* Returns data argument to pass to the CRC IFN.
-     If there is data from the code - use it (this is the case,
-     when data isn't xor-ed with CRC before the loop).
-     Otherwise, generate a new variable for the data with 0 value
-     (the case, when data is xor-ed with CRC before the loop).
-     For the CRC calculation, it doesn't matter CRC is calculated for the
-     (CRC^data, 0) or (CRC, data).  */
-  tree get_data ();
-
-  /* Replaces CRC calculation loop with CRC_IFN call.
-     Returns true if replacement is succeeded, otherwise false.  */
-  bool faster_crc_code_generation (function *fun, value *polynomial,
-				   gphi *output_crc);
-
-  /* Build tree for the POLYNOMIAL (from its binary representation)
-   without the leading 1.  */
-  tree build_polynomial_without_1 (tree crc_arg, value *polynomial);
+  /* Attempts to optimize a CRC calculation loop by replacing it with a call to
+     an internal function (IFN_CRC or IFN_CRC_REV).
+     Returns true if replacement succeeded, otherwise false.  */
+  bool optimize_crc_loop (gphi *output_crc);
 
  public:
+  crc_optimization () : m_visited_stmts (BITMAP_ALLOC (NULL)),
+			m_crc_loop (nullptr), m_polynomial (0)
+  {
+    set_initial_values ();
+  }
+  ~crc_optimization ()
+  {
+    BITMAP_FREE (m_visited_stmts);
+  }
   unsigned int execute (function *fun);
 };
 
@@ -259,8 +271,12 @@ crc_optimization::find_shift_after_xor (tree xored_crc)
   imm_use_iterator imm_iter;
   use_operand_p use_p;
 
-  if (TREE_CODE (xored_crc) != SSA_NAME)
+  gcc_assert (TREE_CODE (xored_crc) == SSA_NAME);
+
+  unsigned v = SSA_NAME_VERSION (xored_crc);
+  if (bitmap_bit_p (m_visited_stmts, v))
     return nullptr;
+  bitmap_set_bit (m_visited_stmts, v);
 
   /* Iterate through the immediate uses of the XORED_CRC.
      If there is a shift return true,
@@ -268,12 +284,9 @@ crc_optimization::find_shift_after_xor (tree xored_crc)
   FOR_EACH_IMM_USE_FAST (use_p, imm_iter, xored_crc)
     {
       gimple *stmt = USE_STMT (use_p);
-      if (gimple_visited_p (stmt))
-	return nullptr;
-      gimple_set_visited (stmt, true);
       // Consider only statements within the loop
       if (!flow_bb_inside_loop_p (m_crc_loop, gimple_bb (stmt)))
-	return nullptr;
+	continue;
 
       /* If encountered phi statement, check immediate use of its result.
 	 Otherwise, if encountered assign statement, check whether it does shift
@@ -282,7 +295,7 @@ crc_optimization::find_shift_after_xor (tree xored_crc)
 	{
 	  /* Don't continue searching if encountered the loop's beginning.  */
 	  if (bb_loop_header_p (gimple_bb (stmt)))
-	    return nullptr;
+	    continue;
 
 	  return find_shift_after_xor (gimple_phi_result (stmt));
 	}
@@ -295,6 +308,8 @@ crc_optimization::find_shift_after_xor (tree xored_crc)
 	    return stmt;
 	  return nullptr;
 	}
+      else if (!is_gimple_debug (stmt))
+	return  nullptr;
     }
     return nullptr;
 }
@@ -304,12 +319,26 @@ crc_optimization::find_shift_after_xor (tree xored_crc)
 basic_block
 crc_optimization::get_xor_bb_opposite (basic_block pred_bb, basic_block xor_bb)
 {
+  /* Check that the predecessor block has exactly two successors.  */
   if (EDGE_COUNT (pred_bb->succs) != 2)
     return nullptr;
 
+  edge e0 = EDGE_SUCC (pred_bb, 0);
+  edge e1 = EDGE_SUCC (pred_bb, 1);
+
+  /* Ensure neither outgoing edge is marked as complex.  */
+  if ((e0->flags & EDGE_COMPLEX)
+      || (e1->flags & EDGE_COMPLEX))
+    return nullptr;
+
+  /* Check that one of the successors is indeed XOR_BB.  */
+  gcc_assert ((e0->dest == xor_bb)
+	      || (e1->dest == xor_bb));
+
+  /* Return the opposite block of XOR_BB.  */
   if (EDGE_SUCC (pred_bb, 0)->dest != xor_bb)
-    return EDGE_SUCC (pred_bb, 0)->dest;
-  return EDGE_SUCC (pred_bb, 1)->dest;
+    return e0->dest;
+  return e1->dest;
 }
 
 /* Checks whether the pair of xor's shift exists in the opposite
@@ -333,8 +362,8 @@ crc_optimization::exists_shift_for_opp_xor_shift (basic_block opposite_bb)
 	 on the path with xor, and it is a shift by one.  */
       if (is_gimple_assign (stmt))
 	{
-	  if (gimple_assign_rhs_code (stmt)
-	      == gimple_assign_rhs_code (m_shift_stmt)
+	  if ((gimple_assign_rhs_code (stmt)
+	       == gimple_assign_rhs_code (m_shift_stmt))
 	      && integer_onep (gimple_assign_rhs2 (stmt)))
 	    return true;
 	}
@@ -356,11 +385,12 @@ crc_optimization::cond_true_is_checked_for_bit_one (const gcond *cond)
   enum tree_code code = gimple_cond_code (cond);
 
   /* If the condition is something == 1 -> return true.  */
-  if (integer_onep (rhs) && code == EQ_EXPR)
+  if (code == EQ_EXPR && integer_onep (rhs))
     return true;
 
   /* If the condition is something != 0  or something < 0 -> return true.  */
-  if (integer_zerop (rhs) && (code == NE_EXPR || code == LT_EXPR))
+  if ((code == NE_EXPR || code == LT_EXPR)
+       && integer_zerop (rhs))
     return true;
 
   return false;
@@ -411,10 +441,9 @@ crc_optimization::is_crc_satisfiable_cond (basic_block pred_bb,
   Also sets data member m_phi_for_data if it isn't set and exists.  */
 
 bool
-crc_optimization::is_crc_checked (gcond *cond, basic_block *loop_bbs)
+crc_optimization::is_crc_checked (gcond *cond)
 {
   tree lhs = gimple_cond_lhs (cond);
-  set_bbs_stmts_not_visited (loop_bbs, m_crc_loop->num_nodes);
 
   /* As conditions are in canonical form, only left part must be an
     SSA_NAME.  */
@@ -424,7 +453,9 @@ crc_optimization::is_crc_checked (gcond *cond, basic_block *loop_bbs)
 	 and xor-ed variable.  Also set phi statement of data if it is not
 	 determined earlier and is used in the loop.  */
       auto_vec<gimple *> cond_dep_stmts (m_crc_loop->num_nodes);
-      if (!set_defs (lhs, cond_dep_stmts, true))
+      bool set_defs_succeeded = set_defs (lhs, cond_dep_stmts, true);
+      bitmap_clear (m_visited_stmts);
+      if (!set_defs_succeeded)
 	return false;
       return cond_depends_on_crc (cond_dep_stmts);
     }
@@ -443,12 +474,11 @@ crc_optimization::is_crc_checked (gcond *cond, basic_block *loop_bbs)
    the last stmt of PRED_BB checks the condition under which xor is done.  */
 
 bool
-crc_optimization::crc_cond (basic_block pred_bb, basic_block xor_bb,
-			    basic_block *loop_bbs)
+crc_optimization::crc_cond (basic_block pred_bb, basic_block xor_bb)
 {
   /* Check whether PRED_BB contains condition.  We will consider only those
      cases when xor is done immediately under the condition.  */
-  gcond *cond = safe_dyn_cast<gcond *> (*gsi_last_bb (pred_bb));
+  gcond *cond = safe_dyn_cast<gcond *> (gsi_stmt (gsi_last_bb (pred_bb)));
   if (!cond)
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
@@ -462,7 +492,7 @@ crc_optimization::crc_cond (basic_block pred_bb, basic_block xor_bb,
 
   /* Check that CRC's MSB/LSB is checked in the condition.
      Set data member if not set and exists.  */
-  if (!is_crc_checked (cond, loop_bbs))
+  if (!is_crc_checked (cond))
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
 	fprintf (dump_file, "The condition is not related to the CRC check.\n");
@@ -477,14 +507,14 @@ crc_optimization::crc_cond (basic_block pred_bb, basic_block xor_bb,
 bool
 crc_optimization::is_acceptable_stmt_code (const tree_code &stmt_code)
 {
-  return stmt_code == BIT_IOR_EXPR
-	 || stmt_code == BIT_AND_EXPR
-	 || stmt_code == BIT_XOR_EXPR
-	 || stmt_code == MINUS_EXPR
-	 || stmt_code == PLUS_EXPR
-	 || stmt_code == RSHIFT_EXPR
-	 || stmt_code == LSHIFT_EXPR
-	 || TREE_CODE_CLASS (stmt_code) == tcc_unary;
+  return (stmt_code == BIT_IOR_EXPR)
+	 || (stmt_code == BIT_AND_EXPR)
+	 || (stmt_code == BIT_XOR_EXPR)
+	 || (stmt_code == MINUS_EXPR)
+	 || (stmt_code == PLUS_EXPR)
+	 || (stmt_code == RSHIFT_EXPR)
+	 || (stmt_code == LSHIFT_EXPR)
+	 || (TREE_CODE_CLASS (stmt_code) == tcc_unary);
 }
 
 /* Returns true if ASSIGN_STMT does shift with 1.  Otherwise, returns false.  */
@@ -575,12 +605,20 @@ crc_optimization::set_defs (tree name, auto_vec<gimple *> &use_defs,
   if (!passes_checks_for_def_chain (name))
     return true;
 
-  gimple *stmt = SSA_NAME_DEF_STMT (name);
-
-  /* Don't consider already visited statement.  */
-  if (gimple_visited_p (stmt))
+  /* Don't consider already visited names.  */
+  unsigned v = SSA_NAME_VERSION (name);
+  if (bitmap_bit_p (m_visited_stmts, v))
     return true;
-  gimple_set_visited (stmt, true);
+  bitmap_set_bit (m_visited_stmts, v);
+
+  /* In CRC implementations with constant polynomial maximum 12 use_def
+     statements may occur.  This limit is based on an analysis of various CRC
+     implementations as well as theoretical possibilities.
+     TODO: Find a better solution.  */
+  if (use_defs.length () > 12)
+    return false;
+
+  gimple *stmt = SSA_NAME_DEF_STMT (name);
 
   /* If it's not specified to keep only header phi's,
      then keep all statements.  */
@@ -649,10 +687,12 @@ crc_optimization::find_shift_before_xor (const auto_vec<gimple *> &stmts)
   return nullptr;
 }
 
-/* Set M_PHI_FOR_CRC and M_PHI_FOR_DATA fields.
-   Returns false if there are more than two (as in CRC calculation only CRC's
-   and data's phi may exist) or no phi statements in STMTS (at least there must
-   be CRC's phi).
+/* This function sets M_PHI_FOR_CRC and M_PHI_FOR_DATA fields.
+   At this step phi nodes for CRC and data may be mixed in places.
+   It is fixed later with the "swap_crc_and_data_if_needed" function.
+   The function returns false if there are more than two (as in CRC calculation
+   only CRC's and data's phi may exist) or no phi statements in STMTS (at least
+   there must be CRC's phi).
    Otherwise, returns true.  */
 
 bool
@@ -716,23 +756,30 @@ crc_optimization::cond_depends_on_crc (auto_vec<gimple *>& stmts)
 void
 crc_optimization::set_initial_values ()
 {
+  m_crc_arg = nullptr;
+  m_data_arg = nullptr;
   m_shift_stmt = nullptr;
   m_phi_for_crc = nullptr;
   m_phi_for_data = nullptr;
   m_is_bit_forward = false;
 }
 
-/* Check whether found XOR_STMT is for calculating CRC.
-   The function CRC_FUN calculates CRC only if there is a shift operation
-   in the crc loop.  */
+/* This function checks if the XOR_STMT is used for CRC calculation.
+   It verifies the presence of a shift operation in the CRC_FUN function inside
+   the CRC loop.  It examines operands of XOR, its dependencies, the relative
+   position of the shift operation, and the existence of a shift operation in
+   the opposite branch of conditional statements.  It also checks if XOR is
+   performed when MSB/LSB is one.
+   If these conditions are met, the XOR operation may be part of a CRC
+   calculation.  The function returns true if these conditions are fulfilled,
+   otherwise, it returns false.  */
 
 bool
-crc_optimization::xor_calculates_crc (function *crc_fun, basic_block *loop_bbs,
+crc_optimization::xor_calculates_crc (function *crc_fun,
 				      const gimple *xor_stmt)
 {
   tree crc_var = gimple_assign_lhs (xor_stmt);
   set_initial_values ();
-  set_bbs_stmts_not_visited (loop_bbs, m_crc_loop->num_nodes);
   tree ssa1 = gimple_assign_rhs1 (xor_stmt);
   tree ssa2 = gimple_assign_rhs2 (xor_stmt);
   if (TREE_CODE (ssa2) != INTEGER_CST)
@@ -745,7 +792,9 @@ crc_optimization::xor_calculates_crc (function *crc_fun, basic_block *loop_bbs,
 
   /* Get the statements within the loop on which xor-ed variable depends.  */
   auto_vec<gimple *> xor_dep_stmts (m_crc_loop->num_nodes);
-  if (!set_defs (ssa1, xor_dep_stmts))
+  bool set_defs_succeeded = set_defs (ssa1, xor_dep_stmts);
+  bitmap_clear (m_visited_stmts);
+  if (!set_defs_succeeded)
     {
       xor_dep_stmts.release ();
       return false;
@@ -766,9 +815,8 @@ crc_optimization::xor_calculates_crc (function *crc_fun, basic_block *loop_bbs,
       if (dump_file && (dump_flags & TDF_DETAILS))
 	fprintf (dump_file, "No shift before xor, trying to find after xor.\n");
 
-      set_bbs_stmts_not_visited (loop_bbs, m_crc_loop->num_nodes);
-
       m_shift_stmt = find_shift_after_xor (crc_var);
+      bitmap_clear (m_visited_stmts);
       if (!m_shift_stmt)
 	return false;
     }
@@ -800,7 +848,7 @@ crc_optimization::xor_calculates_crc (function *crc_fun, basic_block *loop_bbs,
 
   /* Check that xor is done if MSB/LSB is one.
      If all checks succeed, then it may be a CRC.  */
-  if (crc_cond (block_of_condition, xor_bb, loop_bbs))
+  if (crc_cond (block_of_condition, xor_bb))
     {
       if (dump_file)
 	fprintf (dump_file,
@@ -899,9 +947,11 @@ crc_optimization::loop_may_calculate_crc (class loop *loop)
 	fprintf (dump_file,
 		 "The number of conditional "
 		 "branches in the loop isn't 2.\n");
+      free (loop_bbs);
       return false;
     }
 
+  unsigned short checked_xor_count = 0;
   /* Walk bbs of the loop.  */
   for (unsigned int i = 0; i < m_crc_loop->num_nodes; i++)
     {
@@ -921,11 +971,17 @@ crc_optimization::loop_may_calculate_crc (class loop *loop)
 			 "Found xor, "
 			 "checking whether it is for CRC calculation.\n");
 
-	      if (xor_calculates_crc (cfun, loop_bbs, stmt))
+	      if (xor_calculates_crc (cfun, stmt))
 		{
 		  dump_crc_information ();
 		  free (loop_bbs);
 		  return true;
+		}
+
+	      if (++checked_xor_count == 2)
+		{
+		  free (loop_bbs);
+		  return false;
 		}
 	    }
 	}
@@ -978,7 +1034,9 @@ crc_optimization::loop_calculates_crc (gphi *output_crc,
 	}
 
       /* Check whether LFSR and obtained states are same.  */
-      if (!all_states_match_lfsr (lfsr, m_is_bit_forward, output_crc,
+      tree calculated_crc = PHI_ARG_DEF_FROM_EDGE (output_crc,
+						   single_exit (m_crc_loop));
+      if (!all_states_match_lfsr (lfsr, m_is_bit_forward, calculated_crc,
 				 loop_executor.get_final_states ()))
 	{
 	  if (dump_file && (dump_flags & TDF_DETAILS))
@@ -997,12 +1055,17 @@ crc_optimization::loop_calculates_crc (gphi *output_crc,
 bool
 crc_optimization::is_output_crc (gphi *output_crc)
 {
-  if (PHI_ARG_DEF (output_crc, 0) == PHI_ARG_DEF (m_phi_for_crc, 0))
+  tree crc_of_exit
+    = PHI_ARG_DEF_FROM_EDGE (output_crc, single_exit (m_crc_loop));
+  tree crc_of_latch
+    = PHI_ARG_DEF_FROM_EDGE (m_phi_for_crc, loop_latch_edge (m_crc_loop));
+  if (crc_of_exit == crc_of_latch)
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
 	{
 	  fprintf (dump_file, "Output CRC is ");
 	  print_gimple_expr (dump_file, (gimple *) output_crc, dump_flags);
+	  fprintf (dump_file, "\n");
 	}
       return true;
     }
@@ -1020,13 +1083,83 @@ crc_optimization::is_output_crc (gphi *output_crc)
 void
 crc_optimization::swap_crc_and_data_if_needed (gphi *output_crc)
 {
-  if (PHI_ARG_DEF (output_crc, 0) != PHI_ARG_DEF (m_phi_for_crc, 0))
+  tree crc_of_exit
+    = PHI_ARG_DEF_FROM_EDGE (output_crc, single_exit (m_crc_loop));
+  edge crc_loop_latch = loop_latch_edge (m_crc_loop);
+  if (crc_of_exit != PHI_ARG_DEF_FROM_EDGE (m_phi_for_crc, crc_loop_latch))
     {
       if (m_phi_for_data
-	  && PHI_ARG_DEF (output_crc, 0) == PHI_ARG_DEF (m_phi_for_data, 0))
+	  && crc_of_exit == PHI_ARG_DEF_FROM_EDGE (m_phi_for_data,
+						   crc_loop_latch))
 	{
 	  std::swap (m_phi_for_crc, m_phi_for_data);
 	}
+    }
+}
+
+/* Validates CRC and data arguments and
+   sets them for potential CRC loop replacement.
+
+   The function extracts the CRC and data arguments from PHI nodes and
+   performs several checks to ensure that the CRC and data are suitable for
+   replacing the CRC loop with a more efficient implementation.
+
+  Returns true if the arguments are valid and the loop replacement is possible,
+  false otherwise.  */
+
+bool crc_optimization::validate_crc_and_data ()
+{
+  /* Set m_crc_arg and check if fits in word_mode.  */
+  gcc_assert (m_phi_for_crc);
+  m_crc_arg = PHI_ARG_DEF_FROM_EDGE (m_phi_for_crc,
+				     loop_preheader_edge (m_crc_loop));
+  gcc_assert (m_crc_arg);
+
+  unsigned HOST_WIDE_INT
+  data_size = tree_to_uhwi (m_crc_loop->nb_iterations) + 1;
+  /* We don't support the case where data is larger than the CRC.  */
+  if (TYPE_PRECISION (TREE_TYPE (m_crc_arg)) < data_size)
+    return false;
+
+  /* Set m_data_arg if a PHI node for data exists,
+     and check its size against loop iterations.
+     This is the case when data and CRC are XOR-ed in the loop.  */
+  if (m_phi_for_data)
+    {
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file,
+		 "Data and CRC are xor-ed in the for loop.  Initializing data "
+		 "with its value.\n");
+      m_data_arg = PHI_ARG_DEF_FROM_EDGE (m_phi_for_data,
+					  loop_preheader_edge (m_crc_loop));
+      gcc_assert (m_data_arg);
+      if (TYPE_PRECISION (TREE_TYPE (m_data_arg)) != data_size)
+	{
+	  if (dump_file && (dump_flags & TDF_DETAILS))
+	    fprintf (dump_file,
+		     "Loop iteration number and data's size differ.\n");
+	  return false;
+	}
+	return true;
+    }
+  return true;
+}
+
+/* Convert polynomial to unsigned HOST_WIDE_INT.  */
+
+void
+crc_optimization::construct_constant_polynomial (value *polynomial)
+{
+  m_polynomial = 0;
+  for (unsigned i = 0; i < (*polynomial).length (); i++)
+    {
+      value_bit *const_bit;
+      if (m_is_bit_forward)
+	const_bit = (*polynomial)[(*polynomial).length () - 1 - i];
+      else
+	const_bit = (*polynomial)[i];
+      m_polynomial <<= 1;
+      m_polynomial ^= (as_a<bit *> (const_bit))->get_val () ? 1 : 0;
     }
 }
 
@@ -1083,99 +1216,12 @@ crc_optimization::get_output_phi ()
   return nullptr;
 }
 
-/* Build tree for the POLYNOMIAL (from its binary representation)
-   without the leading 1.  */
-
-tree
-crc_optimization::build_polynomial_without_1 (tree crc_arg, value *polynomial)
-{
-  unsigned HOST_WIDE_INT cst_polynomial = 0;
-  for (size_t i = 0; i < (*polynomial).length (); i++)
-    {
-      value_bit *const_bit;
-      if (m_is_bit_forward)
-	const_bit = (*polynomial)[(*polynomial).length () - 1 - i];
-      else
-	const_bit = (*polynomial)[i];
-      cst_polynomial <<= 1;
-      cst_polynomial ^= (as_a<bit *> (const_bit))->get_val () ? 1 : 0;
-    }
-  return build_int_cstu (TREE_TYPE (crc_arg), cst_polynomial);
-}
-
-/* Returns data argument to pass to the CRC IFN.
-   If there is data from the code - use it (this is the case,
-   when data isn't xor-ed with CRC before the loop).
-   Otherwise, generate a new variable for the data with 0 value
-   (the case, when data is xor-ed with CRC before the loop).
-   For the CRC calculation, it doesn't matter CRC is calculated for the
-   (CRC^data, 0) or (CRC, data).  */
-
-tree
-crc_optimization::get_data ()
-{
-  unsigned HOST_WIDE_INT
-  data_size = tree_to_uhwi (m_crc_loop->nb_iterations) + 1;
-
-  /* If we have the data, use it.  */
-  if (m_phi_for_data)
-    {
-      if (dump_file && (dump_flags & TDF_DETAILS))
-	fprintf (dump_file,
-		 "Data and CRC are xor-ed in the for loop.  Initializing data "
-		 "with its value.\n");
-      tree data_arg = PHI_ARG_DEF (m_phi_for_data, 1);
-      if (TYPE_PRECISION (TREE_TYPE (data_arg)) == data_size)
-	return data_arg;
-      else
-	{
-	  if (dump_file && (dump_flags & TDF_DETAILS))
-	    fprintf (dump_file,
-		     "Loop iteration number and data's size differ.\n");
-	  return nullptr;
-	}
-    }
-
-  /* Create a new variable for the data.  */
-
-  if (dump_file && (dump_flags & TDF_DETAILS))
-    fprintf (dump_file,
-	     "Data and CRC are xor-ed before for loop.  Initializing data "
-	     "with 0.\n");
-  tree type = nullptr;
-  /* Determine the data's size with the loop iteration count.
-     We assume that loop iteration count depends on the data's size.  */
-  if (data_size == TYPE_PRECISION (intQI_type_node))
-    type = intQI_type_node;
-  else if (data_size == TYPE_PRECISION (intHI_type_node))
-    type = intHI_type_node;
-  else if (data_size == TYPE_PRECISION (intSI_type_node))
-    type = intSI_type_node;
-  else if (data_size == TYPE_PRECISION (intDI_type_node))
-    type = intDI_type_node;
-  else if (data_size == TYPE_PRECISION (intTI_type_node))
-    type = intTI_type_node;
-  else
-    {
-      if (dump_file && (dump_flags & TDF_DETAILS))
-	fprintf (dump_file, "Couldn't determine the data's size.\n");
-      return nullptr;
-    }
-  return build_int_cstu (type, 0);
-
-}
-
-/* Replaces CRC calculation loop with CRC_IFN call.
-   Returns true if replacement is succeeded, otherwise false.
-
-   First the function determines CRC, data and the polynomial
-   and depending on the CRC type, instead of the loop generates:
-   output_crc = IFN_CRC(_REV) (CRC, data, polynomial);  */
+/* Attempts to optimize a CRC calculation loop by replacing it with a call to
+   an internal function (IFN_CRC or IFN_CRC_REV).
+   Returns true if replacement succeeded, otherwise false.  */
 
 bool
-crc_optimization::faster_crc_code_generation (function *fun,
-					      value *polynomial,
-					      gphi *output_crc)
+crc_optimization::optimize_crc_loop (gphi *output_crc)
 {
   if (!output_crc)
     {
@@ -1184,30 +1230,25 @@ crc_optimization::faster_crc_code_generation (function *fun,
       return false;
     }
 
-  gcc_assert (m_phi_for_crc);
-
-  tree crc_arg = PHI_ARG_DEF (m_phi_for_crc, 1);
-  if (TYPE_MODE (TREE_TYPE (crc_arg)) > word_mode)
+  if (!m_data_arg)
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
-	fprintf (dump_file, "word_mode is less than CRC mode.\n");
-      return false;
+	fprintf (dump_file,
+		 "Data and CRC are xor-ed before for loop.  Initializing data "
+		 "with 0.\n");
+      /* Create a new variable for the data.
+       Determine the data's size with the loop iteration count.  */
+      unsigned HOST_WIDE_INT
+	data_size = tree_to_uhwi (m_crc_loop->nb_iterations) + 1;
+      tree type = build_nonstandard_integer_type (data_size, 1);
+     /* For the CRC calculation, it doesn't matter CRC is calculated for the
+	(CRC^data, 0) or (CRC, data).  */
+      m_data_arg = build_int_cstu (type, 0);
     }
 
-  tree data_arg = get_data ();
-  tree polynomial_arg = build_polynomial_without_1 (crc_arg, polynomial);
-
-  if (!crc_arg || !data_arg || !polynomial_arg)
-    {
-      if (dump_file && (dump_flags & TDF_DETAILS))
-	fprintf (dump_file, "crc_arg, data_arg or polynomial_arg is null.\n");
-      return false;
-    }
-
-  /* We don't support the case where data is larger than the CRC.  */
-  if (TYPE_PRECISION (TREE_TYPE (crc_arg))
-      < TYPE_PRECISION (TREE_TYPE (data_arg)))
-    return false;
+  /* Build tree node for the polynomial from its constant value.  */
+  tree polynomial_arg = build_int_cstu (TREE_TYPE (m_crc_arg), m_polynomial);
+  gcc_assert (polynomial_arg);
 
   internal_fn ifn;
   if (m_is_bit_forward)
@@ -1219,39 +1260,26 @@ crc_optimization::faster_crc_code_generation (function *fun,
   location_t loc;
   loc = EXPR_LOCATION (phi_result);
 
-  /* Add IFN call and return the value.  */
+  /* Add IFN call and write the return value in the phi_result.  */
   gcall *call
       = gimple_build_call_internal (ifn, 3,
-				    crc_arg,
-				    data_arg,
+				    m_crc_arg,
+				    m_data_arg,
 				    polynomial_arg);
 
   gimple_call_set_lhs (call, phi_result);
   gimple_set_location (call, loc);
   gimple_stmt_iterator si = gsi_start_bb (output_crc->bb);
   gsi_insert_before (&si, call, GSI_SAME_STMT);
-  use_operand_p imm_use_p;
-  destroy_loop (m_crc_loop);
 
-  gimple_stmt_iterator gsi = gsi_start_phis (output_crc->bb);
-  gsi_remove (&gsi, true);
+  /* Remove phi statement, which was holding CRC result.  */
+  gimple_stmt_iterator tmp_gsi = gsi_for_stmt (output_crc);
+  remove_phi_node (&tmp_gsi, false);
 
-  imm_use_iterator iterator;
-  gimple *stmt;
-  FOR_EACH_IMM_USE_STMT (stmt, iterator, phi_result)
-    {
-      FOR_EACH_IMM_USE_ON_STMT (imm_use_p, iterator)
-	SET_USE (imm_use_p, phi_result);
-      update_stmt (stmt);
-    }
-
-  /* Fix up CFG.  */
-  remove_unused_locals ();
-  scev_reset ();
-  mark_virtual_operands_for_renaming (fun);
-  free_dominance_info (fun, CDI_DOMINATORS);
-  calculate_dominance_info (CDI_DOMINATORS);
-  rewrite_into_loop_closed_ssa (NULL, TODO_update_ssa);
+  /* Alter the exit condition of the loop to always exit.  */
+  gcond* loop_exit_cond = get_loop_exit_condition (m_crc_loop);
+  gimple_cond_make_false (loop_exit_cond);
+  update_stmt (loop_exit_cond);
   return true;
 }
 
@@ -1275,33 +1303,44 @@ crc_optimization::execute (function *fun)
 	  /* Get the phi which will hold the calculated CRC.  */
 	  gphi *output_crc = get_output_phi ();
 	  if (!output_crc)
-	    return 0;
+	    break;
 
 	  swap_crc_and_data_if_needed (output_crc);
 	  if (!is_output_crc (output_crc))
-	    return 0;
+	    break;
+	  if (!validate_crc_and_data ())
+	    break;
 
+	  edge loop_latch = loop_latch_edge (m_crc_loop);
+	  tree calced_crc = PHI_ARG_DEF_FROM_EDGE (m_phi_for_crc, loop_latch);
 	  crc_symbolic_execution execute_loop (m_crc_loop, nullptr);
 	  /* Execute the loop assigning specific values to CRC and data
 	     for extracting the polynomial.  */
 	  std::pair <tree, value *>
 	      calc_polynom = execute_loop.extract_polynomial (m_phi_for_crc,
 							      m_phi_for_data,
+							      calced_crc,
 							      m_is_bit_forward);
 
 	  value *polynom_value = calc_polynom.second;
 	  /* Stop analysis if we couldn't get the polynomial's value.  */
 	  if (!polynom_value)
-	    return 0;
+	    break;
+
+	  /* Stop analysis in case optimize_size is specified
+	     and table-based would be generated.  This check is only needed for
+	     TARGET_CRC case, as polynomial's value isn't known in the
+	     beginning.  */
+	  construct_constant_polynomial (polynom_value);
 
 	  if (!loop_calculates_crc (output_crc, calc_polynom))
-	    return 0;
+	    break;
 
 	  if (dump_file)
 	    fprintf (dump_file, "The loop with %d header BB index "
 				"calculates CRC!\n", m_crc_loop->header->index);
 
-	  if (!faster_crc_code_generation (fun, polynom_value, output_crc))
+	  if (!optimize_crc_loop (output_crc))
 	    {
 	      if (dump_file)
 		fprintf (dump_file, "Couldn't generate faster CRC code.\n");
@@ -1336,7 +1375,7 @@ namespace
       /* opt_pass methods: */
       virtual bool gate (function *)
       {
-	return flag_optimize_crc && !optimize_size;
+	return flag_optimize_crc;
       }
 
       virtual unsigned int execute (function *);

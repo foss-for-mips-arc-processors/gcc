@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -203,7 +203,6 @@ class ExternalItem;
 class ExternalTypeItem;
 class ExternalStaticItem;
 class NamedFunctionParam;
-class ExternalFunctionItem;
 class ExternBlock;
 
 // rust-macro.h
@@ -267,6 +266,9 @@ class SliceType;
 class InferredType;
 struct MaybeNamedParam;
 class BareFunctionType;
+
+// rust-builtin-ast-nodes.h
+class FormatArgs;
 } // namespace AST
 } // namespace Rust
 

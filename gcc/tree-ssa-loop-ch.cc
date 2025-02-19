@@ -1,5 +1,5 @@
 /* Loop header copying on trees.
-   Copyright (C) 2004-2024 Free Software Foundation, Inc.
+   Copyright (C) 2004-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -115,13 +115,13 @@ loop_static_stmt_p (class loop *loop,
 		    gimple *stmt)
 {
   tree type = gimple_range_type (stmt);
-  if (!type || !Value_Range::supports_type_p (type))
+  if (!type || !value_range::supports_type_p (type))
     return false;
 
   if (!query)
     query = get_range_query (loop, gimple_bb (stmt), ranger);
 
-  Value_Range r (gimple_range_type (stmt));
+  value_range r (gimple_range_type (stmt));
   if (!query->range_of_stmt (r, stmt))
     return false;
   return r.singleton_p ();
@@ -349,7 +349,7 @@ should_duplicate_loop_header_p (basic_block header, class loop *loop,
 		  /* Duplicating loop header with combned conditional will
 		     remove this statement in each copy.  But we account for
 		     that later when seeing that condition.
-		     
+
 		     Note that this may be overly optimistic for bit operations
 		     where the static parameter may still result in non-trivial
 		     bit operation.  */
@@ -839,8 +839,8 @@ ch_base::copy_headers (function *fun)
 	 copied.  TODO -- handle while (a || b) - like cases, by not requiring
 	 the header to have just a single successor and copying up to
 	 postdominator.  */
-      int nheaders = 0;
-      int last_win_nheaders = 0;
+      unsigned int nheaders = 0;
+      unsigned int last_win_nheaders = 0;
       bool last_win_invariant_exit = false;
       ch_decision ret;
       auto_vec <ch_decision, 32> decision;
@@ -893,7 +893,7 @@ ch_base::copy_headers (function *fun)
 	}
       /* "Duplicate" all BBs with zero cost following last basic blocks we
 	 decided to copy.  */
-      while (last_win_nheaders < (int)decision.length ()
+      while (last_win_nheaders < decision.length ()
 	     && decision[last_win_nheaders] == ch_possible_zero_cost)
 	{
 	  if (dump_file && (dump_flags & TDF_DETAILS))

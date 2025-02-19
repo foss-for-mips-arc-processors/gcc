@@ -1,5 +1,5 @@
 /* Name mangling for the 3.0 -*- C++ -*- ABI.
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
    Written by Alex Samuel <samuel@codesourcery.com>
 
    This file is part of GCC.
@@ -901,9 +901,9 @@ write_tparms_constraints (tree constraints)
 static void
 write_type_constraint (tree cnst)
 {
-  if (!cnst) return;
+  if (!cnst)
+    return;
 
-  cnst = unpack_concept_check (cnst);
   gcc_checking_assert (TREE_CODE (cnst) == TEMPLATE_ID_EXPR);
 
   tree concept_decl = get_concept_check_template (cnst);
@@ -1300,7 +1300,8 @@ write_prefix (const tree node)
 
   MANGLE_TRACE_TREE ("prefix", node);
 
-  if (TREE_CODE (node) == DECLTYPE_TYPE)
+  if (TREE_CODE (node) == DECLTYPE_TYPE
+      || TREE_CODE (node) == TRAIT_TYPE)
     {
       write_type (node);
       return;
@@ -1476,7 +1477,7 @@ anon_aggr_naming_decl (tree type)
 			::= <special-name>
 			::= [<module-name>] <source-name>
 			::= [<module-name>] <unnamed-type-name>
-			::= <local-source-name> 
+			::= <local-source-name>
 			::= F <source-name> # member-like constrained friend
 
     <local-source-name>	::= L <source-name> <discriminator> */
@@ -2377,7 +2378,7 @@ write_local_name (tree function, const tree local_entity,
    C++0x extensions
 
      <type> ::= RR <type>   # rvalue reference-to
-     <type> ::= Dt <expression> # decltype of an id-expression or 
+     <type> ::= Dt <expression> # decltype of an id-expression or
                                 # class member access
      <type> ::= DT <expression> # decltype of an expression
      <type> ::= Dn              # decltype of nullptr
@@ -2665,6 +2666,12 @@ write_type (tree type)
 	    case TRAIT_TYPE:
 	      error ("use of built-in trait %qT in function signature; "
 		     "use library traits instead", type);
+	      break;
+
+	    case PACK_INDEX_TYPE:
+	      /* TODO Mangle pack indexing
+		 <https://github.com/itanium-cxx-abi/cxx-abi/issues/175>.  */
+	      sorry ("mangling type pack index");
 	      break;
 
 	    case LANG_TYPE:
@@ -3254,7 +3261,13 @@ write_member_name (tree member)
     }
   else if (DECL_P (member))
     {
-      gcc_assert (!DECL_OVERLOADED_OPERATOR_P (member));
+      if (ANON_AGGR_TYPE_P (TREE_TYPE (member)))
+	;
+      else if (DECL_OVERLOADED_OPERATOR_P (member))
+	{
+	  if (abi_check (16))
+	    write_string ("on");
+	}
       write_unqualified_name (member);
     }
   else if (TREE_CODE (member) == TEMPLATE_ID_EXPR)
@@ -3735,8 +3748,41 @@ write_expression (tree expr)
 		    unsigned reps = 1;
 		    if (ce->index && TREE_CODE (ce->index) == RANGE_EXPR)
 		      reps = range_expr_nelts (ce->index);
-		    for (unsigned j = 0; j < reps; ++j)
-		      write_expression (ce->value);
+		    if (TREE_CODE (ce->value) == RAW_DATA_CST)
+		      {
+			gcc_assert (reps == 1);
+			unsigned int len = RAW_DATA_LENGTH (ce->value);
+			/* If this is the last non-zero element, skip
+			   zeros at the end.  */
+			if (i == last_nonzero)
+			  while (len)
+			    {
+			      if (RAW_DATA_POINTER (ce->value)[len - 1])
+				break;
+			      --len;
+			    }
+			tree valtype = TREE_TYPE (ce->value);
+			for (unsigned int i = 0; i < len; ++i)
+			  {
+			    write_char ('L');
+			    write_type (valtype);
+			    unsigned HOST_WIDE_INT v;
+			    if (!TYPE_UNSIGNED (valtype)
+				&& TYPE_PRECISION (valtype) == BITS_PER_UNIT
+				&& RAW_DATA_SCHAR_ELT (ce->value, i) < 0)
+			      {
+				write_char ('n');
+				v = -RAW_DATA_SCHAR_ELT (ce->value, i);
+			      }
+			    else
+			      v = RAW_DATA_UCHAR_ELT (ce->value, i);
+			    write_unsigned_number (v);
+			    write_char ('E');
+			  }
+		      }
+		    else
+		      for (unsigned j = 0; j < reps; ++j)
+			write_expression (ce->value);
 		  }
 	    }
 	  else
@@ -3753,7 +3799,7 @@ write_expression (tree expr)
 	 equivalent.
 
 	 So just use the closure type mangling.  */
-      write_string ("tl");
+      write_char ('L');
       write_type (LAMBDA_EXPR_CLOSURE (expr));
       write_char ('E');
     }
@@ -3844,7 +3890,7 @@ write_expression (tree expr)
 	  return;
 	}
       else
-	write_string (name);	
+	write_string (name);
 
       switch (code)
 	{
@@ -3871,7 +3917,7 @@ write_expression (tree expr)
 
 	case CAST_EXPR:
 	  write_type (TREE_TYPE (expr));
-	  if (list_length (TREE_OPERAND (expr, 0)) == 1)	  
+	  if (list_length (TREE_OPERAND (expr, 0)) == 1)
 	    write_expression (TREE_VALUE (TREE_OPERAND (expr, 0)));
 	  else
 	    {

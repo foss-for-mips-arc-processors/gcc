@@ -1,5 +1,5 @@
 /* File format for coverage information
-   Copyright (C) 1996-2024 Free Software Foundation, Inc.
+   Copyright (C) 1996-2025 Free Software Foundation, Inc.
    Contributed by Bob Manson <manson@cygnus.com>.
    Completely remangled by Nathan Sidwell <nathan@codesourcery.com>.
 
@@ -337,6 +337,8 @@ GCOV_COUNTERS
 #define GCOV_ARC_ON_TREE 	(1 << 0)
 #define GCOV_ARC_FAKE		(1 << 1)
 #define GCOV_ARC_FALLTHROUGH	(1 << 2)
+#define GCOV_ARC_TRUE		(1 << 3)
+#define GCOV_ARC_FALSE		(1 << 4)
 
 /* Object & program summary record.  */
 

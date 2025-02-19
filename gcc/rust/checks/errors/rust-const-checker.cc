@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -712,6 +712,10 @@ ConstChecker::visit (ExternalStaticItem &)
 
 void
 ConstChecker::visit (ExternalFunctionItem &)
+{}
+
+void
+ConstChecker::visit (ExternalTypeItem &)
 {}
 
 void

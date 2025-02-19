@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -191,9 +191,44 @@ test09()
 #if __cpp_lib_ranges >= 202207L
   // P2494R2 Relaxing range adaptors to allow for move only types
   static_assert( requires { transform(x, move_only{}); } );
+  static_assert( requires { x | transform(move_only{}); } ); // PR libstdc++/118413
 #else
   static_assert( ! requires { transform(x, move_only{}); } );
+  static_assert( ! requires { x | transform(move_only{}); } );
 #endif
+}
+
+void
+test10()
+{
+  struct F {
+    short operator()(int) { return 0; }
+    const int& operator()(const int& i) const { return i; }
+  };
+
+  int x[] {2, 4};
+  const auto xform = x | views::transform(F{});
+  using const_iterator = decltype(xform.begin());
+  // LWG 3564. transform_view::iterator<true>::value_type and iterator_category
+  // should use const F&
+  static_assert(std::same_as<std::iter_value_t<const_iterator>, int>);
+  using cat = std::iterator_traits<const_iterator>::iterator_category;
+  static_assert(std::same_as<cat, std::random_access_iterator_tag>);
+}
+
+void
+test11()
+{
+  struct MoveIt {
+    int&& operator()(int& i) const { return std::move(i); }
+  };
+
+  int x[] {2, 4};
+  auto xform = x | views::transform(MoveIt{});
+  using iterator = decltype(xform.begin());
+  // LWG 3798. Rvalue reference and iterator_category
+  using cat = std::iterator_traits<iterator>::iterator_category;
+  static_assert(std::same_as<cat, std::random_access_iterator_tag>);
 }
 
 int
@@ -208,4 +243,6 @@ main()
   test07();
   test08();
   test09();
+  test10();
+  test11();
 }

@@ -1,6 +1,6 @@
 ; Options for the MIPS port of the compiler
 ;
-; Copyright (C) 2005-2024 Free Software Foundation, Inc.
+; Copyright (C) 2005-2025 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -412,10 +412,6 @@ Assume all symbols have 32-bit values.
 msynci
 Target Mask(SYNCI)
 Use synci instruction to invalidate i-cache.
-
-mlra
-Target Var(mips_lra_flag) Init(1) Save
-Use LRA instead of reload.
 
 mlxc1-sxc1
 Target Var(mips_lxc1_sxc1) Init(1)

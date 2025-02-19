@@ -1,5 +1,5 @@
 /* Definition of RISC-V target for GNU compiler.
-   Copyright (C) 2011-2024 Free Software Foundation, Inc.
+   Copyright (C) 2011-2025 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
    Based on MIPS target for GNU compiler.
 
@@ -119,8 +119,6 @@ ASM_MISA_SPEC
 "%{march=*:%:riscv_expand_arch(%*)} "				\
 "%{!march=*:%{mcpu=*:%:riscv_expand_arch_from_cpu(%*)}} "
 
-#define TARGET_DEFAULT_CMODEL CM_MEDLOW
-
 #define LOCAL_LABEL_PREFIX	"."
 #define USER_LABEL_PREFIX	""
 
@@ -188,15 +186,12 @@ ASM_MISA_SPEC
 #define POINTER_SIZE (riscv_abi >= ABI_LP64 ? 64 : 32)
 #define LONG_TYPE_SIZE POINTER_SIZE
 
-#define FLOAT_TYPE_SIZE 32
-#define DOUBLE_TYPE_SIZE 64
-#define LONG_DOUBLE_TYPE_SIZE (TARGET_LONG_DOUBLE_64 ? 64 : 128)
-
 /* Allocation boundary (in *bits*) for storing arguments in argument list.  */
 #define PARM_BOUNDARY BITS_PER_WORD
 
 /* Allocation boundary (in *bits*) for the code of a function.  */
-#define FUNCTION_BOUNDARY ((TARGET_RVC || TARGET_ZCA) ? 16 : 32)
+#define FUNCTION_BOUNDARY \
+  (((TARGET_RVC || TARGET_ZCA) && !is_zicfilp_p ()) ? 16 : 32)
 
 /* The smallest supported stack boundary the calling convention supports.  */
 #define STACK_BOUNDARY \
@@ -315,12 +310,12 @@ ASM_MISA_SPEC
 	- FRAME_POINTER_REGNUM
    - 1 vl register
    - 1 vtype register
-   - 30 unused registers for future expansion
+   - 28 unused registers for future expansion
    - 32 vector registers  */
 
 #define FIRST_PSEUDO_REGISTER 128
 
-/* x0, sp, gp, and tp are fixed.  */
+/* x0, ra, sp, gp, and tp are fixed.  */
 
 #define FIXED_REGISTERS							\
 { /* General registers.  */						\
@@ -419,7 +414,8 @@ ASM_MISA_SPEC
 #define RISCV_DWARF_VLENB (4096 + 0xc22)
 
 /* Register in which static-chain is passed to a function.  */
-#define STATIC_CHAIN_REGNUM (GP_TEMP_FIRST + 2)
+#define STATIC_CHAIN_REGNUM \
+  ((is_zicfilp_p ()) ? (GP_TEMP_FIRST + 23) : (GP_TEMP_FIRST + 2))
 
 /* Registers used as temporaries in prologue/epilogue code.
 
@@ -433,9 +429,18 @@ ASM_MISA_SPEC
 #define RISCV_PROLOGUE_TEMP2_REGNUM (GP_TEMP_FIRST + 1)
 #define RISCV_PROLOGUE_TEMP2(MODE) gen_rtx_REG (MODE, RISCV_PROLOGUE_TEMP2_REGNUM)
 
+/* Both prologue temp registers are used in the vector probe loop for when
+   stack-clash protection is enabled, so we need to copy SP to a new register
+   and set it as CFA during the loop, we are using T3 for that.  */
+#define RISCV_STACK_CLASH_VECTOR_CFA_REGNUM (GP_TEMP_FIRST + 23)
+
 #define RISCV_CALL_ADDRESS_TEMP_REGNUM (GP_TEMP_FIRST + 1)
 #define RISCV_CALL_ADDRESS_TEMP(MODE) \
   gen_rtx_REG (MODE, RISCV_CALL_ADDRESS_TEMP_REGNUM)
+
+#define RISCV_CALL_ADDRESS_LPAD_REGNUM (GP_TEMP_FIRST + 2)
+#define RISCV_CALL_ADDRESS_LPAD(MODE) \
+  gen_rtx_REG (MODE, RISCV_CALL_ADDRESS_LPAD_REGNUM)
 
 #define RETURN_ADDR_MASK (1 << RETURN_ADDR_REGNUM)
 #define S0_MASK (1 << S0_REGNUM)
@@ -505,8 +510,10 @@ enum reg_class
 {
   NO_REGS,			/* no registers in set */
   SIBCALL_REGS,			/* registers used by indirect sibcalls */
+  RVC_GR_REGS,			/* RVC general registers */
   JALR_REGS,			/* registers used by indirect calls */
   GR_REGS,			/* integer registers */
+  RVC_FP_REGS,			/* RVC floating-point registers */
   FP_REGS,			/* floating-point registers */
   FRAME_REGS,			/* arg pointer and frame pointer */
   VM_REGS,			/* v0.t registers */
@@ -528,8 +535,10 @@ enum reg_class
 {									\
   "NO_REGS",								\
   "SIBCALL_REGS",							\
+  "RVC_GR_REGS",							\
   "JALR_REGS",								\
   "GR_REGS",								\
+  "RVC_FP_REGS",							\
   "FP_REGS",								\
   "FRAME_REGS",								\
   "VM_REGS",								\
@@ -553,8 +562,10 @@ enum reg_class
 {									\
   { 0x00000000, 0x00000000, 0x00000000, 0x00000000 },	/* NO_REGS */		\
   { 0xf003fcc0, 0x00000000, 0x00000000, 0x00000000 },	/* SIBCALL_REGS */	\
+  { 0x0000ff00, 0x00000000, 0x00000000, 0x00000000 },	/* RVC_GR_REGS */	\
   { 0xffffffc0, 0x00000000, 0x00000000, 0x00000000 },	/* JALR_REGS */		\
   { 0xffffffff, 0x00000000, 0x00000000, 0x00000000 },	/* GR_REGS */		\
+  { 0x00000000, 0x0000ff00, 0x00000000, 0x00000000 },	/* RVC_FP_REGS */	\
   { 0x00000000, 0xffffffff, 0x00000000, 0x00000000 },	/* FP_REGS */		\
   { 0x00000000, 0x00000000, 0x00000003, 0x00000000 },	/* FRAME_REGS */	\
   { 0x00000000, 0x00000000, 0x00000000, 0x00000001 },	/* V0_REGS */		\
@@ -626,6 +637,28 @@ enum reg_class
   (((VALUE) | ((1UL<<31) - IMM_REACH)) == ((1UL<<31) - IMM_REACH)	\
    || ((VALUE) | ((1UL<<31) - IMM_REACH)) + IMM_REACH == 0)
 
+/* True if a VALUE (constant) can be expressed as sum of two S12 constants
+   (in range -2048 to 2047).
+   Range check logic:
+     from: min S12 + 1 (or -1 depending on what side of zero)
+       to: two times the min S12 value (to max out S12 bits).  */
+
+#define SUM_OF_TWO_S12_N(VALUE)						\
+  (((VALUE) >= (-2048 * 2)) && ((VALUE) <= (-2048 - 1)))
+
+#define SUM_OF_TWO_S12_P(VALUE)						\
+  (((VALUE) >= (2047 + 1)) && ((VALUE) <= (2047 * 2)))
+
+#define SUM_OF_TWO_S12(VALUE)						\
+  (SUM_OF_TWO_S12_N (VALUE) || SUM_OF_TWO_S12_P (VALUE))
+
+/* Variant with first value 8 byte aligned if involving stack regs.  */
+#define SUM_OF_TWO_S12_P_ALGN(VALUE)				\
+  (((VALUE) >= (2032 + 1)) && ((VALUE) <= (2032 * 2)))
+
+#define SUM_OF_TWO_S12_ALGN(VALUE)				\
+  (SUM_OF_TWO_S12_N (VALUE) || SUM_OF_TWO_S12_P_ALGN (VALUE))
+
 /* If this is a single bit mask, then we can load it with bseti.  Special
    handling of SImode 0x80000000 on RV64 is done in riscv_build_integer_1. */
 #define SINGLE_BIT_MASK_OPERAND(VALUE)					\
@@ -643,6 +676,18 @@ enum reg_class
 
 /* True if bit BIT is set in VALUE.  */
 #define BITSET_P(VALUE, BIT) (((VALUE) & (1ULL << (BIT))) != 0)
+
+/* Returns the smaller (common) number of trailing zeros for VAL1 and VAL2.  */
+#define COMMON_TRAILING_ZEROS(VAL1, VAL2)				\
+  (ctz_hwi (VAL1) < ctz_hwi (VAL2)					\
+   ? ctz_hwi (VAL1)							\
+   : ctz_hwi (VAL2))
+
+/* Returns true if both VAL1 and VAL2 are SMALL_OPERANDs after shifting by
+   the common number of trailing zeros.  */
+#define SMALL_AFTER_COMMON_TRAILING_SHIFT(VAL1, VAL2)			\
+  (SMALL_OPERAND ((VAL1) >> COMMON_TRAILING_ZEROS (VAL1, VAL2))		\
+   && SMALL_OPERAND ((VAL2) >> COMMON_TRAILING_ZEROS (VAL1, VAL2)))
 
 /* Stack layout; function entry, exit and calling.  */
 
@@ -782,7 +827,8 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
 
 /* Trampolines are a block of code followed by two pointers.  */
 
-#define TRAMPOLINE_CODE_SIZE 16
+#define TRAMPOLINE_CODE_SIZE ((is_zicfilp_p ()) ? 24 : 16)
+
 #define TRAMPOLINE_SIZE		\
   ((Pmode == SImode)		\
    ? TRAMPOLINE_CODE_SIZE	\
@@ -912,7 +958,9 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
   || (riscv_microarchitecture == sifive_p400) \
   || (riscv_microarchitecture == sifive_p600))
 
-#define LOGICAL_OP_NON_SHORT_CIRCUIT 0
+/* True if the target supports misaligned vector loads and stores.  */
+#define TARGET_VECTOR_MISALIGN_SUPPORTED \
+   riscv_vector_unaligned_access_p
 
 /* Control the assembler format that we output.  */
 
@@ -1139,6 +1187,7 @@ while (0)
 #ifndef USED_FOR_TARGET
 extern const enum reg_class riscv_regno_to_class[];
 extern bool riscv_slow_unaligned_access_p;
+extern bool riscv_vector_unaligned_access_p;
 extern bool riscv_user_wants_strict_align;
 extern unsigned riscv_stack_boundary;
 extern unsigned riscv_bytes_per_vector_chunk;
@@ -1147,6 +1196,9 @@ extern poly_int64 riscv_v_adjust_nunits (enum machine_mode, int);
 extern poly_int64 riscv_v_adjust_nunits (machine_mode, bool, int, int);
 extern poly_int64 riscv_v_adjust_precision (enum machine_mode, int);
 extern poly_int64 riscv_v_adjust_bytesize (enum machine_mode, int);
+extern bool is_zicfiss_p ();
+extern bool is_zicfilp_p ();
+extern bool need_shadow_stack_push_pop_p ();
 /* The number of bits and bytes in a RVV vector.  */
 #define BITS_PER_RISCV_VECTOR (poly_uint16 (riscv_vector_chunks * riscv_bytes_per_vector_chunk * 8))
 #define BYTES_PER_RISCV_VECTOR (poly_uint16 (riscv_vector_chunks * riscv_bytes_per_vector_chunk))
@@ -1211,8 +1263,6 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 
 #define REGMODE_NATURAL_SIZE(MODE) riscv_regmode_natural_size (MODE)
 
-#define RISCV_DWARF_VLENB (4096 + 0xc22)
-
 #define DWARF_FRAME_REGISTERS (FIRST_PSEUDO_REGISTER + 1 /* VLENB */)
 
 #define DWARF_REG_TO_UNWIND_COLUMN(REGNO) \
@@ -1236,5 +1286,37 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 
 /* Check TLS Descriptors mechanism is selected.  */
 #define TARGET_TLSDESC (riscv_tls_dialect == TLS_DESCRIPTORS)
+
+/* This value is the amount of bytes a caller is allowed to drop the stack
+   before probing has to be done for stack clash protection.  */
+#define STACK_CLASH_CALLER_GUARD 1024
+
+/* This value controls how many pages we manually unroll the loop for when
+   generating stack clash probes.  */
+#define STACK_CLASH_MAX_UNROLL_PAGES 4
+
+/* This value represents the minimum amount of bytes we expect the function's
+   outgoing arguments to be when stack-clash is enabled.  */
+#define STACK_CLASH_MIN_BYTES_OUTGOING_ARGS 8
+
+/* Allocate a minimum of STACK_CLASH_MIN_BYTES_OUTGOING_ARGS bytes for the
+   outgoing arguments if stack clash protection is enabled.  This is essential
+   as the extra arg space allows us to skip a check in alloca.  */
+#undef STACK_DYNAMIC_OFFSET
+#define STACK_DYNAMIC_OFFSET(FUNDECL)			   \
+   ((flag_stack_clash_protection			   \
+     && cfun->calls_alloca				   \
+     && known_lt (crtl->outgoing_args_size,		   \
+		  STACK_CLASH_MIN_BYTES_OUTGOING_ARGS))    \
+    ? ROUND_UP (STACK_CLASH_MIN_BYTES_OUTGOING_ARGS,       \
+		STACK_BOUNDARY / BITS_PER_UNIT)		   \
+    : (crtl->outgoing_args_size + STACK_POINTER_OFFSET))
+
+/* According to the RISC-V C API, the arch string may contains ','. To avoid
+   the conflict with the default separator, we choose '#' as the separator for
+   the target attribute.  */
+#define TARGET_CLONES_ATTR_SEPARATOR '#'
+
+#define TARGET_HAS_FMV_TARGET_ATTRIBUTE 0
 
 #endif /* ! GCC_RISCV_H */

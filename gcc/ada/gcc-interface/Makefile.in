@@ -1,5 +1,5 @@
 # Makefile for GNU Ada Compiler (GNAT).
-#   Copyright (C) 1994-2024 Free Software Foundation, Inc.
+#   Copyright (C) 1994-2025 Free Software Foundation, Inc.
 
 #This file is part of GCC.
 
@@ -148,7 +148,6 @@ host_vendor=@host_vendor@
 host_os=@host_os@
 target_cpu_default = @target_cpu_default@
 xmake_file = @xmake_file@
-tmake_file = @tmake_file@
 #version=`sed -e 's/.*\"\([^ \"]*\)[ \"].*/\1/' < $(srcdir)/version.c`
 #mainversion=`sed -e 's/.*\"\([0-9]*\.[0-9]*\).*/\1/' < $(srcdir)/version.c`
 
@@ -208,11 +207,6 @@ all: all.indirect
 
 # This tells GNU Make version 3 not to put all variables in the environment.
 .NOEXPORT:
-
-# target overrides
-ifneq ($(tmake_file),)
-include $(tmake_file)
-endif
 
 # host overrides
 ifneq ($(xmake_file),)
@@ -340,6 +334,16 @@ GNATMAKE_OBJS = a-except.o ali.o ali-util.o aspects.o s-casuti.o alloc.o \
  switch.o switch-m.o table.o targparm.o tempdir.o types.o uintp.o \
  uname.o urealp.o usage.o widechar.o warnsw.o \
  seinfo.o einfo-entities.o einfo-utils.o sinfo-nodes.o sinfo-utils.o \
+ diagnostics-brief_emitter.o  \
+ diagnostics-constructors.o  \
+ diagnostics-converter.o  \
+ diagnostics-json_utils.o  \
+ diagnostics-pretty_emitter.o  \
+ diagnostics-repository.o  \
+ diagnostics-sarif_emitter.o  \
+ diagnostics-switch_repository.o  \
+ diagnostics-utils.o  \
+ diagnostics.o  \
  $(EXTRA_GNATMAKE_OBJS)
 
 # Make arch match the current multilib so that the RTS selection code
@@ -492,7 +496,7 @@ gnatmake-re: ../stamp-tools
 	$(GNATLINK) -v gnatmake -o ../../gnatmake$(exeext) \
 	  --GCC="$(CC) $(ADA_INCLUDES)" --LINK="$(GCC_LINK)" $(TOOLS_LIBS)
 
-# Note the use of the "mv" command in order to allow gnatlink to be linked with
+# Note the use of the "mv" command in order to allow gnatlink to be linked
 # with the former version of gnatlink itself which cannot override itself.
 # gnatlink-re cannot be run at the same time as gnatmake-re, hence the
 # dependency

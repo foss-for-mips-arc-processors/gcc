@@ -1,5 +1,5 @@
 /* Generate built-in function initialization and recognition for Power.
-   Copyright (C) 2020-2024 Free Software Foundation, Inc.
+   Copyright (C) 2020-2025 Free Software Foundation, Inc.
    Contributed by Bill Schmidt, IBM <wschmidt@linux.ibm.com>
 
 This file is part of GCC.
@@ -70,7 +70,6 @@ along with GCC; see the file COPYING3.  If not see
 
    Attributes are strings, such as these:
 
-     init     Process as a vec_init function
      set      Process as a vec_set function
      extract  Process as a vec_extract function
      nosoft   Not valid with -msoft-float
@@ -371,8 +370,6 @@ struct typelist
 /* Attributes of a builtin function.  */
 struct attrinfo
 {
-  bool isinit;
-  bool isset;
   bool isextract;
   bool isnosoft;
   bool isldvec;
@@ -1396,11 +1393,7 @@ parse_bif_attrs (attrinfo *attrptr)
     attrname = match_identifier ();
     if (attrname)
       {
-	if (!strcmp (attrname, "init"))
-	  attrptr->isinit = 1;
-	else if (!strcmp (attrname, "set"))
-	  attrptr->isset = 1;
-	else if (!strcmp (attrname, "extract"))
+	if (!strcmp (attrname, "extract"))
 	  attrptr->isextract = 1;
 	else if (!strcmp (attrname, "nosoft"))
 	  attrptr->isnosoft = 1;
@@ -1473,19 +1466,18 @@ parse_bif_attrs (attrinfo *attrptr)
 
 #ifdef DEBUG
   diag (0,
-	"attribute set: init = %d, set = %d, extract = %d, nosoft = %d, "
-	"ldvec = %d, stvec = %d, reve = %d, pred = %d, htm = %d, "
-	"htmspr = %d, htmcr = %d, mma = %d, quad = %d, pair = %d, "
-	"mmaint = %d, no32bit = %d, 32bit = %d, cpu = %d, ldstmask = %d, "
-	"lxvrse = %d, lxvrze = %d, endian = %d, ibmdld = %d, ibm128 = %d.\n",
-	attrptr->isinit, attrptr->isset, attrptr->isextract,
-	attrptr->isnosoft, attrptr->isldvec, attrptr->isstvec,
-	attrptr->isreve, attrptr->ispred, attrptr->ishtm, attrptr->ishtmspr,
-	attrptr->ishtmcr, attrptr->ismma, attrptr->isquad, attrptr->ispair,
-	attrptr->ismmaint, attrptr->isno32bit, attrptr->is32bit,
-	attrptr->iscpu, attrptr->isldstmask, attrptr->islxvrse,
-	attrptr->islxvrze, attrptr->isendian, attrptr->isibmld,
-	attrptr->isibm128);
+	"extract = %d, nosoft = %d, ldvec = %d, stvec = %d, reve = %d, "
+	"pred = %d, htm = %d, htmspr = %d, htmcr = %d, mma = %d, "
+	"quad = %d, pair = %d, mmaint = %d, no32bit = %d, 32bit = %d, "
+	"cpu = %d, ldstmask = %d, lxvrse = %d, lxvrze = %d, endian = %d, "
+	"ibmdld = %d, ibm128 = %d.\n",
+	attrptr->isextract, attrptr->isnosoft,attrptr->isldvec,
+	attrptr->isstvec, attrptr->isreve, attrptr->ispred, attrptr->ishtm,
+	attrptr->ishtmspr, attrptr->ishtmcr, attrptr->ismma,
+	attrptr->isquad, attrptr->ispair, attrptr->ismmaint,
+	attrptr->isno32bit, attrptr->is32bit, attrptr->iscpu,
+	attrptr->isldstmask, attrptr->islxvrse,	attrptr->islxvrze,
+	attrptr->isendian, attrptr->isibmld, attrptr->isibm128);
 #endif
 
   return PC_OK;
@@ -2276,8 +2268,7 @@ write_decls (void)
   fprintf (header_file, "  rs6000_gen_builtins assoc_bif;\n");
   fprintf (header_file, "};\n\n");
 
-  fprintf (header_file, "#define bif_init_bit\t\t(0x00000001)\n");
-  fprintf (header_file, "#define bif_set_bit\t\t(0x00000002)\n");
+  /* Bit patterns 0x00000001 and 0x00000002 are available.  */
   fprintf (header_file, "#define bif_extract_bit\t\t(0x00000004)\n");
   fprintf (header_file, "#define bif_nosoft_bit\t\t(0x00000008)\n");
   fprintf (header_file, "#define bif_ldvec_bit\t\t(0x00000010)\n");
@@ -2301,10 +2292,6 @@ write_decls (void)
   fprintf (header_file, "#define bif_ibmld_bit\t\t(0x00400000)\n");
   fprintf (header_file, "#define bif_ibm128_bit\t\t(0x00800000)\n");
   fprintf (header_file, "\n");
-  fprintf (header_file,
-	   "#define bif_is_init(x)\t\t((x).bifattrs & bif_init_bit)\n");
-  fprintf (header_file,
-	   "#define bif_is_set(x)\t\t((x).bifattrs & bif_set_bit)\n");
   fprintf (header_file,
 	   "#define bif_is_extract(x)\t((x).bifattrs & bif_extract_bit)\n");
   fprintf (header_file,
@@ -2376,7 +2363,10 @@ write_decls (void)
 	   "rs6000_instance_info_fntype[RS6000_INST_MAX];\n");
   fprintf (header_file, "extern ovldrecord rs6000_overload_info[];\n\n");
 
-  fprintf (header_file, "extern void rs6000_init_generated_builtins ();\n\n");
+  fprintf (header_file,
+	   "extern void rs6000_init_generated_builtins (tree *, tree *,\n");
+  fprintf (header_file,
+	   "\t\t\t\t\t    ovldrecord *, tree *);\n\n");
   fprintf (header_file,
 	   "extern bool rs6000_builtin_is_supported (rs6000_gen_builtins);\n");
   fprintf (header_file,
@@ -2501,10 +2491,6 @@ write_bif_static_init (void)
       fprintf (init_file, "      /* nargs */\t%d,\n",
 	       bifp->proto.nargs);
       fprintf (init_file, "      /* bifattrs */\t0");
-      if (bifp->attrs.isinit)
-	fprintf (init_file, " | bif_init_bit");
-      if (bifp->attrs.isset)
-	fprintf (init_file, " | bif_set_bit");
       if (bifp->attrs.isextract)
 	fprintf (init_file, " | bif_extract_bit");
       if (bifp->attrs.isnosoft)
@@ -2651,7 +2637,7 @@ write_init_bif_table (void)
   for (int i = 0; i <= curr_bif; i++)
     {
       fprintf (init_file,
-	       "  rs6000_builtin_info_fntype[RS6000_BIF_%s]"
+	       "  builtin_info_fntype[RS6000_BIF_%s]"
 	       "\n    = %s;\n",
 	       bifs[i].idname, bifs[i].fndecl);
 
@@ -2678,7 +2664,7 @@ write_init_bif_table (void)
 	}
 
       fprintf (init_file,
-	       "  rs6000_builtin_decls[(int)RS6000_BIF_%s] = t\n",
+	       "  builtin_decls[(int)RS6000_BIF_%s] = t\n",
 	       bifs[i].idname);
       fprintf (init_file,
 	       "    = add_builtin_function (\"%s\",\n",
@@ -2719,7 +2705,7 @@ write_init_bif_table (void)
 	  fprintf (init_file, "    }\n");
 	  fprintf (init_file, "  else\n");
 	  fprintf (init_file, "    {\n");
-	  fprintf (init_file, "      rs6000_builtin_decls"
+	  fprintf (init_file, "      builtin_decls"
 		   "[(int)RS6000_BIF_%s] = NULL_TREE;\n", bifs[i].idname);
 	  fprintf (init_file, "    }\n");
 	}
@@ -2740,7 +2726,7 @@ write_init_ovld_table (void)
   for (int i = 0; i <= curr_ovld; i++)
     {
       fprintf (init_file,
-	       "  rs6000_instance_info_fntype[RS6000_INST_%s]"
+	       "  instance_info_fntype[RS6000_INST_%s]"
 	       "\n    = %s;\n",
 	       ovlds[i].ovld_id_name, ovlds[i].fndecl);
 
@@ -2772,7 +2758,7 @@ write_init_ovld_table (void)
 	    }
 
 	  fprintf (init_file,
-		   "  rs6000_builtin_decls[(int)RS6000_OVLD_%s] = t\n",
+		   "  builtin_decls[(int)RS6000_OVLD_%s] = t\n",
 		   stanza->stanza_id);
 	  fprintf (init_file,
 		   "    = add_builtin_function (\"%s\",\n",
@@ -2793,7 +2779,7 @@ write_init_ovld_table (void)
 	  fprintf (init_file, "\n");
 
 	  fprintf (init_file,
-		   "  rs6000_overload_info[RS6000_OVLD_%s - base]"
+		   "  overload_info[RS6000_OVLD_%s - base]"
 		   ".first_instance\n",
 		   stanza->stanza_id);
 	  fprintf (init_file,
@@ -2826,19 +2812,30 @@ write_init_file (void)
   write_bif_static_init ();
   write_ovld_static_init ();
 
+  /* The reason to pass pointers to the function instead of accessing
+     the rs6000_{{builtin,instance}_info_fntype,overload_info,builtin_decls}
+     arrays directly is to decrease size of the already large function and
+     noipa prevents the compiler with LTO to undo that optimization.  */
+  fprintf (init_file, "#if GCC_VERSION >= 8001\n");
+  fprintf (init_file, "__attribute__((__noipa__))\n");
+  fprintf (init_file, "#endif\n");
   fprintf (init_file, "void\n");
-  fprintf (init_file, "rs6000_init_generated_builtins ()\n");
+  fprintf (init_file,
+	   "rs6000_init_generated_builtins (tree *builtin_info_fntype,\n");
+  fprintf (init_file, "\t\t\t\ttree *instance_info_fntype,\n");
+  fprintf (init_file, "\t\t\t\tovldrecord *overload_info,\n");
+  fprintf (init_file, "\t\t\t\ttree *builtin_decls)\n");
   fprintf (init_file, "{\n");
   fprintf (init_file, "  tree t;\n");
   rbt_inorder_callback (&fntype_rbt, fntype_rbt.rbt_root, write_fntype_init);
   fprintf (init_file, "\n");
 
   fprintf (init_file,
-	   "  rs6000_builtin_decls[RS6000_BIF_NONE] = NULL_TREE;\n");
+	   "  builtin_decls[RS6000_BIF_NONE] = NULL_TREE;\n");
   fprintf (init_file,
-	   "  rs6000_builtin_decls[RS6000_BIF_MAX] = NULL_TREE;\n");
+	   "  builtin_decls[RS6000_BIF_MAX] = NULL_TREE;\n");
   fprintf (init_file,
-	   "  rs6000_builtin_decls[RS6000_OVLD_NONE] = NULL_TREE;\n\n");
+	   "  builtin_decls[RS6000_OVLD_NONE] = NULL_TREE;\n\n");
 
   write_init_bif_table ();
   write_init_ovld_table ();

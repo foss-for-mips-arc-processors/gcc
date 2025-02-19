@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -27,8 +27,7 @@
 #include "rust-tyty-util.h"
 #include "rust-tyty-subst.h"
 #include "rust-tyty-region.h"
-
-#include <limits>
+#include "rust-system.h"
 
 namespace Rust {
 

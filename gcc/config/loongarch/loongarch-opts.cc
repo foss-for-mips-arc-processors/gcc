@@ -1,5 +1,5 @@
 /* Subroutines for loongarch-specific option handling.
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2025 Free Software Foundation, Inc.
    Contributed by Loongson Ltd.
 
 This file is part of GCC.
@@ -1009,6 +1009,9 @@ loongarch_target_option_override (struct loongarch_target *target,
      default.  */
   if (!opts_set->x_la_branch_cost)
     opts->x_la_branch_cost = loongarch_cost->branch_cost;
+
+  if (!opts_set->x_la_addr_reg_reg_cost)
+    opts->x_la_addr_reg_reg_cost = loongarch_cost->addr_reg_reg_cost;
 
   /* other stuff */
   if (ABI_LP64_P (target->abi.base))

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,7 +29,7 @@ class ASTLowerImplItem : public ASTLoweringBase
   using Rust::HIR::ASTLoweringBase::visit;
 
 public:
-  static HIR::ImplItem *translate (AST::AssociatedItem *item,
+  static HIR::ImplItem *translate (AST::AssociatedItem &item,
 				   HirId parent_impl_id);
   void visit (AST::TypeAlias &alias) override;
   void visit (AST::ConstantItem &constant) override;
@@ -47,7 +47,7 @@ class ASTLowerTraitItem : public ASTLoweringBase
   using Rust::HIR::ASTLoweringBase::visit;
 
 public:
-  static HIR::TraitItem *translate (AST::AssociatedItem *item);
+  static HIR::TraitItem *translate (AST::AssociatedItem &item);
   void visit (AST::Function &func) override;
   void visit (AST::TraitItemConst &constant) override;
   void visit (AST::TraitItemType &type) override;

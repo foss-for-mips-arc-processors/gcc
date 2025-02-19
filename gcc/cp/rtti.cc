@@ -1,5 +1,5 @@
 /* RunTime Type Identification
-   Copyright (C) 1995-2024 Free Software Foundation, Inc.
+   Copyright (C) 1995-2025 Free Software Foundation, Inc.
    Mostly written by Jason Merrill (jason@cygnus.com).
 
 This file is part of GCC.
@@ -794,6 +794,8 @@ build_dynamic_cast_1 (location_t loc, tree type, tree expr,
 	      pop_abi_namespace (flags);
 	      dynamic_cast_node = dcast_fn;
 	    }
+	  if (dcast_fn == error_mark_node)
+	    return error_mark_node;
 	  result = build_cxx_call (dcast_fn, 4, elems, complain);
 	  SET_EXPR_LOCATION (result, loc);
 
@@ -1454,7 +1456,7 @@ get_tinfo_desc (unsigned ix)
 				   NULL_TREE, integer_type_node);
 	DECL_CHAIN (fld_flg) = fields;
 	fields = fld_flg;
-	
+
 	tree fld_cnt = build_decl (BUILTINS_LOCATION, FIELD_DECL,
 				   NULL_TREE, integer_type_node);
 	DECL_CHAIN (fld_cnt) = fields;
@@ -1568,7 +1570,7 @@ emit_support_tinfo_1 (tree bltn)
 	 comdat_linkage for details.)  Since we want these objects
 	 to have external linkage so that copies do not have to be
 	 emitted in code outside the runtime library, we make them
-	 non-COMDAT here.  
+	 non-COMDAT here.
 
 	 It might also not be necessary to follow this detail of the
 	 ABI.  */
@@ -1739,7 +1741,8 @@ emit_tinfo_decl (tree decl)
       /* Avoid targets optionally bumping up the alignment to improve
 	 vector instruction accesses, tinfo are never accessed this way.  */
 #ifdef DATA_ABI_ALIGNMENT
-      SET_DECL_ALIGN (decl, DATA_ABI_ALIGNMENT (decl, TYPE_ALIGN (TREE_TYPE (decl))));
+      SET_DECL_ALIGN (decl, DATA_ABI_ALIGNMENT (TREE_TYPE (decl),
+						TYPE_ALIGN (TREE_TYPE (decl))));
       DECL_USER_ALIGN (decl) = true;
 #endif
       return true;

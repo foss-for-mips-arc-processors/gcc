@@ -1,5 +1,5 @@
 /* Convert a program in SSA form into Normal form.
-   Copyright (C) 2004-2024 Free Software Foundation, Inc.
+   Copyright (C) 2004-2025 Free Software Foundation, Inc.
    Contributed by Andrew Macleod <amacleod@redhat.com>
 
 This file is part of GCC.
@@ -45,6 +45,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssa-coalesce.h"
 #include "tree-outof-ssa.h"
 #include "dojump.h"
+#include "internal-fn.h"
 
 /* FIXME: A lot of code here deals with expanding to RTL.  All that code
    should be in cfgexpand.cc.  */
@@ -60,8 +61,14 @@ ssa_is_replaceable_p (gimple *stmt)
   tree def;
   gimple *use_stmt;
 
-  /* Only consider modify stmts.  */
-  if (!is_gimple_assign (stmt))
+  /* Only consider modify stmts and direct internal fn calls that are
+     not also tail-calls.  */
+  gcall *call;
+  if (!is_gimple_assign (stmt)
+      && (!(call = dyn_cast <gcall *> (stmt))
+	  || gimple_call_tail_p (call)
+	  || !gimple_call_internal_p (call)
+	  || !direct_internal_fn_p (gimple_call_internal_fn (call))))
     return false;
 
   /* If the statement may throw an exception, it cannot be replaced.  */
@@ -92,12 +99,9 @@ ssa_is_replaceable_p (gimple *stmt)
 
   /* An assignment with a register variable on the RHS is not
      replaceable.  */
-  if (gimple_assign_rhs_code (stmt) == VAR_DECL
+  if (is_gimple_assign (stmt)
+      && gimple_assign_rhs_code (stmt) == VAR_DECL
       && DECL_HARD_REGISTER (gimple_assign_rhs1 (stmt)))
-    return false;
-
-  /* No function calls can be replaced.  */
-  if (is_gimple_call (stmt))
     return false;
 
   /* Leave any stmt with volatile operands alone as well.  */
@@ -562,7 +566,7 @@ static inline bool
 queue_phi_copy_p (var_map map, tree t)
 {
   if (TREE_CODE (t) == SSA_NAME)
-    { 
+    {
       if (var_to_partition (map, t) == NO_PARTITION)
         return true;
       return false;

@@ -1,5 +1,5 @@
 /* Prototypes of target machine for GNU compiler.  LoongArch version.
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2025 Free Software Foundation, Inc.
    Contributed by Loongson Ltd.
    Based on MIPS target for GNU compiler.
 
@@ -85,11 +85,10 @@ extern bool loongarch_split_move_p (rtx, rtx);
 extern void loongarch_split_move (rtx, rtx);
 extern bool loongarch_addu16i_imm12_operand_p (HOST_WIDE_INT, machine_mode);
 extern void loongarch_split_plus_constant (rtx *, machine_mode);
-extern void loongarch_split_128bit_move (rtx, rtx);
-extern bool loongarch_split_128bit_move_p (rtx, rtx);
-extern void loongarch_split_256bit_move (rtx, rtx);
-extern bool loongarch_split_256bit_move_p (rtx, rtx);
-extern const char *loongarch_output_move (rtx, rtx);
+extern rtx loongarch_reassoc_shift_bitwise (bool is_and, rtx shamt,
+					    rtx mask, machine_mode mode);
+extern void loongarch_split_vector_move (rtx, rtx);
+extern const char *loongarch_output_move (rtx *);
 #ifdef RTX_CODE
 extern void loongarch_expand_scc (rtx *);
 extern void loongarch_expand_vec_cmp (rtx *);
@@ -116,11 +115,13 @@ extern rtx loongarch_return_addr (int, rtx);
 
 extern bool loongarch_const_vector_same_val_p (rtx, machine_mode);
 extern bool loongarch_const_vector_same_bytes_p (rtx, machine_mode);
-extern bool loongarch_const_vector_same_int_p (rtx, machine_mode, HOST_WIDE_INT,
-					  HOST_WIDE_INT);
+extern bool loongarch_const_vector_same_int_p (rtx, machine_mode,
+			   HOST_WIDE_INT low = HOST_WIDE_INT_MIN,
+			   HOST_WIDE_INT high = HOST_WIDE_INT_MAX);
 extern bool loongarch_const_vector_shuffle_set_p (rtx, machine_mode);
 extern bool loongarch_const_vector_bitimm_set_p (rtx, machine_mode);
 extern bool loongarch_const_vector_bitimm_clr_p (rtx, machine_mode);
+extern rtx loongarch_const_vector_vrepli (rtx, machine_mode);
 extern rtx loongarch_lsx_vec_parallel_const_half (machine_mode, bool);
 extern rtx loongarch_gen_const_int_vector (machine_mode, HOST_WIDE_INT);
 extern enum reg_class loongarch_secondary_reload_class (enum reg_class,
@@ -173,7 +174,7 @@ extern void loongarch_expand_atomic_qihi (union loongarch_gen_fn_ptrs,
 
 extern void loongarch_expand_vector_group_init (rtx, rtx);
 extern void loongarch_expand_vector_init (rtx, rtx);
-extern void loongarch_expand_vec_unpack (rtx op[2], bool, bool);
+extern void loongarch_expand_vec_unpack (rtx op[2], bool);
 extern void loongarch_expand_vec_perm (rtx, rtx, rtx, rtx);
 extern void loongarch_expand_vec_perm_1 (rtx[]);
 extern void loongarch_expand_vector_extract (rtx, rtx, int);
@@ -206,7 +207,6 @@ extern void loongarch_atomic_assign_expand_fenv (tree *, tree *, tree *);
 extern tree loongarch_builtin_decl (unsigned int, bool);
 extern rtx loongarch_expand_builtin (tree, rtx, rtx subtarget ATTRIBUTE_UNUSED,
 				     machine_mode, int);
-extern tree loongarch_builtin_vectorized_function (unsigned int, tree, tree);
 extern rtx loongarch_gen_const_int_vector_shuffle (machine_mode, int);
 extern tree loongarch_build_builtin_va_list (void);
 
@@ -215,4 +215,12 @@ extern void loongarch_emit_swrsqrtsf (rtx, rtx, machine_mode, bool);
 extern void loongarch_emit_swdivsf (rtx, rtx, rtx, machine_mode);
 extern bool loongarch_explicit_relocs_p (enum loongarch_symbol_type);
 extern bool loongarch_symbol_extreme_p (enum loongarch_symbol_type);
+extern bool loongarch_option_valid_attribute_p (tree, tree, tree, int);
+extern void loongarch_option_override_internal (struct loongarch_target *, struct gcc_options *, struct gcc_options *);
+extern void loongarch_reset_previous_fndecl (void);
+extern void loongarch_save_restore_target_globals (tree new_tree);
+extern void loongarch_register_pragmas (void);
+extern bool loongarch_process_target_attr (tree args, tree fndecl);
+extern rtx loongarch_gen_stepped_int_parallel (unsigned int nelts, int base,
+					       int step);
 #endif /* ! GCC_LOONGARCH_PROTOS_H */

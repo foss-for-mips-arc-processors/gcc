@@ -1,5 +1,5 @@
 /* Subroutines used for code generation for eBPF.
-   Copyright (C) 2019-2024 Free Software Foundation, Inc.
+   Copyright (C) 2019-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -220,6 +220,11 @@ bpf_option_override (void)
       && (debug_info_level >= DINFO_LEVEL_NORMAL)
       && !(target_flags_explicit & MASK_BPF_CORE))
     target_flags |= MASK_BPF_CORE;
+
+  /* -gbtf implies -gprune-btf for BPF target.  */
+  if (btf_debuginfo_p ())
+    SET_OPTION_IF_UNSET (&global_options, &global_options_set,
+			 debug_prune_btf, true);
 
   /* Determine available features from ISA setting (-mcpu=).  */
   if (bpf_has_jmpext == -1)
@@ -825,6 +830,11 @@ bpf_print_register (FILE *file, rtx op, int code)
     }
 }
 
+/* Variable defined to implement 'M' operand modifier for the special cases
+   where the parentheses should not be printed surrounding a memory address
+   operand. */
+static bool no_parentheses_mem_operand;
+
 /* Print an instruction operand.  This function is called in the macro
    PRINT_OPERAND defined in bpf.h */
 
@@ -837,6 +847,7 @@ bpf_print_operand (FILE *file, rtx op, int code)
       bpf_print_register (file, op, code);
       break;
     case MEM:
+      no_parentheses_mem_operand = (code == 'M');
       output_address (GET_MODE (op), XEXP (op, 0));
       break;
     case CONST_DOUBLE:
@@ -881,6 +892,9 @@ bpf_print_operand (FILE *file, rtx op, int code)
     }
 }
 
+#define PAREN_OPEN  (asm_dialect == ASM_NORMAL ? "[" : no_parentheses_mem_operand ? "" : "(")
+#define PAREN_CLOSE (asm_dialect == ASM_NORMAL ? "]" : no_parentheses_mem_operand ? "" : ")")
+
 /* Print an operand which is an address.  This function should handle
    any legit address, as accepted by bpf_legitimate_address_p, and
    also addresses that are valid in CALL instructions.
@@ -894,10 +908,9 @@ bpf_print_operand_address (FILE *file, rtx addr)
   switch (GET_CODE (addr))
     {
     case REG:
-      if (asm_dialect == ASM_NORMAL)
-	fprintf (file, "[");
+      fprintf (file, "%s", PAREN_OPEN);
       bpf_print_register (file, addr, 0);
-      fprintf (file, asm_dialect == ASM_NORMAL ? "+0]" : "+0");
+      fprintf (file, "+0%s", PAREN_CLOSE);
       break;
     case PLUS:
       {
@@ -914,16 +927,14 @@ bpf_print_operand_address (FILE *file, rtx addr)
 		|| (GET_CODE (op1) == UNSPEC
 		    && XINT (op1, 1) == UNSPEC_CORE_RELOC)))
 	  {
-	    if (asm_dialect == ASM_NORMAL)
-	      fprintf (file, "[");
+	    fprintf (file, "%s", PAREN_OPEN);
 	    bpf_print_register (file, op0, 0);
 	    fprintf (file, "+");
 	    if (GET_CODE (op1) == UNSPEC)
 	      output_addr_const (file, XVECEXP (op1, 0, 0));
 	    else
 	      output_addr_const (file, op1);
-	    if (asm_dialect == ASM_NORMAL)
-	      fprintf (file, "]");
+	    fprintf (file, "%s", PAREN_CLOSE);
 	  }
 	else
 	  fatal_insn ("invalid address in operand", addr);
@@ -940,6 +951,9 @@ bpf_print_operand_address (FILE *file, rtx addr)
       break;
     }
 }
+
+#undef PAREN_OPEN
+#undef PAREN_CLOSE
 
 /* Add a BPF builtin function with NAME, CODE and TYPE.  Return
    the function decl or NULL_TREE if the builtin was not added.  */
@@ -1070,7 +1084,8 @@ bpf_expand_builtin (tree exp, rtx target ATTRIBUTE_UNUSED,
 #define TARGET_EXPAND_BUILTIN bpf_expand_builtin
 
 static tree
-bpf_resolve_overloaded_builtin (location_t loc, tree fndecl, void *arglist)
+bpf_resolve_overloaded_builtin (location_t loc, tree fndecl, void *arglist,
+				bool complain ATTRIBUTE_UNUSED)
 {
   int code = DECL_MD_FUNCTION_CODE (fndecl);
   if (code > BPF_CORE_BUILTINS_MARKER)
@@ -1434,6 +1449,9 @@ bpf_expand_setmem (rtx *operands)
 
   return true;
 }
+
+#undef TARGET_DOCUMENTATION_NAME
+#define TARGET_DOCUMENTATION_NAME "BPF"
 
 /* Finally, build the GCC target.  */
 

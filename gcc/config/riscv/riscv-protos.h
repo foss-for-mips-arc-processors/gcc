@@ -1,5 +1,5 @@
 /* Definition of RISC-V target for GNU compiler.
-   Copyright (C) 2011-2024 Free Software Foundation, Inc.
+   Copyright (C) 2011-2025 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
    Based on MIPS target for GNU compiler.
 
@@ -112,7 +112,7 @@ extern bool riscv_valid_base_register_p (rtx, machine_mode, bool);
 extern enum reg_class riscv_index_reg_class ();
 extern int riscv_regno_ok_for_index_p (int);
 extern int riscv_address_insns (rtx, machine_mode, bool);
-extern int riscv_const_insns (rtx);
+extern int riscv_const_insns (rtx, bool);
 extern int riscv_split_const_insns (rtx);
 extern int riscv_load_store_insns (rtx, rtx_insn *);
 extern rtx riscv_emit_move (rtx, rtx);
@@ -133,6 +133,13 @@ extern void riscv_asm_output_external (FILE *, const tree, const char *);
 extern bool
 riscv_zcmp_valid_stack_adj_bytes_p (HOST_WIDE_INT, int);
 extern void riscv_legitimize_poly_move (machine_mode, rtx, rtx, rtx);
+extern void riscv_expand_usadd (rtx, rtx, rtx);
+extern void riscv_expand_ssadd (rtx, rtx, rtx);
+extern void riscv_expand_ussub (rtx, rtx, rtx);
+extern void riscv_expand_sssub (rtx, rtx, rtx);
+extern void riscv_expand_ustrunc (rtx, rtx);
+extern void riscv_expand_sstrunc (rtx, rtx);
+extern int riscv_register_move_cost (machine_mode, reg_class_t, reg_class_t);
 
 #ifdef RTX_CODE
 extern void riscv_expand_int_scc (rtx, enum rtx_code, rtx, rtx, bool *invert_ptr = 0);
@@ -171,9 +178,10 @@ extern enum memmodel riscv_union_memmodels (enum memmodel, enum memmodel);
 extern bool riscv_reg_frame_related (rtx);
 extern void riscv_split_sum_of_two_s12 (HOST_WIDE_INT, HOST_WIDE_INT *,
 					HOST_WIDE_INT *);
-extern void generate_reflecting_code_using_brev (rtx *, int);
-extern void expand_crc_using_clmul (rtx *);
-extern void expand_reversed_crc_using_clmul (rtx *);
+extern bool riscv_vector_float_type_p (const_tree type);
+extern void generate_reflecting_code_using_brev (rtx *);
+extern void expand_crc_using_clmul (scalar_mode, scalar_mode, rtx *);
+extern void expand_reversed_crc_using_clmul (scalar_mode, scalar_mode, rtx *);
 
 /* Routines implemented in riscv-c.cc.  */
 void riscv_cpu_cpp_builtins (cpp_reader *);
@@ -195,9 +203,12 @@ extern bool riscv_hard_regno_rename_ok (unsigned, unsigned);
 rtl_opt_pass * make_pass_shorten_memrefs (gcc::context *ctxt);
 rtl_opt_pass * make_pass_avlprop (gcc::context *ctxt);
 rtl_opt_pass * make_pass_vsetvl (gcc::context *ctxt);
+rtl_opt_pass * make_pass_insert_landing_pad (gcc::context *ctxt);
 
 /* Routines implemented in riscv-string.c.  */
+extern bool riscv_expand_block_compare (rtx, rtx, rtx, rtx);
 extern bool riscv_expand_block_move (rtx, rtx, rtx);
+extern bool riscv_expand_block_clear (rtx, rtx);
 
 /* Information about one CPU we know about.  */
 struct riscv_cpu_info {
@@ -227,6 +238,15 @@ struct common_vector_cost
   /* Gather/scatter vectorization cost.  */
   const int gather_load_cost;
   const int scatter_store_cost;
+
+  /* Segment load/store permute cost.  */
+  const int segment_permute_2;
+  const int segment_permute_3;
+  const int segment_permute_4;
+  const int segment_permute_5;
+  const int segment_permute_6;
+  const int segment_permute_7;
+  const int segment_permute_8;
 
   /* Cost of a vector-to-scalar operation.  */
   const int vec_to_scalar_cost;
@@ -350,7 +370,7 @@ enum insn_flags : unsigned int
   /* Means using VUNDEF for merge operand.  */
   USE_VUNDEF_MERGE_P = 1 << 5,
 
-  /* flags for tail policy and mask plicy operands.  */
+  /* flags for tail policy and mask policy operands.  */
   /* Means the tail policy is TAIL_UNDISTURBED.  */
   TU_POLICY_P = 1 << 6,
   /* Means the tail policy is default (return by get_prefer_tail_policy).  */
@@ -485,7 +505,7 @@ enum insn_type : unsigned int
   CPOP_OP = HAS_DEST_P | HAS_MASK_P | USE_ALL_TRUES_MASK_P | UNARY_OP_P
 	    | VTYPE_MODE_FROM_OP1_P,
 
-  /* For mask instrunctions, no tail and mask policy operands.  */
+  /* For mask instructions, no tail and mask policy operands.  */
   UNARY_MASK_OP = HAS_DEST_P | HAS_MASK_P | USE_ALL_TRUES_MASK_P | HAS_MERGE_P
 		  | USE_VUNDEF_MERGE_P | UNARY_OP_P,
   BINARY_MASK_OP = HAS_DEST_P | HAS_MASK_P | USE_ALL_TRUES_MASK_P | HAS_MERGE_P
@@ -493,9 +513,9 @@ enum insn_type : unsigned int
 
   /* For vcompress.vm */
   COMPRESS_OP = __NORMAL_OP_TA2 | BINARY_OP_P,
-  /* has merge operand but use ta.  */
+  /* has merge operand but use tu.  */
   COMPRESS_OP_MERGE
-  = HAS_DEST_P | HAS_MERGE_P | TDEFAULT_POLICY_P | BINARY_OP_P,
+  = HAS_DEST_P | HAS_MERGE_P | TU_POLICY_P | BINARY_OP_P,
 
   /* For vslideup.up has merge operand but use ta.  */
   SLIDEUP_OP_MERGE = HAS_DEST_P | HAS_MASK_P | USE_ALL_TRUES_MASK_P
@@ -612,6 +632,7 @@ enum mask_policy
 enum tail_policy get_prefer_tail_policy ();
 enum mask_policy get_prefer_mask_policy ();
 rtx get_avl_type_rtx (enum avl_type);
+opt_machine_mode get_lmul_mode (scalar_mode, int);
 opt_machine_mode get_vector_mode (scalar_mode, poly_uint64);
 opt_machine_mode get_tuple_mode (machine_mode, unsigned int);
 bool simm5_p (rtx);
@@ -622,7 +643,7 @@ void expand_vec_cmp (rtx, rtx_code, rtx, rtx, rtx = nullptr, rtx = nullptr);
 bool expand_vec_cmp_float (rtx, rtx_code, rtx, rtx, bool);
 void expand_cond_len_unop (unsigned, rtx *);
 void expand_cond_len_binop (unsigned, rtx *);
-void expand_reduction (unsigned, unsigned, rtx *, rtx);
+void expand_reduction (unsigned, unsigned, unsigned, rtx *, rtx);
 void expand_vec_ceil (rtx, rtx, machine_mode, machine_mode);
 void expand_vec_floor (rtx, rtx, machine_mode, machine_mode);
 void expand_vec_nearbyint (rtx, rtx, machine_mode, machine_mode);
@@ -634,6 +655,18 @@ void expand_vec_lrint (rtx, rtx, machine_mode, machine_mode, machine_mode);
 void expand_vec_lround (rtx, rtx, machine_mode, machine_mode, machine_mode);
 void expand_vec_lceil (rtx, rtx, machine_mode, machine_mode);
 void expand_vec_lfloor (rtx, rtx, machine_mode, machine_mode);
+void expand_vec_usadd (rtx, rtx, rtx, machine_mode);
+void expand_vec_ssadd (rtx, rtx, rtx, machine_mode);
+void expand_vec_ussub (rtx, rtx, rtx, machine_mode);
+void expand_vec_sssub (rtx, rtx, rtx, machine_mode);
+void expand_vec_double_ustrunc (rtx, rtx, machine_mode);
+void expand_vec_double_sstrunc (rtx, rtx, machine_mode);
+void expand_vec_quad_ustrunc (rtx, rtx, machine_mode, machine_mode);
+void expand_vec_quad_sstrunc (rtx, rtx, machine_mode, machine_mode);
+void expand_vec_oct_ustrunc (rtx, rtx, machine_mode, machine_mode,
+			     machine_mode);
+void expand_vec_oct_sstrunc (rtx, rtx, machine_mode, machine_mode,
+			     machine_mode);
 #endif
 bool sew64_scalar_helper (rtx *, rtx *, rtx, machine_mode,
 			  bool, void (*)(rtx *, rtx), enum avl_type);
@@ -653,7 +686,7 @@ bool slide1_sew64_helper (int, machine_mode, machine_mode,
 			  machine_mode, rtx *);
 rtx gen_avl_for_scalar_move (rtx);
 void expand_tuple_move (rtx *);
-bool expand_block_move (rtx, rtx, rtx);
+bool expand_block_move (rtx, rtx, rtx, bool);
 machine_mode preferred_simd_mode (scalar_mode);
 machine_mode get_mask_mode (machine_mode);
 void expand_vec_series (rtx, rtx, rtx, rtx = 0);
@@ -673,6 +706,10 @@ void expand_popcount (rtx *);
 void expand_rawmemchr (machine_mode, rtx, rtx, rtx, bool = false);
 bool expand_strcmp (rtx, rtx, rtx, rtx, unsigned HOST_WIDE_INT, bool);
 void emit_vec_extract (rtx, rtx, rtx);
+bool expand_vec_setmem (rtx, rtx, rtx);
+bool expand_vec_cmpmem (rtx, rtx, rtx, rtx);
+void expand_strided_load (machine_mode, rtx *);
+void expand_strided_store (machine_mode, rtx *);
 
 /* Rounding mode bitfield for fixed point VXRM.  */
 enum fixed_point_rounding_mode
@@ -724,6 +761,7 @@ bool gather_scatter_valid_offset_p (machine_mode);
 HOST_WIDE_INT estimated_poly_value (poly_int64, unsigned int);
 bool whole_reg_to_reg_move_p (rtx *, machine_mode, int);
 bool splat_to_scalar_move_p (rtx *);
+rtx get_fp_rounding_coefficient (machine_mode);
 }
 
 /* We classify builtin types into two classes:
@@ -779,6 +817,10 @@ extern bool riscv_use_divmod_expander (void);
 void riscv_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree, int);
 extern bool
 riscv_option_valid_attribute_p (tree, tree, tree, int);
+extern bool
+riscv_option_valid_version_attribute_p (tree, tree, tree, int);
+extern bool
+riscv_process_target_version_attr (tree, location_t);
 extern void
 riscv_override_options_internal (struct gcc_options *);
 extern void riscv_option_override (void);

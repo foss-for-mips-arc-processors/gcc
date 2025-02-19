@@ -1,5 +1,5 @@
 /* Tree inlining.
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
    Contributed by Alexandre Oliva <aoliva@redhat.com>
 
 This file is part of GCC.
@@ -780,7 +780,7 @@ remap_decls (tree decls, vec<tree, va_gc> **nonlocalized_list,
 	  gcc_assert (DECL_P (new_var));
 	  DECL_CHAIN (new_var) = new_decls;
 	  new_decls = new_var;
- 
+
 	  /* Also copy value-expressions.  */
 	  if (VAR_P (new_var) && DECL_HAS_VALUE_EXPR_P (new_var))
 	    {
@@ -1158,6 +1158,13 @@ remap_gimple_op_r (tree *tp, int *walk_subtrees, void *data)
 	  if (invariant && !is_gimple_min_invariant (*tp))
 	    id->regimplify = true;
 
+	  *walk_subtrees = 0;
+	}
+      else if (TREE_CODE (*tp) == OMP_NEXT_VARIANT)
+	{
+	  /* Neither operand is interesting, and walking the selector
+	     causes problems because it's not an expression.  */
+	  gcc_assert (TREE_CODE (TREE_OPERAND (*tp, 0)) == INTEGER_CST);
 	  *walk_subtrees = 0;
 	}
     }
@@ -1679,6 +1686,12 @@ remap_gimple_stmt (gimple *stmt, copy_body_data *id)
 		   (s1, gimple_omp_scope_clauses (stmt));
 	  break;
 
+	case GIMPLE_OMP_DISPATCH:
+	  s1 = remap_gimple_seq (gimple_omp_body (stmt), id);
+	  copy = gimple_build_omp_dispatch (s1,
+					    gimple_omp_dispatch_clauses (stmt));
+	  break;
+
 	case GIMPLE_OMP_TASKGROUP:
 	  s1 = remap_gimple_seq (gimple_omp_body (stmt), id);
 	  copy = gimple_build_omp_taskgroup
@@ -1811,7 +1824,7 @@ remap_gimple_stmt (gimple *stmt, copy_body_data *id)
 		return NULL;
 	    }
 	}
-     
+
       /* We do not allow CLOBBERs of handled components.  In case
 	 returned value is stored via such handled component, remove
 	 the clobber so stmt verifier is happy.  */
@@ -2669,7 +2682,7 @@ copy_edges_for_bb (basic_block bb, profile_count num, profile_count den,
 				   (basic_block) old_edge->dest->aux))
 		&& (e->flags & EDGE_EH))
 	      e->probability = old_edge->probability;
-	    
+
           FOR_EACH_EDGE (e, ei, copy_stmt_bb->succs)
 	    if (e->flags & EDGE_EH)
 	      {
@@ -3888,7 +3901,7 @@ declare_return_variable (copy_body_data *id, tree return_slot, tree modify_dest,
  done:
   /* Register the VAR_DECL as the equivalent for the RESULT_DECL; that
      way, when the RESULT_DECL is encountered, it will be
-     automatically replaced by the VAR_DECL.  
+     automatically replaced by the VAR_DECL.
 
      When returning by reference, ensure that RESULT_DECL remaps to
      gimple_val.  */
@@ -4609,6 +4622,7 @@ estimate_num_insns (gimple *stmt, eni_weights *weights)
     case GIMPLE_OMP_MASTER:
     case GIMPLE_OMP_MASKED:
     case GIMPLE_OMP_SCOPE:
+    case GIMPLE_OMP_DISPATCH:
     case GIMPLE_OMP_TASKGROUP:
     case GIMPLE_OMP_ORDERED:
     case GIMPLE_OMP_SCAN:
@@ -4808,6 +4822,7 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id,
   use_operand_p use;
   gimple *simtenter_stmt = NULL;
   vec<tree> *simtvars_save;
+  tree save_stack = NULL_TREE;
 
   /* The gimplifier uses input_location in too many places, such as
      internal_get_tmp_var ().  */
@@ -5033,8 +5048,8 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id,
   if (src_properties != prop_mask)
     dst_cfun->curr_properties &= src_properties | ~prop_mask;
   dst_cfun->calls_eh_return |= id->src_cfun->calls_eh_return;
-  id->dst_node->calls_declare_variant_alt
-    |= id->src_node->calls_declare_variant_alt;
+  id->dst_node->has_omp_variant_constructs
+    |= id->src_node->has_omp_variant_constructs;
 
   gcc_assert (!id->src_cfun->after_inlining);
 
@@ -5055,6 +5070,28 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id,
 			(id->block, DECL_SOURCE_LOCATION (id->src_fn)),
 			GSI_NEW_STMT);
     }
+
+  /* If function to be inlined calls alloca, wrap the inlined function
+     in between save_stack = __builtin_stack_save (); and
+     __builtin_stack_restore (save_stack); calls.  */
+  if (id->src_cfun->calls_alloca && !gimple_call_noreturn_p (stmt))
+    /* Don't do this for VLA allocations though, just for user alloca
+       calls.  */
+    for (struct cgraph_edge *e = id->src_node->callees; e; e = e->next_callee)
+      if (gimple_maybe_alloca_call_p (e->call_stmt)
+	  && !gimple_call_alloca_for_var_p (e->call_stmt))
+	{
+	  tree fn = builtin_decl_implicit (BUILT_IN_STACK_SAVE);
+	  gcall *call = gimple_build_call (fn, 0);
+	  save_stack = make_ssa_name (ptr_type_node);
+	  gimple_call_set_lhs (call, save_stack);
+	  gimple_stmt_iterator si = gsi_last_bb (bb);
+	  gsi_insert_after (&si, call, GSI_NEW_STMT);
+	  struct cgraph_node *dest = cgraph_node::get_create (fn);
+	  id->dst_node->create_edge (dest, call, bb->count)->inline_failed
+	    = CIF_BODY_NOT_AVAILABLE;
+	  break;
+	}
 
   if (DECL_INITIAL (fn))
     {
@@ -5107,9 +5144,23 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id,
       if (DECL_P (modify_dest))
 	suppress_warning (modify_dest, OPT_Wuninitialized);
 
+      /* If we have a return slot, we can assign it the result directly,
+	 except in the case where it is a global variable that is only
+	 written to because, the callee being permitted to read or take
+	 the address of its DECL_RESULT, this could invalidate the flag
+	 on the global variable; instead we preventively remove the store,
+	 which would have happened later if the call was not inlined.  */
       if (gimple_call_return_slot_opt_p (call_stmt))
 	{
-	  return_slot = modify_dest;
+	  tree base = get_base_address (modify_dest);
+
+	  if (VAR_P (base)
+	      && (TREE_STATIC (base) || DECL_EXTERNAL (base))
+	      && varpool_node::get (base)->writeonly)
+	    return_slot = NULL;
+	  else
+	    return_slot = modify_dest;
+
 	  modify_dest = NULL;
 	}
     }
@@ -5178,6 +5229,17 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id,
 	      gsi_insert_before (&stmt_gsi, clobber_stmt, GSI_SAME_STMT);
 	    }
 	}
+
+  if (save_stack)
+    {
+      tree fn = builtin_decl_implicit (BUILT_IN_STACK_RESTORE);
+      gcall *call = gimple_build_call (fn, 1, save_stack);
+      gsi_insert_before (&stmt_gsi, call, GSI_SAME_STMT);
+      struct cgraph_node *dest = cgraph_node::get_create (fn);
+      id->dst_node->create_edge (dest, call,
+				 return_block->count)->inline_failed
+	= CIF_BODY_NOT_AVAILABLE;
+    }
 
   /* Reset the escaped solution.  */
   if (cfun->gimple_df)
@@ -5368,6 +5430,7 @@ static void
 fold_marked_statements (int first, hash_set<gimple *> *statements)
 {
   auto_bitmap to_purge;
+  auto_bitmap to_purge_abnormal;
 
   auto_vec<edge, 20> stack (n_basic_blocks_for_fn (cfun) + 2);
   auto_sbitmap visited (last_basic_block_for_fn (cfun));
@@ -5394,8 +5457,16 @@ fold_marked_statements (int first, hash_set<gimple *> *statements)
 	      continue;
 
 	    gimple *old_stmt = gsi_stmt (gsi);
-	    tree old_decl = (is_gimple_call (old_stmt)
-			     ? gimple_call_fndecl (old_stmt) : 0);
+	    bool can_make_abnormal_goto = false;
+	    tree old_decl = NULL_TREE;
+
+	    if (is_gimple_call (old_stmt))
+	      {
+		old_decl = gimple_call_fndecl (old_stmt);
+		if (stmt_can_make_abnormal_goto (old_stmt))
+		  can_make_abnormal_goto = true;
+	      }
+
 	    if (old_decl && fndecl_built_in_p (old_decl))
 	      {
 		/* Folding builtins can create multiple instructions,
@@ -5411,6 +5482,8 @@ fold_marked_statements (int first, hash_set<gimple *> *statements)
 		      {
 			cgraph_update_edges_for_call_stmt (old_stmt,
 							   old_decl, NULL);
+			if (can_make_abnormal_goto)
+			  bitmap_set_bit (to_purge_abnormal, dest->index);
 			break;
 		      }
 		    if (gsi_end_p (i2))
@@ -5439,6 +5512,9 @@ fold_marked_statements (int first, hash_set<gimple *> *statements)
 			    if (maybe_clean_or_replace_eh_stmt (old_stmt,
 								new_stmt))
 			      bitmap_set_bit (to_purge, dest->index);
+			    if (can_make_abnormal_goto
+				&& !stmt_can_make_abnormal_goto (new_stmt))
+			      bitmap_set_bit (to_purge_abnormal, dest->index);
 			    break;
 			  }
 			gsi_next (&i2);
@@ -5459,6 +5535,9 @@ fold_marked_statements (int first, hash_set<gimple *> *statements)
 
 		if (maybe_clean_or_replace_eh_stmt (old_stmt, new_stmt))
 		  bitmap_set_bit (to_purge, dest->index);
+		if (can_make_abnormal_goto
+		    && !stmt_can_make_abnormal_goto (new_stmt))
+		  bitmap_set_bit (to_purge_abnormal, dest->index);
 	      }
 	  }
 
@@ -5480,6 +5559,7 @@ fold_marked_statements (int first, hash_set<gimple *> *statements)
     }
 
   gimple_purge_all_dead_eh_edges (to_purge);
+  gimple_purge_all_dead_abnormal_call_edges (to_purge_abnormal);
 }
 
 /* Expand calls to inline functions in the body of FN.  */
@@ -6288,8 +6368,8 @@ tree_function_versioning (tree old_decl, tree new_decl,
   DECL_ARGUMENTS (new_decl) = DECL_ARGUMENTS (old_decl);
   initialize_cfun (new_decl, old_decl,
 		   new_entry ? new_entry->count : old_entry_block->count);
-  new_version_node->calls_declare_variant_alt
-    = old_version_node->calls_declare_variant_alt;
+  new_version_node->has_omp_variant_constructs
+    = old_version_node->has_omp_variant_constructs;
   if (DECL_STRUCT_FUNCTION (new_decl)->gimple_df)
     DECL_STRUCT_FUNCTION (new_decl)->gimple_df->ipa_pta
       = id.src_cfun->gimple_df->ipa_pta;

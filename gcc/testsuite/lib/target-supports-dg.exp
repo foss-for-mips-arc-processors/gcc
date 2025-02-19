@@ -1,4 +1,4 @@
-#   Copyright (C) 1997-2024 Free Software Foundation, Inc.
+#   Copyright (C) 1997-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -315,6 +315,22 @@ proc dg-add-options { args } {
 	if { [info procs add_options_for_$arg] != "" } {
 	    set extra-tool-flags \
 		[eval [list add_options_for_$arg ${extra-tool-flags}]]
+	} else {
+	    error "Unrecognized option type: $arg"
+	}
+    }
+}
+
+# Remove any target-specific flags needed for accessing the given list
+# of features.  This must come after all dg-options.
+
+proc dg-remove-options { args } {
+    upvar dg-extra-tool-flags extra-tool-flags
+
+    foreach arg [lrange $args 1 end] {
+	if { [info procs remove_options_for_$arg] != "" } {
+	    set extra-tool-flags \
+		[eval [list remove_options_for_$arg ${extra-tool-flags}]]
 	} else {
 	    error "Unrecognized option type: $arg"
 	}

@@ -1,5 +1,5 @@
 /* Helper class for handling a call with specific arguments.
-   Copyright (C) 2020-2024 Free Software Foundation, Inc.
+   Copyright (C) 2020-2025 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -19,7 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
-#define INCLUDE_MEMORY
+#define INCLUDE_VECTOR
 #include "system.h"
 #include "coretypes.h"
 #include "tree.h"
@@ -362,12 +362,8 @@ call_details::dump_to_pp (pretty_printer *pp, bool simple) const
 DEBUG_FUNCTION void
 call_details::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp, simple);
-  pp_flush (&pp);
 }
 
 /* Get a conjured_svalue for this call for REG,
@@ -469,11 +465,14 @@ public:
     return warned;
   }
 
-  label_text describe_final_event (const evdesc::final_event &ev) final override
+  bool
+  describe_final_event (pretty_printer &pp,
+			const evdesc::final_event &) final override
   {
-    return ev.formatted_print
-      ("overlapping buffers passed as arguments to %qD",
-       m_fndecl);
+    pp_printf (&pp,
+	       "overlapping buffers passed as arguments to %qD",
+	       m_fndecl);
+    return true;
   }
 
   void maybe_add_sarif_properties (sarif_object &result_obj)

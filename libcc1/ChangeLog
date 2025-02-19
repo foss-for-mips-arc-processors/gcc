@@ -1,10 +1,19 @@
-2024-08-01  Release Manager
+2024-12-23  Simon Martin  <simon@nasilyan.com>
 
-	* GCC 14.2.0 released.
+	* Makefile.am: Remove reference to deleted marshall-c.h.
+	* Makefile.in: Regenerate.
 
-2024-05-07  Release Manager
+2024-12-20  Nathaniel Shead  <nathanieloshead@gmail.com>
 
-	* GCC 14.1.0 released.
+	* libcp1plugin.cc (plugin_add_namespace_alias): Call
+	do_namespace_alias with input_location.
+
+2024-09-20  David Malcolm  <dmalcolm@redhat.com>
+
+	PR other/116613
+	* context.cc: Include "diagnostic-format-text.h".
+	(plugin_print_error_function): Update first param from
+	diagnostic_context * to diagnostic_text_output_format &.
 
 2024-03-16  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
 

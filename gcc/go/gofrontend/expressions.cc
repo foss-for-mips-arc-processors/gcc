@@ -9079,12 +9079,12 @@ Selector_expression::lower_method_expression(Gogo* gogo)
       if (nt != NULL)
 	{
 	  if (!is_ambiguous)
-	    go_error_at(location, "type %<%s%s%> has no method %<%s%>",
+	    go_error_at(location, "type %<%s%s%> has no method %qs",
 			is_pointer ? "*" : "",
 			nt->message_name().c_str(),
 			Gogo::message_name(name).c_str());
 	  else
-	    go_error_at(location, "method %<%s%s%> is ambiguous in type %<%s%>",
+	    go_error_at(location, "method %<%s%s%> is ambiguous in type %qs",
 			Gogo::message_name(name).c_str(),
 			is_pointer ? "*" : "",
 			nt->message_name().c_str());
@@ -9092,10 +9092,10 @@ Selector_expression::lower_method_expression(Gogo* gogo)
       else
 	{
 	  if (!is_ambiguous)
-	    go_error_at(location, "type has no method %<%s%>",
+	    go_error_at(location, "type has no method %qs",
 			Gogo::message_name(name).c_str());
 	  else
-	    go_error_at(location, "method %<%s%> is ambiguous",
+	    go_error_at(location, "method %qs is ambiguous",
 			Gogo::message_name(name).c_str());
 	}
       return Expression::make_error(location);
@@ -11134,6 +11134,12 @@ Builtin_call_expression::do_determine_type(Gogo* gogo,
     {
     case BUILTIN_MAKE:
       trailing_arg_types = Type::lookup_integer_type("int");
+      is_print = false;
+      break;
+
+    case BUILTIN_PANIC:
+      arg_type =
+	Type::make_empty_interface_type(Linemap::predeclared_location());
       is_print = false;
       break;
 

@@ -1,5 +1,5 @@
 /* Utility functions for the analyzer.
-   Copyright (C) 2019-2024 Free Software Foundation, Inc.
+   Copyright (C) 2019-2025 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -416,16 +416,16 @@ extern void log_stashed_constants (logger *logger);
 
 extern FILE *get_or_create_any_logfile ();
 
-extern json::value *
+extern std::unique_ptr<json::value>
 tree_to_json (tree node);
 
-extern json::value *
+extern std::unique_ptr<json::value>
 diagnostic_event_id_to_json (const diagnostic_event_id_t &);
 
-extern json::value *
+extern std::unique_ptr<json::value>
 bit_offset_to_json (const bit_offset_t &offset);
 
-extern json::value *
+extern std::unique_ptr<json::value>
 byte_offset_to_json (const byte_offset_t &offset);
 
 extern tristate
@@ -448,10 +448,12 @@ extern tree remove_ssa_names (tree expr);
 } // namespace ana
 
 extern bool is_special_named_call_p (const gcall *call, const char *funcname,
-				     unsigned int num_args);
+				     unsigned int num_args,
+				     bool look_in_std = false);
 extern bool is_named_call_p (const_tree fndecl, const char *funcname);
 extern bool is_named_call_p (const_tree fndecl, const char *funcname,
 			     const gcall *call, unsigned int num_args);
+extern bool is_std_function_p (const_tree fndecl);
 extern bool is_std_named_call_p (const_tree fndecl, const char *funcname);
 extern bool is_std_named_call_p (const_tree fndecl, const char *funcname,
 				 const gcall *call, unsigned int num_args);

@@ -1,6 +1,6 @@
 ; Options for the S/390 / zSeries port of the compiler.
 
-; Copyright (C) 2005-2024 Free Software Foundation, Inc.
+; Copyright (C) 2005-2025 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -122,6 +122,9 @@ EnumValue
 Enum(processor_type) String(z16) Value(PROCESSOR_3931_Z16)
 
 EnumValue
+Enum(processor_type) String(arch15) Value(PROCESSOR_ARCH15)
+
+EnumValue
 Enum(processor_type) String(native) Value(PROCESSOR_NATIVE) DriverOnly
 
 mbackchain
@@ -228,10 +231,6 @@ Target Joined RejectNegative UInteger Var(s390_branch_cost) Init(1) Save
 Set the branch costs for conditional branch instructions.  Reasonable
 values are small, non-negative integers.  The default branch cost is
 1.
-
-mlra
-Target Var(s390_lra_flag) Init(1) Save
-Use LRA instead of reload.
 
 mpic-data-is-text-relative
 Target Var(s390_pic_data_is_text_relative) Init(TARGET_DEFAULT_PIC_DATA_IS_TEXT_RELATIVE)

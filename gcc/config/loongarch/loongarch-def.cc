@@ -1,5 +1,5 @@
 /* LoongArch static properties.
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2025 Free Software Foundation, Inc.
    Contributed by Loongson Ltd.
 
 This file is part of GCC.
@@ -136,6 +136,7 @@ loongarch_rtx_cost_data::loongarch_rtx_cost_data ()
     movcf2gr (COSTS_N_INSNS (7)),
     movgr2cf (COSTS_N_INSNS (15)),
     branch_cost (6),
+    addr_reg_reg_cost (3),
     memory_latency (4) {}
 
 /* The following properties cannot be looked up directly using "cpucfg".

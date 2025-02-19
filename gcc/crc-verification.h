@@ -1,5 +1,6 @@
 /* Execute symbolically all paths of the loop.
-   Copyright (C) 2022-2024 Free Software Foundation, Inc.
+   Copyright (C) 2022-2025 Free Software Foundation, Inc.
+   Contributed by Mariam Arutunian <mariamarutunian@gmail.com>
 
 This file is part of GCC.
 
@@ -25,7 +26,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 #include "backend.h"
 #include "cfgloop.h"
-#include "sym-exec/state.h"
+#include "sym-exec/sym-exec-state.h"
 
 class crc_symbolic_execution {
 
@@ -96,11 +97,12 @@ class crc_symbolic_execution {
     Keeping values of variables in the state.  */
   bool execute_bb_statements (basic_block, edge, auto_vec<edge> &);
 
-  /* Create initial state of header BB variables which have constant values.
+  /* Create initial state of the loop's header BB variables which have constant
+   values.
    If it is the first iteration of the loop, initialise variables with the
    initial values, otherwise initialise the variable with the value calculated
    during the previous execution.  */
-  state *create_initial_state (basic_block);
+  state *create_initial_state (class loop *);
 
 /* Traverse function fun's all paths from the first basic block to the last.
    Each time iterate loops only once.
@@ -118,7 +120,7 @@ class crc_symbolic_execution {
      First value of the pair is the tree containing the value of the polynomial,
      second is the calculated polynomial.  The pair may contain nullptr.  */
   std::pair <tree, value *>
-  extract_polynomial (gphi *, gphi *, bool);
+  extract_polynomial (gphi *, gphi *, tree, bool);
 
   /* Symbolically execute the CRC loop, doing one iteration.  */
   bool symb_execute_crc_loop ();
@@ -154,7 +156,7 @@ class crc_symbolic_execution {
 /**************************** LFSR MATCHING *********************************/
 
 /* Returns true if all states match the LFSR, otherwise - false.  */
-bool all_states_match_lfsr (value *, bool, gphi *, const vec<state *> &);
+bool all_states_match_lfsr (value *, bool, tree, const vec<state *> &);
 
 
 #endif //GCC_CRC_VERIFICATION

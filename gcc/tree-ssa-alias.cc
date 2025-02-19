@@ -1,5 +1,5 @@
 /* Alias analysis for trees.
-   Copyright (C) 2004-2024 Free Software Foundation, Inc.
+   Copyright (C) 2004-2025 Free Software Foundation, Inc.
    Contributed by Diego Novillo <dnovillo@redhat.com>
 
 This file is part of GCC.
@@ -294,6 +294,11 @@ ptr_deref_may_alias_decl_p (tree ptr, tree decl)
   if (!may_be_aliased (decl))
     return false;
 
+  /* From here we require a SSA name pointer.  Anything else aliases.  */
+  if (TREE_CODE (ptr) != SSA_NAME
+      || !POINTER_TYPE_P (TREE_TYPE (ptr)))
+    return true;
+
   /* If we do not have useful points-to information for this pointer
      we cannot disambiguate anything else.  */
   pi = SSA_NAME_PTR_INFO (ptr);
@@ -479,9 +484,34 @@ ptrs_compare_unequal (tree ptr1, tree ptr2)
 	}
       return !pt_solution_includes (&pi->pt, obj1);
     }
-
-  /* ???  We'd like to handle ptr1 != NULL and ptr1 != ptr2
-     but those require pt.null to be conservatively correct.  */
+  else if (TREE_CODE (ptr1) == SSA_NAME)
+    {
+      struct ptr_info_def *pi1 = SSA_NAME_PTR_INFO (ptr1);
+      if (!pi1
+	  || pi1->pt.vars_contains_restrict
+	  || pi1->pt.vars_contains_interposable)
+	return false;
+      if (integer_zerop (ptr2) && !pi1->pt.null)
+	return true;
+      if (TREE_CODE (ptr2) == SSA_NAME)
+	{
+	  struct ptr_info_def *pi2 = SSA_NAME_PTR_INFO (ptr2);
+	  if (!pi2
+	      || pi2->pt.vars_contains_restrict
+	      || pi2->pt.vars_contains_interposable)
+	    return false;
+	  if ((!pi1->pt.null || !pi2->pt.null)
+	      /* ???  We do not represent FUNCTION_DECL and LABEL_DECL
+		 in pt.vars but only set pt.vars_contains_nonlocal.  This
+		 makes compares involving those and other nonlocals
+		 imprecise.  */
+	      && (!pi1->pt.vars_contains_nonlocal
+		  || !pi2->pt.vars_contains_nonlocal)
+	      && (!pt_solution_includes_const_pool (&pi1->pt)
+		  || !pt_solution_includes_const_pool (&pi2->pt)))
+	    return !pt_solutions_intersect (&pi1->pt, &pi2->pt);
+	}
+    }
 
   return false;
 }
@@ -631,6 +661,9 @@ dump_points_to_solution (FILE *file, struct pt_solution *pt)
   if (pt->null)
     fprintf (file, ", points-to NULL");
 
+  if (pt->const_pool)
+    fprintf (file, ", points-to const-pool");
+
   if (pt->vars)
     {
       fprintf (file, ", points-to vars: ");
@@ -638,7 +671,8 @@ dump_points_to_solution (FILE *file, struct pt_solution *pt)
       if (pt->vars_contains_nonlocal
 	  || pt->vars_contains_escaped
 	  || pt->vars_contains_escaped_heap
-	  || pt->vars_contains_restrict)
+	  || pt->vars_contains_restrict
+	  || pt->vars_contains_interposable)
 	{
 	  const char *comma = "";
 	  fprintf (file, " (");
@@ -1209,7 +1243,7 @@ access_path_may_continue_p (tree ref_type1, bool end_struct_past_end1,
 
 /* Determine if the two component references REF1 and REF2 which are
    based on access types TYPE1 and TYPE2 and of which at least one is based
-   on an indirect reference may alias.  
+   on an indirect reference may alias.
    REF1_ALIAS_SET, BASE1_ALIAS_SET, REF2_ALIAS_SET and BASE2_ALIAS_SET
    are the respective alias sets.  */
 
@@ -1332,7 +1366,7 @@ aliasing_component_refs_p (tree ref1,
     }
 
   /* If we didn't find a common base, try the other way around.  */
-  if (cmp_outer <= 0 
+  if (cmp_outer <= 0
       || (end_struct_ref1
 	  && compare_type_sizes (TREE_TYPE (end_struct_ref1), type2) <= 0))
     {
@@ -1381,7 +1415,7 @@ aliasing_component_refs_p (tree ref1,
    We do not assume that the containers of FIELD1 and FIELD2 are of the
    same type or size.
 
-   Return 0 in case the base address of component_refs are same then 
+   Return 0 in case the base address of component_refs are same then
    FIELD1 and FIELD2 have same address. Note that FIELD1 and FIELD2
    may not be of same type or size.
 
@@ -1413,7 +1447,7 @@ nonoverlapping_component_refs_p_1 (const_tree field1, const_tree field2)
 
   /* ??? Bitfields can overlap at RTL level so punt on them.
      FIXME: RTL expansion should be fixed by adjusting the access path
-     when producing MEM_ATTRs for MEMs which are wider than 
+     when producing MEM_ATTRs for MEMs which are wider than
      the bitfields similarly as done in set_mem_attrs_minus_bitpos.  */
   if (DECL_BIT_FIELD (field1) && DECL_BIT_FIELD (field2))
     return -1;
@@ -1852,7 +1886,7 @@ ncr_type_uid (const_tree field)
      as the Fortran compiler smuggles type punning into COMPONENT_REFs
      for common blocks instead of using unions like everyone else.  */
   tree type = DECL_FIELD_CONTEXT (field);
-  /* With LTO types considered same_type_for_tbaa_p 
+  /* With LTO types considered same_type_for_tbaa_p
      from different translation unit may not have same
      main variant.  They however have same TYPE_CANONICAL.  */
   if (TYPE_CANONICAL (type))
@@ -2036,7 +2070,7 @@ decl_refs_may_alias_p (tree ref1, tree base1,
       && nonoverlapping_refs_since_match_p (NULL, ref1, NULL, ref2, false) == 1)
     return false;
 
-  return true;     
+  return true;
 }
 
 /* Return true if access with BASE is view converted.
@@ -2044,13 +2078,14 @@ decl_refs_may_alias_p (tree ref1, tree base1,
    which is done by ao_ref_base and thus one extra walk
    of handled components is needed.  */
 
-static bool
+bool
 view_converted_memref_p (tree base)
 {
   if (TREE_CODE (base) != MEM_REF && TREE_CODE (base) != TARGET_MEM_REF)
     return false;
-  return same_type_for_tbaa (TREE_TYPE (base),
-			     TREE_TYPE (TREE_OPERAND (base, 1))) != 1;
+  return (same_type_for_tbaa (TREE_TYPE (base),
+			      TREE_TYPE (TREE_TYPE (TREE_OPERAND (base, 1))))
+	  != 1);
 }
 
 /* Return true if an indirect reference based on *PTR1 constrained
@@ -2124,7 +2159,7 @@ indirect_ref_may_alias_decl_p (tree ref1 ATTRIBUTE_UNUSED, tree base1,
      use the usual conflict check rather than a subset test.
      ???  We could introduce -fvery-strict-aliasing when the language
      does not allow decls to have a dynamic type that differs from their
-     static type.  Then we can check 
+     static type.  Then we can check
      !alias_set_subset_of (base1_alias_set, base2_alias_set) instead.  */
   if (base1_alias_set != base2_alias_set
       && !alias_sets_conflict_p (base1_alias_set, base2_alias_set))
@@ -3448,7 +3483,7 @@ stmt_kills_ref_p (gimple *stmt, ao_ref *ref)
 		  if (res)
 		    break;
 		  /* Remember if we drop an array-ref that we need to
-		     double-check not being at struct end.  */ 
+		     double-check not being at struct end.  */
 		  if (TREE_CODE (base) == ARRAY_REF
 		      || TREE_CODE (base) == ARRAY_RANGE_REF)
 		    innermost_dropped_array_ref = base;
@@ -3667,6 +3702,25 @@ stmt_kills_ref_p (gimple *stmt, tree ref)
   ao_ref r;
   ao_ref_init (&r, ref);
   return stmt_kills_ref_p (stmt, &r);
+}
+
+/* Return whether REF can be subject to store data races.  */
+
+bool
+ref_can_have_store_data_races (tree ref)
+{
+  /* With -fallow-store-data-races do not care about them.  */
+  if (flag_store_data_races)
+    return false;
+
+  tree base = get_base_address (ref);
+  if (auto_var_p (base)
+      && ! may_be_aliased (base))
+    /* Automatic variables not aliased are not subject to
+       data races.  */
+    return false;
+
+  return true;
 }
 
 
@@ -4325,8 +4379,8 @@ ao_compare::compare_ao_refs (ao_ref *ref1, ao_ref *ref2,
   else if ((end_struct_ref1 != NULL) != (end_struct_ref2 != NULL))
     return flags | ACCESS_PATH;
   if (end_struct_ref1
-      && TYPE_MAIN_VARIANT (TREE_TYPE (end_struct_ref1))
-	 != TYPE_MAIN_VARIANT (TREE_TYPE (end_struct_ref2)))
+      && same_type_for_tbaa (TREE_TYPE (end_struct_ref1),
+			     TREE_TYPE (end_struct_ref2)) != 1)
     return flags | ACCESS_PATH;
 
   /* Now compare all handled components of the access path.

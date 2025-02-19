@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -1997,6 +1997,16 @@ Dump::visit (ExternalFunctionItem &e)
   visit_field ("return_type", e.get_return_type ());
 
   end ("ExternalFunctionItem");
+}
+
+void
+Dump::visit (ExternalTypeItem &e)
+{
+  begin ("ExternalTypeItem");
+
+  do_externalitem (e);
+
+  end ("ExternalTypeItem");
 }
 
 void

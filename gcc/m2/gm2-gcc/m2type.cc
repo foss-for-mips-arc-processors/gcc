@@ -1,6 +1,6 @@
 /* m2type.cc provides an interface to GCC type trees.
 
-Copyright (C) 2012-2024 Free Software Foundation, Inc.
+Copyright (C) 2012-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -119,6 +119,7 @@ static GTY (()) tree m2_complex96_type_node;
 static GTY (()) tree m2_complex128_type_node;
 static GTY (()) tree m2_packed_boolean_type_node;
 static GTY (()) tree m2_cardinal_address_type_node;
+static GTY (()) tree m2_offt_type_node;
 
 /* gm2_canonicalize_array - returns a unique array node based on
    index_type and type.  */
@@ -824,7 +825,7 @@ m2type_GetIntegerType (void)
   return integer_type_node;
 }
 
-/* GetCSizeTType return a type representing, size_t on this system.  */
+/* GetCSizeTType return a type representing size_t.  */
 
 tree
 m2type_GetCSizeTType (void)
@@ -832,13 +833,20 @@ m2type_GetCSizeTType (void)
   return sizetype;
 }
 
-/* GetCSSizeTType return a type representing, size_t on this
-   system.  */
+/* GetCSSizeTType return a type representing size_t.  */
 
 tree
 m2type_GetCSSizeTType (void)
 {
   return ssizetype;
+}
+
+/* GetCSSizeTType return a type representing off_t.  */
+
+tree
+m2type_GetCOffTType (void)
+{
+  return m2_offt_type_node;
 }
 
 /* GetPackedBooleanType return the packed boolean data type node.  */
@@ -1069,7 +1077,6 @@ build_m2_specific_size_type (location_t location, enum tree_code base,
     {
       if (!float_mode_for_size (TYPE_PRECISION (c)).exists ())
         return NULL;
-      layout_type (c);
     }
   else if (base == SET_TYPE)
     return build_m2_size_set_type (location, precision);
@@ -1088,6 +1095,7 @@ build_m2_specific_size_type (location_t location, enum tree_code base,
           TYPE_UNSIGNED (c) = true;
         }
     }
+  layout_type (c);
   return c;
 }
 
@@ -1373,6 +1381,18 @@ build_m2_iso_byte_node (location_t location, int loc)
   return c;
 }
 
+static tree
+build_m2_offt_type_node (location_t location)
+{
+  m2assert_AssertLocation (location);
+  int offt_size = M2Options_GetFileOffsetBits ();
+
+  if (offt_size == 0)
+    offt_size = TREE_INT_CST_LOW (TYPE_SIZE (ssizetype));
+  return build_m2_specific_size_type (location, INTEGER_TYPE,
+				      offt_size, true);
+}
+
 /* m2type_InitSystemTypes initialise loc and word derivatives.  */
 
 void
@@ -1386,6 +1406,7 @@ m2type_InitSystemTypes (location_t location, int loc)
   m2_word16_type_node = build_m2_word16_type_node (location, loc);
   m2_word32_type_node = build_m2_word32_type_node (location, loc);
   m2_word64_type_node = build_m2_word64_type_node (location, loc);
+  m2_offt_type_node = build_m2_offt_type_node (location);
 }
 
 static tree
@@ -1415,27 +1436,17 @@ build_m2_char_node (void)
 static tree
 build_m2_short_real_node (void)
 {
-  tree c;
-
-  /* Define `REAL'.  */
-
-  c = make_node (REAL_TYPE);
-  TYPE_PRECISION (c) = FLOAT_TYPE_SIZE;
-  layout_type (c);
-  return c;
+  /* Define `SHORTREAL'.  */
+  ASSERT_CONDITION (TYPE_SIZE (float_type_node));
+  return float_type_node;
 }
 
 static tree
 build_m2_real_node (void)
 {
-  tree c;
-
   /* Define `REAL'.  */
-
-  c = make_node (REAL_TYPE);
-  TYPE_PRECISION (c) = DOUBLE_TYPE_SIZE;
-  layout_type (c);
-  return c;
+  ASSERT_CONDITION (TYPE_SIZE (double_type_node));
+  return double_type_node;
 }
 
 static tree
@@ -1444,16 +1455,11 @@ build_m2_long_real_node (void)
   tree longreal;
 
   /* Define `LONGREAL'.  */
-  if (M2Options_GetIBMLongDouble ())
-    {
-      longreal = make_node (REAL_TYPE);
-      TYPE_PRECISION (longreal) = LONG_DOUBLE_TYPE_SIZE;
-    }
-  else if (M2Options_GetIEEELongDouble ())
+  if (M2Options_GetIEEELongDouble ())
     longreal = float128_type_node;
   else
     longreal = long_double_type_node;
-  layout_type (longreal);
+  ASSERT_CONDITION (TYPE_SIZE (longreal));
   return longreal;
 }
 

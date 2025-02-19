@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,7 +29,7 @@ class ASTLoweringPattern : public ASTLoweringBase
   using Rust::HIR::ASTLoweringBase::visit;
 
 public:
-  static HIR::Pattern *translate (AST::Pattern *pattern,
+  static HIR::Pattern *translate (AST::Pattern &pattern,
 				  bool is_let_top_level = false);
 
   void visit (AST::IdentifierPattern &pattern) override;

@@ -1,6 +1,6 @@
 /* Subroutines used to generate function prologues and epilogues
    on IBM RS/6000.
-   Copyright (C) 1991-2024 Free Software Foundation, Inc.
+   Copyright (C) 1991-2025 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -918,7 +918,7 @@ rs6000_stack_info (void)
   else if (DEFAULT_ABI == ABI_V4)
     info->push_p = non_fixed_size != 0;
 
-  else if (frame_pointer_needed)
+  else if (frame_pointer_needed || cfun->machine->asm_redzone_clobber_seen)
     info->push_p = 1;
 
   else
@@ -1376,7 +1376,7 @@ rs6000_emit_eh_reg_restore (rtx source, rtx scratch)
   /* Freeze lr_save_p.  We've just emitted rtl that depends on the
      state of lr_save_p so any change from here on would be a bug.  In
      particular, stop rs6000_ra_ever_killed from considering the SET
-     of lr we may have added just above.  */ 
+     of lr we may have added just above.  */
   cfun->machine->lr_save_state = info->lr_save_p + 1;
 }
 
@@ -1462,7 +1462,7 @@ rs6000_emit_stack_tie (rtx fp, bool hard_frame_needed)
 /* Allocate SIZE_INT bytes on the stack using a store with update style insn
    and set the appropriate attributes for the generated insn.  Return the
    first insn which adjusts the stack pointer or the last insn before
-   the stack adjustment loop. 
+   the stack adjustment loop.
 
    SIZE_INT is used to create the CFI note for the allocation.
 
@@ -1487,7 +1487,7 @@ rs6000_emit_allocate_stack_1 (HOST_WIDE_INT size_int, rtx orig_sp)
       try_split (PATTERN (insn), insn, 0);
       size_rtx = tmp_reg;
     }
-  
+
   if (TARGET_32BIT)
     insn = emit_insn (gen_movsi_update_stack (stack_pointer_rtx,
 					      stack_pointer_rtx,
@@ -3012,6 +3012,11 @@ rs6000_emit_prologue (void)
                            && (lookup_attribute ("no_split_stack",
                                                  DECL_ATTRIBUTES (cfun->decl))
                                == NULL));
+  /* If we are inserting ROP-protect hash instructions, disable shrink-wrap
+     until the bug where the hashst insn is emitted in the wrong location
+     is fixed.  See PR101324 for details.  */
+  if (info->rop_hash_size)
+    flag_shrink_wrap = 0;
 
   frame_pointer_needed_indeed
     = frame_pointer_needed && df_regs_ever_live_p (HARD_FRAME_POINTER_REGNUM);
@@ -4684,7 +4689,7 @@ rs6000_emit_epilogue (enum epilogue_type epilogue_type)
 
 	      if (newptr_regno != 1 && REGNO (frame_reg_rtx) != newptr_regno)
 		frame_reg_rtx = gen_rtx_REG (Pmode, newptr_regno);
-		
+
 	      if (end_save + ptr_off != 0)
 		{
 		  rtx offset = GEN_INT (end_save + ptr_off);

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -131,7 +131,8 @@ FeatureGate::visit (AST::MacroRulesDefinition &rules_def)
 void
 FeatureGate::visit (AST::Function &function)
 {
-  check_rustc_attri (function.get_outer_attrs ());
+  if (!function.is_external ())
+    check_rustc_attri (function.get_outer_attrs ());
 }
 
 void

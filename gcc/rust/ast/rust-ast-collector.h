@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -333,7 +333,6 @@ public:
   void visit (TraitImpl &impl);
   void visit (ExternalTypeItem &item);
   void visit (ExternalStaticItem &item);
-  void visit (ExternalFunctionItem &item);
   void visit (ExternBlock &block);
 
   // rust-macro.h
@@ -398,6 +397,8 @@ public:
   void visit (SliceType &type);
   void visit (InferredType &type);
   void visit (BareFunctionType &type);
+
+  void visit (FormatArgs &fmt);
 };
 } // namespace AST
 

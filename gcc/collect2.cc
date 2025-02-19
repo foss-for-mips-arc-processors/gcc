@@ -1,6 +1,6 @@
 /* Collect static initialization info into data structures that can be
    traversed by C++ initialization and finalization routines.
-   Copyright (C) 1992-2024 Free Software Foundation, Inc.
+   Copyright (C) 1992-2025 Free Software Foundation, Inc.
    Contributed by Chris Smith (csmith@convex.com).
    Heavily modified by Michael Meissner (meissner@cygnus.com),
    Per Bothner (bothner@cygnus.com), and John Gilmore (gnu@cygnus.com).
@@ -3072,7 +3072,7 @@ static void
 post_ld_pass (bool temp_file) {
   if (!(temp_file && flag_idsym) && !flag_dsym)
     return;
-      
+
   do_dsymutil (output_file);
 }
 #else

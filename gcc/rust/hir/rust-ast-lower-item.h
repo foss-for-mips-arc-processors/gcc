@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -29,7 +29,7 @@ class ASTLoweringItem : public ASTLoweringBase
   using Rust::HIR::ASTLoweringBase::visit;
 
 public:
-  static HIR::Item *translate (AST::Item *item);
+  static HIR::Item *translate (AST::Item &item);
 
   void visit (AST::Module &module) override;
   void visit (AST::TypeAlias &alias) override;

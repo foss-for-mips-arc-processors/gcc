@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -17,7 +17,7 @@
 
 // { dg-do run { target c++23 } }
 // { dg-add-options ieee }
-// { dg-additional-options "-DSKIP_LONG_DOUBLE" { target aarch64-*-vxworks* } }
+// { dg-additional-options "-DSKIP_LONG_DOUBLE" { target aarch64-*-vxworks* aarch64-*-rtems* } }
 
 #include <charconv>
 #include <string>

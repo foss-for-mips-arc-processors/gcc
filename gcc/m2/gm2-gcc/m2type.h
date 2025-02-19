@@ -1,6 +1,6 @@
 /* m2type.h header file for m2type.cc.
 
-Copyright (C) 2012-2024 Free Software Foundation, Inc.
+Copyright (C) 2012-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -87,13 +87,6 @@ EXTERN tree m2type_BuildArrayStringConstructor (location_t location,
                                                 tree arrayType, tree str,
                                                 tree length);
 
-#if 0
-EXTERN tree m2type_GetPointerOne (void);
-EXTERN tree m2type_GetPointerZero (void);
-EXTERN tree m2type_GetWordOne (void);
-EXTERN tree m2type_GetWordZero (void);
-#endif
-
 EXTERN tree m2type_GetM2CharType (void);
 EXTERN tree m2type_GetM2IntegerType (void);
 EXTERN tree m2type_GetM2ShortRealType (void);
@@ -137,7 +130,7 @@ EXTERN tree m2type_GetShortCardType (void);
 EXTERN tree m2type_GetProcType (void);
 EXTERN tree m2type_GetCSizeTType (void);
 EXTERN tree m2type_GetCSSizeTType (void);
-
+EXTERN tree m2type_GetCOffTType (void);
 EXTERN tree m2type_GetM2CType (void);
 
 EXTERN tree m2type_GetBitsetType (void);

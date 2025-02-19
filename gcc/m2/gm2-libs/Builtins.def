@@ -1,6 +1,6 @@
 (* Builtins.def provides access to all built-in functions.
 
-Copyright (C) 2001-2024 Free Software Foundation, Inc.
+Copyright (C) 2001-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius.mulley@southwales.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -228,6 +228,11 @@ PROCEDURE __BUILTIN__ strspn (s, accept: ADDRESS) : CARDINAL ;
 PROCEDURE __BUILTIN__ strcspn (s, accept: ADDRESS) : CARDINAL ;
 PROCEDURE __BUILTIN__ strchr (s: ADDRESS; c: INTEGER) : ADDRESS ;
 PROCEDURE __BUILTIN__ strrchr (s: ADDRESS; c: INTEGER) : ADDRESS ;
+
+PROCEDURE __BUILTIN__ clz (value: CARDINAL) : INTEGER ;
+PROCEDURE __BUILTIN__ clzll (value: LONGCARD) : INTEGER ;
+PROCEDURE __BUILTIN__ ctz (value: CARDINAL) : INTEGER ;
+PROCEDURE __BUILTIN__ ctzll (value: LONGCARD) : INTEGER ;
 
 (*
    longjmp - this GCC builtin restricts the val to always 1.

@@ -3,7 +3,8 @@
    create LFSR state.
    After each iteration check that final states of calculated CRC values match
    determined LFSR.
-   Copyright (C) 2022-2024 Free Software Foundation, Inc.
+   Copyright (C) 2022-2025 Free Software Foundation, Inc.
+   Contributed by Mariam Arutunian <mariamarutunian@gmail.com>
 
 This file is part of GCC.
 
@@ -78,65 +79,7 @@ crc_symbolic_execution::execute_assign_statement (const gassign *gs)
     if (is_used_outside_the_loop (lhs))
       return false;
 
-  state *current_state = m_states.last ();
-
-  if (gimple_num_ops (gs) == 2)
-    {
-      tree op1 = gimple_assign_rhs1 (gs);
-      switch (rhs_code)
-	{
-	  case BIT_NOT_EXPR:
-	    return current_state->do_complement (op1, lhs);
-	  case NOP_EXPR:
-	  case SSA_NAME:
-	  case VAR_DECL:
-	  case INTEGER_CST:
-	    return current_state->do_assign (op1, lhs);
-	  default:
-	    {
-	      if (dump_file)
-		fprintf (dump_file,
-			 "Warning, encountered unsupported unary operation "
-			 "with %s code while executing assign statement!\n",
-			 get_tree_code_name (rhs_code));
-	      return false;
-	    }
-	}
-    }
-  else if (gimple_num_ops (gs) == 3)
-    {
-      tree op1 = gimple_assign_rhs1 (gs);
-      tree op2 = gimple_assign_rhs2 (gs);
-      switch (rhs_code)
-	{
-	  case LSHIFT_EXPR:
-	    return current_state->do_shift_left (op1, op2, lhs);
-	  case RSHIFT_EXPR:
-	    return current_state->do_shift_right (op1, op2, lhs);
-	  case BIT_AND_EXPR:
-	    return current_state->do_and (op1, op2, lhs);
-	  case BIT_IOR_EXPR:
-	    return current_state->do_or (op1, op2, lhs);
-	  case BIT_XOR_EXPR:
-	    return current_state->do_xor (op1, op2, lhs);
-	  case PLUS_EXPR:
-	    return current_state->do_add (op1, op2, lhs);
-	  case MINUS_EXPR:
-	    return current_state->do_sub (op1, op2, lhs);
-	  case MULT_EXPR:
-	    return current_state->do_mul (op1, op2, lhs);
-	  default:
-	    {
-	      if (dump_file)
-		fprintf (dump_file,
-			 "Warning, encountered unsupported binary operation "
-			 "with %s code while executing assign statement!\n",
-			 get_tree_code_name (rhs_code));
-	      return false;
-	    }
-	}
-    }
-  else
+  if (gimple_num_ops (gs) != 2 && gimple_num_ops (gs) != 3)
     {
       if (dump_file)
 	fprintf (dump_file,
@@ -145,7 +88,15 @@ crc_symbolic_execution::execute_assign_statement (const gassign *gs)
 		 get_tree_code_name (rhs_code));
       return false;
     }
-  return true;
+
+  tree op1 = gimple_assign_rhs1 (gs);
+  tree op2 = nullptr;
+
+  if (gimple_num_ops (gs) == 3)
+    op2 = gimple_assign_rhs2 (gs);
+
+  state *current_state = m_states.last ();
+  return current_state->do_operation (rhs_code, op1, op2, lhs);
 }
 
 /* Add E edge into the STACK if it doesn't have an immediate
@@ -469,7 +420,7 @@ crc_symbolic_execution::execute_bb_phi_statements (basic_block bb,
       tree rhs = PHI_ARG_DEF_FROM_EDGE (phi, incoming_edge);
 
       state *current_state = m_states.last ();
-      if (!current_state->do_assign (rhs, lhs))
+      if (!current_state->do_operation (VAR_DECL, rhs, nullptr, lhs))
 	return false;
     }
   return true;
@@ -493,8 +444,9 @@ crc_symbolic_execution::execute_bb_statements (basic_block bb,
    beginning of the loop, initialize those variables.  */
 
 void
-assign_known_vals_to_header_phis (state *state, basic_block bb)
+assign_known_vals_to_header_phis (state *state, class loop *crc_loop)
 {
+  basic_block bb = crc_loop->header;
   for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
        gsi_next (&gsi))
     {
@@ -506,7 +458,9 @@ assign_known_vals_to_header_phis (state *state, basic_block bb)
       if (virtual_operand_p (lhs))
 	continue;
 
-      if (TREE_CODE (PHI_ARG_DEF (phi, phi->nargs - 1)) == INTEGER_CST)
+      tree inital_val = PHI_ARG_DEF_FROM_EDGE (phi,
+					       loop_preheader_edge (crc_loop));
+      if (TREE_CODE (inital_val) == INTEGER_CST)
 	{
 	  if (dump_file && (dump_flags & TDF_DETAILS))
 	    {
@@ -515,7 +469,8 @@ assign_known_vals_to_header_phis (state *state, basic_block bb)
 	      print_generic_expr (dump_file, lhs, dump_flags);
 	      fprintf (dump_file, " variable.\n");
 	    }
-	  state->do_assign (PHI_ARG_DEF (phi, phi->nargs - 1), lhs);
+	  state->do_operation (VAR_DECL, inital_val,
+			       nullptr, lhs);
 	}
     }
 }
@@ -527,8 +482,9 @@ assign_known_vals_to_header_phis (state *state, basic_block bb)
 bool
 assign_calc_vals_to_header_phis (const vec<state *> &prev_states,
 				 state *curr_state,
-				 basic_block bb)
+				 class loop *crc_loop)
 {
+  basic_block bb = crc_loop->header;
   for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
        gsi_next (&gsi))
     {
@@ -538,10 +494,12 @@ assign_calc_vals_to_header_phis (const vec<state *> &prev_states,
       /* Don't consider virtual operands.  */
       if (virtual_operand_p (lhs))
 	continue;
-
-      if (TREE_CODE (PHI_ARG_DEF (phi, phi->nargs - 1)) == INTEGER_CST)
+      tree inital_val = PHI_ARG_DEF_FROM_EDGE (phi,
+					       loop_preheader_edge (crc_loop));
+      if (TREE_CODE (inital_val) == INTEGER_CST)
 	{
-	  tree input_tree = PHI_ARG_DEF (phi, 0);
+	  tree input_tree = PHI_ARG_DEF_FROM_EDGE (phi,
+						   loop_latch_edge (crc_loop));
 	  value * val_st1 = prev_states[0]->get_value (input_tree),
 	      *val_st2 = prev_states[1]->get_value (input_tree);
 	  if (!state::is_bit_vector (val_st1)
@@ -578,30 +536,32 @@ assign_calc_vals_to_header_phis (const vec<state *> &prev_states,
 		  = state::make_number (val_st1);
 	      tree calc_num_tree = build_int_cstu (TREE_TYPE (lhs),
 						   calc_number);
-	      curr_state->do_assign (calc_num_tree, lhs);
+	      curr_state->do_operation (VAR_DECL, calc_num_tree, nullptr, lhs);
 	    }
 	}
     }
   return true;
 }
 
-/* Create initial state of header BB variables which have constant values.
+/* Create initial state of the CRC_LOOP's header BB variables which have
+   constant values.
    If it is the first iteration of the loop, initialise variables with the
    initial values, otherwise initialise the variable with the value calculated
    during the previous execution.  */
 
 state *
-crc_symbolic_execution::create_initial_state (basic_block bb)
+crc_symbolic_execution::create_initial_state (class loop *crc_loop)
 {
   state *curr_state = new state;
   if (!m_final_states.is_empty ())
     {
-      if (!assign_calc_vals_to_header_phis (m_final_states, curr_state, bb))
+      if (!assign_calc_vals_to_header_phis (m_final_states, curr_state,
+					    crc_loop))
 	return nullptr;
       state::remove_states (&m_final_states);
     }
   else
-    assign_known_vals_to_header_phis (curr_state, bb);
+    assign_known_vals_to_header_phis (curr_state, crc_loop);
   return curr_state;
 }
 
@@ -613,8 +573,7 @@ crc_symbolic_execution::symb_execute_crc_loop ()
   if (dump_file && (dump_flags & TDF_DETAILS))
     fprintf (dump_file, "\n\nExecuting the loop with symbolic values.\n\n");
 
-  basic_block header_bb = m_crc_loop->header;
-  state *curr_state = create_initial_state (header_bb);
+  state *curr_state = create_initial_state (m_crc_loop);
   if (!curr_state)
     return false;
 
@@ -622,6 +581,7 @@ crc_symbolic_execution::symb_execute_crc_loop ()
 
   auto_vec<edge> stack (m_crc_loop->num_nodes);
 
+  basic_block header_bb = m_crc_loop->header;
   if (!execute_bb_gimple_statements (header_bb, stack))
     return false;
 
@@ -670,10 +630,11 @@ determine_index (tree data, bool is_shift_left)
    and other phi results to calculate the polynomial.  */
 
 void
-assign_vals_to_header_phis (state *polynomial_state, basic_block bb,
+assign_vals_to_header_phis (state *polynomial_state, class loop *crc_loop,
 			    gphi *crc_phi, gphi *data_phi,
 			    bool is_shift_left)
 {
+  basic_block bb = crc_loop->header;
   for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
        gsi_next (&gsi))
     {
@@ -705,29 +666,39 @@ assign_vals_to_header_phis (state *polynomial_state, basic_block bb,
 	      print_generic_expr (dump_file, lhs, dump_flags);
 	      fprintf (dump_file, " variable.\n");
 	    }
-	  polynomial_state->do_assign (build_zero_cst (TREE_TYPE (lhs)), lhs);
-	}
-      else if (TREE_CODE (PHI_ARG_DEF (phi, phi->nargs - 1)) == INTEGER_CST)
-	{
-	  if (dump_file && (dump_flags & TDF_DETAILS))
-	    {
-	      fprintf (dump_file, "First value of phi is a constant, "
-				  "assigning the number to ");
-	      print_generic_expr (dump_file, lhs, dump_flags);
-	      fprintf (dump_file, " variable.\n");
-	    }
-	  polynomial_state->do_assign (PHI_ARG_DEF (phi, phi->nargs - 1), lhs);
+	  polynomial_state->do_operation (VAR_DECL,
+					  build_zero_cst (TREE_TYPE (lhs)),
+					  nullptr, lhs);
 	}
       else
 	{
-	  if (dump_file && (dump_flags & TDF_DETAILS))
+	  edge loop_preheader = loop_preheader_edge (crc_loop);
+	  tree inital_val = PHI_ARG_DEF_FROM_EDGE (phi, loop_preheader);
+	  if (TREE_CODE (inital_val) == INTEGER_CST)
 	    {
-	      fprintf (dump_file, "First value of phi isn't constant, "
-				  "assigning to ");
-	      print_generic_expr (dump_file, lhs, dump_flags);
-	      fprintf (dump_file, " variable.\n");
+	      if (dump_file && (dump_flags & TDF_DETAILS))
+		{
+		  fprintf (dump_file, "First value of phi is a constant, "
+				      "assigning the number to ");
+		  print_generic_expr (dump_file, lhs, dump_flags);
+		  fprintf (dump_file, " variable.\n");
+		}
+	      polynomial_state->do_operation (VAR_DECL, inital_val,
+					      nullptr, lhs);
 	    }
-	  polynomial_state->do_assign (build_zero_cst (TREE_TYPE (lhs)), lhs);
+	  else
+	    {
+	      if (dump_file && (dump_flags & TDF_DETAILS))
+		{
+		  fprintf (dump_file, "First value of phi isn't constant, "
+				      "assigning to ");
+		  print_generic_expr (dump_file, lhs, dump_flags);
+		  fprintf (dump_file, " variable.\n");
+		}
+	      polynomial_state->do_operation (VAR_DECL,
+					      build_zero_cst (TREE_TYPE (lhs)),
+					      nullptr, lhs);
+	    }
 	}
     }
 }
@@ -746,7 +717,7 @@ crc_symbolic_execution::execute_crc_loop (gphi *crc_phi,
   m_states.quick_push (new state);
 
   basic_block bb = m_crc_loop->header;
-  assign_vals_to_header_phis (m_states.last (), bb, crc_phi, data_phi,
+  assign_vals_to_header_phis (m_states.last (), m_crc_loop, crc_phi, data_phi,
 			      is_shift_left);
 
   auto_vec<edge> stack (m_crc_loop->num_nodes);
@@ -806,6 +777,7 @@ polynomial_is_known (const value *polynomial)
 
 std::pair <tree, value *>
 crc_symbolic_execution::extract_polynomial (gphi *crc_phi, gphi *data_phi,
+					    tree calculated_crc,
 					    bool is_shift_left)
 {
   if (!execute_crc_loop (crc_phi, data_phi, is_shift_left))
@@ -820,10 +792,8 @@ crc_symbolic_execution::extract_polynomial (gphi *crc_phi, gphi *data_phi,
     }
   state *polynomial_state = m_final_states.last ();
 
-  /* Get the tree which will contain the value of the polynomial
-     at the end of the loop.  */
-  tree calculated_crc = PHI_ARG_DEF (crc_phi, 0);
-
+  /* CALCULATED_CRC contains the value of the polynomial
+     after one iteration of the loop.  */
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
       fprintf (dump_file, "Getting the value of ");
@@ -1113,7 +1083,7 @@ lfsr_and_crc_bits_match (const value *lfsr, const value *crc_state,
 	/* Check the case when in LFSR we have LFSR (i), where 0<i<LFSR_size.
 	   In that case in resulting CRC we must have crc (i) case,
 	   when condition is true or condition is false.
-	   If we have just LFSR (i), that means polynomial's i +/- 1 bit is 0,
+	   If we have just LFSR (i), that means polynomial's i ± 1 bit is 0,
 	   so despite CRC is xor-ed or not, we will have crc (i).  */
       else if (is_a<symbolic_bit *> ((*lfsr)[i]))
 	{
@@ -1242,10 +1212,8 @@ is_xor_state (value *crc_value, size_t it_beg, size_t it_end)
 /* Keep the value of calculated CRC.  */
 
 value *
-get_crc_val (const gphi *crc_phi, state *curr_state)
+get_crc_val (tree calculated_crc, state *curr_state)
 {
-  tree calculated_crc = PHI_ARG_DEF (crc_phi, 0);
-
   if (!calculated_crc)
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
@@ -1278,7 +1246,7 @@ get_crc_val (const gphi *crc_phi, state *curr_state)
    otherwise - false.  */
 
 bool
-all_states_match_lfsr (value *lfsr, bool is_bit_forward, gphi *output_crc,
+all_states_match_lfsr (value *lfsr, bool is_bit_forward, tree calculated_crc,
 		       const vec<state *> &final_states)
 {
   if (final_states.length () != 2)
@@ -1288,8 +1256,8 @@ all_states_match_lfsr (value *lfsr, bool is_bit_forward, gphi *output_crc,
       return false;
     }
 
-  value *crc_xor_value = get_crc_val (output_crc, final_states[0]);
-  value *crc_not_xor_value = get_crc_val (output_crc, final_states[1]);
+  value *crc_xor_value = get_crc_val (calculated_crc, final_states[0]);
+  value *crc_not_xor_value = get_crc_val (calculated_crc, final_states[1]);
 
   /* LFSR's size must be equal to CRC's size.  */
   if ((crc_xor_value->length () != lfsr->length ())

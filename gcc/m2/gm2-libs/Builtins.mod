@@ -1,6 +1,6 @@
 (* Builtins.mod provides access to all built-in functions.
 
-Copyright (C) 2001-2024 Free Software Foundation, Inc.
+Copyright (C) 2001-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius.mulley@southwales.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -764,6 +764,26 @@ PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((__builtin_isinf)) isinf_signl (l: LONGREAL
 BEGIN
    RETURN 1
 END isinf_signl ;
+
+PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((__builtin_clz)) clz (value: CARDINAL) : INTEGER ;
+BEGIN
+   RETURN 1
+END clz ;
+
+PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((__builtin_clzll)) clzll (value: LONGCARD) : INTEGER ;
+BEGIN
+   RETURN 1
+END clzll ;
+
+PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((__builtin_ctz)) ctz (value: CARDINAL) : INTEGER ;
+BEGIN
+   RETURN 1
+END ctz ;
+
+PROCEDURE __ATTRIBUTE__ __BUILTIN__ ((__builtin_ctzll)) ctzll (value: LONGCARD) : INTEGER ;
+BEGIN
+   RETURN 1
+END ctzll ;
 
 PROCEDURE __ATTRIBUTE__  __BUILTIN__ ((__builtin_longjmp)) longjmp (env: ADDRESS; val: INTEGER) ;
 BEGIN

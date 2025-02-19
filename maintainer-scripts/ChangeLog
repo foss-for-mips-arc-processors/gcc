@@ -1,10 +1,28 @@
-2024-08-01  Release Manager
+2024-12-03  David Malcolm  <dmalcolm@redhat.com>
 
-	* GCC 14.2.0 released.
+	PR web/117883
+	* update_web_docs_git: Introduce SPHINX_VENV to make
+	it easier to test the script.  Add the libgdiagnostics docs
+	and testsuite to the files to be preserved.  Use sphinx to build
+	the libgdiagnostics docs as HTML.  Copy them into $DOCSDIR.
 
-2024-05-07  Release Manager
+2024-12-03  David Malcolm  <dmalcolm@redhat.com>
 
-	* GCC 14.1.0 released.
+	* update_web_docs_git: Add the jit testsuite to the files to
+	be preserved, since this is used by the jit docs.
+
+2024-07-19  Richard Biener  <rguenther@suse.de>
+
+	* crontab: Remove entry for gcc-11 branch.
+
+2024-07-07  Gerald Pfeifer  <gerald@pfeifer.com>
+
+	* update_web_docs_git (BUGURL): Switch to https.
+
+2024-04-26  Jakub Jelinek  <jakub@redhat.com>
+
+	* crontab: Snapshots from trunk are now GCC 15 related.
+	Add GCC 14 snapshots from the respective branch.
 
 2023-11-14  Sam James  <sam@gentoo.org>
 

@@ -1,5 +1,5 @@
 /* Handling for the known behavior of various specific functions.
-   Copyright (C) 2020-2024 Free Software Foundation, Inc.
+   Copyright (C) 2020-2025 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -19,7 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
-#define INCLUDE_MEMORY
+#define INCLUDE_VECTOR
 #include "system.h"
 #include "coretypes.h"
 #include "tree.h"
@@ -816,14 +816,19 @@ public:
     return warned;
   }
 
-  label_text describe_final_event (const evdesc::final_event &ev) final override
+  bool
+  describe_final_event (pretty_printer &pp,
+			const evdesc::final_event &) final override
   {
     if (m_var_decl)
-      return ev.formatted_print ("%qE on a pointer to automatic variable %qE",
-				 m_fndecl, m_var_decl);
+      pp_printf  (&pp,
+		  "%qE on a pointer to automatic variable %qE",
+		  m_fndecl, m_var_decl);
     else
-      return ev.formatted_print ("%qE on a pointer to an on-stack buffer",
-				 m_fndecl);
+      pp_printf  (&pp,
+		  "%qE on a pointer to an on-stack buffer",
+		  m_fndecl);
+    return true;
   }
 
   void mark_interesting_stuff (interesting_t *interest) final override
@@ -968,11 +973,11 @@ kf_realloc::impl_call_post (const call_details &cd) const
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
-      return make_label_text (can_colorize,
-			      "when %qE succeeds, without moving buffer",
-			      get_fndecl ());
+      pp_printf (&pp,
+		 "when %qE succeeds, without moving buffer",
+		 get_fndecl ());
     }
 
     bool update_model (region_model *model,
@@ -1021,11 +1026,11 @@ kf_realloc::impl_call_post (const call_details &cd) const
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
-      return make_label_text (can_colorize,
-			      "when %qE succeeds, moving buffer",
-			      get_fndecl ());
+      pp_printf (&pp,
+		 "when %qE succeeds, moving buffer",
+		 get_fndecl ());
     }
     bool update_model (region_model *model,
 		       const exploded_edge *,
@@ -1163,16 +1168,16 @@ kf_strchr::impl_call_post (const call_details &cd) const
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
       if (m_found)
-	return make_label_text (can_colorize,
-				"when %qE returns non-NULL",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE returns non-NULL",
+		   get_fndecl ());
       else
-	return make_label_text (can_colorize,
-				"when %qE returns NULL",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE returns NULL",
+		   get_fndecl ());
     }
 
     bool update_model (region_model *model,
@@ -1519,16 +1524,16 @@ kf_strncpy::impl_call_post (const call_details &cd) const
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
       if (m_truncated_read)
-	return make_label_text (can_colorize,
-				"when %qE truncates the source string",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE truncates the source string",
+		   get_fndecl ());
       else
-	return make_label_text (can_colorize,
-				"when %qE copies the full source string",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE copies the full source string",
+		   get_fndecl ());
     }
 
     bool update_model (region_model *model,
@@ -1720,16 +1725,16 @@ kf_strstr::impl_call_post (const call_details &cd) const
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
       if (m_found)
-	return make_label_text (can_colorize,
-				"when %qE returns non-NULL",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE returns non-NULL",
+		   get_fndecl ());
       else
-	return make_label_text (can_colorize,
-				"when %qE returns NULL",
-				get_fndecl ());
+	pp_printf (&pp,
+		   "when %qE returns NULL",
+		   get_fndecl ());
     }
 
     bool update_model (region_model *model,
@@ -1814,13 +1819,15 @@ public:
       return false;
     }
 
-    label_text describe_final_event (const evdesc::final_event &ev)
-      final override
+    bool
+    describe_final_event (pretty_printer &pp,
+			  const evdesc::final_event &) final override
     {
-      return ev.formatted_print
-	("calling %qD for first time with NULL as argument 1"
-	 " has undefined behavior",
-	 get_callee_fndecl ());
+      pp_printf (&pp,
+		 "calling %qD for first time with NULL as argument 1"
+		 " has undefined behavior",
+		 get_callee_fndecl ());
+      return true;
     }
   };
 
@@ -1844,33 +1851,30 @@ public:
     {
     }
 
-    label_text get_desc (bool can_colorize) const final override
+    void print_desc (pretty_printer &pp) const final override
     {
       if (m_nonnull_str)
 	{
 	  if (m_found)
-	    return make_label_text
-	      (can_colorize,
-	       "when %qE on non-NULL string returns non-NULL",
-	       get_fndecl ());
+	    pp_printf (&pp,
+		       "when %qE on non-NULL string returns non-NULL",
+		       get_fndecl ());
 	  else
-	    return make_label_text
-	      (can_colorize,
-	       "when %qE on non-NULL string returns NULL",
-	       get_fndecl ());
+	    pp_printf (&pp,
+		       "when %qE on non-NULL string returns NULL",
+		       get_fndecl ());
 	}
       else
 	{
 	  if (m_found)
-	    return make_label_text
-	      (can_colorize,
-	       "when %qE with NULL string (using prior) returns non-NULL",
-	       get_fndecl ());
+	    pp_printf (&pp,
+		       "when %qE with NULL string (using prior) returns"
+		       " non-NULL",
+		       get_fndecl ());
 	  else
-	    return make_label_text
-	      (can_colorize,
-	       "when %qE with NULL string (using prior) returns NULL",
-	       get_fndecl ());
+	    pp_printf (&pp,
+		       "when %qE with NULL string (using prior) returns NULL",
+		       get_fndecl ());
 	}
     }
 
@@ -2057,11 +2061,6 @@ private:
   const private_region m_private_reg;
 };
 
-class kf_ubsan_bounds : public internal_known_function
-{
-  /* Empty.  */
-};
-
 /* Handle calls to functions referenced by
    __attribute__((malloc(FOO))).  */
 
@@ -2198,6 +2197,13 @@ register_atomic_builtins (known_function_manager &kfm)
 	   make_unique<kf_atomic_fetch_op> (BIT_IOR_EXPR));
 }
 
+/* Handle calls to the various IFN_UBSAN_* with no return value.
+   For now, treat these as no-ops.  */
+
+class kf_ubsan_noop : public internal_known_function
+{
+};
+
 /* Handle calls to the various __builtin___ubsan_handle_*.
    These can return, but continuing after such a return
    isn't likely to be interesting to the user of the analyzer.
@@ -2215,6 +2221,15 @@ class kf_ubsan_handler : public internal_known_function
 static void
 register_sanitizer_builtins (known_function_manager &kfm)
 {
+  /* Handle calls to the various IFN_UBSAN_* with no return value.
+     For now, treat these as no-ops.  */
+  kfm.add (IFN_UBSAN_NULL,
+	   make_unique<kf_ubsan_noop> ());
+  kfm.add (IFN_UBSAN_BOUNDS,
+	   make_unique<kf_ubsan_noop> ());
+  kfm.add (IFN_UBSAN_PTR,
+	   make_unique<kf_ubsan_noop> ());
+
   kfm.add (BUILT_IN_UBSAN_HANDLE_NONNULL_ARG,
 	   make_unique<kf_ubsan_handler> ());
 }
@@ -2232,7 +2247,6 @@ register_known_functions (known_function_manager &kfm,
   /* Internal fns the analyzer has known_functions for.  */
   {
     kfm.add (IFN_BUILTIN_EXPECT, make_unique<kf_expect> ());
-    kfm.add (IFN_UBSAN_BOUNDS, make_unique<kf_ubsan_bounds> ());
   }
 
   /* GCC built-ins that do not correspond to a function
@@ -2324,6 +2338,10 @@ register_known_functions (known_function_manager &kfm,
     kfm.add ("__errno_location", make_unique<kf_errno_location> ());
     kfm.add ("error", make_unique<kf_error> (3));
     kfm.add ("error_at_line", make_unique<kf_error> (5));
+    /* Variants of "error" and "error_at_line" seen by the
+       analyzer at -O0 (PR analyzer/115724).  */
+    kfm.add ("__error_alias", make_unique<kf_error> (3));
+    kfm.add ("__error_at_line_alias", make_unique<kf_error> (5));
   }
 
   /* Other implementations of C standard library.  */
@@ -2344,6 +2362,28 @@ register_known_functions (known_function_manager &kfm,
 
   /* Language-specific support functions.  */
   register_known_functions_lang_cp (kfm);
+
+  /* Some C++ implementations use the std:: copies of these functions
+     from <cstdlib> etc for the C spellings of these headers (e.g. <stdlib.h>),
+     so we must match against these too.  */
+  {
+    kfm.add_std_ns ("malloc", make_unique<kf_malloc> ());
+    kfm.add_std_ns ("free", make_unique<kf_free> ());
+    kfm.add_std_ns ("realloc", make_unique<kf_realloc> ());
+    kfm.add_std_ns ("calloc", make_unique<kf_calloc> ());
+    kfm.add_std_ns
+      ("memcpy",
+       make_unique<kf_memcpy_memmove> (kf_memcpy_memmove::KF_MEMCPY));
+    kfm.add_std_ns
+      ("memmove",
+       make_unique<kf_memcpy_memmove> (kf_memcpy_memmove::KF_MEMMOVE));
+    kfm.add_std_ns ("memset", make_unique<kf_memset> (false));
+    kfm.add_std_ns ("strcat", make_unique<kf_strcat> (2, false));
+    kfm.add_std_ns ("strcpy", make_unique<kf_strcpy> (2, false));
+    kfm.add_std_ns ("strlen", make_unique<kf_strlen> ());
+    kfm.add_std_ns ("strncpy", make_unique<kf_strncpy> ());
+    kfm.add_std_ns ("strtok", make_unique<kf_strtok> (rmm));
+  }
 }
 
 } // namespace ana

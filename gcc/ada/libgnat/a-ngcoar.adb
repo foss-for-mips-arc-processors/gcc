@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---            Copyright (C) 2006-2024, Free Software Foundation, Inc.       --
+--            Copyright (C) 2006-2025, Free Software Foundation, Inc.       --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1105,8 +1105,8 @@ package body Ada.Numerics.Generic_Complex_Arrays is
                declare
                   Row : constant Integer := Vectors'First (2) + (K - 1);
                begin
-                  Vectors (Row, Col)
-                     := (Vecs (J * 2, Col), Vecs (J * 2, Col + N));
+                  Vectors (Row, Col) :=
+                    (Vecs (J * 2, Col), Vecs (J * 2, Col + N));
                end;
             end loop;
          end;

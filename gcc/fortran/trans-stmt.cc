@@ -1,5 +1,5 @@
 /* Statement translation -- generate GCC trees from gfc_code.
-   Copyright (C) 2002-2024 Free Software Foundation, Inc.
+   Copyright (C) 2002-2025 Free Software Foundation, Inc.
    Contributed by Paul Brook <paul@nowt.org>
    and Steven Bosscher <s.bosscher@student.tudelft.nl>
 
@@ -922,8 +922,8 @@ gfc_trans_lock_unlock (gfc_code *code, gfc_exec_op op)
       if (gfc_expr_attr (code->expr1).dimension)
 	{
 	  tree desc, tmp, extent, lbound, ubound;
-          gfc_array_ref *ar, ar2;
-          int i;
+	  gfc_array_ref *ar, ar2;
+	  int i, rank;
 
 	  /* TODO: Extend this, once DT components are supported.  */
 	  ar = &code->expr1->ref->u.ar;
@@ -931,6 +931,8 @@ gfc_trans_lock_unlock (gfc_code *code, gfc_exec_op op)
 	  memset (ar, '\0', sizeof (*ar));
 	  ar->as = ar2.as;
 	  ar->type = AR_FULL;
+	  rank = code->expr1->rank;
+	  code->expr1->rank = ar->as->rank;
 
 	  gfc_init_se (&argse, NULL);
 	  argse.descriptor_only = 1;
@@ -938,6 +940,7 @@ gfc_trans_lock_unlock (gfc_code *code, gfc_exec_op op)
 	  gfc_add_block_to_block (&se.pre, &argse.pre);
 	  desc = argse.expr;
 	  *ar = ar2;
+	  code->expr1->rank = rank;
 
 	  extent = build_one_cst (gfc_array_index_type);
 	  for (i = 0; i < ar->dimen; i++)
@@ -1461,8 +1464,7 @@ gfc_trans_if_1 (gfc_code * code)
 {
   gfc_se if_se;
   tree stmt, elsestmt;
-  locus saved_loc;
-  location_t loc;
+  location_t loc, saved_loc = UNKNOWN_LOCATION;
 
   /* Check for an unconditional ELSE clause.  */
   if (!code->expr1)
@@ -1473,16 +1475,16 @@ gfc_trans_if_1 (gfc_code * code)
   gfc_start_block (&if_se.pre);
 
   /* Calculate the IF condition expression.  */
-  if (code->expr1->where.lb)
+  if (GFC_LOCUS_IS_SET (code->expr1->where))
     {
-      gfc_save_backend_locus (&saved_loc);
-      gfc_set_backend_locus (&code->expr1->where);
+      saved_loc = input_location;
+      input_location = gfc_get_location (&code->expr1->where);
     }
 
   gfc_conv_expr_val (&if_se, code->expr1);
 
-  if (code->expr1->where.lb)
-    gfc_restore_backend_locus (&saved_loc);
+  if (saved_loc != UNKNOWN_LOCATION)
+    input_location = saved_loc;
 
   /* Translate the THEN clause.  */
   stmt = gfc_trans_code (code->next);
@@ -1494,8 +1496,8 @@ gfc_trans_if_1 (gfc_code * code)
     elsestmt = build_empty_stmt (input_location);
 
   /* Build the condition expression and add it to the condition block.  */
-  loc = code->expr1->where.lb ? gfc_get_location (&code->expr1->where)
-			      : input_location;
+  loc = (GFC_LOCUS_IS_SET (code->expr1->where)
+	 ? gfc_get_location (&code->expr1->where) : input_location);
   stmt = fold_build3_loc (loc, COND_EXPR, void_type_node, if_se.expr, stmt,
 			  elsestmt);
 
@@ -1740,6 +1742,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
   tree charlen;
   bool need_len_assign;
   bool whole_array = true;
+  bool same_class;
   gfc_ref *ref;
   gfc_symbol *sym2;
 
@@ -1750,13 +1753,14 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 		  && e->ts.type == BT_CLASS
 		  && (gfc_is_class_scalar_expr (e)
 		      || gfc_is_class_array_ref (e, NULL));
+  same_class = class_target && sym->ts.type == BT_CLASS
+	       && strcmp (sym->ts.u.derived->name, e->ts.u.derived->name) == 0;
 
   unlimited = UNLIMITED_POLY (e);
 
   for (ref = e->ref; ref; ref = ref->next)
-    if (ref->type == REF_ARRAY
-	&& ref->u.ar.type == AR_FULL
-	&& ref->next)
+    if (ref->type == REF_ARRAY && ref->u.ar.type == AR_FULL
+	&& ref->u.ar.dimen != 0 && ref->next)
       {
 	whole_array =  false;
 	break;
@@ -1904,8 +1908,54 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 
       gfc_add_init_cleanup (block, gfc_finish_block (&se.pre), tmp);
     }
+
   /* Now all the other kinds of associate variable.  */
-  else if (sym->attr.dimension && !class_target
+
+  /* First we do the F202y ASSOCIATE construct with an assumed rank selector.
+     Since this requires rank remapping, the simplest implementation builds an
+     array reference, using the array ref attached to the association_list,
+     followed by gfc_trans_pointer_assignment.  */
+  else if (e->rank == -1 && sym->assoc->ar)
+    {
+      gfc_array_ref *ar;
+      gfc_expr *expr1 = gfc_lval_expr_from_sym (sym);
+      stmtblock_t init;
+      gfc_init_block (&init);
+
+      /* Build the array reference and add to expr1.  */
+      gfc_free_ref_list (expr1->ref);
+      expr1->ref = gfc_get_ref();
+      expr1->ref->type = REF_ARRAY;
+      ar = gfc_copy_array_ref (sym->assoc->ar);
+      expr1->ref->u.ar = *ar;
+      expr1->ref->u.ar.type = AR_SECTION;
+
+      /* For class objects, insert the _data component reference. Since the
+	 associate-name is a pointer, it needs a target, which is created using
+	 its typespec. If unlimited polymorphic, the _len field will be filled
+	 by the pointer assignment.  */
+      if (expr1->ts.type == BT_CLASS)
+	{
+	  need_len_assign = false;
+	  gfc_ref *ref;
+	  gfc_find_component (expr1->ts.u.derived, "_data", true, true, &ref);
+	  ref->next = expr1->ref;
+	  expr1->ref = ref;
+	  expr1->rank = CLASS_DATA (sym)->as->rank;
+	  tmp = gfc_create_var (gfc_typenode_for_spec (&sym->ts), "class");
+	  tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+	  gfc_add_modify (&init, sym->backend_decl, tmp);
+	}
+
+      /* Do the pointer assignment and clean up.  */
+      gfc_expr *expr2 = gfc_copy_expr (e);
+      gfc_add_expr_to_block (&init,
+			     gfc_trans_pointer_assignment (expr1, expr2));
+      gfc_add_init_cleanup (block, gfc_finish_block (&init), NULL);
+      gfc_free_expr (expr1);
+      gfc_free_expr (expr2);
+    }
+  else if ((sym->attr.dimension || sym->attr.codimension) && !class_target
 	   && (sym->as->type == AS_DEFERRED || sym->assoc->variable))
     {
       gfc_se se;
@@ -1930,6 +1980,9 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	  se.expr = desc;
 	  GFC_DECL_PTR_ARRAY_P (sym->backend_decl) = 1;
 	}
+
+      if (sym->attr.codimension && !sym->attr.dimension)
+	se.want_coarray = 1;
 
       gfc_conv_expr_descriptor (&se, e);
 
@@ -1994,7 +2047,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 
   /* Temporaries, arising from TYPE IS, just need the descriptor of class
      arrays to be assigned directly.  */
-  else if (class_target && sym->attr.dimension
+  else if (class_target && (sym->attr.dimension || sym->attr.codimension)
 	   && (sym->ts.type == BT_DERIVED || unlimited))
     {
       gfc_se se;
@@ -2011,6 +2064,20 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
       gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (se.expr))
 		  || GFC_ARRAY_TYPE_P (TREE_TYPE (se.expr)));
       gcc_assert (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (sym->backend_decl)));
+
+      if (sym->ts.type == BT_CHARACTER)
+	{
+	  /* Emit a DECL_EXPR for the variable sized array type in so the
+	     gimplification of its type sizes works correctly.  */
+	  tree arraytype;
+	  tmp = TREE_TYPE (sym->backend_decl);
+	  arraytype = TREE_TYPE (GFC_TYPE_ARRAY_DATAPTR_TYPE (tmp));
+	  if (! TYPE_NAME (arraytype))
+	    TYPE_NAME (arraytype) = build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+						NULL_TREE, arraytype);
+	  gfc_add_expr_to_block (&se.pre, build1 (DECL_EXPR,
+				 arraytype, TYPE_NAME (arraytype)));
+	}
 
       if (GFC_ARRAY_TYPE_P (TREE_TYPE (se.expr)))
 	{
@@ -2043,7 +2110,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
     {
       gfc_se se;
 
-      gcc_assert (!sym->attr.dimension);
+      gcc_assert (!sym->attr.dimension && !sym->attr.codimension);
 
       gfc_init_se (&se, NULL);
 
@@ -2070,8 +2137,9 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	  gfc_conv_class_to_class (&se, e, sym->ts, false, true, false, false);
 	  se.expr = build_fold_indirect_ref_loc (input_location, se.expr);
 
-	  /* Set the offset.  */
 	  desc = gfc_class_data_get (se.expr);
+
+	  /* Set the offset.  */
 	  offset = gfc_index_zero_node;
 	  for (n = 0; n < e->rank; n++)
 	    {
@@ -2081,9 +2149,11 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 				     gfc_conv_descriptor_stride_get (desc, dim),
 				     gfc_conv_descriptor_lbound_get (desc, dim));
 	      offset = fold_build2_loc (input_location, MINUS_EXPR,
-				        gfc_array_index_type,
-				        offset, tmp);
+					gfc_array_index_type,
+					offset, tmp);
 	    }
+	  gfc_conv_descriptor_offset_set (&se.pre, desc, offset);
+
 	  if (need_len_assign)
 	    {
 	      if (e->symtree
@@ -2111,18 +2181,23 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	      /* Length assignment done, prevent adding it again below.  */
 	      need_len_assign = false;
 	    }
-	  gfc_conv_descriptor_offset_set (&se.pre, desc, offset);
 	}
       else if (sym->ts.type == BT_CLASS && e->ts.type == BT_CLASS
 	       && CLASS_DATA (e)->attr.dimension)
 	{
 	  /* This is bound to be a class array element.  */
 	  gfc_conv_expr_reference (&se, e);
-	  /* Get the _vptr component of the class object.  */
-	  tmp = gfc_get_vptr_from_expr (se.expr);
 	  /* Obtain a temporary class container for the result.  */
-	  gfc_conv_derived_to_class (&se, e, sym->ts, tmp, false, false);
-	  se.expr = build_fold_indirect_ref_loc (input_location, se.expr);
+	  gfc_conv_derived_to_class (&se, e, sym, se.expr, false, false,
+				     e->symtree->name);
+	  need_len_assign = false;
+	}
+      else if (whole_array && (same_class || unlimited)
+	       && e->ts.type == BT_CLASS && CLASS_DATA (e)->attr.codimension)
+	{
+	  gfc_expr *class_e = gfc_find_and_cut_at_last_class_ref (e);
+	  gfc_conv_expr (&se, class_e);
+	  gfc_free_expr (class_e);
 	  need_len_assign = false;
 	}
       else
@@ -2160,55 +2235,60 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
 	  tree ctree = gfc_get_class_from_expr (se.expr);
 	  tmp = TREE_TYPE (sym->backend_decl);
 
-	  /* F2018:19.5.1.6 "If a selector has the POINTER attribute,
-	     it shall be associated; the associate name is associated
-	     with the target of the pointer and does not have the
-	     POINTER attribute."  */
-	  if (sym->ts.type == BT_CLASS
-	      && e->ts.type == BT_CLASS && e->rank == 0 && ctree
-	      && (!GFC_CLASS_TYPE_P (TREE_TYPE (se.expr))
-		  || CLASS_DATA (e)->attr.class_pointer))
+	  if (sym->ts.type == BT_CLASS && e->ts.type == BT_CLASS)
 	    {
-	      tree stmp;
-	      tree dtmp;
-	      tree ctmp;
-
-	      ctmp = ctree;
-	      dtmp = TREE_TYPE (TREE_TYPE (sym->backend_decl));
-	      ctree = gfc_create_var (dtmp, "class");
-
-	      if (IS_INFERRED_TYPE (e)
-		  && !GFC_CLASS_TYPE_P (TREE_TYPE (se.expr)))
-		stmp = se.expr;
-	      else
-		stmp = gfc_class_data_get (ctmp);
-
-	      /* Coarray scalar component expressions can emerge from
-		 the front end as array elements of the _data field.  */
-	      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (stmp)))
-		stmp = gfc_conv_descriptor_data_get (stmp);
-
-	      if (!POINTER_TYPE_P (TREE_TYPE (stmp)))
-		stmp = gfc_build_addr_expr (NULL, stmp);
-
-	      dtmp = gfc_class_data_get (ctree);
-	      stmp = fold_convert (TREE_TYPE (dtmp), stmp);
-	      gfc_add_modify (&se.pre, dtmp, stmp);
-	      stmp = gfc_class_vptr_get (ctmp);
-	      dtmp = gfc_class_vptr_get (ctree);
-	      stmp = fold_convert (TREE_TYPE (dtmp), stmp);
-	      gfc_add_modify (&se.pre, dtmp, stmp);
-	      if (UNLIMITED_POLY (sym))
+	      /* F2018:19.5.1.6 "If a selector has the POINTER attribute,
+		 it shall be associated; the associate name is associated
+		 with the target of the pointer and does not have the
+		 POINTER attribute."  */
+	      if (e->rank == 0 && ctree
+		  && (!GFC_CLASS_TYPE_P (TREE_TYPE (se.expr))
+		      || CLASS_DATA (e)->attr.class_pointer))
 		{
-		  stmp = gfc_class_len_get (ctmp);
-		  dtmp = gfc_class_len_get (ctree);
+		  tree stmp;
+		  tree dtmp;
+		  tree ctmp;
+
+		  ctmp = ctree;
+		  dtmp = TREE_TYPE (TREE_TYPE (sym->backend_decl));
+		  ctree = gfc_create_var (dtmp, "class");
+
+		  if (IS_INFERRED_TYPE (e)
+		      && !GFC_CLASS_TYPE_P (TREE_TYPE (se.expr)))
+		    stmp = se.expr;
+		  else
+		    stmp = gfc_class_data_get (ctmp);
+
+		  if (!CLASS_DATA (sym)->attr.codimension
+		      && !POINTER_TYPE_P (TREE_TYPE (stmp)))
+		    stmp = gfc_build_addr_expr (NULL, stmp);
+
+		  dtmp = gfc_class_data_get (ctree);
+		  stmp = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (dtmp), stmp);
+		  gfc_add_modify (&se.pre, dtmp, stmp);
+		  stmp = gfc_class_vptr_get (ctmp);
+		  dtmp = gfc_class_vptr_get (ctree);
 		  stmp = fold_convert (TREE_TYPE (dtmp), stmp);
 		  gfc_add_modify (&se.pre, dtmp, stmp);
-		  need_len_assign = false;
+		  if (UNLIMITED_POLY (sym))
+		    {
+		      stmp = gfc_class_len_get (ctmp);
+		      dtmp = gfc_class_len_get (ctree);
+		      stmp = fold_convert (TREE_TYPE (dtmp), stmp);
+		      gfc_add_modify (&se.pre, dtmp, stmp);
+		      need_len_assign = false;
+		    }
+		  se.expr = ctree;
 		}
-	      se.expr = ctree;
+	      else if (CLASS_DATA (sym)->attr.codimension)
+		{
+		  gfc_conv_class_to_class (&se, e, sym->ts, false, false, false,
+					   false);
+		  tmp = se.expr;
+		}
 	    }
-	  tmp = gfc_build_addr_expr (tmp, se.expr);
+	  if (!POINTER_TYPE_P (TREE_TYPE (se.expr)))
+	    tmp = gfc_build_addr_expr (tmp, se.expr);
 	}
 
       gfc_add_modify (&se.pre, sym->backend_decl, tmp);
@@ -3158,8 +3238,12 @@ gfc_trans_integer_select (gfc_code * code)
 
 	  if (cp->low)
 	    {
-	      low = gfc_conv_mpz_to_tree (cp->low->value.integer,
-					  cp->low->ts.kind);
+	      if (cp->low->ts.type == BT_INTEGER)
+		low = gfc_conv_mpz_to_tree (cp->low->value.integer,
+					    cp->low->ts.kind);
+	      else
+		low = gfc_conv_mpz_unsigned_to_tree (cp->low->value.integer,
+						     cp->low->ts.kind);
 
 	      /* If there's only a lower bound, set the high bound to the
 		 maximum value of the case expression.  */
@@ -3188,8 +3272,15 @@ gfc_trans_integer_select (gfc_code * code)
 	      if (!cp->low
 		  || (mpz_cmp (cp->low->value.integer,
 				cp->high->value.integer) != 0))
-		high = gfc_conv_mpz_to_tree (cp->high->value.integer,
-					     cp->high->ts.kind);
+		{
+		  if (cp->high->ts.type == BT_INTEGER)
+		    high = gfc_conv_mpz_to_tree (cp->high->value.integer,
+						 cp->high->ts.kind);
+		  else
+		    high
+		      = gfc_conv_mpz_unsigned_to_tree (cp->high->value.integer,
+						       cp->high->ts.kind);
+		}
 
 	      /* Unbounded case.  */
 	      if (!cp->low)
@@ -3699,6 +3790,7 @@ gfc_trans_select (gfc_code * code)
 	break;
 
       case BT_INTEGER:
+      case BT_UNSIGNED:
 	body = gfc_trans_integer_select (code);
 	break;
 
@@ -5073,7 +5165,7 @@ gfc_trans_forall_1 (gfc_code * code, forall_info * nested_forall_info)
 
   n = 0;
   /* Count the FORALL index number.  */
-  for (fa = code->ext.forall_iterator; fa; fa = fa->next)
+  for (fa = code->ext.concur.forall_iterator; fa; fa = fa->next)
     n++;
   nvar = n;
 
@@ -5093,7 +5185,7 @@ gfc_trans_forall_1 (gfc_code * code, forall_info * nested_forall_info)
   gfc_init_block (&block);
 
   n = 0;
-  for (fa = code->ext.forall_iterator; fa; fa = fa->next)
+  for (fa = code->ext.concur.forall_iterator; fa; fa = fa->next)
     {
       gfc_symbol *sym = fa->var->symtree->n.sym;
 
@@ -5354,7 +5446,7 @@ gfc_trans_forall_1 (gfc_code * code, forall_info * nested_forall_info)
 
 done:
   /* Restore the original index variables.  */
-  for (fa = code->ext.forall_iterator, n = 0; fa; fa = fa->next, n++)
+  for (fa = code->ext.concur.forall_iterator, n = 0; fa; fa = fa->next, n++)
     gfc_restore_sym (fa->var->symtree->n.sym, &saved_vars[n]);
 
   /* Free the space for var, start, end, step, varexpr.  */
@@ -6314,6 +6406,7 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
   gfc_symtree *newsym = NULL;
   symbol_attribute caf_attr;
   gfc_actual_arglist *param_list;
+  tree ts_string_length = NULL_TREE;
 
   if (!code->ext.alloc.list)
     return NULL_TREE;
@@ -6662,6 +6755,7 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
 	  gfc_init_se (&se_sz, NULL);
 	  gfc_conv_expr (&se_sz, sz);
 	  gfc_free_expr (sz);
+	  ts_string_length = fold_convert (gfc_charlen_type_node, se_sz.expr);
 	  tmp = gfc_get_char_type (code->ext.alloc.ts.kind);
 	  tmp = TYPE_SIZE_UNIT (tmp);
 	  tmp = fold_convert (TREE_TYPE (se_sz.expr), tmp);
@@ -6710,6 +6804,7 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
 	  newsym->n.sym->backend_decl = expr3;
 	  e3rhs = gfc_get_expr ();
 	  e3rhs->rank = code->expr3->rank;
+	  e3rhs->corank = code->expr3->corank;
 	  e3rhs->symtree = newsym;
 	  /* Mark the symbol referenced or gfc_trans_assignment will bug.  */
 	  newsym->n.sym->attr.referenced = 1;
@@ -6735,9 +6830,10 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
 	      gfc_array_spec *arr;
 	      arr = gfc_get_array_spec ();
 	      arr->rank = e3rhs->rank;
+	      arr->corank = e3rhs->corank;
 	      arr->type = AS_DEFERRED;
 	      /* Set the dimension and pointer attribute for arrays
-	     to be on the safe side.  */
+		 to be on the safe side.  */
 	      newsym->n.sym->attr.dimension = 1;
 	      newsym->n.sym->attr.pointer = 1;
 	      newsym->n.sym->as = arr;
@@ -6870,6 +6966,15 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
       else
 	tmp = expr3_esize;
 
+      /* Create runtime check for ALLOCATE of character with type-spec.  */
+      if (expr->ts.type == BT_CHARACTER && !expr->ts.deferred
+	  && ts_string_length
+	  && se.string_length)
+	gfc_trans_same_strlen_check ("ALLOCATE with type-spec",
+				     &al->expr->where,
+				     ts_string_length, se.string_length,
+				     &block);
+
       gfc_omp_namelist *omp_alloc_item = NULL;
       if (omp_allocate)
 	{
@@ -6901,7 +7006,8 @@ gfc_trans_allocate (gfc_code * code, gfc_omp_namelist *omp_allocate)
 			       label_finish, tmp, &nelems,
 			       e3rhs ? e3rhs : code->expr3,
 			       e3_is == E3_DESC ? expr3 : NULL_TREE,
-			       e3_has_nodescriptor, omp_alloc_item))
+			       e3_has_nodescriptor, omp_alloc_item,
+			       code->ext.alloc.ts.type != BT_UNKNOWN))
 	{
 	  /* A scalar or derived type.  First compute the size to
 	     allocate.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2024 Free Software Foundation, Inc.
+/* Copyright (C) 2014-2025 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -120,7 +120,7 @@ _cvtmask8_u32 (__mmask8 __A)
 {
   return (unsigned int) __builtin_ia32_kmovb ((__mmask8 ) __A);
 }
-	
+
 extern __inline __mmask8
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
 _cvtu32_mask8 (unsigned int __A)

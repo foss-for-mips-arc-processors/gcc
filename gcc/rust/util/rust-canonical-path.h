@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -51,6 +51,7 @@ public:
   CanonicalPath &operator= (const CanonicalPath &other)
   {
     segs = other.segs;
+    crate_num = other.crate_num;
     return *this;
   }
 

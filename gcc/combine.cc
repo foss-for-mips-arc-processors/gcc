@@ -1,5 +1,5 @@
 /* Optimize by combining instructions for GNU compiler.
-   Copyright (C) 1987-2024 Free Software Foundation, Inc.
+   Copyright (C) 1987-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -1754,7 +1754,7 @@ can_combine_p (rtx_insn *insn, rtx_insn *i3, rtx_insn *pred ATTRIBUTE_UNUSED,
     }
   else if (next_active_insn (insn) != i3)
     all_adjacent = false;
-    
+
   /* Can combine only if previous insn is a SET of a REG or a SUBREG,
      or a PARALLEL consisting of such a SET and CLOBBERs.
 
@@ -2614,7 +2614,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
 
       /* If I0 loads a memory and I3 sets the same memory, then I1 and I2
 	 are likely manipulating its value.  Ideally we'll be able to combine
-	 all four insns into a bitfield insertion of some kind. 
+	 all four insns into a bitfield insertion of some kind.
 
 	 Note the source in I0 might be inside a sign/zero extension and the
 	 memory modes in I0 and I3 might be different.  So extract the address
@@ -3904,6 +3904,9 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
      copy.  This saves at least one insn, more if register allocation can
      eliminate the copy.
 
+     We cannot do this if the involved modes have more than one elements,
+     like for vector or complex modes.
+
      We cannot do this if the destination of the first assignment is a
      condition code register.  We eliminate this case by making sure
      the SET_DEST and SET_SRC have the same mode.
@@ -3919,6 +3922,8 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
 	   && GET_CODE (SET_SRC (XVECEXP (newpat, 0, 0))) == SIGN_EXTEND
 	   && (GET_MODE (SET_DEST (XVECEXP (newpat, 0, 0)))
 	       == GET_MODE (SET_SRC (XVECEXP (newpat, 0, 0))))
+	   && ! VECTOR_MODE_P (GET_MODE (SET_DEST (XVECEXP (newpat, 0, 0))))
+	   && ! COMPLEX_MODE_P (GET_MODE (SET_DEST (XVECEXP (newpat, 0, 0))))
 	   && GET_CODE (XVECEXP (newpat, 0, 1)) == SET
 	   && rtx_equal_p (SET_SRC (XVECEXP (newpat, 0, 1)),
 			   XEXP (SET_SRC (XVECEXP (newpat, 0, 0)), 0))
@@ -4194,6 +4199,17 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
     {
       PATTERN (i3) = newpat;
       adjust_for_new_dest (i3);
+    }
+
+  /* If I2 didn't change, this is not a combination (but a simplification or
+     canonicalisation with context), which should not be done here.  Doing
+     it here explodes the algorithm.  Don't.  */
+  if (rtx_equal_p (newi2pat, PATTERN (i2)))
+    {
+      if (dump_file)
+	fprintf (dump_file, "i2 didn't change, not doing this\n");
+      undo_all ();
+      return 0;
     }
 
   /* We now know that we can do this combination.  Merge the insns and
@@ -5643,6 +5659,31 @@ maybe_swap_commutative_operands (rtx x)
       rtx temp = XEXP (x, 0);
       SUBST (XEXP (x, 0), XEXP (x, 1));
       SUBST (XEXP (x, 1), temp);
+    }
+
+  /* Canonicalize (vec_merge (fma op2 op1 op3) op1 mask) to
+     (vec_merge (fma op1 op2 op3) op1 mask).  */
+  if (GET_CODE (x) == VEC_MERGE
+      && GET_CODE (XEXP (x, 0)) == FMA)
+    {
+      rtx fma_op1 = XEXP (XEXP (x, 0), 0);
+      rtx fma_op2 = XEXP (XEXP (x, 0), 1);
+      rtx masked_op = XEXP (x, 1);
+      if (rtx_equal_p (masked_op, fma_op2))
+	{
+	  if (GET_CODE (fma_op1) == NEG)
+	    {
+	      /* Keep the negate canonicalized to the first operand.  */
+	      fma_op1 = XEXP (fma_op1, 0);
+	      SUBST (XEXP (XEXP (XEXP (x, 0), 0), 0), fma_op2);
+	      SUBST (XEXP (XEXP (x, 0), 1), fma_op1);
+	    }
+	  else
+	    {
+	      SUBST (XEXP (XEXP (x, 0), 0), fma_op2);
+	      SUBST (XEXP (XEXP (x, 0), 1), fma_op1);
+	    }
+	}
     }
 
   unsigned n_elts = 0;
@@ -7588,7 +7629,7 @@ make_extraction (machine_mode mode, rtx inner, HOST_WIDE_INT pos,
 	 least significant (LEN - C) bits of X, giving an rtx
 	 whose mode is MODE, then multiply it by 2^C.  */
       const HOST_WIDE_INT shift_amt = exact_log2 (INTVAL (XEXP (inner, 1)));
-      if (IN_RANGE (shift_amt, 1, len - 1))
+      if (len > 1 && IN_RANGE (shift_amt, 1, len - 1))
 	{
 	  new_rtx = make_extraction (mode, XEXP (inner, 0),
 				     0, 0, len - shift_amt,
@@ -7788,7 +7829,7 @@ make_extraction (machine_mode mode, rtx inner, HOST_WIDE_INT pos,
     {
       /* Be careful not to go beyond the extracted object and maintain the
 	 natural alignment of the memory.  */
-      wanted_inner_mode = smallest_int_mode_for_size (len);
+      wanted_inner_mode = smallest_int_mode_for_size (len).require ();
       while (pos % GET_MODE_BITSIZE (wanted_inner_mode) + len
 	     > GET_MODE_BITSIZE (wanted_inner_mode))
 	wanted_inner_mode = GET_MODE_WIDER_MODE (wanted_inner_mode).require ();
@@ -9799,7 +9840,7 @@ make_field_assignment (rtx x)
       && rtx_equal_for_field_assignment_p (XEXP (rhs, 0), dest))
     c1 = INTVAL (XEXP (rhs, 1)), other = lhs;
   /* The second SUBREG that might get in the way is a paradoxical
-     SUBREG around the first operand of the AND.  We want to 
+     SUBREG around the first operand of the AND.  We want to
      pretend the operand is as wide as the destination here.   We
      do this by adjusting the MEM to wider mode for the sole
      purpose of the call to rtx_equal_for_field_assignment_p.   Also
@@ -9816,7 +9857,7 @@ make_field_assignment (rtx x)
 	   && rtx_equal_for_field_assignment_p (XEXP (lhs, 0), dest))
     c1 = INTVAL (XEXP (lhs, 1)), other = rhs;
   /* The second SUBREG that might get in the way is a paradoxical
-     SUBREG around the first operand of the AND.  We want to 
+     SUBREG around the first operand of the AND.  We want to
      pretend the operand is as wide as the destination here.   We
      do this by adjusting the MEM to wider mode for the sole
      purpose of the call to rtx_equal_for_field_assignment_p.   Also
@@ -10594,8 +10635,10 @@ simplify_shift_const_1 (enum rtx_code code, machine_mode result_mode,
 					     outer_op, outer_const);
 	}
 
-      scalar_int_mode shift_unit_mode
-	= as_a <scalar_int_mode> (GET_MODE_INNER (shift_mode));
+      scalar_int_mode shift_unit_mode;
+      if (!is_a <scalar_int_mode> (GET_MODE_INNER (shift_mode),
+				   &shift_unit_mode))
+	return NULL_RTX;
 
       /* Handle cases where the count is greater than the size of the mode
 	 minus 1.  For ASHIFT, use the size minus one as the count (this can
@@ -15091,6 +15134,12 @@ make_more_copies (void)
 	    continue;
 
 	  rtx new_reg = gen_reg_rtx (GET_MODE (dest));
+
+	  /* The "original" pseudo copies have important attributes
+	     attached, like pointerness.  We want that for these copies
+	     too, for use by insn recognition and later passes.  */
+	  set_reg_attrs_from_value (new_reg, dest);
+
 	  rtx_insn *new_insn = gen_move_insn (new_reg, src);
 	  SET_SRC (set) = new_reg;
 	  emit_insn_before (new_insn, insn);

@@ -1,6 +1,6 @@
 /* Handle modules, which amounts to loading and saving symbols and
    their attendant structures.
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -84,7 +84,9 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Don't put any single quote (') in MOD_VERSION, if you want it to be
    recognized.  */
-#define MOD_VERSION "15"
+#define MOD_VERSION "16"
+/* Older mod versions we can still parse.  */
+#define COMPAT_MOD_VERSIONS { "15" }
 
 
 /* Structure that describes a position within a module file.  */
@@ -1353,7 +1355,7 @@ parse_integer (int c)
       atom_int = 10 * atom_int + c - '0';
     }
 
-  atom_int *= sign; 
+  atom_int *= sign;
 }
 
 
@@ -2095,7 +2097,7 @@ enum ab_attribute
   AB_OACC_ROUTINE_LOP_GANG, AB_OACC_ROUTINE_LOP_WORKER,
   AB_OACC_ROUTINE_LOP_VECTOR, AB_OACC_ROUTINE_LOP_SEQ,
   AB_OACC_ROUTINE_NOHOST,
-  AB_OMP_REQ_REVERSE_OFFLOAD, AB_OMP_REQ_UNIFIED_ADDRESS,
+  AB_OMP_REQ_REVERSE_OFFLOAD, AB_OMP_REQ_UNIFIED_ADDRESS, AB_OMP_REQ_SELF_MAPS,
   AB_OMP_REQ_UNIFIED_SHARED_MEMORY, AB_OMP_REQ_DYNAMIC_ALLOCATORS,
   AB_OMP_REQ_MEM_ORDER_SEQ_CST, AB_OMP_REQ_MEM_ORDER_ACQ_REL,
   AB_OMP_REQ_MEM_ORDER_ACQUIRE, AB_OMP_REQ_MEM_ORDER_RELEASE,
@@ -2178,6 +2180,7 @@ static const mstring attr_bits[] =
     minit ("OMP_REQ_REVERSE_OFFLOAD", AB_OMP_REQ_REVERSE_OFFLOAD),
     minit ("OMP_REQ_UNIFIED_ADDRESS", AB_OMP_REQ_UNIFIED_ADDRESS),
     minit ("OMP_REQ_UNIFIED_SHARED_MEMORY", AB_OMP_REQ_UNIFIED_SHARED_MEMORY),
+    minit ("OMP_REQ_SELF_MAPS", AB_OMP_REQ_SELF_MAPS),
     minit ("OMP_REQ_DYNAMIC_ALLOCATORS", AB_OMP_REQ_DYNAMIC_ALLOCATORS),
     minit ("OMP_REQ_MEM_ORDER_SEQ_CST", AB_OMP_REQ_MEM_ORDER_SEQ_CST),
     minit ("OMP_REQ_MEM_ORDER_ACQ_REL", AB_OMP_REQ_MEM_ORDER_ACQ_REL),
@@ -2442,6 +2445,8 @@ mio_symbol_attribute (symbol_attribute *attr)
 	    MIO_NAME (ab_attribute) (AB_OMP_REQ_UNIFIED_ADDRESS, attr_bits);
 	  if (gfc_current_ns->omp_requires & OMP_REQ_UNIFIED_SHARED_MEMORY)
 	    MIO_NAME (ab_attribute) (AB_OMP_REQ_UNIFIED_SHARED_MEMORY, attr_bits);
+	  if (gfc_current_ns->omp_requires & OMP_REQ_SELF_MAPS)
+	    MIO_NAME (ab_attribute) (AB_OMP_REQ_SELF_MAPS, attr_bits);
 	  if (gfc_current_ns->omp_requires & OMP_REQ_DYNAMIC_ALLOCATORS)
 	    MIO_NAME (ab_attribute) (AB_OMP_REQ_DYNAMIC_ALLOCATORS, attr_bits);
 	  if ((gfc_current_ns->omp_requires & OMP_REQ_ATOMIC_MEM_ORDER_MASK)
@@ -2722,6 +2727,12 @@ mio_symbol_attribute (symbol_attribute *attr)
 					   &gfc_current_locus,
 					   module_name);
 	      break;
+	    case AB_OMP_REQ_SELF_MAPS:
+	      gfc_omp_requires_add_clause (OMP_REQ_SELF_MAPS,
+					   "self_maps",
+					   &gfc_current_locus,
+					   module_name);
+	      break;
 	    case AB_OMP_REQ_DYNAMIC_ALLOCATORS:
 	      gfc_omp_requires_add_clause (OMP_REQ_DYNAMIC_ALLOCATORS,
 					   "dynamic_allocators",
@@ -2781,6 +2792,7 @@ static const mstring bt_types[] = {
     minit ("UNKNOWN", BT_UNKNOWN),
     minit ("VOID", BT_VOID),
     minit ("ASSUMED", BT_ASSUMED),
+    minit ("UNSIGNED", BT_UNSIGNED),
     minit (NULL, -1)
 };
 
@@ -3914,6 +3926,7 @@ mio_expr (gfc_expr **ep)
       switch (e->ts.type)
 	{
 	case BT_INTEGER:
+	case BT_UNSIGNED:
 	  mio_gmp_integer (&e->value.integer);
 	  break;
 
@@ -6336,7 +6349,7 @@ write_module (void)
 
   /* Initialize the column counter. */
   module_column = 1;
-  
+
   /* Write the operator interfaces.  */
   mio_lparen ();
 
@@ -6770,7 +6783,12 @@ import_iso_c_binding_module (void)
 		  not_in_std = (gfc_option.allow_std & d) == 0; \
 		  name = b; \
 		  break;
-#define NAMED_REALCST(a,b,c,d) \
+#define NAMED_UINTCST(a,b,c,d) \
+		case a: \
+		  not_in_std = (gfc_option.allow_std & d) == 0; \
+		  name = b; \
+		  break;
+#define NAMED_REALCST(a,b,c,d)			\
 	        case a: \
 		  not_in_std = (gfc_option.allow_std & d) == 0; \
 		  name = b; \
@@ -6857,7 +6875,12 @@ import_iso_c_binding_module (void)
 		if ((gfc_option.allow_std & d) == 0) \
 		  continue; \
 		break;
-#define NAMED_REALCST(a,b,c,d) \
+#define NAMED_UINTCST(a,b,c,d) \
+	      case a: \
+		if ((gfc_option.allow_std & d) == 0) \
+		  continue; \
+		break;
+#define NAMED_REALCST(a,b,c,d)			\
 	      case a: \
 		if ((gfc_option.allow_std & d) == 0) \
 		  continue; \
@@ -7091,6 +7114,7 @@ use_iso_fortran_env_module (void)
 
   intmod_sym symbol[] = {
 #define NAMED_INTCST(a,b,c,d) { a, b, 0, d },
+#define NAMED_UINTCST(a,b,c,d) { a, b, 0, d },
 #define NAMED_KINDARRAY(a,b,c,d) { a, b, 0, d },
 #define NAMED_DERIVED_TYPE(a,b,c,d) { a, b, 0, d },
 #define NAMED_FUNCTION(a,b,c,d) { a, b, c, d },
@@ -7098,9 +7122,22 @@ use_iso_fortran_env_module (void)
 #include "iso-fortran-env.def"
     { ISOFORTRANENV_INVALID, NULL, -1234, 0 } };
 
+  /* We could have used c in the NAMED_{,U}INTCST macros
+     instead of 0, but then current g++ expands the initialization
+     as clearing the whole object followed by explicit stores of
+     all the non-zero elements (over 150), while by using 0s for
+     the non-constant initializers and initializing them afterwards
+     g++ will often copy everything from .rodata and then only override
+     over 30 non-constant ones.  */
   i = 0;
 #define NAMED_INTCST(a,b,c,d) symbol[i++].value = c;
+#define NAMED_UINTCST(a,b,c,d) symbol[i++].value = c;
+#define NAMED_KINDARRAY(a,b,c,d) i++;
+#define NAMED_DERIVED_TYPE(a,b,c,d) i++;
+#define NAMED_FUNCTION(a,b,c,d) i++;
+#define NAMED_SUBROUTINE(a,b,c,d) i++;
 #include "iso-fortran-env.def"
+  gcc_checking_assert (i == (int) ARRAY_SIZE (symbol) - 1);
 
   /* Generate the symbol for the module itself.  */
   mod_symtree = gfc_find_symtree (gfc_current_ns->sym_root, mod);
@@ -7149,6 +7186,15 @@ use_iso_fortran_env_module (void)
 	      switch (symbol[i].id)
 		{
 #define NAMED_INTCST(a,b,c,d) \
+		case a:
+#include "iso-fortran-env.def"
+		  create_int_parameter (u->local_name[0] ? u->local_name
+							 : u->use_name,
+					symbol[i].value, mod,
+					INTMOD_ISO_FORTRAN_ENV, symbol[i].id);
+		  break;
+
+#define NAMED_UINTCST(a,b,c,d) \
 		case a:
 #include "iso-fortran-env.def"
 		  create_int_parameter (u->local_name[0] ? u->local_name
@@ -7222,6 +7268,13 @@ use_iso_fortran_env_module (void)
 				    INTMOD_ISO_FORTRAN_ENV, symbol[i].id);
 	      break;
 
+#define NAMED_UINTCST(a,b,c,d)			\
+	    case a:
+#include "iso-fortran-env.def"
+	      create_int_parameter (symbol[i].name, symbol[i].value, mod,
+				    INTMOD_ISO_FORTRAN_ENV, symbol[i].id);
+	      break;
+
 #define NAMED_KINDARRAY(a,b,KINDS,d) \
 	    case a:\
 	      expr = gfc_get_array_expr (BT_INTEGER, gfc_default_integer_kind, \
@@ -7243,12 +7296,11 @@ use_iso_fortran_env_module (void)
 	    break;
 
 #define NAMED_FUNCTION(a,b,c,d) \
-		case a:
+	  case a:
 #include "iso-fortran-env.def"
-		  create_intrinsic_function (symbol[i].name, symbol[i].id, mod,
-					     INTMOD_ISO_FORTRAN_ENV, false,
-					     NULL);
-		  break;
+	    create_intrinsic_function (symbol[i].name, symbol[i].id, mod,
+				       INTMOD_ISO_FORTRAN_ENV, false, NULL);
+	    break;
 
 	  default:
 	    gcc_unreachable ();
@@ -7410,10 +7462,23 @@ gfc_use_module (gfc_use_list *module)
 			 " module file", module_fullpath);
       if (start == 3)
 	{
+	  bool fatal = false;
 	  if (strcmp (atom_name, " version") != 0
 	      || module_char () != ' '
-	      || parse_atom () != ATOM_STRING
-	      || strcmp (atom_string, MOD_VERSION))
+	      || parse_atom () != ATOM_STRING)
+	    fatal = true;
+	  else if (strcmp (atom_string, MOD_VERSION))
+	    {
+	      static const char *compat_mod_versions[] = COMPAT_MOD_VERSIONS;
+	      fatal = true;
+	      for (unsigned i = 0; i < ARRAY_SIZE (compat_mod_versions); ++i)
+		if (!strcmp (atom_string, compat_mod_versions[i]))
+		  {
+		    fatal = false;
+		    break;
+		  }
+	    }
+	  if (fatal)
 	    gfc_fatal_error ("Cannot read module file %qs opened at %C,"
 			     " because it was created by a different"
 			     " version of GNU Fortran", module_fullpath);

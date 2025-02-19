@@ -377,7 +377,7 @@ namespace __unicode
 	      {
 		++_M_curr();
 		__to_incr = 2;
-		uint32_t __x = (__u & 0x3F) << 10 | __u2 & 0x3FF;
+		uint32_t __x = (__u & 0x3F) << 10 | (__u2 & 0x3FF);
 		uint32_t __w = (__u >> 6) & 0x1F;
 		__c = (__w + 1) << 16 | __x;
 	      }
@@ -590,9 +590,9 @@ namespace __unicode
   template<typename _View>
     using _Utf32_view = _Utf_view<char32_t, _View>;
 
-inline namespace __v15_1_0
+inline namespace __v16_0_0
 {
-#define _GLIBCXX_GET_UNICODE_DATA 150100
+#define _GLIBCXX_GET_UNICODE_DATA 160000
 #include "unicode-data.h"
 #ifdef _GLIBCXX_GET_UNICODE_DATA
 # error "Invalid unicode data"
@@ -625,7 +625,7 @@ inline namespace __v15_1_0
   {
     const auto __end = std::end(__incb_linkers);
     // Array is small enough that linear search is faster than binary search.
-    return std::find(__incb_linkers, __end, __c) != __end;
+    return _GLIBCXX_STD_A::find(__incb_linkers, __end, __c) != __end;
   }
 
   // @pre c <= 0x10FFFF
@@ -943,7 +943,7 @@ inline namespace __v15_1_0
       _Iterator _M_begin;
     };
 
-} // namespace __v15_1_0
+} // namespace __v16_0_0
 
   // Return the field width of a string.
   template<typename _CharT>

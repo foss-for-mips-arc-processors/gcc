@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -408,7 +408,7 @@ BaseType::bounds_compatible (const BaseType &other, location_t locus,
       if (emit_error)
 	{
 	  rust_error_at (r, ErrorCode::E0277,
-			 "bounds not satisfied for %s %<%s%> is not satisfied",
+			 "bounds not satisfied for %s %qs is not satisfied",
 			 other.get_name ().c_str (), missing_preds.c_str ());
 	  // rust_assert (!emit_error);
 	}
@@ -2215,9 +2215,8 @@ void
 ClosureType::setup_fn_once_output () const
 {
   // lookup the lang items
-  auto fn_once_lang_item = Analysis::RustLangItem::ItemType::FN_ONCE;
-  auto fn_once_output_lang_item
-    = Analysis::RustLangItem::ItemType::FN_ONCE_OUTPUT;
+  auto fn_once_lang_item = LangItem::Kind::FN_ONCE;
+  auto fn_once_output_lang_item = LangItem::Kind::FN_ONCE_OUTPUT;
 
   DefId trait_id = UNKNOWN_DEFID;
   bool trait_lang_item_defined

@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -34,6 +34,7 @@ public:
 
   void visit (HIR::ExternalStaticItem &item) override;
   void visit (HIR::ExternalFunctionItem &function) override;
+  void visit (HIR::ExternalTypeItem &type) override;
 
 private:
   TypeCheckTopLevelExternItem (const HIR::ExternBlock &parent);

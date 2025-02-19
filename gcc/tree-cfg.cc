@@ -1,5 +1,5 @@
 /* Control flow functions for trees.
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
    Contributed by Diego Novillo <dnovillo@redhat.com>
 
 This file is part of GCC.
@@ -65,6 +65,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "asan.h"
 #include "profile.h"
 #include "sreal.h"
+#include "gcc-urlifier.h"
 
 /* This file contains functions for building the Control Flow Graph (CFG)
    for a function tree.  */
@@ -1250,7 +1251,7 @@ assign_discriminators (void)
 	    }
 	  /* Allocate a new discriminator for CALL stmt.  */
 	  if (gimple_code (stmt) == GIMPLE_CALL)
-	    curr_discr = next_discriminator_for_locus (curr_locus);
+	    curr_discr = next_discriminator_for_locus (curr_locus_e.line);
 	}
 
       gimple *last = last_nondebug_stmt (bb);
@@ -2290,6 +2291,8 @@ notice_special_calls (gcall *call)
     cfun->calls_alloca = true;
   if (flags & ECF_RETURNS_TWICE)
     cfun->calls_setjmp = true;
+  if (gimple_call_must_tail_p (call))
+    cfun->has_musttail = true;
 }
 
 
@@ -2301,6 +2304,7 @@ clear_special_calls (void)
 {
   cfun->calls_alloca = false;
   cfun->calls_setjmp = false;
+  cfun->has_musttail = false;
 }
 
 /* Remove PHI nodes associated with basic block BB and all edges out of BB.  */
@@ -3068,7 +3072,7 @@ gimple_split_edge (edge edge_in)
 /* Verify properties of the address expression T whose base should be
    TREE_ADDRESSABLE if VERIFY_ADDRESSABLE is true.  */
 
-static bool 
+static bool
 verify_address (tree t, bool verify_addressable)
 {
   bool old_constant;
@@ -3172,7 +3176,7 @@ verify_types_in_gimple_reference (tree expr, bool require_lvalue)
 	      return true;
 	    }
 	  if (!AGGREGATE_TYPE_P (TREE_TYPE (op))
-	      && maybe_gt (size + bitpos,
+	      && known_gt (size + bitpos,
 			   tree_to_poly_uint64 (TYPE_SIZE (TREE_TYPE (op)))))
 	    {
 	      error ("position plus size exceeds size of referenced object in "
@@ -4837,6 +4841,17 @@ verify_gimple_assign_single (gassign *stmt)
 static bool
 verify_gimple_assign (gassign *stmt)
 {
+  if (gimple_assign_nontemporal_move_p (stmt))
+    {
+      tree lhs = gimple_assign_lhs (stmt);
+      if (is_gimple_reg (lhs))
+	{
+	  error ("nontemporal store lhs cannot be a gimple register");
+	  debug_generic_stmt (lhs);
+	  return true;
+	}
+    }
+
   switch (gimple_assign_rhs_class (stmt))
     {
     case GIMPLE_SINGLE_RHS:
@@ -5329,6 +5344,7 @@ tree_node_can_be_shared (tree t)
       || TREE_CODE (t) == SSA_NAME
       || TREE_CODE (t) == IDENTIFIER_NODE
       || TREE_CODE (t) == CASE_LABEL_EXPR
+      || TREE_CODE (t) == OMP_NEXT_VARIANT
       || is_gimple_min_invariant (t))
     return true;
 
@@ -6383,7 +6399,7 @@ gimple_split_block (basic_block bb, void *stmt)
       gsi = gsi_for_stmt ((gimple *) stmt);
       gsi_next (&gsi);
     }
- 
+
   /* Move everything from GSI to the new basic block.  */
   if (gsi_end_p (gsi))
     return new_bb;
@@ -6484,6 +6500,13 @@ gimple_can_duplicate_bb_p (const_basic_block bb)
 	&& gimple_call_internal_p (last)
 	&& gimple_call_internal_unique_p (last))
       return false;
+
+    /* Prohibit duplication of returns_twice calls, otherwise associated
+       abnormal edges also need to be duplicated properly.
+       return_twice functions will always be the last statement.  */
+    if (is_gimple_call (last)
+	&& (gimple_call_flags (last) & ECF_RETURNS_TWICE))
+      return false;
   }
 
   for (gimple_stmt_iterator gsi = gsi_start_bb (CONST_CAST_BB (bb));
@@ -6491,15 +6514,12 @@ gimple_can_duplicate_bb_p (const_basic_block bb)
     {
       gimple *g = gsi_stmt (gsi);
 
-      /* Prohibit duplication of returns_twice calls, otherwise associated
-	 abnormal edges also need to be duplicated properly.
-	 An IFN_GOMP_SIMT_ENTER_ALLOC/IFN_GOMP_SIMT_EXIT call must be
+      /* An IFN_GOMP_SIMT_ENTER_ALLOC/IFN_GOMP_SIMT_EXIT call must be
 	 duplicated as part of its group, or not at all.
 	 The IFN_GOMP_SIMT_VOTE_ANY and IFN_GOMP_SIMT_XCHG_* are part of such a
 	 group, so the same holds there.  */
       if (is_gimple_call (g)
-	  && (gimple_call_flags (g) & ECF_RETURNS_TWICE
-	      || gimple_call_internal_p (g, IFN_GOMP_SIMT_ENTER_ALLOC)
+	  && (gimple_call_internal_p (g, IFN_GOMP_SIMT_ENTER_ALLOC)
 	      || gimple_call_internal_p (g, IFN_GOMP_SIMT_EXIT)
 	      || gimple_call_internal_p (g, IFN_GOMP_SIMT_VOTE_ANY)
 	      || gimple_call_internal_p (g, IFN_GOMP_SIMT_XCHG_BFLY)
@@ -6578,7 +6598,7 @@ gimple_duplicate_bb (basic_block bb, copy_bb_data *id)
 	      && (!VAR_P (base) || !DECL_HAS_VALUE_EXPR_P (base)))
 	    DECL_NONSHAREABLE (base) = 1;
 	}
- 
+
       /* If requested remap dependence info of cliques brought in
          via inlining.  */
       if (id)
@@ -6828,7 +6848,7 @@ gimple_duplicate_seme_region (edge entry, edge exit,
 }
 
 /* Checks if BB is part of the region defined by N_REGION BBS.  */
-static bool 
+static bool
 bb_part_of_region_p (basic_block bb, basic_block* bbs, unsigned n_region)
 {
   unsigned int n;
@@ -6986,7 +7006,7 @@ gimple_duplicate_sese_tail (edge entry, edge exit,
   sorig->probability = exits[1]->probability;
   snew = make_edge (switch_bb, nentry_bb, exits[0]->flags);
   snew->probability = exits[0]->probability;
-  
+
 
   /* Register the new edge from SWITCH_BB in loop exit lists.  */
   rescan_loop_exit (snew, true, false);
@@ -7001,7 +7021,7 @@ gimple_duplicate_sese_tail (edge entry, edge exit,
   e = redirect_edge_and_branch (exits[0], exits[1]->dest);
   PENDING_STMT (e) = NULL;
 
-  /* The latch of ORIG_LOOP was copied, and so was the backedge 
+  /* The latch of ORIG_LOOP was copied, and so was the backedge
      to the original header.  We redirect this backedge to EXIT_BB.  */
   for (i = 0; i < n_region; i++)
     if (get_bb_original (region_copy[i]) == orig_loop->latch)
@@ -7013,7 +7033,7 @@ gimple_duplicate_sese_tail (edge entry, edge exit,
       }
   e = redirect_edge_and_branch (nexits[1], nexits[0]->dest);
   PENDING_STMT (e) = NULL;
-  
+
   /* Anything that is outside of the region, but was dominated by something
      inside needs to update dominance info.  */
   iterate_fix_dominators (CDI_DOMINATORS, doms, false);
@@ -8869,7 +8889,7 @@ stmt_can_terminate_bb_p (gimple *t)
     }
 
   if (gasm *asm_stmt = dyn_cast <gasm *> (t))
-    if (gimple_asm_volatile_p (asm_stmt) || gimple_asm_input_p (asm_stmt))
+    if (gimple_asm_volatile_p (asm_stmt) || gimple_asm_basic_p (asm_stmt))
       return true;
 
   return false;
@@ -9411,7 +9431,7 @@ struct cfg_hooks gimple_cfg_hooks = {
   gimple_lv_add_condition_to_bb, /* lv_add_condition_to_bb */
   gimple_lv_adjust_loop_header_phi, /* lv_adjust_loop_header_phi*/
   extract_true_false_edges_from_block, /* extract_cond_bb_edges */
-  flush_pending_stmts, 		/* flush_pending_stmts */  
+  flush_pending_stmts, 		/* flush_pending_stmts */
   gimple_empty_block_p,           /* block_empty_p */
   gimple_split_block_before_cond_jump, /* split_block_before_cond_jump */
   gimple_account_profile_record,
@@ -9919,6 +9939,8 @@ do_warn_unused_result (gimple_seq seq)
 
 	  if (lookup_attribute ("warn_unused_result", TYPE_ATTRIBUTES (ftype)))
 	    {
+	      auto_urlify_attributes sentinel;
+
 	      location_t loc = gimple_location (g);
 
 	      if (fdecl)
@@ -9987,7 +10009,7 @@ maybe_remove_writeonly_store (gimple_stmt_iterator &gsi, gimple *stmt,
 			      bitmap dce_ssa_names)
 {
   /* Keep access when store has side effect, i.e. in case when source
-     is volatile.  */  
+     is volatile.  */
   if (!gimple_store_p (stmt)
       || gimple_has_side_effects (stmt)
       || optimize_debug)

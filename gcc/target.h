@@ -1,5 +1,5 @@
 /* Data structure definitions for a generic GCC target.
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -165,6 +165,9 @@ class function_arg_info;
 /* This is defined in function-abi.h.  */
 class predefined_function_abi;
 
+/* This is defined in avoid-store-forwarding.h.  */
+struct store_fwd_info;
+
 /* These are defined in tree-vect-stmts.cc.  */
 extern tree stmt_vectype (class _stmt_vec_info *);
 extern bool stmt_in_inner_loop_p (class vec_info *, class _stmt_vec_info *);
@@ -310,6 +313,22 @@ estimated_poly_value (poly_int64 x,
     return x.coeffs[0];
   else
     return targetm.estimated_poly_value (x, kind);
+}
+
+/* Return true when MODE can be used to copy GET_MODE_BITSIZE bits
+   unchanged.  */
+
+inline bool
+mode_can_transfer_bits (machine_mode mode)
+{
+  if (mode == BLKmode)
+    return true;
+  if (maybe_ne (GET_MODE_BITSIZE (mode),
+		GET_MODE_UNIT_PRECISION (mode) * GET_MODE_NUNITS (mode)))
+    return false;
+  if (targetm.mode_can_transfer_bits)
+    return targetm.mode_can_transfer_bits (mode);
+  return true;
 }
 
 #ifdef GCC_TM_H

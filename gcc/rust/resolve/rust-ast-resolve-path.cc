@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -26,35 +26,35 @@ namespace Resolver {
 ResolvePath::ResolvePath () : ResolverBase () {}
 
 NodeId
-ResolvePath::go (AST::PathInExpression *expr)
+ResolvePath::go (AST::PathInExpression &expr)
 {
   ResolvePath resolver;
   return resolver.resolve_path (expr);
 }
 
 NodeId
-ResolvePath::go (AST::QualifiedPathInExpression *expr)
+ResolvePath::go (AST::QualifiedPathInExpression &expr)
 {
   ResolvePath resolver;
   return resolver.resolve_path (expr);
 }
 
 NodeId
-ResolvePath::go (AST::SimplePath *expr)
+ResolvePath::go (AST::SimplePath &expr)
 {
   ResolvePath resolver;
   return resolver.resolve_path (expr);
 }
 
 NodeId
-ResolvePath::resolve_path (AST::PathInExpression *expr)
+ResolvePath::resolve_path (AST::PathInExpression &expr)
 {
   NodeId resolved_node_id = UNKNOWN_NODEID;
   NodeId module_scope_id = resolver->peek_current_module_scope ();
   NodeId previous_resolved_node_id = module_scope_id;
-  for (size_t i = 0; i < expr->get_segments ().size (); i++)
+  for (size_t i = 0; i < expr.get_segments ().size (); i++)
     {
-      auto &segment = expr->get_segments ().at (i);
+      auto &segment = expr.get_segments ().at (i);
       const AST::PathIdentSegment &ident_seg = segment.get_ident_segment ();
       bool is_first_segment = i == 0;
       resolved_node_id = UNKNOWN_NODEID;
@@ -63,7 +63,7 @@ ResolvePath::resolve_path (AST::PathInExpression *expr)
       if (in_middle_of_path && segment.is_lower_self_seg ())
 	{
 	  rust_error_at (segment.get_locus (), ErrorCode::E0433,
-			 "failed to resolve: %<%s%> in paths can only be used "
+			 "failed to resolve: %qs in paths can only be used "
 			 "in start position",
 			 segment.as_string ().c_str ());
 	  return UNKNOWN_NODEID;
@@ -187,7 +187,7 @@ ResolvePath::resolve_path (AST::PathInExpression *expr)
 	      else
 		{
 		  rust_error_at (segment.get_locus (),
-				 "Cannot find path %<%s%> in this scope",
+				 "Cannot find path %qs in this scope",
 				 segment.as_string ().c_str ());
 		  return UNKNOWN_NODEID;
 		}
@@ -207,7 +207,7 @@ ResolvePath::resolve_path (AST::PathInExpression *expr)
       else if (is_first_segment)
 	{
 	  rust_error_at (segment.get_locus (), ErrorCode::E0433,
-			 "Cannot find path %<%s%> in this scope",
+			 "Cannot find path %qs in this scope",
 			 segment.as_string ().c_str ());
 	  return UNKNOWN_NODEID;
 	}
@@ -219,14 +219,14 @@ ResolvePath::resolve_path (AST::PathInExpression *expr)
       // name scope first
       if (resolver->get_name_scope ().decl_was_declared_here (resolved_node_id))
 	{
-	  resolver->insert_resolved_name (expr->get_node_id (),
+	  resolver->insert_resolved_name (expr.get_node_id (),
 					  resolved_node_id);
 	}
       // check the type scope
       else if (resolver->get_type_scope ().decl_was_declared_here (
 		 resolved_node_id))
 	{
-	  resolver->insert_resolved_type (expr->get_node_id (),
+	  resolver->insert_resolved_type (expr.get_node_id (),
 					  resolved_node_id);
 	}
       else
@@ -238,14 +238,14 @@ ResolvePath::resolve_path (AST::PathInExpression *expr)
 }
 
 NodeId
-ResolvePath::resolve_path (AST::QualifiedPathInExpression *expr)
+ResolvePath::resolve_path (AST::QualifiedPathInExpression &expr)
 {
-  AST::QualifiedPathType &root_segment = expr->get_qualified_path_type ();
-  ResolveType::go (root_segment.get_type ().get ());
+  auto &root_segment = expr.get_qualified_path_type ();
+  ResolveType::go (root_segment.get_type ());
   if (root_segment.has_as_clause ())
-    ResolveType::go (&root_segment.get_as_type_path ());
+    ResolveType::go (root_segment.get_as_type_path ());
 
-  for (auto &segment : expr->get_segments ())
+  for (auto &segment : expr.get_segments ())
     {
       // we cant actually do anything with the segment itself since this is all
       // the job of the type system to figure it out but we can resolve any
@@ -260,18 +260,18 @@ ResolvePath::resolve_path (AST::QualifiedPathInExpression *expr)
 }
 
 NodeId
-ResolvePath::resolve_path (AST::SimplePath *expr)
+ResolvePath::resolve_path (AST::SimplePath &expr)
 {
   NodeId crate_scope_id = resolver->peek_crate_module_scope ();
   NodeId module_scope_id = resolver->peek_current_module_scope ();
 
   NodeId previous_resolved_node_id = UNKNOWN_NODEID;
   NodeId resolved_node_id = UNKNOWN_NODEID;
-  for (size_t i = 0; i < expr->get_segments ().size (); i++)
+  for (size_t i = 0; i < expr.get_segments ().size (); i++)
     {
-      AST::SimplePathSegment &segment = expr->get_segments ().at (i);
+      AST::SimplePathSegment &segment = expr.get_segments ().at (i);
       bool is_first_segment = i == 0;
-      bool is_final_segment = i >= (expr->get_segments ().size () - 1);
+      bool is_final_segment = i >= (expr.get_segments ().size () - 1);
       resolved_node_id = UNKNOWN_NODEID;
 
       if (segment.is_crate_path_seg ())
@@ -326,7 +326,7 @@ ResolvePath::resolve_path (AST::SimplePath *expr)
 	  else
 	    {
 	      rust_error_at (segment.get_locus (),
-			     "Cannot find path %<%s%> in this scope",
+			     "Cannot find path %qs in this scope",
 			     segment.as_string ().c_str ());
 	      return UNKNOWN_NODEID;
 	    }
@@ -374,7 +374,7 @@ ResolvePath::resolve_path (AST::SimplePath *expr)
       if (resolved_node_id == UNKNOWN_NODEID)
 	{
 	  rust_error_at (segment.get_locus (),
-			 "cannot find simple path segment %<%s%> in this scope",
+			 "cannot find simple path segment %qs in this scope",
 			 segment.as_string ().c_str ());
 	  return UNKNOWN_NODEID;
 	}
@@ -393,14 +393,14 @@ ResolvePath::resolve_path (AST::SimplePath *expr)
       // name scope first
       if (resolver->get_name_scope ().decl_was_declared_here (resolved_node_id))
 	{
-	  resolver->insert_resolved_name (expr->get_node_id (),
+	  resolver->insert_resolved_name (expr.get_node_id (),
 					  resolved_node_id);
 	}
       // check the type scope
       else if (resolver->get_type_scope ().decl_was_declared_here (
 		 resolved_node_id))
 	{
-	  resolver->insert_resolved_type (expr->get_node_id (),
+	  resolver->insert_resolved_type (expr.get_node_id (),
 					  resolved_node_id);
 	}
       else

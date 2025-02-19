@@ -1,5 +1,5 @@
 /* Subroutines used for code generation on the DEC Alpha.
-   Copyright (C) 1992-2024 Free Software Foundation, Inc.
+   Copyright (C) 1992-2025 Free Software Foundation, Inc.
    Contributed by Richard Kenner (kenner@vlsi1.ultra.nyu.edu)
 
 This file is part of GCC.
@@ -460,8 +460,9 @@ alpha_option_override (void)
 	    line_size = cpu_table[i].line_size;
 	    l1_size = cpu_table[i].l1_size;
 	    l2_size = cpu_table[i].l2_size;
-	    target_flags &= ~ (MASK_BWX | MASK_MAX | MASK_FIX | MASK_CIX);
-	    target_flags |= cpu_table[i].flags;
+	    target_flags &= ~((MASK_BWX | MASK_MAX | MASK_FIX | MASK_CIX)
+			      & ~target_flags_explicit);
+	    target_flags |= cpu_table[i].flags & ~target_flags_explicit;
 	    break;
 	  }
       if (i == ct_size)
@@ -3269,7 +3270,7 @@ alpha_emit_xfloating_cvt (enum rtx_code orig_code, rtx operands[])
      set (OP[1] OP[3])
    is valid.  Naturally, output operand ordering is little-endian.
    This is used by *movtf_internal and *movti_internal.  */
-  
+
 void
 alpha_split_tmode_pair (rtx operands[4], machine_mode mode,
 			bool fixup_overlap)
@@ -3625,10 +3626,6 @@ alpha_expand_unaligned_load_words (rtx *out_regs, rtx smem,
   rtx sreg, areg, tmp, smema;
   HOST_WIDE_INT i;
 
-  smema = XEXP (smem, 0);
-  if (GET_CODE (smema) == LO_SUM)
-    smema = force_reg (Pmode, smema);
-
   /* Generate all the tmp registers we need.  */
   for (i = 0; i < words; ++i)
     {
@@ -3639,6 +3636,10 @@ alpha_expand_unaligned_load_words (rtx *out_regs, rtx smem,
 
   if (ofs != 0)
     smem = adjust_address (smem, GET_MODE (smem), ofs);
+
+  smema = XEXP (smem, 0);
+  if (GET_CODE (smema) == LO_SUM)
+    smema = force_reg (Pmode, smema);
 
   /* Load up all of the source data.  */
   for (i = 0; i < words; ++i)
@@ -3698,10 +3699,6 @@ alpha_expand_unaligned_store_words (rtx *data_regs, rtx dmem,
   rtx st_addr_1, st_addr_2, dmema;
   HOST_WIDE_INT i;
 
-  dmema = XEXP (dmem, 0);
-  if (GET_CODE (dmema) == LO_SUM)
-    dmema = force_reg (Pmode, dmema);
-
   /* Generate all the tmp registers we need.  */
   if (data_regs != NULL)
     for (i = 0; i < words; ++i)
@@ -3711,6 +3708,10 @@ alpha_expand_unaligned_store_words (rtx *data_regs, rtx dmem,
 
   if (ofs != 0)
     dmem = adjust_address (dmem, GET_MODE (dmem), ofs);
+
+  dmema = XEXP (dmem, 0);
+  if (GET_CODE (dmema) == LO_SUM)
+    dmema = force_reg (Pmode, dmema);
 
   st_addr_2 = change_address (dmem, DImode,
 			      gen_rtx_AND (DImode,
@@ -3771,6 +3772,78 @@ alpha_expand_unaligned_store_words (rtx *data_regs, rtx dmem,
   emit_move_insn (st_addr_1, st_tmp_1);
 }
 
+/* Get the base alignment and offset of EXPR in A and O respectively.
+   Check for any pseudo register pointer alignment and for any tree
+   node information and return the largest alignment determined and
+   its associated offset.  */
+
+static void
+alpha_get_mem_rtx_alignment_and_offset (rtx expr, int &a, HOST_WIDE_INT &o)
+{
+  HOST_WIDE_INT tree_offset = 0, reg_offset = 0, mem_offset = 0;
+  int tree_align = 0, reg_align = 0, mem_align = MEM_ALIGN (expr);
+
+  gcc_assert (MEM_P (expr));
+
+  rtx addr = XEXP (expr, 0);
+  switch (GET_CODE (addr))
+    {
+    case REG:
+      reg_align = REGNO_POINTER_ALIGN (REGNO (addr));
+      break;
+
+    case PLUS:
+      if (REG_P (XEXP (addr, 0)) && CONST_INT_P (XEXP (addr, 1)))
+	{
+	  reg_offset = INTVAL (XEXP (addr, 1));
+	  reg_align = REGNO_POINTER_ALIGN (REGNO (XEXP (addr, 0)));
+	}
+      break;
+
+    default:
+      break;
+    }
+
+  tree mem = MEM_EXPR (expr);
+  if (mem != NULL_TREE)
+    switch (TREE_CODE (mem))
+      {
+      case MEM_REF:
+	tree_offset = mem_ref_offset (mem).force_shwi ();
+	tree_align = get_object_alignment (get_base_address (mem));
+	break;
+
+      case COMPONENT_REF:
+	{
+	  tree byte_offset = component_ref_field_offset (mem);
+	  tree bit_offset = DECL_FIELD_BIT_OFFSET (TREE_OPERAND (mem, 1));
+	  poly_int64 offset;
+	  if (!byte_offset
+	      || !poly_int_tree_p (byte_offset, &offset)
+	      || !tree_fits_shwi_p (bit_offset))
+	    break;
+	  tree_offset = offset + tree_to_shwi (bit_offset) / BITS_PER_UNIT;
+	}
+	tree_align = get_object_alignment (get_base_address (mem));
+	break;
+
+      default:
+	break;
+      }
+
+  if (reg_align > mem_align)
+    {
+      mem_offset = reg_offset;
+      mem_align = reg_align;
+    }
+  if (tree_align > mem_align)
+    {
+      mem_offset = tree_offset;
+      mem_align = tree_align;
+    }
+  o = mem_offset;
+  a = mem_align;
+}
 
 /* Expand string/block move operations.
 
@@ -3799,26 +3872,24 @@ alpha_expand_block_move (rtx operands[])
   else if (orig_bytes > MAX_MOVE_WORDS * UNITS_PER_WORD)
     return 0;
 
-  /* Look for additional alignment information from recorded register info.  */
+  /* Look for stricter alignment.  */
+  HOST_WIDE_INT c;
+  int a;
 
-  tmp = XEXP (orig_src, 0);
-  if (REG_P (tmp))
-    src_align = MAX (src_align, REGNO_POINTER_ALIGN (REGNO (tmp)));
-  else if (GET_CODE (tmp) == PLUS
-	   && REG_P (XEXP (tmp, 0))
-	   && CONST_INT_P (XEXP (tmp, 1)))
+  alpha_get_mem_rtx_alignment_and_offset (orig_src, a, c);
+  if (a > src_align)
     {
-      unsigned HOST_WIDE_INT c = INTVAL (XEXP (tmp, 1));
-      unsigned int a = REGNO_POINTER_ALIGN (REGNO (XEXP (tmp, 0)));
+      if (a >= 64 && c % 8 == 0)
+	src_align = 64;
+      else if (a >= 32 && c % 4 == 0)
+	src_align = 32;
+      else if (a >= 16 && c % 2 == 0)
+	src_align = 16;
 
-      if (a > src_align)
+      if (MEM_P (orig_src) && MEM_ALIGN (orig_src) < src_align)
 	{
-          if (a >= 64 && c % 8 == 0)
-	    src_align = 64;
-          else if (a >= 32 && c % 4 == 0)
-	    src_align = 32;
-          else if (a >= 16 && c % 2 == 0)
-	    src_align = 16;
+	  orig_src = shallow_copy_rtx (orig_src);
+	  set_mem_align (orig_src, src_align);
 	}
 
       if (MEM_P (orig_src) && MEM_ALIGN (orig_src) < src_align)
@@ -3828,24 +3899,20 @@ alpha_expand_block_move (rtx operands[])
 	}
     }
 
-  tmp = XEXP (orig_dst, 0);
-  if (REG_P (tmp))
-    dst_align = MAX (dst_align, REGNO_POINTER_ALIGN (REGNO (tmp)));
-  else if (GET_CODE (tmp) == PLUS
-	   && REG_P (XEXP (tmp, 0))
-	   && CONST_INT_P (XEXP (tmp, 1)))
+  alpha_get_mem_rtx_alignment_and_offset (orig_dst, a, c);
+  if (a > dst_align)
     {
-      unsigned HOST_WIDE_INT c = INTVAL (XEXP (tmp, 1));
-      unsigned int a = REGNO_POINTER_ALIGN (REGNO (XEXP (tmp, 0)));
+      if (a >= 64 && c % 8 == 0)
+	dst_align = 64;
+      else if (a >= 32 && c % 4 == 0)
+	dst_align = 32;
+      else if (a >= 16 && c % 2 == 0)
+	dst_align = 16;
 
-      if (a > dst_align)
+      if (MEM_P (orig_dst) && MEM_ALIGN (orig_dst) < dst_align)
 	{
-          if (a >= 64 && c % 8 == 0)
-	    dst_align = 64;
-          else if (a >= 32 && c % 4 == 0)
-	    dst_align = 32;
-          else if (a >= 16 && c % 2 == 0)
-	    dst_align = 16;
+	  orig_dst = shallow_copy_rtx (orig_dst);
+	  set_mem_align (orig_dst, dst_align);
 	}
 
       if (MEM_P (orig_dst) && MEM_ALIGN (orig_dst) < dst_align)
@@ -3876,14 +3943,44 @@ alpha_expand_block_move (rtx operands[])
     {
       words = bytes / 4;
 
-      for (i = 0; i < words; ++i)
-	data_regs[nregs + i] = gen_reg_rtx (SImode);
+      /* Load an even quantity of SImode data pieces only.  */
+      unsigned int hwords = words / 2;
+      for (i = 0; i / 2 < hwords; ++i)
+	{
+	  data_regs[nregs + i] = gen_reg_rtx (SImode);
+	  emit_move_insn (data_regs[nregs + i],
+			  adjust_address (orig_src, SImode, ofs + i * 4));
+	}
 
-      for (i = 0; i < words; ++i)
-	emit_move_insn (data_regs[nregs + i],
-			adjust_address (orig_src, SImode, ofs + i * 4));
+      /* If we'll be using unaligned stores, merge data from pairs
+	 of SImode registers into DImode registers so that we can
+	 store it more efficiently via quadword unaligned stores.  */
+      unsigned int j;
+      if (dst_align < 32)
+	for (i = 0, j = 0; i < words / 2; ++i, j = i * 2)
+	  {
+	    rtx hi = expand_simple_binop (DImode, ASHIFT,
+					  data_regs[nregs + j + 1],
+					  GEN_INT (32), NULL_RTX,
+					  1, OPTAB_WIDEN);
+	    data_regs[nregs + i] = expand_simple_binop (DImode, IOR, hi,
+							data_regs[nregs + j],
+							NULL_RTX,
+							1, OPTAB_WIDEN);
+	  }
+      else
+	j = i;
 
-      nregs += words;
+      /* Take care of any remaining odd trailing SImode data piece.  */
+      if (j < words)
+	{
+	  data_regs[nregs + i] = gen_reg_rtx (SImode);
+	  emit_move_insn (data_regs[nregs + i],
+			  adjust_address (orig_src, SImode, ofs + j * 4));
+	  ++i;
+	}
+
+      nregs += i;
       bytes -= words * 4;
       ofs += words * 4;
     }
@@ -3914,14 +4011,19 @@ alpha_expand_block_move (rtx operands[])
   if (bytes >= 2)
     {
       if (src_align >= 16)
-	{
-	  do {
-	    data_regs[nregs++] = tmp = gen_reg_rtx (HImode);
-	    emit_move_insn (tmp, adjust_address (orig_src, HImode, ofs));
+	do
+	  {
+	    tmp = gen_reg_rtx (DImode);
+	    emit_move_insn (tmp,
+			    expand_simple_unop (DImode, SET,
+						adjust_address (orig_src,
+								HImode, ofs),
+						NULL_RTX, 1));
+	    data_regs[nregs++] = gen_rtx_SUBREG (HImode, tmp, 0);
 	    bytes -= 2;
 	    ofs += 2;
-	  } while (bytes >= 2);
-	}
+	  }
+	while (bytes >= 2);
       else if (! TARGET_BWX)
 	{
 	  data_regs[nregs++] = tmp = gen_reg_rtx (HImode);
@@ -4002,13 +4104,12 @@ alpha_expand_block_move (rtx operands[])
     }
 
   /* Due to the above, this won't be aligned.  */
-  /* ??? If we have more than one of these, consider constructing full
-     words in registers and using alpha_expand_unaligned_store_words.  */
   while (i < nregs && GET_MODE (data_regs[i]) == SImode)
     {
       alpha_expand_unaligned_store (orig_dst, data_regs[i], 4, ofs);
       ofs += 4;
       i++;
+      gcc_assert (i == nregs || GET_MODE (data_regs[i]) != SImode);
     }
 
   if (dst_align >= 16)
@@ -4048,7 +4149,6 @@ alpha_expand_block_clear (rtx operands[])
   HOST_WIDE_INT align = INTVAL (align_rtx) * BITS_PER_UNIT;
   HOST_WIDE_INT alignofs = 0;
   rtx orig_dst = operands[0];
-  rtx tmp;
   int i, words, ofs = 0;
 
   if (orig_bytes <= 0)
@@ -4057,24 +4157,23 @@ alpha_expand_block_clear (rtx operands[])
     return 0;
 
   /* Look for stricter alignment.  */
-  tmp = XEXP (orig_dst, 0);
-  if (REG_P (tmp))
-    align = MAX (align, REGNO_POINTER_ALIGN (REGNO (tmp)));
-  else if (GET_CODE (tmp) == PLUS
-	   && REG_P (XEXP (tmp, 0))
-	   && CONST_INT_P (XEXP (tmp, 1)))
-    {
-      HOST_WIDE_INT c = INTVAL (XEXP (tmp, 1));
-      int a = REGNO_POINTER_ALIGN (REGNO (XEXP (tmp, 0)));
+  HOST_WIDE_INT c;
+  int a;
 
-      if (a > align)
+  alpha_get_mem_rtx_alignment_and_offset (orig_dst, a, c);
+  if (a > align)
+    {
+      if (a >= 64)
+	align = a, alignofs = -c & 7;
+      else if (a >= 32)
+	align = a, alignofs = -c & 3;
+      else if (a >= 16)
+	align = a, alignofs = -c & 1;
+
+      if (MEM_P (orig_dst) && MEM_ALIGN (orig_dst) < align)
 	{
-          if (a >= 64)
-	    align = a, alignofs = 8 - c % 8;
-          else if (a >= 32)
-	    align = a, alignofs = 4 - c % 4;
-          else if (a >= 16)
-	    align = a, alignofs = 2 - c % 2;
+	  orig_dst = shallow_copy_rtx (orig_dst);
+	  set_mem_align (orig_dst, align);
 	}
     }
 
@@ -4236,40 +4335,23 @@ alpha_expand_block_clear (rtx operands[])
 
   /* If we have appropriate alignment (and it wouldn't take too many
      instructions otherwise), mask out the bytes we need.  */
-  if (TARGET_BWX ? words > 2 : bytes > 0)
+  if ((TARGET_BWX ? words > 2 : bytes > 0)
+      && (align >= 64 || (align >= 32 && bytes < 4)))
     {
-      if (align >= 64)
-	{
-	  rtx mem, tmp;
-	  HOST_WIDE_INT mask;
+      machine_mode mode = (align >= 64 ? DImode : SImode);
+      rtx mem, tmp;
+      HOST_WIDE_INT mask;
 
-	  mem = adjust_address (orig_dst, DImode, ofs);
-	  set_mem_alias_set (mem, 0);
+      mem = adjust_address (orig_dst, mode, ofs);
+      set_mem_alias_set (mem, 0);
 
-	  mask = HOST_WIDE_INT_M1U << (bytes * 8);
+      mask = HOST_WIDE_INT_M1U << (bytes * 8);
 
-	  tmp = expand_binop (DImode, and_optab, mem, GEN_INT (mask),
-			      NULL_RTX, 1, OPTAB_WIDEN);
+      tmp = expand_binop (mode, and_optab, mem, GEN_INT (mask),
+			  NULL_RTX, 1, OPTAB_WIDEN);
 
-	  emit_move_insn (mem, tmp);
-	  return 1;
-	}
-      else if (align >= 32 && bytes < 4)
-	{
-	  rtx mem, tmp;
-	  HOST_WIDE_INT mask;
-
-	  mem = adjust_address (orig_dst, SImode, ofs);
-	  set_mem_alias_set (mem, 0);
-
-	  mask = HOST_WIDE_INT_M1U << (bytes * 8);
-
-	  tmp = expand_binop (SImode, and_optab, mem, GEN_INT (mask),
-			      NULL_RTX, 1, OPTAB_WIDEN);
-
-	  emit_move_insn (mem, tmp);
-	  return 1;
-	}
+      emit_move_insn (mem, tmp);
+      return 1;
     }
 
   if (!TARGET_BWX && bytes >= 4)
@@ -4410,7 +4492,7 @@ emit_insxl (machine_mode mode, rtx op1, rtx op2)
 }
 
 /* Expand an atomic fetch-and-operate pattern.  CODE is the binary operation
-   to perform.  MEM is the memory on which to operate.  VAL is the second 
+   to perform.  MEM is the memory on which to operate.  VAL is the second
    operand of the binary operator.  BEFORE and AFTER are optional locations to
    return the value of MEM either before of after the operation.  SCRATCH is
    a scratch register.  */
@@ -4594,7 +4676,7 @@ alpha_split_compare_and_swap_12 (rtx operands[])
   label2 = gen_rtx_LABEL_REF (DImode, gen_label_rtx ());
 
   emit_insn (gen_load_locked (DImode, scratch, mem));
-  
+
   width = GEN_INT (GET_MODE_BITSIZE (mode));
   mask = GEN_INT (mode == QImode ? 0xff : 0xffff);
   emit_insn (gen_extxl (dest, scratch, width, addr));
@@ -4725,7 +4807,7 @@ alpha_split_atomic_exchange_12 (rtx operands[])
   emit_label (XEXP (label, 0));
 
   emit_insn (gen_load_locked (DImode, scratch, mem));
-  
+
   width = GEN_INT (GET_MODE_BITSIZE (mode));
   mask = GEN_INT (mode == QImode ? 0xff : 0xffff);
   emit_insn (gen_extxl (dest, scratch, width, addr));
@@ -5019,7 +5101,7 @@ get_trap_mode_suffix (void)
 	  gcc_unreachable ();
 	}
       break;
-      
+
     default:
       gcc_unreachable ();
     }
@@ -5056,7 +5138,7 @@ get_round_mode_suffix (void)
 
     case ROUND_SUFFIX_C:
       return "c";
-      
+
     default:
       gcc_unreachable ();
     }
@@ -6151,7 +6233,7 @@ alpha_setup_incoming_varargs (cumulative_args_t pcum,
       /* Detect whether integer registers or floating-point registers
 	 are needed by the detected va_arg statements.  See above for
 	 how these values are computed.  Note that the "escape" value
-	 is VA_LIST_MAX_FPR_SIZE, which is 255, which has both of 
+	 is VA_LIST_MAX_FPR_SIZE, which is 255, which has both of
 	 these bits set.  */
       gcc_assert ((VA_LIST_MAX_FPR_SIZE & 3) == 3);
 
@@ -6754,7 +6836,7 @@ alpha_fold_builtin_cmpbge (unsigned HOST_WIDE_INT opint[], long op_const)
   return NULL;
 }
 
-/* Fold the builtin for the ZAPNOT instruction.  This is essentially a 
+/* Fold the builtin for the ZAPNOT instruction.  This is essentially a
    specialized form of an AND operation.  Other byte manipulation instructions
    are defined in terms of this instruction, so this is also used as a
    subroutine for other builtins.
@@ -6821,7 +6903,7 @@ alpha_fold_builtin_extxx (tree op[], unsigned HOST_WIDE_INT opint[],
       else
 	zap_op = op;
     }
-  
+
   opint[1] = bytemask;
   return alpha_fold_builtin_zapnot (zap_op, opint, zap_const);
 }
@@ -7422,7 +7504,7 @@ alpha_vms_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
 
 HOST_WIDE_INT
 alpha_vms_initial_elimination_offset (unsigned int from, unsigned int to)
-{ 
+{
   /* The only possible attempts we ever expect are ARG or FRAME_PTR to
      HARD_FRAME or STACK_PTR.  We need the alpha_procedure_type to decide
      on the proper computations and will need the register save area size
@@ -7433,7 +7515,7 @@ alpha_vms_initial_elimination_offset (unsigned int from, unsigned int to)
   /* PT_NULL procedures have no frame of their own and we only allow
      elimination to the stack pointer. This is the argument pointer and we
      resolve the soft frame pointer to that as well.  */
-     
+
   if (alpha_procedure_type == PT_NULL)
     return 0;
 
@@ -7448,13 +7530,13 @@ alpha_vms_initial_elimination_offset (unsigned int from, unsigned int to)
                                    ^         ^              ^               ^
 			      ARG_PTR FRAME_PTR HARD_FRAME_PTR       STACK_PTR
 
-			      
+
      PT_REGISTER procedures are similar in that they may have a frame of their
      own. They have no regs-sa/pv/outgoing-args area.
 
      We first compute offset to HARD_FRAME_PTR, then add what we need to get
      to STACK_PTR if need be.  */
-  
+
   {
     HOST_WIDE_INT offset;
     HOST_WIDE_INT pv_save_size = alpha_procedure_type == PT_STACK ? 8 : 0;
@@ -7473,10 +7555,10 @@ alpha_vms_initial_elimination_offset (unsigned int from, unsigned int to)
       default:
 	gcc_unreachable ();
       }
-    
+
     if (to == STACK_POINTER_REGNUM)
       offset += ALPHA_ROUND (crtl->outgoing_args_size);
-    
+
     return offset;
   }
 }
@@ -8642,6 +8724,7 @@ summarize_insn (rtx x, struct shadow_summary *sum, int set)
 	    break;
 
 	  case 'i':
+	  case 'L':
 	    break;
 
 	  default:
@@ -8828,7 +8911,7 @@ alpha_handle_trap_shadows (void)
    suitably aligned.  This is very processor-specific.  */
 /* There are a number of entries in alphaev4_insn_pipe and alphaev5_insn_pipe
    that are marked "fake".  These instructions do not exist on that target,
-   but it is possible to see these insns with deranged combinations of 
+   but it is possible to see these insns with deranged combinations of
    command-line options, such as "-mtune=ev4 -mmax".  Instead of aborting,
    choose a result at random.  */
 
@@ -9465,7 +9548,7 @@ And in the noreturn case:
      after the insn.  In case trap is the last insn in the function,
      emit NOP to guarantee that PC remains inside function boundaries.
      This workaround is needed to get reliable backtraces.  */
-  
+
   rtx_insn *insn = prev_active_insn (get_last_insn ());
 
   if (insn && NONJUMP_INSN_P (insn))
@@ -9725,7 +9808,7 @@ alpha_write_linkage (FILE *stream, const char *funname)
    the section; 0 if the default should be used.  */
 
 static void
-vms_asm_named_section (const char *name, unsigned int flags, 
+vms_asm_named_section (const char *name, unsigned int flags,
 		       tree decl ATTRIBUTE_UNUSED)
 {
   fputc ('\n', asm_out_file);
@@ -9928,7 +10011,19 @@ alpha_can_change_mode_class (machine_mode from, machine_mode to,
   return (GET_MODE_SIZE (from) == GET_MODE_SIZE (to)
 	  || !reg_classes_intersect_p (FLOAT_REGS, rclass));
 }
-
+
+/* Implement TARGET_C_MODE_FOR_FLOATING_TYPE.  Return TFmode or DFmode
+   for TI_LONG_DOUBLE_TYPE which is for long double type, go with the
+   default one for the others.  */
+
+static machine_mode
+alpha_c_mode_for_floating_type (enum tree_index ti)
+{
+  if (ti == TI_LONG_DOUBLE_TYPE)
+    return TARGET_LONG_DOUBLE_128 ? TFmode : DFmode;
+  return default_mode_for_floating_type (ti);
+}
+
 /* Initialize the GCC target structure.  */
 #if TARGET_ABI_OPEN_VMS
 # undef TARGET_ATTRIBUTE_TABLE
@@ -10134,6 +10229,9 @@ alpha_can_change_mode_class (machine_mode from, machine_mode to,
 
 #undef TARGET_CAN_CHANGE_MODE_CLASS
 #define TARGET_CAN_CHANGE_MODE_CLASS alpha_can_change_mode_class
+
+#undef TARGET_C_MODE_FOR_FLOATING_TYPE
+#define TARGET_C_MODE_FOR_FLOATING_TYPE alpha_c_mode_for_floating_type
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

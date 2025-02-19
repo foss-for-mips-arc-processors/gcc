@@ -1,6 +1,6 @@
 (* M2Code.mod coordinate the activity of the front end.
 
-Copyright (C) 2001-2024 Free Software Foundation, Inc.
+Copyright (C) 2001-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius.mulley@southwales.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -320,9 +320,14 @@ END InitialDeclareAndOptimize ;
 
 PROCEDURE SecondDeclareAndOptimize (scope: CARDINAL;
                                     start, end: CARDINAL) ;
+VAR
+   bb: BasicBlock ;
 BEGIN
    REPEAT
-      FoldConstants(start, end) ;
+      bb := InitBasicBlocksFromRange (scope, start, end) ;
+      ForeachBasicBlockDo (bb, FoldConstants) ;
+      FreeBasicBlocks (bb) ;
+
       DeltaConst := Count - CountQuads () ;
       Count := CountQuads () ;
 

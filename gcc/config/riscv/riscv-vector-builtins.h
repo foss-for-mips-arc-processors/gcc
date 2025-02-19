@@ -1,5 +1,5 @@
 /* Builtins definitions for RISC-V 'V' Extension for GNU compiler.
-   Copyright (C) 2022-2024 Free Software Foundation, Inc.
+   Copyright (C) 2022-2025 Free Software Foundation, Inc.
    Contributed by Ju-Zhe Zhong (juzhe.zhong@rivai.ai), RiVAI Technologies Ltd.
 
    This file is part of GCC.
@@ -109,25 +109,31 @@ static const unsigned int CP_WRITE_CSR = 1U << 5;
 #define RVV_REQUIRE_FULL_V (1 << 4) /* Require Full 'V' extension.  */
 #define RVV_REQUIRE_MIN_VLEN_64 (1 << 5)	/* Require TARGET_MIN_VLEN >= 64.  */
 #define RVV_REQUIRE_ELEN_FP_16 (1 << 6) /* Require FP ELEN >= 32.  */
+#define RVV_REQUIRE_ELEN_BF_16 (1 << 7) /* Require BF16.  */
 
 /* Enumerates the required extensions.  */
 enum required_ext
 {
-  VECTOR_EXT,   /* Vector extension */
-  ZVBB_EXT,    /* Cryto vector Zvbb sub-ext */
-  ZVBB_OR_ZVKB_EXT, /* Cryto vector Zvbb or zvkb sub-ext */
-  ZVBC_EXT,    /* Crypto vector Zvbc sub-ext */
-  ZVKG_EXT,    /* Crypto vector Zvkg sub-ext */
-  ZVKNED_EXT,  /* Crypto vector Zvkned sub-ext */
+  VECTOR_EXT,		/* Vector extension */
+  ZVBB_EXT,		/* Crypto vector Zvbb sub-ext */
+  ZVBB_OR_ZVKB_EXT,	/* Crypto vector Zvbb or zvkb sub-ext */
+  ZVBC_EXT,		/* Crypto vector Zvbc sub-ext */
+  ZVKG_EXT,		/* Crypto vector Zvkg sub-ext */
+  ZVKNED_EXT,		/* Crypto vector Zvkned sub-ext */
   ZVKNHA_OR_ZVKNHB_EXT, /* Crypto vector Zvknh[ab] sub-ext */
-  ZVKNHB_EXT,  /* Crypto vector Zvknhb sub-ext */
-  ZVKSED_EXT,  /* Crypto vector Zvksed sub-ext */
-  ZVKSH_EXT,   /* Crypto vector Zvksh sub-ext */
-  XTHEADVECTOR_EXT,   /* XTheadVector extension */
+  ZVKNHB_EXT,		/* Crypto vector Zvknhb sub-ext */
+  ZVKSED_EXT,		/* Crypto vector Zvksed sub-ext */
+  ZVKSH_EXT,		/* Crypto vector Zvksh sub-ext */
+  XTHEADVECTOR_EXT,	/* XTheadVector extension */
+  ZVFBFMIN_EXT,		/* Zvfbfmin extension */
+  ZVFBFWMA_EXT,		/* Zvfbfwma extension */
+  XSFVQMACCQOQ_EXT,	/* XSFVQMACCQOQ extension */
+  XSFVQMACCDOD_EXT,	/* XSFVQMACCDOD extension */
+  XSFVFNRCLIPXFQF_EXT,	/* XSFVFNRCLIPXFQF extension */
   /* Please update below to isa_name func when add or remove enum type(s).  */
 };
 
-static inline const char * reqired_ext_to_isa_name (enum required_ext required)
+static inline const char * required_ext_to_isa_name (enum required_ext required)
 {
   switch (required)
   {
@@ -152,7 +158,17 @@ static inline const char * reqired_ext_to_isa_name (enum required_ext required)
     case ZVKSH_EXT:
       return "zvksh";
     case XTHEADVECTOR_EXT:
-      return "xthreadvector";
+      return "xtheadvector";
+    case ZVFBFMIN_EXT:
+      return "zvfbfmin";
+    case ZVFBFWMA_EXT:
+      return "zvfbfwma";
+    case XSFVQMACCQOQ_EXT:
+      return "xsfvqmaccqoq";
+    case XSFVQMACCDOD_EXT:
+      return "xsfvqmaccdod";
+    case XSFVFNRCLIPXFQF_EXT:
+      return "xsfvfnrclipxfqf";
     default:
       gcc_unreachable ();
   }
@@ -186,6 +202,16 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_ZVKSH;
     case XTHEADVECTOR_EXT:
       return TARGET_XTHEADVECTOR;
+    case ZVFBFMIN_EXT:
+      return TARGET_ZVFBFMIN;
+    case ZVFBFWMA_EXT:
+      return TARGET_ZVFBFWMA;
+    case XSFVQMACCQOQ_EXT:
+      return TARGET_XSFVQMACCQOQ;
+    case XSFVQMACCDOD_EXT:
+      return TARGET_XSFVQMACCDOD;
+    case XSFVFNRCLIPXFQF_EXT:
+      return TARGET_XSFVFNRCLIPXFQF;
     default:
       gcc_unreachable ();
   }
@@ -270,6 +296,7 @@ struct rvv_arg_type_info
   tree get_vector_type (vector_type_index) const;
   tree get_tree_type (vector_type_index) const;
   tree get_tuple_subpart_type (vector_type_index) const;
+  tree get_xfqf_float_type (vector_type_index) const;
 };
 
 /* Static information for each operand.  */
@@ -322,6 +349,16 @@ struct function_group_info
         return TARGET_ZVKSH;
       case XTHEADVECTOR_EXT:
 	return TARGET_XTHEADVECTOR;
+      case ZVFBFMIN_EXT:
+	return TARGET_ZVFBFMIN;
+      case ZVFBFWMA_EXT:
+	return TARGET_ZVFBFWMA;
+      case XSFVQMACCQOQ_EXT:
+	return TARGET_XSFVQMACCQOQ;
+      case XSFVQMACCDOD_EXT:
+	return TARGET_XSFVQMACCDOD;
+      case XSFVFNRCLIPXFQF_EXT:
+	return TARGET_XSFVFNRCLIPXFQF;
       default:
         gcc_unreachable ();
     }

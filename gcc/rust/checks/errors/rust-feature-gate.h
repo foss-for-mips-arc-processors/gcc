@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -130,7 +130,6 @@ public:
   void visit (AST::Trait &trait) override {}
   void visit (AST::ExternalTypeItem &item) override;
   void visit (AST::ExternalStaticItem &item) override {}
-  void visit (AST::ExternalFunctionItem &item) override {}
   void visit (AST::ExternBlock &block) override;
   void visit (AST::MacroMatchFragment &match) override {}
   void visit (AST::MacroMatchRepetition &match) override {}

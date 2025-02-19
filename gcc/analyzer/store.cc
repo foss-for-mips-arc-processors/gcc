@@ -1,5 +1,5 @@
 /* Classes for modeling the state of memory.
-   Copyright (C) 2020-2024 Free Software Foundation, Inc.
+   Copyright (C) 2020-2025 Free Software Foundation, Inc.
    Contributed by David Malcolm <dmalcolm@redhat.com>.
 
 This file is part of GCC.
@@ -19,7 +19,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #include "config.h"
-#define INCLUDE_MEMORY
+#define INCLUDE_VECTOR
 #include "system.h"
 #include "coretypes.h"
 #include "tree.h"
@@ -54,6 +54,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "analyzer/call-summary.h"
 #include "analyzer/analyzer-selftests.h"
 #include "stor-layout.h"
+#include "text-art/tree-widget.h"
+#include "make-unique.h"
 
 #if ENABLE_ANALYZER
 
@@ -105,13 +107,9 @@ uncertainty_t::dump_to_pp (pretty_printer *pp, bool simple) const
 DEBUG_FUNCTION void
 uncertainty_t::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp, simple);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* class binding_key.  */
@@ -142,13 +140,9 @@ binding_key::make (store_manager *mgr, const region *r)
 DEBUG_FUNCTION void
 binding_key::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp, simple);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Get a description of this binding_key.  */
@@ -228,21 +222,19 @@ bit_range::dump_to_pp (pretty_printer *pp) const
 DEBUG_FUNCTION void
 bit_range::dump () const
 {
-  pretty_printer pp;
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Generate a JSON value for this bit_range.
    This is intended for debugging the analyzer rather
    than serialization.  */
 
-json::object *
+std::unique_ptr<json::object>
 bit_range::to_json () const
 {
-  json::object *obj = new json::object ();
+  auto obj = ::make_unique<json::object> ();
   obj->set ("start_bit_offset",
 	    bit_offset_to_json (m_start_bit_offset));
   obj->set ("size_in_bits",
@@ -504,21 +496,19 @@ byte_range::dump_to_pp (pretty_printer *pp) const
 DEBUG_FUNCTION void
 byte_range::dump () const
 {
-  pretty_printer pp;
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Generate a JSON value for this byte_range.
    This is intended for debugging the analyzer rather
    than serialization.  */
 
-json::object *
+std::unique_ptr<json::object>
 byte_range::to_json () const
 {
-  json::object *obj = new json::object ();
+  auto obj = ::make_unique<json::object> ();
   obj->set ("start_byte_offset",
 	    byte_offset_to_json (m_start_byte_offset));
   obj->set ("size_in_bytes",
@@ -771,23 +761,19 @@ binding_map::dump_to_pp (pretty_printer *pp, bool simple,
 DEBUG_FUNCTION void
 binding_map::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp, simple, true);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Return a new json::object of the form
    {KEY_DESC : SVALUE_DESC,
     ...for the various key/value pairs in this binding_map}.  */
 
-json::object *
+std::unique_ptr<json::object>
 binding_map::to_json () const
 {
-  json::object *map_obj = new json::object ();
+  auto map_obj = ::make_unique<json::object> ();
 
   auto_vec <const binding_key *> binding_keys;
   for (map_t::iterator iter = m_map.begin ();
@@ -809,6 +795,56 @@ binding_map::to_json () const
 
   return map_obj;
 }
+
+/* Add a child to PARENT_WIDGET expressing a binding between
+   KEY and SVAL.  */
+
+static void
+add_binding_to_tree_widget (text_art::tree_widget &parent_widget,
+			    const text_art::dump_widget_info &dwi,
+			    const binding_key *key,
+			    const svalue *sval)
+{
+  pretty_printer the_pp;
+  pretty_printer * const pp = &the_pp;
+  pp_format_decoder (pp) = default_tree_printer;
+  pp_show_color (pp) = true;
+  const bool simple = true;
+
+  key->dump_to_pp (pp, simple);
+  pp_string (pp, ": ");
+  if (tree t = sval->get_type ())
+    dump_quoted_tree (pp, t);
+  pp_string (pp, " {");
+  sval->dump_to_pp (pp, simple);
+  pp_string (pp, "}");
+
+  parent_widget.add_child (text_art::tree_widget::make (dwi, pp));
+}
+
+void
+binding_map::add_to_tree_widget (text_art::tree_widget &parent_widget,
+				 const text_art::dump_widget_info &dwi) const
+{
+  auto_vec <const binding_key *> binding_keys;
+  for (map_t::iterator iter = m_map.begin ();
+       iter != m_map.end (); ++iter)
+    {
+      const binding_key *key = (*iter).first;
+      binding_keys.safe_push (key);
+    }
+  binding_keys.qsort (binding_key::cmp_ptrs);
+
+  const binding_key *key;
+  unsigned i;
+  FOR_EACH_VEC_ELT (binding_keys, i, key)
+    {
+      const svalue *sval = *const_cast <map_t &> (m_map).get (key);
+      add_binding_to_tree_widget (parent_widget, dwi,
+				  key, sval);
+    }
+}
+
 
 /* Comparator for imposing an order on binding_maps.  */
 
@@ -1348,17 +1384,13 @@ binding_cluster::dump_to_pp (pretty_printer *pp, bool simple,
 DEBUG_FUNCTION void
 binding_cluster::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   pp_string (&pp, "  cluster for: ");
   m_base_region->dump_to_pp (&pp, simple);
   pp_string (&pp, ": ");
   pp_newline (&pp);
   dump_to_pp (&pp, simple, true);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Assert that this object is valid.  */
@@ -1387,16 +1419,58 @@ binding_cluster::validate () const
     "touched": true/false,
     "map" : object for the binding_map.  */
 
-json::object *
+std::unique_ptr<json::object>
 binding_cluster::to_json () const
 {
-  json::object *cluster_obj = new json::object ();
+  auto cluster_obj = ::make_unique<json::object> ();
 
-  cluster_obj->set ("escaped", new json::literal (m_escaped));
-  cluster_obj->set ("touched", new json::literal (m_touched));
+  cluster_obj->set_bool ("escaped", m_escaped);
+  cluster_obj->set_bool ("touched", m_touched);
   cluster_obj->set ("map", m_map.to_json ());
 
   return cluster_obj;
+}
+
+std::unique_ptr<text_art::tree_widget>
+binding_cluster::make_dump_widget (const text_art::dump_widget_info &dwi,
+				   store_manager *mgr) const
+{
+  pretty_printer the_pp;
+  pretty_printer * const pp = &the_pp;
+  pp_format_decoder (pp) = default_tree_printer;
+  pp_show_color (pp) = true;
+  const bool simple = true;
+
+  m_base_region->dump_to_pp (pp, simple);
+  pp_string (pp, ": ");
+
+  if (const svalue *sval = maybe_get_simple_value (mgr))
+    {
+      /* Special-case to simplify dumps for the common case where
+	 we just have one value directly bound to the whole of a
+	 region.  */
+      sval->dump_to_pp (pp, simple);
+      if (escaped_p ())
+	pp_string (pp, " (ESCAPED)");
+      if (touched_p ())
+	pp_string (pp, " (TOUCHED)");
+
+      return text_art::tree_widget::make (dwi, pp);
+    }
+  else
+    {
+      if (escaped_p ())
+	pp_string (pp, " (ESCAPED)");
+      if (touched_p ())
+	pp_string (pp, " (TOUCHED)");
+
+      std::unique_ptr<text_art::tree_widget> cluster_widget
+	(text_art::tree_widget::make (dwi, pp));
+
+      m_map.add_to_tree_widget (*cluster_widget, dwi);
+
+      return cluster_widget;
+    }
 }
 
 /* Add a binding of SVAL of kind KIND to REG, unpacking SVAL if it is a
@@ -2187,6 +2261,7 @@ binding_cluster::get_representative_path_vars (const region_model *model,
 					       svalue_set *visited,
 					       const region *base_reg,
 					       const svalue *sval,
+					       logger *logger,
 					       auto_vec<path_var> *out_pvs)
   const
 {
@@ -2214,7 +2289,8 @@ binding_cluster::get_representative_path_vars (const region_model *model,
 		{
 		  if (path_var pv
 		      = model->get_representative_path_var (subregion,
-							    visited))
+							    visited,
+							    logger))
 		    append_pathvar_with_type (pv, sval->get_type (), out_pvs);
 		}
 	    }
@@ -2223,7 +2299,8 @@ binding_cluster::get_representative_path_vars (const region_model *model,
 	      const symbolic_binding *skey = (const symbolic_binding *)key;
 	      if (path_var pv
 		  = model->get_representative_path_var (skey->get_region (),
-							visited))
+							visited,
+							logger))
 		append_pathvar_with_type (pv, sval->get_type (), out_pvs);
 	    }
 	}
@@ -2539,13 +2616,9 @@ store::dump_to_pp (pretty_printer *pp, bool simple, bool multiline,
 DEBUG_FUNCTION void
 store::dump (bool simple) const
 {
-  pretty_printer pp;
-  pp_format_decoder (&pp) = default_tree_printer;
-  pp_show_color (&pp) = pp_show_color (global_dc->printer);
-  pp.buffer->stream = stderr;
+  tree_dump_pretty_printer pp (stderr);
   dump_to_pp (&pp, simple, true, NULL);
   pp_newline (&pp);
-  pp_flush (&pp);
 }
 
 /* Assert that this object is valid.  */
@@ -2563,10 +2636,10 @@ store::validate () const
     ...for each parent region,
     "called_unknown_fn": true/false}.  */
 
-json::object *
+std::unique_ptr<json::object>
 store::to_json () const
 {
-  json::object *store_obj = new json::object ();
+  auto store_obj = ::make_unique<json::object> ();
 
   /* Sort into some deterministic order.  */
   auto_vec<const region *> base_regions;
@@ -2589,7 +2662,7 @@ store::to_json () const
     {
       gcc_assert (parent_reg);
 
-      json::object *clusters_in_parent_reg_obj = new json::object ();
+      auto clusters_in_parent_reg_obj = ::make_unique<json::object> ();
 
       const region *base_reg;
       unsigned j;
@@ -2605,12 +2678,75 @@ store::to_json () const
 					   cluster->to_json ());
 	}
       label_text parent_reg_desc = parent_reg->get_desc ();
-      store_obj->set (parent_reg_desc.get (), clusters_in_parent_reg_obj);
+      store_obj->set (parent_reg_desc.get (),
+		      std::move (clusters_in_parent_reg_obj));
     }
 
-  store_obj->set ("called_unknown_fn", new json::literal (m_called_unknown_fn));
+  store_obj->set_bool ("called_unknown_fn", m_called_unknown_fn);
 
   return store_obj;
+}
+
+std::unique_ptr<text_art::tree_widget>
+store::make_dump_widget (const text_art::dump_widget_info &dwi,
+			 store_manager *mgr) const
+{
+  std::unique_ptr<text_art::tree_widget> store_widget
+    (text_art::tree_widget::make (dwi, "Store"));
+
+  store_widget->add_child
+    (text_art::tree_widget::from_fmt (dwi, nullptr,
+				      "m_called_unknown_fn: %s",
+				      m_called_unknown_fn ? "true" : "false"));
+
+    /* Sort into some deterministic order.  */
+  auto_vec<const region *> base_regions;
+  for (cluster_map_t::iterator iter = m_cluster_map.begin ();
+       iter != m_cluster_map.end (); ++iter)
+    {
+      const region *base_reg = (*iter).first;
+      base_regions.safe_push (base_reg);
+    }
+  base_regions.qsort (region::cmp_ptr_ptr);
+
+  /* Gather clusters, organize by parent region, so that we can group
+     together locals, globals, etc.  */
+  auto_vec<const region *> parent_regions;
+  get_sorted_parent_regions (&parent_regions, base_regions);
+
+  const region *parent_reg;
+  unsigned i;
+  FOR_EACH_VEC_ELT (parent_regions, i, parent_reg)
+    {
+      gcc_assert (parent_reg);
+
+      pretty_printer the_pp;
+      pretty_printer * const pp = &the_pp;
+      pp_format_decoder (pp) = default_tree_printer;
+      pp_show_color (pp) = true;
+      const bool simple = true;
+
+      parent_reg->dump_to_pp (pp, simple);
+
+      std::unique_ptr<text_art::tree_widget> parent_reg_widget
+	(text_art::tree_widget::make (dwi, pp));
+
+      const region *base_reg;
+      unsigned j;
+      FOR_EACH_VEC_ELT (base_regions, j, base_reg)
+	{
+	  /* This is O(N * M), but N ought to be small.  */
+	  if (base_reg->get_parent_region () != parent_reg)
+	    continue;
+	  binding_cluster *cluster
+	    = *const_cast<cluster_map_t &> (m_cluster_map).get (base_reg);
+	  parent_reg_widget->add_child
+	    (cluster->make_dump_widget (dwi, mgr));
+	}
+      store_widget->add_child (std::move (parent_reg_widget));
+    }
+
+  return store_widget;
 }
 
 /* Get any svalue bound to REG, or NULL.  */
@@ -3126,6 +3262,7 @@ void
 store::get_representative_path_vars (const region_model *model,
 				     svalue_set *visited,
 				     const svalue *sval,
+				     logger *logger,
 				     auto_vec<path_var> *out_pvs) const
 {
   gcc_assert (sval);
@@ -3137,6 +3274,7 @@ store::get_representative_path_vars (const region_model *model,
       const region *base_reg = (*iter).first;
       binding_cluster *cluster = (*iter).second;
       cluster->get_representative_path_vars (model, visited, base_reg, sval,
+					     logger,
 					     out_pvs);
     }
 
@@ -3144,7 +3282,8 @@ store::get_representative_path_vars (const region_model *model,
     {
       const region *reg = init_sval->get_region ();
       if (path_var pv = model->get_representative_path_var (reg,
-							    visited))
+							    visited,
+							    logger))
 	out_pvs->safe_push (pv);
     }
 }

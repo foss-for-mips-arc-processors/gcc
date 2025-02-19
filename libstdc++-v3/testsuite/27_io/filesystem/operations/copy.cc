@@ -1,7 +1,7 @@
 // { dg-do run { target c++17 } }
 // { dg-require-filesystem-ts "" }
 
-// Copyright (C) 2014-2024 Free Software Foundation, Inc.
+// Copyright (C) 2014-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -215,6 +215,15 @@ test_pr99290()
     VERIFY( e.code() == std::errc::file_exists );
   }
 #endif
+
+  // https://github.com/msys2/MSYS2-packages/issues/1937
+  auto copy_opts
+    = fs::copy_options::overwrite_existing | fs::copy_options::recursive;
+  copy(source, dest, copy_opts, ec);
+  VERIFY( !ec );
+
+  auto ch = std::ifstream{dest/"file"}.get();
+  VERIFY( ch == 'a' );
 
   remove_all(dir);
 }

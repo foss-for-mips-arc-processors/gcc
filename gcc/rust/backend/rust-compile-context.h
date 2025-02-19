@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -27,6 +27,7 @@
 #include "rust-hir-full.h"
 #include "rust-mangle.h"
 #include "rust-tree.h"
+#include "rust-immutable-name-resolution-context.h"
 
 namespace Rust {
 namespace Compile {

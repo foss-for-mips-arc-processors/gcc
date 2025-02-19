@@ -1,10 +1,14 @@
-2024-08-01  Release Manager
+2025-02-14  Joseph Myers  <josmyers@redhat.com>
 
-	* GCC 14.2.0 released.
+	* cpplib.pot: Regenerate.
 
-2024-05-07  Release Manager
+2024-12-16  Joseph Myers  <josmyers@redhat.com>
 
-	* GCC 14.1.0 released.
+	* sr.po: Update.
+
+2024-09-19  Joseph Myers  <josmyers@redhat.com>
+
+	* zh_CN.po: Update.
 
 2024-02-21  Joseph Myers  <josmyers@redhat.com>
 

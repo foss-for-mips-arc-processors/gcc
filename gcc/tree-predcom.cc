@@ -1,5 +1,5 @@
 /* Predictive commoning.
-   Copyright (C) 2005-2024 Free Software Foundation, Inc.
+   Copyright (C) 2005-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -3212,7 +3212,7 @@ pcom_worker::prepare_initializers_chain (chain_p chain)
 	continue;
 
       gcc_assert (laref->distance > 0);
-      chain->inits[n - laref->distance] 
+      chain->inits[n - laref->distance]
 	= PHI_ARG_DEF_FROM_EDGE (laref->stmt, entry);
     }
 
@@ -3521,6 +3521,9 @@ tree_predictive_commoning (bool allow_unroll_p)
 	  ret |= TODO_cleanup_cfg;
 	}
     }
+
+  if (ret != 0)
+    cfun->pending_TODOs |= PENDING_TODO_force_next_scalar_cleanup;
 
   return ret;
 }

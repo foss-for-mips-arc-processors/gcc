@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -411,8 +411,7 @@ TypeCheckBase::resolve_generic_params (
 }
 
 TyTy::TypeBoundPredicate
-TypeCheckBase::get_marker_predicate (Analysis::RustLangItem::ItemType item_type,
-				     location_t locus)
+TypeCheckBase::get_marker_predicate (LangItem::Kind item_type, location_t locus)
 {
   DefId item_id = mappings->get_lang_item (item_type, locus);
   HIR::Item *item = mappings->lookup_defid (item_id);

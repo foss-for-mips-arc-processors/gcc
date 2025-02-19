@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -24,8 +24,7 @@
 #include "rust-hir-full-decls.h"
 #include "rust-tyty-bounds.h"
 #include "rust-tyty-region.h"
-
-#include <optional.h>
+#include "optional.h"
 
 namespace Rust {
 namespace TyTy {

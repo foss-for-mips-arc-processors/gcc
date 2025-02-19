@@ -1,5 +1,5 @@
 /* Calculate branch probabilities, and basic block execution counts.
-   Copyright (C) 1990-2024 Free Software Foundation, Inc.
+   Copyright (C) 1990-2025 Free Software Foundation, Inc.
    Contributed by James E. Wilson, UC Berkeley/Cygnus Support;
    based on some ideas from Dain Samples of UC Berkeley.
    Further mangling by Bob Manson, Cygnus Support.
@@ -208,8 +208,8 @@ instrument_values (histogram_values values)
 }
 
 
-/* Computes hybrid profile for all matching entries in da_file.  
-   
+/* Computes hybrid profile for all matching entries in da_file.
+
    CFG_CHECKSUM is the precomputed checksum for the CFG.  */
 
 static gcov_type *
@@ -425,7 +425,7 @@ cmp_stats (const void *ptr1, const void *ptr2)
 
 
 /* Compute the branch probabilities for the various branches.
-   Annotate them accordingly.  
+   Annotate them accordingly.
 
    CFG_CHECKSUM is the precomputed checksum for the CFG.  */
 
@@ -874,7 +874,7 @@ sort_hist_values (histogram_value hist)
     }
 }
 /* Load value histograms values whose description is stored in VALUES array
-   from .gcda file.  
+   from .gcda file.
 
    CFG_CHECKSUM is the precomputed checksum for the CFG.  */
 
@@ -1400,7 +1400,7 @@ branch_prob (bool thunk)
 
   /* Compute two different checksums. Note that we want to compute
      the checksum in only once place, since it depends on the shape
-     of the control flow which can change during 
+     of the control flow which can change during
      various transformations.  */
   if (thunk)
     {
@@ -1456,6 +1456,10 @@ branch_prob (bool thunk)
 		    flag_bits |= GCOV_ARC_FAKE;
 		  if (e->flags & EDGE_FALLTHRU)
 		    flag_bits |= GCOV_ARC_FALLTHROUGH;
+		  if (e->flags & EDGE_TRUE_VALUE)
+		    flag_bits |= GCOV_ARC_TRUE;
+		  if (e->flags & EDGE_FALSE_VALUE)
+		    flag_bits |= GCOV_ARC_FALSE;
 		  /* On trees we don't have fallthru flags, but we can
 		     recompute them from CFG shape.  */
 		  if (e->flags & (EDGE_TRUE_VALUE | EDGE_FALSE_VALUE)

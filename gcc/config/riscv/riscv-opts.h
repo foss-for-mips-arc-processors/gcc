@@ -1,5 +1,5 @@
 /* Definition of RISC-V target for GNU compiler.
-   Copyright (C) 2016-2024 Free Software Foundation, Inc.
+   Copyright (C) 2016-2025 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
 
 This file is part of GCC.
@@ -143,9 +143,9 @@ enum rvv_vector_bits_enum {
 
 #define TARGET_ZICOND_LIKE (TARGET_ZICOND || (TARGET_XVENTANACONDOPS && TARGET_64BIT))
 
-/* Bit of riscv_zvl_flags will set contintuly, N-1 bit will set if N-bit is
+/* Bit of riscv_zvl_flags will set continually, N-1 bit will set if N-bit is
    set, e.g. MASK_ZVL64B has set then MASK_ZVL32B is set, so we can use
-   popcount to caclulate the minimal VLEN.  */
+   popcount to calculate the minimal VLEN.  */
 #define TARGET_MIN_VLEN \
   ((riscv_zvl_flags == 0) \
    ? 0 \
@@ -157,10 +157,7 @@ enum rvv_vector_bits_enum {
      ? 0                                                                       \
      : 32 << (__builtin_popcount (opts->x_riscv_zvl_flags) - 1))
 
-/* TODO: Enable RVV movmisalign by default for now.  */
-#define TARGET_VECTOR_MISALIGN_SUPPORTED 1
-
-/* The maximmum LMUL according to user configuration.  */
+/* The maximum LMUL according to user configuration.  */
 #define TARGET_MAX_LMUL                                                        \
   (int) (rvv_max_lmul == RVV_DYNAMIC ? RVV_M8 : rvv_max_lmul)
 
@@ -169,5 +166,10 @@ enum riscv_tls_type {
   TLS_TRADITIONAL,
   TLS_DESCRIPTORS
 };
+
+/* On some microarchitectures, vector segment loads and stores are excessively
+   expensive, so predicate the generation of those instrunctions.  */
+#define TARGET_VECTOR_AUTOVEC_SEGMENT					       \
+  (TARGET_VECTOR && riscv_mautovec_segment)
 
 #endif /* ! GCC_RISCV_OPTS_H */

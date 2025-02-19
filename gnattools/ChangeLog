@@ -1,10 +1,7 @@
-2024-08-01  Release Manager
+2024-07-07  Maciej W. Rozycki  <macro@orcam.me.uk>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* Makefile.in (gnattools-cross): Also build 'gnattools-cross-mv'
+	in GCC_DIR.
 
 2023-04-25  Eric Botcazou  <ebotcazou@adacore.com>
 

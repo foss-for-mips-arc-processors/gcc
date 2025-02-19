@@ -1,5 +1,5 @@
 /* Command line option handling.
-   Copyright (C) 2006-2024 Free Software Foundation, Inc.
+   Copyright (C) 2006-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -25,6 +25,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "opts.h"
 #include "options.h"
 #include "diagnostic.h"
+#include "opts-diagnostic.h"
 #include "spellcheck.h"
 #include "opts-jobserver.h"
 
@@ -38,7 +39,7 @@ static void prune_options (struct cl_decoded_option **, unsigned int *);
    example, we want -gno-statement-frontiers to be taken as a negation
    of -gstatement-frontiers, but without catching the gno- prefix and
    signaling it's to be used for option remapping, it would end up
-   backtracked to g with no-statemnet-frontiers as the debug level.  */
+   backtracked to g with no-statement-frontiers as the debug level.  */
 
 static bool
 remapping_prefix_p (const struct cl_option *opt)
@@ -1025,7 +1026,7 @@ opts_concat (const char *first, ...)
    diagnostics or set state outside of these variables.  */
 
 void
-decode_cmdline_options_to_array (unsigned int argc, const char **argv, 
+decode_cmdline_options_to_array (unsigned int argc, const char **argv,
 				 unsigned int lang_mask,
 				 struct cl_decoded_option **decoded_options,
 				 unsigned int *decoded_options_count)
@@ -1076,7 +1077,9 @@ decode_cmdline_options_to_array (unsigned int argc, const char **argv,
       /* Expand -fdiagnostics-plain-output to its constituents.  This needs
 	 to happen here so that prune_options can handle -fdiagnostics-color
 	 specially.  */
-      if (!strcmp (opt, "-fdiagnostics-plain-output"))
+      if (opt[0] == '-'
+	  && (opt[1] == '-' || opt[1] == 'f')
+	  && !strcmp (opt + 2, "diagnostics-plain-output"))
 	{
 	  /* If you have changed the default diagnostics output, and this new
 	     output is not appropriately "plain" (e.g., the change needs to be
@@ -1092,7 +1095,10 @@ decode_cmdline_options_to_array (unsigned int argc, const char **argv,
 	    "-fdiagnostics-color=never",
 	    "-fdiagnostics-urls=never",
 	    "-fdiagnostics-path-format=separate-events",
-	    "-fdiagnostics-text-art-charset=none"
+	    "-fdiagnostics-text-art-charset=none",
+	    "-fno-diagnostics-show-event-links"
+	    /* We don't put "-fno-diagnostics-show-highlight-colors" here
+	       as -fdiagnostics-color=never makes it redundant.  */
 	  };
 	  const int num_expanded = ARRAY_SIZE (expanded_args);
 	  opt_array_len += num_expanded - 1;
@@ -1315,7 +1321,7 @@ handle_option (struct gcc_options *opts,
 					    handlers->target_option_override_hook))
 	  return false;
       }
-  
+
   return true;
 }
 
@@ -1651,8 +1657,8 @@ read_cmdline_option (struct gcc_options *opts,
 
 void
 set_option (struct gcc_options *opts, struct gcc_options *opts_set,
-	    int opt_index, HOST_WIDE_INT value, const char *arg, int kind,
-	    location_t loc, diagnostic_context *dc,
+	    size_t opt_index, HOST_WIDE_INT value, const char *arg,
+	    int kind, location_t loc, diagnostic_context *dc,
 	    HOST_WIDE_INT mask /* = 0 */)
 {
   const struct cl_option *option = &cl_options[opt_index];
@@ -1731,21 +1737,21 @@ set_option (struct gcc_options *opts, struct gcc_options *opts_set,
     case CLVC_BIT_SET:
 	if ((value != 0) == (option->var_type == CLVC_BIT_SET))
 	  {
-	    if (option->cl_host_wide_int) 
+	    if (option->cl_host_wide_int)
 	      *(HOST_WIDE_INT *) flag_var |= option->var_value;
-	    else 
+	    else
 	      *(int *) flag_var |= option->var_value;
 	  }
 	else
 	  {
-	    if (option->cl_host_wide_int) 
+	    if (option->cl_host_wide_int)
 	      *(HOST_WIDE_INT *) flag_var &= ~option->var_value;
-	    else 
+	    else
 	      *(int *) flag_var &= ~option->var_value;
 	  }
 	if (set_flag_var)
 	  {
-	    if (option->cl_host_wide_int) 
+	    if (option->cl_host_wide_int)
 	      *(HOST_WIDE_INT *) set_flag_var |= option->var_value;
 	    else
 	      *(int *) set_flag_var |= option->var_value;
@@ -1835,21 +1841,21 @@ option_enabled (int opt_idx, unsigned lang_mask, void *opts)
 	  }
 
       case CLVC_EQUAL:
-	if (option->cl_host_wide_int) 
+	if (option->cl_host_wide_int)
 	  return *(HOST_WIDE_INT *) flag_var == option->var_value;
 	else
 	  return *(int *) flag_var == option->var_value;
 
       case CLVC_BIT_CLEAR:
-	if (option->cl_host_wide_int) 
+	if (option->cl_host_wide_int)
 	  return (*(HOST_WIDE_INT *) flag_var & option->var_value) == 0;
 	else
 	  return (*(int *) flag_var & option->var_value) == 0;
 
       case CLVC_BIT_SET:
-	if (option->cl_host_wide_int) 
+	if (option->cl_host_wide_int)
 	  return (*(HOST_WIDE_INT *) flag_var & option->var_value) != 0;
-	else 
+	else
 	  return (*(int *) flag_var & option->var_value) != 0;
 
       case CLVC_SIZE:
@@ -1864,6 +1870,13 @@ option_enabled (int opt_idx, unsigned lang_mask, void *opts)
 	break;
       }
   return -1;
+}
+
+int
+compiler_diagnostic_option_manager::
+option_enabled_p (diagnostic_option_id opt_id) const
+{
+  return option_enabled (opt_id.m_idx, m_lang_mask, m_opts);
 }
 
 /* Fill STATE with the current state of option OPTION in OPTS.  Return
@@ -2145,7 +2158,8 @@ jobserver_info::disconnect ()
 {
   if (!pipe_path.empty ())
     {
-      gcc_assert (close (pipefd) == 0);
+      int res = close (pipefd);
+      gcc_assert (res == 0);
       pipefd = -1;
     }
 }
@@ -2170,5 +2184,6 @@ jobserver_info::return_token ()
 {
   int fd = pipe_path.empty () ? wfd : pipefd;
   char c = 'G';
-  gcc_assert (write (fd, &c, 1) == 1);
+  int res = write (fd, &c, 1);
+  gcc_assert (res == 1);
 }

@@ -1,6 +1,6 @@
 /* m2block.cc provides an interface to maintaining block structures.
 
-Copyright (C) 2012-2024 Free Software Foundation, Inc.
+Copyright (C) 2012-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -711,7 +711,7 @@ flush_pending_note (void)
       tree note = build_stmt (pending_location, ASM_EXPR, string, NULL_TREE,
                               NULL_TREE, NULL_TREE, NULL_TREE);
 
-      ASM_INPUT_P (note) = false;
+      ASM_BASIC_P (note) = false;
       ASM_VOLATILE_P (note) = false;
 #else
       tree note = build_empty_stmt (pending_location);

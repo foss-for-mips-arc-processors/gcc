@@ -1,6 +1,6 @@
 // Algorithm implementation -*- C++ -*-
 
-// Copyright (C) 2001-2024 Free Software Foundation, Inc.
+// Copyright (C) 2001-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -72,6 +72,9 @@
 # endif
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wc++11-extensions" // inline namespace
+
 // See concept_check.h for the __glibcxx_*_requires macros.
 
 namespace std _GLIBCXX_VISIBILITY(default)
@@ -110,8 +113,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		  _Predicate __pred)
     {
       return std::__find_if(__first, __last,
-			    __gnu_cxx::__ops::__negate(__pred),
-			    std::__iterator_category(__first));
+			    __gnu_cxx::__ops::__negate(__pred));
     }
 
   /// Like find_if_not(), but uses and updates a count of the
@@ -198,7 +200,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  __tailSize -= __remainder;
 	  // __first here is always pointing to one past the last element of
 	  // next possible match.
-	  _RandomAccessIter __backTrack = __first; 
+	  _RandomAccessIter __backTrack = __first;
 	  while (__unary_pred(--__backTrack))
 	    {
 	      if (--__remainder == 0)
@@ -663,25 +665,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       return __result;
     }
 
-  template<typename _InputIterator, typename _Size, typename _OutputIterator>
-    _GLIBCXX20_CONSTEXPR
-    _OutputIterator
-    __copy_n(_InputIterator __first, _Size __n,
-	     _OutputIterator __result, input_iterator_tag)
-    {
-      return std::__niter_wrap(__result,
-			       __copy_n_a(__first, __n,
-					  std::__niter_base(__result), true));
-    }
-
-  template<typename _RandomAccessIterator, typename _Size,
-	   typename _OutputIterator>
-    _GLIBCXX20_CONSTEXPR
-    inline _OutputIterator
-    __copy_n(_RandomAccessIterator __first, _Size __n,
-	     _OutputIterator __result, random_access_iterator_tag)
-    { return std::copy(__first, __first + __n, __result); }
-
   /**
    *  @brief Copies the range [first,first+n) into [result,result+n).
    *  @ingroup mutating_algorithms
@@ -712,8 +695,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __glibcxx_requires_can_increment(__first, __n2);
       __glibcxx_requires_can_increment(__result, __n2);
 
-      return std::__copy_n(__first, __n2, __result,
-			   std::__iterator_category(__first));
+      auto __res = std::__copy_n_a(std::__niter_base(__first), __n2,
+				   std::__niter_base(__result), true);
+      return std::__niter_wrap(__result, std::move(__res));
     }
 
   /**
@@ -748,7 +732,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __glibcxx_function_requires(_UnaryPredicateConcept<_Predicate,
 	    typename iterator_traits<_InputIterator>::value_type>)
       __glibcxx_requires_valid_range(__first, __last);
-      
+
       for (; __first != __last; ++__first)
 	if (__pred(*__first))
 	  {
@@ -1329,7 +1313,7 @@ _GLIBCXX_BEGIN_INLINE_ABI_NAMESPACE(_V2)
    *  @param  __last    A forward iterator.
    *  @return  first + (last - middle).
    *
-   *  Rotates the elements of the range @p [__first,__last) by 
+   *  Rotates the elements of the range @p [__first,__last) by
    *  @p (__middle - __first) positions so that the element at @p __middle
    *  is moved to @p __first, the element at @p __middle+1 is moved to
    *  @p __first+1 and so on for each element in the range
@@ -1370,13 +1354,13 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
    *  @return   An iterator designating the end of the resulting sequence.
    *
    *  Copies the elements of the range @p [__first,__last) to the
-   *  range beginning at @result, rotating the copied elements by 
+   *  range beginning at @result, rotating the copied elements by
    *  @p (__middle-__first) positions so that the element at @p __middle
    *  is moved to @p __result, the element at @p __middle+1 is moved
    *  to @p __result+1 and so on for each element in the range @p
    *  [__first,__last).
    *
-   *  Performs 
+   *  Performs
    *  @p *(__result+(n+(__last-__middle))%(__last-__first))=*(__first+n)
    *  for each @p n in the range @p [0,__last-__first).
   */
@@ -1621,7 +1605,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
 	  ++__result_real_last;
 	  ++__first;
 	}
-      
+
       std::__make_heap(__result_first, __result_real_last, __comp);
       while (__first != __last)
 	{
@@ -3378,7 +3362,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
    *  @ingroup sorting_algorithms
    *  @param  __first  Start of range.
    *  @param  __last   End of range.
-   *  @return  make_pair(m, M), where m is the first iterator i in 
+   *  @return  make_pair(m, M), where m is the first iterator i in
    *           [__first, __last) such that no other element in the range is
    *           smaller, and where M is the last iterator i in [__first, __last)
    *           such that no other element in the range is larger.
@@ -3406,7 +3390,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
    *  @param  __first  Start of range.
    *  @param  __last   End of range.
    *  @param  __comp   Comparison functor.
-   *  @return  make_pair(m, M), where m is the first iterator i in 
+   *  @return  make_pair(m, M), where m is the first iterator i in
    *           [__first, __last) such that no other element in the range is
    *           smaller, and where M is the last iterator i in [__first, __last)
    *           such that no other element in the range is larger.
@@ -3487,6 +3471,8 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
     }
 
 #if __cplusplus > 201103L
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wc++17-extensions" // if constexpr
   template<typename _ForwardIterator1, typename _ForwardIterator2,
 	   typename _BinaryPredicate>
     _GLIBCXX20_CONSTEXPR
@@ -3501,12 +3487,10 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
 	= typename iterator_traits<_ForwardIterator2>::iterator_category;
       using _It1_is_RA = is_same<_Cat1, random_access_iterator_tag>;
       using _It2_is_RA = is_same<_Cat2, random_access_iterator_tag>;
-      constexpr bool __ra_iters = _It1_is_RA() && _It2_is_RA();
-      if (__ra_iters)
+      constexpr bool __ra_iters = __and_<_It1_is_RA, _It2_is_RA>::value;
+      if constexpr (__ra_iters)
 	{
-	  auto __d1 = std::distance(__first1, __last1);
-	  auto __d2 = std::distance(__first2, __last2);
-	  if (__d1 != __d2)
+	  if ((__last1 - __first1) != (__last2 - __first2))
 	    return false;
 	}
 
@@ -3517,7 +3501,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
 	if (!__pred(__first1, __first2))
 	  break;
 
-      if (__ra_iters)
+      if constexpr (__ra_iters)
 	{
 	  if (__first1 == __last1)
 	    return true;
@@ -3548,6 +3532,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
 	}
       return true;
     }
+#pragma GCC diagnostic pop
 
   /**
    *  @brief  Checks whether a permutaion of the second sequence is equal
@@ -3836,16 +3821,49 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
    *  such that @c *i == @p __val, or @p __last if no such iterator exists.
   */
   template<typename _InputIterator, typename _Tp>
-    _GLIBCXX20_CONSTEXPR
+    _GLIBCXX_NODISCARD _GLIBCXX20_CONSTEXPR
     inline _InputIterator
-    find(_InputIterator __first, _InputIterator __last,
-	 const _Tp& __val)
+    find(_InputIterator __first, _InputIterator __last, const _Tp& __val)
     {
       // concept requirements
       __glibcxx_function_requires(_InputIteratorConcept<_InputIterator>)
       __glibcxx_function_requires(_EqualOpConcept<
 		typename iterator_traits<_InputIterator>::value_type, _Tp>)
       __glibcxx_requires_valid_range(__first, __last);
+
+#if __cpp_if_constexpr && __glibcxx_type_trait_variable_templates
+      using _ValT = typename iterator_traits<_InputIterator>::value_type;
+      if constexpr (__can_use_memchr_for_find<_ValT, _Tp>)
+	if constexpr (is_pointer_v<decltype(std::__niter_base(__first))>
+#if __glibcxx_concepts && __glibcxx_to_address
+			|| contiguous_iterator<_InputIterator>
+#endif
+		     )
+	  {
+	    // If conversion to the 1-byte value_type alters the value,
+	    // it would not be found by std::find using equality comparison.
+	    // We need to check this here, because otherwise something like
+	    // memchr("a", 'a'+256, 1) would give a false positive match.
+	    if (!(static_cast<_ValT>(__val) == __val))
+	      return __last;
+	    else if (!__is_constant_evaluated())
+	      {
+		const int __ival = static_cast<int>(__val);
+		if (auto __n = __last - __first; __n > 0)
+		  {
+#if __glibcxx_concepts && __glibcxx_to_address
+		    const void* __p0 = std::to_address(__first);
+#else
+		    const void* __p0 = std::__niter_base(__first);
+#endif
+		    if (auto __p1 = __builtin_memchr(__p0, __ival, __n))
+		      return __first + ((const char*)__p1 - (const char*)__p0);
+		  }
+		return __last;
+	      }
+	  }
+#endif
+
       return std::__find_if(__first, __last,
 			    __gnu_cxx::__ops::__iter_equals_val(__val));
     }
@@ -4495,15 +4513,39 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	    _RandomAccessIterator>)
       __glibcxx_requires_valid_range(__first, __last);
 
-      if (__first != __last)
-	for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
-	  {
-	    // XXX rand() % N is not uniformly distributed
-	    _RandomAccessIterator __j = __first
-					+ std::rand() % ((__i - __first) + 1);
-	    if (__i != __j)
-	      std::iter_swap(__i, __j);
-	  }
+      if (__first == __last)
+	return;
+
+#if RAND_MAX < __INT_MAX__
+      if (__builtin_expect((__last - __first) >= RAND_MAX / 4, 0))
+	{
+	  // Use a xorshift implementation seeded by two calls to rand()
+	  // instead of using rand() for all the random numbers needed.
+	  unsigned __xss
+	    = (unsigned)std::rand() ^ ((unsigned)std::rand() << 15);
+	  for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+	    {
+	      __xss += !__xss;
+	      __xss ^= __xss << 13;
+	      __xss ^= __xss >> 17;
+	      __xss ^= __xss << 5;
+	      _RandomAccessIterator __j = __first
+					    + (__xss % ((__i - __first) + 1));
+	      if (__i != __j)
+		std::iter_swap(__i, __j);
+	    }
+	  return;
+	}
+#endif
+
+      for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+	{
+	  // XXX rand() % N is not uniformly distributed
+	  _RandomAccessIterator __j = __first
+					+ (std::rand() % ((__i - __first) + 1));
+	  if (__i != __j)
+	    std::iter_swap(__i, __j);
+	}
     }
 
   /**
@@ -4866,7 +4908,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	    typename iterator_traits<_InputIterator2>::value_type>)
       __glibcxx_function_requires(_LessThanOpConcept<
 	    typename iterator_traits<_InputIterator2>::value_type,
-	    typename iterator_traits<_InputIterator1>::value_type>)	
+	    typename iterator_traits<_InputIterator1>::value_type>)
       __glibcxx_requires_sorted_set(__first1, __last1, __first2);
       __glibcxx_requires_sorted_set(__first2, __last2, __first1);
       __glibcxx_requires_irreflexive2(__first1, __last1);
@@ -5349,7 +5391,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	    typename iterator_traits<_InputIterator2>::value_type>)
       __glibcxx_function_requires(_LessThanOpConcept<
 	    typename iterator_traits<_InputIterator2>::value_type,
-	    typename iterator_traits<_InputIterator1>::value_type>)	
+	    typename iterator_traits<_InputIterator1>::value_type>)
       __glibcxx_requires_sorted_set(__first1, __last1, __first2);
       __glibcxx_requires_sorted_set(__first2, __last2, __first1);
       __glibcxx_requires_irreflexive2(__first1, __last1);
@@ -5442,7 +5484,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	    ++__first1;
 	    ++__first2;
 	  }
-      return std::copy(__first2, __last2, 
+      return std::copy(__first2, __last2,
 		       std::copy(__first1, __last1, __result));
     }
 
@@ -5484,7 +5526,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	    typename iterator_traits<_InputIterator2>::value_type>)
       __glibcxx_function_requires(_LessThanOpConcept<
 	    typename iterator_traits<_InputIterator2>::value_type,
-	    typename iterator_traits<_InputIterator1>::value_type>)	
+	    typename iterator_traits<_InputIterator1>::value_type>)
       __glibcxx_requires_sorted_set(__first1, __last1, __first2);
       __glibcxx_requires_sorted_set(__first2, __last2, __first1);
       __glibcxx_requires_irreflexive2(__first1, __last1);
@@ -5850,5 +5892,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 _GLIBCXX_END_NAMESPACE_ALGO
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std
+
+#pragma GCC diagnostic pop
 
 #endif /* _STL_ALGO_H */

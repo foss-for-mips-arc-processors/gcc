@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2024 Free Software Foundation, Inc.
+// Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -781,6 +781,10 @@ UnsafeChecker::visit (ExternalStaticItem &)
 
 void
 UnsafeChecker::visit (ExternalFunctionItem &)
+{}
+
+void
+UnsafeChecker::visit (ExternalTypeItem &)
 {}
 
 void

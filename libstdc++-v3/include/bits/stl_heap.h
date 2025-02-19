@@ -1,6 +1,6 @@
 // Heap implementation -*- C++ -*-
 
-// Copyright (C) 2001-2024 Free Software Foundation, Inc.
+// Copyright (C) 2001-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -360,7 +360,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  __parent--;
 	}
     }
-  
+
   /**
    *  @brief  Construct a heap over a range.
    *  @param  __first  Start of heap.
@@ -505,7 +505,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __glibcxx_requires_irreflexive(__first, __last);
 
       __gnu_cxx::__ops::_Iter_less_iter __comp;
-      return __first + 
+      return __first +
 	std::__is_heap_until(__first, std::distance(__first, __last), __comp);
     }
 

@@ -1,10 +1,18 @@
-2024-08-01  Release Manager
+2024-11-18  David Malcolm  <dmalcolm@redhat.com>
 
-	* GCC 14.2.0 released.
+	* testsuite/lib/libvtv.exp: Add
+	"load_gcc_lib dg-test-cleanup.exp".
 
-2024-05-07  Release Manager
+2024-09-02  Alex Coplan  <alex.coplan@arm.com>
 
-	* GCC 14.1.0 released.
+	* testsuite/lib/libvtv.exp: Load scanltrans.exp instead of
+	scanltranstree.exp.
+
+2024-05-31  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	PR testsuite/115294
+	* testsuite/lib/libvtv.exp (libvtv_target_compile): Pass new
+	dg-additional-files-options args.
 
 2024-04-02  Jakub Jelinek  <jakub@redhat.com>
 

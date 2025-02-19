@@ -1,5 +1,5 @@
 /* Functions for generic Darwin as target machine for GNU C compiler.
-   Copyright (C) 1989-2024 Free Software Foundation, Inc.
+   Copyright (C) 1989-2025 Free Software Foundation, Inc.
    Contributed by Apple Computer Inc.
 
 This file is part of GCC.
@@ -89,7 +89,7 @@ along with GCC; see the file COPYING3.  If not see
 typedef struct GTY(()) cdtor_record {
   rtx symbol;
   int priority;		/* [con/de]structor priority */
-  int position;		/* original position */
+  unsigned position;	/* original position */
 } cdtor_record;
 
 static GTY(()) vec<cdtor_record, va_gc> *ctors = NULL;
@@ -2403,7 +2403,7 @@ darwin_asm_declare_object_name (FILE *file,
 #ifdef DEBUG_DARWIN_MEM_ALLOCATORS
 fprintf (file, "# dadon: %s %s (%llu, %u) local %d weak %d"
 	       " stat %d com %d pub %d t-const %d t-ro %d init %lx\n",
-	xname, (TREE_CODE (decl) == VAR_DECL?"var":"const"),
+	xname, TREE_CODE (decl) == VAR_DECL ? "var" : "const",
 	(unsigned long long)size, DECL_ALIGN (decl), local_def,
 	DECL_WEAK (decl), TREE_STATIC (decl), DECL_COMMON (decl),
 	TREE_PUBLIC (decl), TREE_CONSTANT (decl), TREE_READONLY (decl),
@@ -2641,7 +2641,7 @@ darwin_emit_common (FILE *fp, const char *name,
   fputs ("\t.comm\t", fp);
   assemble_name (fp, name);
   fprintf (fp, "," HOST_WIDE_INT_PRINT_UNSIGNED,
-	   emit_aligned_common?size:rounded);
+	   emit_aligned_common ? size : rounded);
   if (l2align && emit_aligned_common)
     fprintf (fp, ",%u", l2align);
   fputs ("\n", fp);
@@ -3620,7 +3620,7 @@ darwin_patch_builtin (enum built_in_function fncode)
 void
 darwin_patch_builtins (void)
 {
-  if (LONG_DOUBLE_TYPE_SIZE != 128)
+  if (TYPE_PRECISION (long_double_type_node) != 128)
     return;
 
 #define PATCH_BUILTIN(fncode) darwin_patch_builtin (fncode);

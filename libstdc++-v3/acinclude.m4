@@ -707,7 +707,7 @@ AC_DEFUN([GLIBCXX_EXPORT_FLAGS], [
   # OPTIMIZE_CXXFLAGS = -O3 -fstrict-aliasing -fvtable-gc
   AC_SUBST(OPTIMIZE_CXXFLAGS)
 
-  WARN_FLAGS="-Wall -Wextra -Wwrite-strings -Wcast-qual -Wabi=2"
+  WARN_FLAGS="-Wall -Wextra -Wwrite-strings -Wcast-qual -Wabi=19"
   AC_SUBST(WARN_FLAGS)
 ])
 
@@ -4230,7 +4230,7 @@ changequote([,])dnl
 fi
 
 # For libtool versioning info, format is CURRENT:REVISION:AGE
-libtool_VERSION=6:33:0
+libtool_VERSION=6:34:0
 
 # Everything parsed; figure out what files and settings to use.
 case $enable_symvers in
@@ -5481,6 +5481,11 @@ AC_DEFUN([GLIBCXX_ENABLE_BACKTRACE], [
     BACKTRACE_CPPFLAGS="$BACKTRACE_CPPFLAGS -DHAVE_DL_ITERATE_PHDR=1"
   fi
   AC_CHECK_HEADERS(windows.h)
+  AC_CHECK_HEADERS(tlhelp32.h, [], [],
+  [#ifdef HAVE_WINDOWS_H
+  #  include <windows.h>
+  #endif
+  ])
 
   # Check for the fcntl function.
   if test -n "${with_target_subdir}"; then

@@ -1,5 +1,5 @@
 /* Target Code for ft32
-   Copyright (C) 2015-2024 Free Software Foundation, Inc.
+   Copyright (C) 2015-2025 Free Software Foundation, Inc.
    Contributed by FTDI <support@ftdi.com>
 
    This file is part of GCC.
@@ -830,19 +830,6 @@ ft32_target_case_values_threshold (void)
 #define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P \
   ft32_addr_space_legitimate_address_p
 
-
-// Enabling LRA gives the infamous
-//    internal compiler error: Max. number of generated reload insns per insn is achieved (90)
-// errors e.g. when compiling sieve.c
-
-static bool
-ft32_lra_p (void)
-{
-  return ft32_lra_flag;
-}
-
-#undef TARGET_LRA_P
-#define TARGET_LRA_P ft32_lra_p
 
 static bool
 reg_ok_for_base_p (rtx r, bool strict)

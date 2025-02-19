@@ -1,10 +1,11 @@
-2024-08-01  Release Manager
+2024-05-07  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* configure.ac (ax_lib_socket_nsl.m4): Don't sinclude.
+	(AX_LIB_SOCKET_NSL): Don't call.
+	(NETLIBS): Remove.
+	* configure: Regenerate.
+	* Makefile.in (NETLIBS): Remove.
+	(g++-mapper-server$(exeext)): Remove $(NETLIBS).
 
 2023-06-22  Marek Polacek  <polacek@redhat.com>
 
@@ -206,7 +207,7 @@
 	* server.cc: New.
 
 
-Copyright (C) 2020-2024 Free Software Foundation, Inc.
+Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright

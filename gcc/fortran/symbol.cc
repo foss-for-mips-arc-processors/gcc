@@ -1,5 +1,5 @@
 /* Maintain binary trees of symbols.
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
    Contributed by Andy Vaught
 
 This file is part of GCC.
@@ -98,9 +98,7 @@ const mstring dtio_procs[] =
 
 /* This is to make sure the backend generates setup code in the correct
    order.  */
-
-static int next_dummy_order = 1;
-
+static int next_decl_order = 1;
 
 gfc_namespace *gfc_current_ns;
 gfc_namespace *gfc_global_ns_list;
@@ -941,15 +939,13 @@ conflict:
 void
 gfc_set_sym_referenced (gfc_symbol *sym)
 {
-
   if (sym->attr.referenced)
     return;
 
   sym->attr.referenced = 1;
 
-  /* Remember which order dummy variables are accessed in.  */
-  if (sym->attr.dummy)
-    sym->dummy_order = next_dummy_order++;
+  /* Remember the declaration order.  */
+  sym->decl_order = next_decl_order++;
 }
 
 
@@ -1311,9 +1307,8 @@ gfc_add_save (symbol_attribute *attr, save_state s, const char *name,
 
   if (s == SAVE_EXPLICIT && gfc_pure (NULL))
     {
-      gfc_error
-	("SAVE attribute at %L cannot be specified in a PURE procedure",
-	 where);
+      gfc_error ("SAVE attribute at %L cannot be specified in a PURE "
+		 "procedure", where);
       return false;
     }
 
@@ -1323,10 +1318,15 @@ gfc_add_save (symbol_attribute *attr, save_state s, const char *name,
   if (s == SAVE_EXPLICIT && attr->save == SAVE_EXPLICIT
       && (flag_automatic || pedantic))
     {
-	if (!gfc_notify_std (GFC_STD_LEGACY,
-			     "Duplicate SAVE attribute specified at %L",
-			     where))
+      if (!where)
+	{
+	  gfc_error ("Duplicate SAVE attribute specified near %C");
 	  return false;
+	}
+
+      if (!gfc_notify_std (GFC_STD_LEGACY, "Duplicate SAVE attribute "
+			   "specified at %L", where))
+	return false;
     }
 
   attr->save = s;
@@ -2697,10 +2697,13 @@ free_components (gfc_component *p)
 static int
 compare_st_labels (void *a1, void *b1)
 {
-  int a = ((gfc_st_label *) a1)->value;
-  int b = ((gfc_st_label *) b1)->value;
+  gfc_st_label *a = (gfc_st_label *) a1;
+  gfc_st_label *b = (gfc_st_label *) b1;
 
-  return (b - a);
+  if (a->omp_region == b->omp_region)
+    return b->value - a->value;
+  else
+    return b->omp_region - a->omp_region;
 }
 
 
@@ -2750,6 +2753,8 @@ gfc_get_st_label (int labelno)
 {
   gfc_st_label *lp;
   gfc_namespace *ns;
+  int omp_region = (gfc_in_omp_metadirective_body
+		    ? gfc_omp_metadirective_region_count : 0);
 
   if (gfc_current_state () == COMP_DERIVED)
     ns = gfc_current_block ()->f2k_derived;
@@ -2766,10 +2771,16 @@ gfc_get_st_label (int labelno)
   lp = ns->st_labels;
   while (lp)
     {
-      if (lp->value == labelno)
-	return lp;
-
-      if (lp->value < labelno)
+      if (lp->omp_region == omp_region)
+	{
+	  if (lp->value == labelno)
+	    return lp;
+	  if (lp->value < labelno)
+	    lp = lp->left;
+	  else
+	    lp = lp->right;
+	}
+      else if (lp->omp_region < omp_region)
 	lp = lp->left;
       else
 	lp = lp->right;
@@ -2781,6 +2792,7 @@ gfc_get_st_label (int labelno)
   lp->defined = ST_LABEL_UNKNOWN;
   lp->referenced = ST_LABEL_UNKNOWN;
   lp->ns = ns;
+  lp->omp_region = omp_region;
 
   gfc_insert_bbt (&ns->st_labels, lp, compare_st_labels);
 
@@ -3254,7 +3266,7 @@ gfc_release_symbol (gfc_symbol *&sym)
 /* Allocate and initialize a new symbol node.  */
 
 gfc_symbol *
-gfc_new_symbol (const char *name, gfc_namespace *ns)
+gfc_new_symbol (const char *name, gfc_namespace *ns, locus *where)
 {
   gfc_symbol *p;
 
@@ -3263,7 +3275,7 @@ gfc_new_symbol (const char *name, gfc_namespace *ns)
   gfc_clear_ts (&p->ts);
   gfc_clear_attr (&p->attr);
   p->ns = ns;
-  p->declared_at = gfc_current_locus;
+  p->declared_at = where ? *where : gfc_current_locus;
   p->name = gfc_get_string ("%s", name);
 
   return p;
@@ -3477,7 +3489,7 @@ gfc_save_symbol_data (gfc_symbol *sym)
 
 int
 gfc_get_sym_tree (const char *name, gfc_namespace *ns, gfc_symtree **result,
-		  bool allow_subroutine)
+		  bool allow_subroutine, locus *where)
 {
   gfc_symtree *st;
   gfc_symbol *p;
@@ -3498,7 +3510,7 @@ gfc_get_sym_tree (const char *name, gfc_namespace *ns, gfc_symtree **result,
   if (st == NULL)
     {
       /* If not there, create a new symbol.  */
-      p = gfc_new_symbol (name, ns);
+      p = gfc_new_symbol (name, ns, where);
 
       /* Add to the list of tentative symbols.  */
       p->old_symbol = NULL;
@@ -3546,12 +3558,13 @@ gfc_get_sym_tree (const char *name, gfc_namespace *ns, gfc_symtree **result,
 
 
 int
-gfc_get_symbol (const char *name, gfc_namespace *ns, gfc_symbol **result)
+gfc_get_symbol (const char *name, gfc_namespace *ns, gfc_symbol **result,
+		locus *where)
 {
   gfc_symtree *st;
   int i;
 
-  i = gfc_get_sym_tree (name, ns, &st, false);
+  i = gfc_get_sym_tree (name, ns, &st, false, where);
   if (i != 0)
     return i;
 
@@ -3567,7 +3580,7 @@ gfc_get_symbol (const char *name, gfc_namespace *ns, gfc_symbol **result)
    exist, but tries to host-associate the symbol if possible.  */
 
 int
-gfc_get_ha_sym_tree (const char *name, gfc_symtree **result)
+gfc_get_ha_sym_tree (const char *name, gfc_symtree **result, locus *where)
 {
   gfc_symtree *st;
   int i;
@@ -3591,17 +3604,17 @@ gfc_get_ha_sym_tree (const char *name, gfc_symtree **result)
       return 0;
     }
 
-  return gfc_get_sym_tree (name, gfc_current_ns, result, false);
+  return gfc_get_sym_tree (name, gfc_current_ns, result, false, where);
 }
 
 
 int
-gfc_get_ha_symbol (const char *name, gfc_symbol **result)
+gfc_get_ha_symbol (const char *name, gfc_symbol **result, locus *where)
 {
   int i;
-  gfc_symtree *st;
+  gfc_symtree *st = NULL;
 
-  i = gfc_get_ha_sym_tree (name, &st);
+  i = gfc_get_ha_sym_tree (name, &st, where);
 
   if (st)
     *result = st->n.sym;
@@ -4909,6 +4922,8 @@ gfc_copy_formal_args_intr (gfc_symbol *dest, gfc_intrinsic_sym *src,
   if (dest->formal != NULL)
     /* The current ns should be that for the dest proc.  */
     dest->formal_ns = gfc_current_ns;
+  else
+    gfc_free_namespace (gfc_current_ns);
   /* Restore the current namespace to what it was on entry.  */
   gfc_current_ns = parent_ns;
 }
@@ -4924,6 +4939,12 @@ std_for_isocbinding_symbol (int id)
         return d;
 #include "iso-c-binding.def"
 #undef NAMED_INTCST
+
+#define NAMED_UINTCST(a,b,c,d) \
+      case a:\
+	return d;
+#include "iso-c-binding.def"
+#undef NAMED_UINTCST
 
 #define NAMED_FUNCTION(a,b,c,d) \
       case a:\
@@ -5032,6 +5053,7 @@ generate_isocbinding_symbol (const char *mod_name, iso_c_binding_symbol s,
     {
 
 #define NAMED_INTCST(a,b,c,d) case a :
+#define NAMED_UINTCST(a,b,c,d) case a :
 #define NAMED_REALCST(a,b,c,d) case a :
 #define NAMED_CMPXCST(a,b,c,d) case a :
 #define NAMED_LOGCST(a,b,c) case a :
@@ -5410,7 +5432,8 @@ gfc_is_associate_pointer (gfc_symbol* sym)
   if (!sym->assoc->variable)
     return false;
 
-  if (sym->attr.dimension && sym->as->type != AS_EXPLICIT)
+  if ((sym->attr.dimension || sym->attr.codimension)
+      && sym->as->type != AS_EXPLICIT)
     return false;
 
   return true;

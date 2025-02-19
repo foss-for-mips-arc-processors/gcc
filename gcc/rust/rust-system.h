@@ -1,5 +1,5 @@
 // rust-system.h -- Rust frontend inclusion of gcc header files   -*- C++ -*-
-// Copyright (C) 2009-2024 Free Software Foundation, Inc.
+// Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
 // This file is part of GCC.
 
@@ -36,6 +36,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <stack>
 #include <sstream>
 #include <string>
 #include <deque>
@@ -45,6 +46,8 @@
 #include <fstream>
 #include <array>
 #include <algorithm>
+#include <limits>
+#include <numeric>
 
 // Rust frontend requires C++11 minimum, so will have unordered_map and set
 #include <unordered_map>

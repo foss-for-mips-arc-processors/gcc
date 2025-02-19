@@ -1,6 +1,6 @@
 /* m2statement.cc provides an interface to GCC statement trees.
 
-Copyright (C) 2012-2024 Free Software Foundation, Inc.
+Copyright (C) 2012-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -361,7 +361,7 @@ m2statement_BuildIndirectProcedureCallTree (location_t location,
 /* BuildBuiltinCallTree calls the builtin procedure.  */
 
 tree
-m2statement_BuildBuiltinCallTree (location_t location, tree func)
+m2statement_BuildBuiltinCallTree (tree func)
 {
   TREE_USED (func) = true;
   TREE_SIDE_EFFECTS (func) = true;
@@ -519,7 +519,7 @@ m2statement_BuildAsm (location_t location, tree instr, bool isVolatile,
 
   /* ASM statements without outputs, including simple ones, are treated
      as volatile.  */
-  ASM_INPUT_P (args) = isSimple;
+  ASM_BASIC_P (args) = isSimple;
   ASM_VOLATILE_P (args) = isVolatile;
 
   add_stmt (location, args);

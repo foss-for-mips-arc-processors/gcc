@@ -1,5 +1,5 @@
 /* Profile counter container type.
-   Copyright (C) 2017-2024 Free Software Foundation, Inc.
+   Copyright (C) 2017-2025 Free Software Foundation, Inc.
    Contributed by Jan Hubicka
 
 This file is part of GCC.
@@ -790,7 +790,7 @@ public:
       if (other.ipa ().nonzero_p ()
 	  && !(ipa () == *this))
 	return false;
-	
+
       return ipa_p () == other.ipa_p ();
     }
 
@@ -1072,7 +1072,7 @@ public:
       return *this;
     }
 
-  /* Return true when value is not zero and can be used for scaling. 
+  /* Return true when value is not zero and can be used for scaling.
      This is different from *this > 0 because that requires counter to
      be IPA.  */
   bool nonzero_p () const

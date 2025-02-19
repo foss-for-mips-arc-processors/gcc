@@ -1,6 +1,6 @@
 /* gm2-lang.cc language-dependent hooks for GNU Modula-2.
 
-Copyright (C) 2002-2024 Free Software Foundation, Inc.
+Copyright (C) 2002-2025 Free Software Foundation, Inc.
 Contributed by Gaius Mulley <gaius@glam.ac.uk>.
 
 This file is part of GNU Modula-2.
@@ -16,9 +16,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU Modula-2; see the file COPYING.  If not, write to the
-Free Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
-02110-1301, USA.  */
+along with GCC; see the file COPYING3.  If not see
+<http://www.gnu.org/licenses/>.  */
 
 #define INCLUDE_VECTOR
 #include "gm2-gcc/gcc-consolidation.h"
@@ -41,8 +40,6 @@ Free Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "m2-tree.h"
 #include "convert.h"
 #include "rtegraph.h"
-
-#undef ENABLE_M2DUMP_ALL
 
 static void write_globals (void);
 
@@ -515,13 +512,22 @@ gm2_langhook_handle_option (
       return M2Options_SetUninitVariableChecking (value, "known");
     case OPT_Wuninit_variable_checking_:
       return M2Options_SetUninitVariableChecking (value, arg);
+    case OPT_fm2_file_offset_bits_:
+      {
+	if (arg != NULL)
+	  {
+	    unsigned int bits = atoi (arg);
+	    if (bits > 0)
+	      return M2Options_SetFileOffsetBits (value, bits);
+	  }
+	return 0;
+      }
     case OPT_fm2_strict_type:
       M2Options_SetStrictTypeChecking (value);
       return 1;
     case OPT_fm2_debug_trace_:
       M2Options_SetM2DebugTraceFilter (value, arg);
       return 1;
-#ifdef ENABLE_M2DUMP_ALL
     case OPT_fm2_dump_:
       return M2Options_SetM2Dump (value, arg);
     case OPT_fm2_dump_decl_:
@@ -536,7 +542,6 @@ gm2_langhook_handle_option (
     case OPT_fm2_dump_filter_:
       M2Options_SetM2DumpFilter (value, arg);
       return 1;
-#endif
     case OPT_Wall:
       M2Options_SetWall (value);
       return 1;

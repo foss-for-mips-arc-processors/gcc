@@ -1,5 +1,5 @@
 /* Alias analysis for GNU C
-   Copyright (C) 1997-2024 Free Software Foundation, Inc.
+   Copyright (C) 1997-2025 Free Software Foundation, Inc.
    Contributed by John Carr (jfc@mit.edu).
 
 This file is part of GCC.
@@ -671,7 +671,7 @@ component_uses_parent_alias_set_from (const_tree t)
 
       t = TREE_OPERAND (t, 0);
     }
- 
+
   if (found)
     return TREE_OPERAND (found, 0);
 
@@ -738,7 +738,7 @@ get_deref_alias_set (tree t)
    memory reference tree *T or NULL_TREE in which case *T is
    adjusted to point to the outermost component reference that
    can be used for assigning an alias set.  */
- 
+
 tree
 reference_alias_ptr_type_1 (tree *t)
 {
@@ -770,10 +770,7 @@ reference_alias_ptr_type_1 (tree *t)
   /* If the innermost reference is a MEM_REF that has a
      conversion embedded treat it like a VIEW_CONVERT_EXPR above,
      using the memory access type for determining the alias-set.  */
-  if (TREE_CODE (inner) == MEM_REF
-      && (TYPE_MAIN_VARIANT (TREE_TYPE (inner))
-	  != TYPE_MAIN_VARIANT
-	       (TREE_TYPE (TREE_TYPE (TREE_OPERAND (inner, 1))))))
+  if (view_converted_memref_p (inner))
     {
       tree alias_ptrtype = TREE_TYPE (TREE_OPERAND (inner, 1));
       /* Unless we have the (aggregate) effective type of the access
@@ -1261,12 +1258,12 @@ record_component_aliases (tree type, alias_set_type superset)
     case UNION_TYPE:
     case QUAL_UNION_TYPE:
       {
-	/* LTO non-ODR type merging does not make any difference between 
+	/* LTO non-ODR type merging does not make any difference between
 	   component pointer types.  We may have
 
 	   struct foo {int *a;};
 
-	   as TYPE_CANONICAL of 
+	   as TYPE_CANONICAL of
 
 	   struct bar {float *a;};
 
@@ -1864,6 +1861,11 @@ rtx_equal_for_memref_p (const_rtx x, const_rtx y)
 	    return false;
 	  break;
 
+	case 'L':
+	  if (XLOC (x, i) != XLOC (y, i))
+	    return false;
+	  break;
+
 	case 'p':
 	  if (maybe_ne (SUBREG_BYTE (x), SUBREG_BYTE (y)))
 	    return false;
@@ -2116,7 +2118,7 @@ compare_base_decls (tree base1, tree base2)
   symtab_node *node2 = symtab_node::get (base2);
   if (!node2)
     return 0;
-  
+
   ret = node1->equal_address_to (node2, true);
   return ret;
 }
@@ -2756,7 +2758,7 @@ adjust_offset_for_component_ref (tree x, bool *known_p,
 }
 
 /* Return true if we can determine the exprs corresponding to memrefs
-   X and Y and they do not overlap. 
+   X and Y and they do not overlap.
    If LOOP_VARIANT is set, skip offset-based disambiguation */
 
 bool

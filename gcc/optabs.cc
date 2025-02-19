@@ -1,5 +1,5 @@
 /* Expand the basic unary and binary arithmetic operations, for GNU compiler.
-   Copyright (C) 1987-2024 Free Software Foundation, Inc.
+   Copyright (C) 1987-2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -253,7 +253,7 @@ widen_operand (rtx op, machine_mode mode, machine_mode oldmode,
    type-promotion (vec-unpack)  1       oprnd0  -       -  */
 
 rtx
-expand_widen_pattern_expr (sepops ops, rtx op0, rtx op1, rtx wide_op,
+expand_widen_pattern_expr (const_sepops ops, rtx op0, rtx op1, rtx wide_op,
 			   rtx target, int unsignedp)
 {
   class expand_operand eops[4];
@@ -317,7 +317,8 @@ expand_widen_pattern_expr (sepops ops, rtx op0, rtx op1, rtx wide_op,
     widen_pattern_optab
       = optab_for_tree_code (ops->code, TREE_TYPE (oprnd0), optab_default);
   if (ops->code == WIDEN_MULT_PLUS_EXPR
-      || ops->code == WIDEN_MULT_MINUS_EXPR)
+      || ops->code == WIDEN_MULT_MINUS_EXPR
+      || ops->code == DOT_PROD_EXPR)
     icode = find_widening_optab_handler (widen_pattern_optab,
 					 TYPE_MODE (TREE_TYPE (ops->op2)),
 					 tmode0);
@@ -566,8 +567,8 @@ expand_subword_shift (scalar_int_mode op1_mode, optab binoptab,
       if (tmp == 0)
 	return false;
 
-      /* Now OR in the bits carried over from OUTOF_INPUT.  */
-      if (!force_expand_binop (word_mode, ior_optab, tmp, carries,
+      /* Now OR/PLUS in the bits carried over from OUTOF_INPUT.  */
+      if (!force_expand_binop (word_mode, add_optab, tmp, carries,
 			       into_target, unsignedp, methods))
 	return false;
     }
@@ -1085,7 +1086,7 @@ expand_doubleword_mod (machine_mode mode, rtx op0, rtx op1, bool unsignedp)
 					 NULL_RTX, 1, OPTAB_DIRECT);
 	      if (v == NULL_RTX)
 		return NULL_RTX;
-	      v = lowpart_subreg (word_mode, v, mode);
+	      v = force_lowpart_subreg (word_mode, v, mode);
 	      if (v == NULL_RTX)
 		return NULL_RTX;
 	      if (i != count - 1)
@@ -1945,7 +1946,7 @@ expand_binop (machine_mode mode, optab binoptab, rtx op0, rtx op1,
 				     NULL_RTX, unsignedp, next_methods);
 
 	  if (into_temp1 != 0 && into_temp2 != 0)
-	    inter = expand_binop (word_mode, ior_optab, into_temp1, into_temp2,
+	    inter = expand_binop (word_mode, add_optab, into_temp1, into_temp2,
 				  into_target, unsignedp, next_methods);
 	  else
 	    inter = 0;
@@ -1961,7 +1962,7 @@ expand_binop (machine_mode mode, optab binoptab, rtx op0, rtx op1,
 				      NULL_RTX, unsignedp, next_methods);
 
 	  if (inter != 0 && outof_temp1 != 0 && outof_temp2 != 0)
-	    inter = expand_binop (word_mode, ior_optab,
+	    inter = expand_binop (word_mode, add_optab,
 				  outof_temp1, outof_temp2,
 				  outof_target, unsignedp, next_methods);
 
@@ -2559,7 +2560,10 @@ expand_twoval_binop_libfunc (optab binoptab, rtx op0, rtx op1,
 
   /* The value returned by the library function will have twice as
      many bits as the nominal MODE.  */
-  libval_mode = smallest_int_mode_for_size (2 * GET_MODE_BITSIZE (mode));
+  auto return_size = 2 * GET_MODE_BITSIZE (mode);
+  if (!smallest_int_mode_for_size (return_size).exists (&libval_mode))
+    return false;
+
   start_sequence ();
   libval = emit_library_call_value (libfunc, NULL_RTX, LCT_CONST,
 				    libval_mode,
@@ -3104,69 +3108,38 @@ expand_ffs (scalar_int_mode mode, rtx op0, rtx target)
   return 0;
 }
 
-/* Extract the OMODE lowpart from VAL, which has IMODE.  Under certain
-   conditions, VAL may already be a SUBREG against which we cannot generate
-   a further SUBREG.  In this case, we expect forcing the value into a
-   register will work around the situation.  */
-
-static rtx
-lowpart_subreg_maybe_copy (machine_mode omode, rtx val,
-			   machine_mode imode)
-{
-  rtx ret;
-  ret = lowpart_subreg (omode, val, imode);
-  if (ret == NULL)
-    {
-      val = force_reg (imode, val);
-      ret = lowpart_subreg (omode, val, imode);
-      gcc_assert (ret != NULL);
-    }
-  return ret;
-}
-
 /* Expand a floating point absolute value or negation operation via a
-   logical operation on the sign bit.  */
+   logical operation on the sign bit.  MODE is the mode of the operands
+   and FMODE is the scalar inner mode.  */
 
 static rtx
-expand_absneg_bit (enum rtx_code code, scalar_float_mode mode,
-		   rtx op0, rtx target)
+expand_absneg_bit (rtx_code code, machine_mode mode,
+		   scalar_float_mode fmode, rtx op0, rtx target)
 {
-  const struct real_format *fmt;
   int bitpos, word, nwords, i;
+  machine_mode new_mode;
   scalar_int_mode imode;
   rtx temp;
   rtx_insn *insns;
 
-  /* The format has to have a simple sign bit.  */
-  fmt = REAL_MODE_FORMAT (mode);
-  if (fmt == NULL)
+  auto op = code == NEG ? neg_optab : abs_optab;
+  if (!get_absneg_bit_mode (op, mode, fmode, &bitpos).exists (&new_mode))
     return NULL_RTX;
 
-  bitpos = fmt->signbit_rw;
-  if (bitpos < 0)
-    return NULL_RTX;
-
-  /* Don't create negative zeros if the format doesn't support them.  */
-  if (code == NEG && !fmt->has_signed_zero)
-    return NULL_RTX;
-
-  if (GET_MODE_SIZE (mode) <= UNITS_PER_WORD)
+  imode = as_a<scalar_int_mode> (GET_MODE_INNER (new_mode));
+  if (VECTOR_MODE_P (mode) || GET_MODE_SIZE (fmode) <= UNITS_PER_WORD)
     {
-      if (!int_mode_for_mode (mode).exists (&imode))
-	return NULL_RTX;
       word = 0;
       nwords = 1;
     }
   else
     {
-      imode = word_mode;
-
       if (FLOAT_WORDS_BIG_ENDIAN)
-	word = (GET_MODE_BITSIZE (mode) - bitpos) / BITS_PER_WORD;
+	word = (GET_MODE_BITSIZE (fmode) - bitpos) / BITS_PER_WORD;
       else
 	word = bitpos / BITS_PER_WORD;
       bitpos = bitpos % BITS_PER_WORD;
-      nwords = (GET_MODE_BITSIZE (mode) + BITS_PER_WORD - 1) / BITS_PER_WORD;
+      nwords = (GET_MODE_BITSIZE (fmode) + BITS_PER_WORD - 1) / BITS_PER_WORD;
     }
 
   wide_int mask = wi::set_bit_in_zero (bitpos, GET_MODE_PRECISION (imode));
@@ -3208,11 +3181,13 @@ expand_absneg_bit (enum rtx_code code, scalar_float_mode mode,
     }
   else
     {
-      temp = expand_binop (imode, code == ABS ? and_optab : xor_optab,
-			   gen_lowpart (imode, op0),
-			   immed_wide_int_const (mask, imode),
-		           gen_lowpart (imode, target), 1, OPTAB_LIB_WIDEN);
-      target = lowpart_subreg_maybe_copy (mode, temp, imode);
+      rtx mask_rtx = immed_wide_int_const (mask, imode);
+      if (VECTOR_MODE_P (new_mode))
+	mask_rtx = gen_const_vec_duplicate (new_mode, mask_rtx);
+      temp = expand_binop (new_mode, code == ABS ? and_optab : xor_optab,
+			   gen_lowpart (new_mode, op0), mask_rtx,
+			   gen_lowpart (new_mode, target), 1, OPTAB_LIB_WIDEN);
+      target = force_lowpart_subreg (mode, temp, new_mode);
 
       set_dst_reg_note (get_last_insn (), REG_EQUAL,
 			gen_rtx_fmt_e (code, mode, copy_rtx (op0)),
@@ -3502,9 +3477,9 @@ expand_unop (machine_mode mode, optab unoptab, rtx op0, rtx target,
   if (optab_to_code (unoptab) == NEG)
     {
       /* Try negating floating point values by flipping the sign bit.  */
-      if (is_a <scalar_float_mode> (mode, &float_mode))
+      if (is_a <scalar_float_mode> (GET_MODE_INNER (mode), &float_mode))
 	{
-	  temp = expand_absneg_bit (NEG, float_mode, op0, target);
+	  temp = expand_absneg_bit (NEG, mode, float_mode, op0, target);
 	  if (temp)
 	    return temp;
 	}
@@ -3722,9 +3697,9 @@ expand_abs_nojump (machine_mode mode, rtx op0, rtx target,
 
   /* For floating point modes, try clearing the sign bit.  */
   scalar_float_mode float_mode;
-  if (is_a <scalar_float_mode> (mode, &float_mode))
+  if (is_a <scalar_float_mode> (GET_MODE_INNER (mode), &float_mode))
     {
-      temp = expand_absneg_bit (ABS, float_mode, op0, target);
+      temp = expand_absneg_bit (ABS, mode, float_mode, op0, target);
       if (temp)
 	return temp;
     }
@@ -4051,7 +4026,7 @@ expand_copysign_bit (scalar_float_mode mode, rtx op0, rtx op1, rtx target,
 
       temp = expand_binop (imode, ior_optab, op0, op1,
 			   gen_lowpart (imode, target), 1, OPTAB_LIB_WIDEN);
-      target = lowpart_subreg_maybe_copy (mode, temp, imode);
+      target = force_lowpart_subreg (mode, temp, imode);
     }
 
   return target;
@@ -4091,7 +4066,7 @@ expand_copysign (rtx op0, rtx op1, rtx target)
     }
 
   if (fmt->signbit_ro >= 0
-      && (CONST_DOUBLE_AS_FLOAT_P (op0) 
+      && (CONST_DOUBLE_AS_FLOAT_P (op0)
 	  || (optab_handler (neg_optab, mode) != CODE_FOR_nothing
 	      && optab_handler (abs_optab, mode) != CODE_FOR_nothing)))
     {
@@ -4386,22 +4361,6 @@ can_vec_cmp_compare_p (enum rtx_code code, machine_mode value_mode,
     return false;
 
   return insn_predicate_matches_p (icode, 1, code, mask_mode, value_mode);
-}
-
-/* Return whether the backend can emit a vector comparison (vcond/vcondu) for
-   code CODE, comparing operands of mode CMP_OP_MODE and producing a result
-   with VALUE_MODE.  */
-
-bool
-can_vcond_compare_p (enum rtx_code code, machine_mode value_mode,
-		     machine_mode cmp_op_mode)
-{
-  enum insn_code icode
-      = get_vcond_icode (value_mode, cmp_op_mode, unsigned_optab_p (code));
-  if (icode == CODE_FOR_nothing)
-    return false;
-
-  return insn_predicate_matches_p (icode, 3, code, value_mode, cmp_op_mode);
 }
 
 /* Return whether the backend can emit vector set instructions for inserting
@@ -4828,7 +4787,7 @@ validate_test_and_branch (tree val, rtx *ptest, machine_mode *pmode, optab *res)
    COMPARISON is the rtl operator to compare with (EQ, NE, GT, etc.).
    It will be potentially converted into an unsigned variant based on
    UNSIGNEDP to select a proper jump instruction.
-   
+
    PROB is the probability of jumping to LABEL.  If the comparison is against
    zero then VAL contains the expression from which the non-zero RTL is
    derived.  */
@@ -6759,10 +6718,13 @@ expand_mult_highpart (machine_mode mode, rtx op0, rtx op1,
       return expand_binop (mode, tab1, op0, op1, target, uns_p,
 			   OPTAB_LIB_WIDEN);
     case 2:
+      return expmed_mult_highpart_optab (as_a <scalar_int_mode> (mode),
+					 op0, op1, target, uns_p, INT_MAX);
+    case 3:
       tab1 = uns_p ? vec_widen_umult_even_optab : vec_widen_smult_even_optab;
       tab2 = uns_p ? vec_widen_umult_odd_optab : vec_widen_smult_odd_optab;
       break;
-    case 3:
+    case 4:
       tab1 = uns_p ? vec_widen_umult_lo_optab : vec_widen_smult_lo_optab;
       tab2 = uns_p ? vec_widen_umult_hi_optab : vec_widen_smult_hi_optab;
       if (BYTES_BIG_ENDIAN)
@@ -6791,7 +6753,7 @@ expand_mult_highpart (machine_mode mode, rtx op0, rtx op1,
   m2 = gen_lowpart (mode, eops[0].value);
 
   vec_perm_builder sel;
-  if (method == 2)
+  if (method == 3)
     {
       /* The encoding has 2 interleaved stepped patterns.  */
       sel.new_vector (GET_MODE_NUNITS (mode), 2, 3);
@@ -6884,7 +6846,7 @@ expand_compare_and_swap_loop (rtx mem, rtx old_reg, rtx new_reg, rtx seq)
 /* This function tries to emit an atomic_exchange intruction.  VAL is written
    to *MEM using memory model MODEL. The previous contents of *MEM are returned,
    using TARGET if possible.  */
-   
+
 static rtx
 maybe_emit_atomic_exchange (rtx target, rtx mem, rtx val, enum memmodel model)
 {
@@ -6925,7 +6887,7 @@ maybe_emit_sync_lock_test_and_set (rtx target, rtx mem, rtx val,
   icode = optab_handler (sync_lock_test_and_set_optab, mode);
 
   /* Legacy sync_lock_test_and_set is an acquire barrier.  If the pattern
-     exists, and the memory model is stronger than acquire, add a release 
+     exists, and the memory model is stronger than acquire, add a release
      barrier before the instruction.  */
 
   if (is_mm_seq_cst (model) || is_mm_release (model) || is_mm_acq_rel (model))
@@ -6964,12 +6926,12 @@ maybe_emit_sync_lock_test_and_set (rtx target, rtx mem, rtx val,
   return NULL_RTX;
 }
 
-/* This function tries to implement an atomic exchange operation using a 
+/* This function tries to implement an atomic exchange operation using a
    compare_and_swap loop. VAL is written to *MEM.  The previous contents of
    *MEM are returned, using TARGET if possible.  No memory model is required
    since a compare_and_swap loop is seq-cst.  */
 
-static rtx 
+static rtx
 maybe_emit_compare_and_swap_exchange_loop (rtx target, rtx mem, rtx val)
 {
   machine_mode mode = GET_MODE (mem);
@@ -7019,9 +6981,9 @@ maybe_emit_atomic_test_and_set (rtx target, rtx mem, enum memmodel model)
 
 /* This function expands the legacy _sync_lock test_and_set operation which is
    generally an atomic exchange.  Some limited targets only allow the
-   constant 1 to be stored.  This is an ACQUIRE operation. 
+   constant 1 to be stored.  This is an ACQUIRE operation.
 
-   TARGET is an optional place to stick the return value.  
+   TARGET is an optional place to stick the return value.
    MEM is where VAL is stored.  */
 
 rtx
@@ -7351,7 +7313,7 @@ expand_asm_reg_clobber_mem_blockage (HARD_REG_SET regs)
   emit_insn (gen_rtx_PARALLEL (VOIDmode, v));
 }
 
-/* This routine will either emit the mem_thread_fence pattern or issue a 
+/* This routine will either emit the mem_thread_fence pattern or issue a
    sync_synchronize to generate a fence for memory model MEMMODEL.  */
 
 void
@@ -7541,7 +7503,7 @@ struct atomic_op_functions
 };
 
 
-/* Fill in structure pointed to by OP with the various optab entries for an 
+/* Fill in structure pointed to by OP with the various optab entries for an
    operation of type CODE.  */
 
 static void
@@ -7615,7 +7577,7 @@ get_atomic_op_for_code (struct atomic_op_functions *op, enum rtx_code code)
 
 /* See if there is a more optimal way to implement the operation "*MEM CODE VAL"
    using memory order MODEL.  If AFTER is true the operation needs to return
-   the value of *MEM after the operation, otherwise the previous value.  
+   the value of *MEM after the operation, otherwise the previous value.
    TARGET is an optional place to place the result.  The result is unused if
    it is const0_rtx.
    Return the result if there is a better sequence, otherwise NULL_RTX.  */
@@ -7648,7 +7610,7 @@ maybe_optimize_fetch_op (rtx target, rtx mem, rtx val, enum rtx_code code,
   return NULL_RTX;
 }
 
-/* Try to emit an instruction for a specific operation varaition. 
+/* Try to emit an instruction for a specific operation varaition.
    OPTAB contains the OP functions.
    TARGET is an optional place to return the result. const0_rtx means unused.
    MEM is the memory location to operate on.
@@ -7657,7 +7619,7 @@ maybe_optimize_fetch_op (rtx target, rtx mem, rtx val, enum rtx_code code,
    MODEL is the memory model, if used.
    AFTER is true if the returned result is the value after the operation.  */
 
-static rtx 
+static rtx
 maybe_emit_op (const struct atomic_op_functions *optab, rtx target, rtx mem,
 	       rtx val, bool use_memmodel, enum memmodel model, bool after)
 {
@@ -7711,17 +7673,17 @@ maybe_emit_op (const struct atomic_op_functions *optab, rtx target, rtx mem,
     return (target == const0_rtx ? const0_rtx : ops[0].value);
 
   return NULL_RTX;
-} 
+}
 
 
 /* This function expands an atomic fetch_OP or OP_fetch operation:
    TARGET is an option place to stick the return value.  const0_rtx indicates
-   the result is unused. 
+   the result is unused.
    atomically fetch MEM, perform the operation with VAL and return it to MEM.
    CODE is the operation being performed (OP)
    MEMMODEL is the memory model variant to use.
    AFTER is true to return the result of the operation (OP_fetch).
-   AFTER is false to return the value before the operation (fetch_OP).  
+   AFTER is false to return the value before the operation (fetch_OP).
 
    This function will *only* generate instructions if there is a direct
    optab. No compare and swap loops or libcalls will be generated. */
@@ -7810,7 +7772,7 @@ expand_atomic_fetch_op_no_fallback (rtx target, rtx mem, rtx val,
 
 /* This function expands an atomic fetch_OP or OP_fetch operation:
    TARGET is an option place to stick the return value.  const0_rtx indicates
-   the result is unused. 
+   the result is unused.
    atomically fetch MEM, perform the operation with VAL and return it to MEM.
    CODE is the operation being performed (OP)
    MEMMODEL is the memory model variant to use.
@@ -7832,7 +7794,7 @@ expand_atomic_fetch_op (rtx target, rtx mem, rtx val, enum rtx_code code,
 
   result = expand_atomic_fetch_op_no_fallback (target, mem, val, code, model,
 					       after);
-  
+
   if (result)
     return result;
 
@@ -7904,7 +7866,7 @@ expand_atomic_fetch_op (rtx target, rtx mem, rtx val, enum rtx_code code,
       start_sequence ();
 
       /* If the result is used, get a register for it.  */
-      if (!unused_result) 
+      if (!unused_result)
         {
 	  if (!target || !register_operand (target, mode))
 	    target = gen_reg_rtx (mode);
@@ -7923,7 +7885,7 @@ expand_atomic_fetch_op (rtx target, rtx mem, rtx val, enum rtx_code code,
 	  t1 = expand_simple_unop (mode, code, t1, NULL_RTX, true);
 	}
       else
-	t1 = expand_simple_binop (mode, code, t1, val, NULL_RTX, true, 
+	t1 = expand_simple_binop (mode, code, t1, val, NULL_RTX, true,
 				  OPTAB_LIB_WIDEN);
 
       /* For after, copy the value now.  */

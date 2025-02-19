@@ -1,5 +1,5 @@
 /* Decompose multiword subregs.
-   Copyright (C) 2007-2024 Free Software Foundation, Inc.
+   Copyright (C) 2007-2025 Free Software Foundation, Inc.
    Contributed by Richard Henderson <rth@redhat.com>
 		  Ian Lance Taylor <iant@google.com>
 
@@ -1100,6 +1100,9 @@ resolve_simple_move (rtx set, rtx_insn *insn)
   else
     {
       unsigned int i;
+
+      if (REG_P (dest) && !HARD_REGISTER_NUM_P (REGNO (dest)))
+	emit_clobber (dest);
 
       for (i = 0; i < words; ++i)
 	{

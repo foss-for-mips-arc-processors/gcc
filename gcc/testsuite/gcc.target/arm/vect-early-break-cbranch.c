@@ -1,8 +1,8 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target vect_early_break } */
-/* { dg-require-effective-target arm_neon_ok } */
-/* { dg-require-effective-target arm32 } */
-/* { dg-options "-O3 -march=armv8-a+simd -mfpu=auto -mfloat-abi=hard  -fno-schedule-insns -fno-reorder-blocks -fno-schedule-insns2" } */
+/* { dg-require-effective-target arm_arch_v8a_hard_ok } */
+/* { dg-options "-O3 -fno-schedule-insns -fno-reorder-blocks -fno-schedule-insns2" } */
+/* { dg-add-options arm_arch_v8a_hard } */
 /* { dg-final { check-function-bodies "**" "" "" } } */
 
 #define N 640
@@ -20,7 +20,7 @@ int b[N] = {0};
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
@@ -45,7 +45,7 @@ void f1 ()
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
@@ -70,7 +70,7 @@ void f2 ()
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
@@ -96,7 +96,7 @@ void f3 ()
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
@@ -121,7 +121,7 @@ void f4 ()
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
@@ -146,7 +146,7 @@ void f5 ()
 **	cmp	r[0-9]+, #0
 **	bne	\.L[0-9]+
 ** |
-**	cbnz	r[0-9]+, \.L.+
+**	cbn?z	r[0-9]+, \.L.+
 ** )
 **	...
 */
