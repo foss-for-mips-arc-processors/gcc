@@ -130,10 +130,6 @@
 /* Defined for convenience.  */
 #define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
 
-#define FLOAT_TYPE_SIZE		32
-#define DOUBLE_TYPE_SIZE	64
-#define LONG_DOUBLE_TYPE_SIZE	64
-
 /* Defined by ABI.  */
 #define WCHAR_TYPE "int"
 #define WCHAR_TYPE_SIZE 32
