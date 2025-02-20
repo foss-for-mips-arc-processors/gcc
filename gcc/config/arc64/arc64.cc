@@ -980,7 +980,7 @@ arc64_legitimate_address_1_p (machine_mode mode,
 	{
 	  /* Double load/stores are not scaling with 128 bits but with the
 	     register size.  */
-	  scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD);
+	  scaling_mode = smallest_int_mode_for_size (BITS_PER_WORD).require ();
 
 	  /* Adjust the offset as we may need to split this address.  */
 	  if (ioffset > 0)
@@ -6123,7 +6123,7 @@ arc64_split_double_move (rtx *operands, machine_mode mode)
   unsigned int rdst, rsrc, i;
   unsigned iregs = CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
   bool swap_p = false;
-  machine_mode mvmode = smallest_int_mode_for_size (BITS_PER_WORD);
+  machine_mode mvmode = smallest_int_mode_for_size (BITS_PER_WORD).require ();
 
   /* Maximum size handled is twice UNITS_PER_WORD.  */
   gcc_assert (iregs <= 2);
