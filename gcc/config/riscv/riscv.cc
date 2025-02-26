@@ -10611,7 +10611,7 @@ arcv_propagate_hard_register_copies (void)
 	      if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
 		{
 		  rtx *op = &XEXP (SET_SRC (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+		  if (*op && !CONST_INT_P (*op) && !REG_P (*op) && !SYMBOL_REF_P (*op))
 		    op = &XEXP (*op, 0);
 
 		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
@@ -10628,7 +10628,7 @@ arcv_propagate_hard_register_copies (void)
 				  reg_originals[REGNO (SET_SRC (set))]), false);
 
 		  rtx *op = &XEXP (SET_DEST (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+		  if (*op && !CONST_INT_P (*op) && !REG_P (*op) && !SYMBOL_REF_P (*op))
 		    op = &XEXP (*op, 0);
 
 		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
