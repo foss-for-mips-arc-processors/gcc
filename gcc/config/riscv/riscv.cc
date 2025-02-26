@@ -857,6 +857,13 @@ riscv_is_micro_arch (enum riscv_microarchitecture_type arch)
   return (riscv_microarchitecture == arch);
 }
 
+bool
+arcv_micro_arch_supports_fusion_p (void)
+{
+  return (riscv_is_micro_arch (arcv_rhx100)
+	  || riscv_is_micro_arch (arcv_rpx100));
+}
+
 void riscv_frame_info::reset(void)
 {
   total_size = 0;
@@ -4173,7 +4180,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
+      if ((arcv_micro_arch_supports_fusion_p () || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -10091,13 +10098,15 @@ riscv_fusion_enabled_p(enum riscv_fusion_pairs op)
 static bool
 pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!arcv_micro_arch_supports_fusion_p ())
     return true;
 
-  return ((is_load && (mode == SImode
+  return ((is_load && (mode == DImode
+		     || mode == SImode
 		     || mode == HImode
 		     || mode == QImode))
-	 || (!is_load && mode == SImode));
+	 || (!is_load && (mode == DImode
+			|| mode == SImode)));
 }
 
 /* Return TRUE if two addresses can be fused.  */
@@ -10695,6 +10704,8 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
     tmp /= 2;
   else if (mode == QImode)
     tmp /= 4;
+  else if (mode == DImode)
+    tmp /= 8;
 
   /* INSN with smaller base register goes first.  */
   tmp -= ((REGNO (base) & 0xff) << 20);
@@ -10728,7 +10739,7 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  if (riscv_is_micro_arch (arcv_rhx100) && dep_type == REG_DEP_ANTI
+  if (arcv_micro_arch_supports_fusion_p () && dep_type == REG_DEP_ANTI
       && !SCHED_GROUP_P (insn))
     return cost + 1;
 
@@ -10793,7 +10804,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!arcv_micro_arch_supports_fusion_p ())
     return priority;
 
   if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
@@ -12275,7 +12286,7 @@ riscv_reorg (void)
   /* After bb-reorder, some instructions may be using a copy of
      a register where the original is available.  Modify those
      instructions to use the original instead.  */
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (arcv_micro_arch_supports_fusion_p ())
      arcv_propagate_hard_register_copies ();
 }
 

@@ -802,6 +802,8 @@ extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
 extern bool riscv_macro_fusion_p ();
 extern bool riscv_is_micro_arch (enum riscv_microarchitecture_type);
 
+extern bool arcv_micro_arch_supports_fusion_p (void);
+
 #ifdef RTX_CODE
 extern const char*
 th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);
