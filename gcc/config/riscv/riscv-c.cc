@@ -289,6 +289,96 @@ riscv_pragma_intrinsic (cpp_reader *)
     error ("unknown %<#pragma riscv intrinsic%> option %qs", name);
 }
 
+
+/* Implement #prama intrinsic
+   Perhaps it should be in c-pragma.cc? */
+
+static void
+riscv_pragma_luis (cpp_reader *)
+{
+  enum cpp_ttype token;
+  tree x;
+  if (pragma_lex (&x) != CPP_OPEN_PAREN)
+  {
+    error ("missing %<(%< after %<#pragma intrinsic%<");
+    return;
+  }
+
+  if (pragma_lex (&x) != CPP_NAME)
+  {
+    error ("expected intrinsic name identifier");
+    return;
+  }
+
+  const char *intrinsic_name = TREE_STRING_POINTER (x);
+
+  /* Parse key-value pairs.  */
+  while (1)
+  {
+    token = pragma_lex(&x);
+    if (token == CPP_CLOSE_PAREN) break;
+    if (token != CPP_COMMA)
+    {
+      error ("expected %<,%> or %<)%>");
+      return;
+    }
+
+    /* Parse key (e.g., "name")  */
+    if (pragma_lex (&x) != CPP_NAME)
+    {
+      error ("expected key (identifier)");
+      return;
+    }
+    const char *key = TREE_STRING_POINTER (x);
+
+    /* Parse '=>' (as '=' followed by '>') */
+    if (pragma_lex (&x) != CPP_EQ)
+    {
+      error ("expected %<=%>");
+      return;
+    }
+
+    if (pragma_lex (&x) != CPP_GREATER)
+    {
+      error ("expected %<>%>");
+      return;
+    }
+
+    /* Parse value (string, number, or hex)  */
+    enum cpp_ttype val_type = pragma_lex (&x);
+    switch (val_type)
+    {
+      case CPP_STRING:
+      {
+      const char *str = TREE_STRING_POINTER (x);
+      /* TODO: Store string.  */
+      break;
+      }
+      case CPP_NUMBER:
+      {
+      /* Extract integer value.  */
+      unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW (x);
+      /* TODO: Store numeric value (e.g., 0x07 for key "opcode")  */
+      break;
+      }
+      default:
+      error ("expected string, number or hex value");
+      return;
+    }
+  }
+
+  /* Parse semicolon ';'  */
+  if (pragma_lex (&x) != CPP_SEMICOLON)
+  {
+    error ("expected %<;%> at end of pragma");
+    return;
+  }
+
+  /* ... */
+
+}
+
+
 /* Implement TARGET_CHECK_BUILTIN_CALL.  */
 static bool
 riscv_check_builtin_call (location_t loc, vec<location_t> arg_loc, tree fndecl,
@@ -350,4 +440,5 @@ riscv_register_pragmas (void)
   targetm.resolve_overloaded_builtin = riscv_resolve_overloaded_builtin;
   targetm.check_builtin_call = riscv_check_builtin_call;
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
+  c_register_pragma ("riscv", "luis", riscv_pragma_luis);
 }
