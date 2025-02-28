@@ -289,6 +289,15 @@ riscv_pragma_intrinsic (cpp_reader *)
     error ("unknown %<#pragma riscv intrinsic%> option %qs", name);
 }
 
+struct pragma_luis_flags
+{
+  const char *function_name;
+  const char *name;
+  int opcode;
+  int sub_code;
+  int set_flags;
+  const char *flags;
+};
 
 /* Implement #prama intrinsic
    Perhaps it should be in c-pragma.cc? */
@@ -296,6 +305,7 @@ riscv_pragma_intrinsic (cpp_reader *)
 static void
 riscv_pragma_luis (cpp_reader *)
 {
+
   enum cpp_ttype token;
   tree x;
   if (pragma_lex (&x) != CPP_OPEN_PAREN)
@@ -310,7 +320,11 @@ riscv_pragma_luis (cpp_reader *)
     return;
   }
 
-  const char *intrinsic_name = TREE_STRING_POINTER (x);
+  struct pragma_luis_flags *flags;
+//  const char *intrinsic_name = TREE_STRING_POINTER (x);
+  const char *intrinsic_name = IDENTIFIER_POINTER (x);
+
+  flags->function_name = intrinsic_name;
 
   /* Parse key-value pairs.  */
   while (1)
@@ -352,6 +366,26 @@ riscv_pragma_luis (cpp_reader *)
       {
       const char *str = TREE_STRING_POINTER (x);
       /* TODO: Store string.  */
+/*      if (strcmp (key, "name"))
+      {
+        flags->name = str;
+      }
+      else if (strcmp (key, "opcode"))
+      {
+        flags->opcode = str;
+      }
+      else if (strcmp (key, "subcode"))
+      {
+        flags->sub_code = str;
+      }
+      else if (strcmp (key, "set_flags"))
+      {
+        flags->set_flags = str;
+      }
+      else if (strcmp (key, "flags"))
+      {
+        flags->flags = str;
+      }*/
       break;
       }
       case CPP_NUMBER:
