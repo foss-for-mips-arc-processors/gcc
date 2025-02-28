@@ -415,8 +415,8 @@ range_op_handler::operand_check_p (tree t1, tree t2, tree t3) const
 // LH and RH.
 
 void
-update_known_bitmask (irange &r, tree_code code,
-		      const irange &lh, const irange &rh)
+update_known_bitmask (vrange &r, tree_code code,
+		      const vrange &lh, const vrange &rh)
 {
   if (r.undefined_p () || lh.undefined_p () || rh.undefined_p ()
       || r.singleton_p ())
@@ -1657,7 +1657,7 @@ operator_plus::lhs_op1_relation (const irange &lhs,
     }
 
   // If op2 does not contain 0, then LHS and OP1 can never be equal.
-  if (!range_includes_zero_p (&op2))
+  if (!range_includes_zero_p (op2))
     return VREL_NE;
 
   return VREL_VARYING;
@@ -4364,9 +4364,11 @@ operator_negate::fold_range (irange &r, tree type,
 {
   if (empty_range_varying (r, type, lh, rh))
     return true;
-  // -X is simply 0 - X.
-  return range_op_handler (MINUS_EXPR).fold_range (r, type,
-						   range_zero (type), lh);
+
+// -X is simply 0 - X.
+  int_range<1> zero;
+  zero.set_zero (type);
+  return range_op_handler (MINUS_EXPR).fold_range (r, type, zero, lh);
 }
 
 bool
@@ -4391,7 +4393,7 @@ operator_addr_expr::fold_range (irange &r, tree type,
 
   // Return a non-null pointer of the LHS type (passed in op2).
   if (lh.zero_p ())
-    r = range_zero (type);
+    r.set_zero (type);
   else if (lh.undefined_p () || contains_zero_p (lh))
     r.set_varying (type);
   else
@@ -4675,7 +4677,7 @@ range_op_cast_tests ()
   if (TYPE_PRECISION (integer_type_node)
       > TYPE_PRECISION (short_integer_type_node))
     {
-      r0 = range_nonzero (integer_type_node);
+      r0.set_nonzero (integer_type_node);
       range_cast (r0, short_integer_type_node);
       r1 = int_range<1> (short_integer_type_node,
 			 min_limit (short_integer_type_node),
@@ -4687,7 +4689,7 @@ range_op_cast_tests ()
   //
   // NONZERO signed 16-bits is [-MIN_16,-1][1, +MAX_16].
   // Converting this to 32-bits signed is [-MIN_16,-1][1, +MAX_16].
-  r0 = range_nonzero (short_integer_type_node);
+  r0.set_nonzero (short_integer_type_node);
   range_cast (r0, integer_type_node);
   r1 = int_range<1> (integer_type_node, INT (-32768), INT (-1));
   r2 = int_range<1> (integer_type_node, INT (1), INT (32767));
