@@ -31613,6 +31613,10 @@ to @samp{zvks} and @samp{zvkg}.
 @tab 1.0
 @tab Page-based memory types extension.
 
+@item xarcvudsp
+@tab 1.0
+@tab ARC-V micro-DSP extension.
+
 @item xcvmac
 @tab 1.0
 @tab Core-V multiply-accumulate extension.

@@ -315,3 +315,83 @@
 (define_constraint "Q"
   "An address operand that is valid for a prefetch instruction"
   (match_operand 0 "prefetch_operand"))
+
+;; ARC-V Constraints
+(define_register_constraint "xAVp06" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 6")
+(define_register_constraint "xAVp08" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 8")
+(define_register_constraint "xAVp10" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 10")
+(define_register_constraint "xAVp12" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 12")
+(define_register_constraint "xAVp14" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 14")
+(define_register_constraint "xAVp16" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 16")
+(define_register_constraint "xAVp18" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 18")
+(define_register_constraint "xAVp20" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 20")
+(define_register_constraint "xAVp22" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 22")
+(define_register_constraint "xAVp24" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 24")
+(define_register_constraint "xAVp26" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 26")
+(define_register_constraint "xAVp28" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 28")
+(define_register_constraint "xAVp30" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno == 30")
+(define_register_constraint "xAVn06" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 6")
+(define_register_constraint "xAVn08" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 8")
+(define_register_constraint "xAVn10" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 10")
+(define_register_constraint "xAVn12" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 12")
+(define_register_constraint "xAVn14" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 14")
+(define_register_constraint "xAVn16" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 16")
+(define_register_constraint "xAVn18" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 18")
+(define_register_constraint "xAVn20" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 20")
+(define_register_constraint "xAVn22" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 22")
+(define_register_constraint "xAVn24" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 24")
+(define_register_constraint "xAVn26" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 26")
+(define_register_constraint "xAVn28" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 28")
+(define_register_constraint "xAVn30" "GENERAL_REGS"
+  "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
+  "regno != 30")

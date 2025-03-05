@@ -538,6 +538,11 @@ Mask(XSFVFNRCLIPXFQF) Var(riscv_sifive_subext)
 TargetVariable
 int riscv_fmv_priority = 0
 
+TargetVariable
+int riscv_xarcv_subext
+
+Mask(XARCVUDSP) Var(riscv_xarcv_subext)
+
 Enum
 Name(isa_spec_class) Type(enum riscv_isa_spec_class)
 Supported ISA specs (for use with the -misa-spec= option):
