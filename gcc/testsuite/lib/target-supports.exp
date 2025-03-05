@@ -14577,6 +14577,20 @@ proc check_effective_target_cv_bi { } {
     } "-march=rv32i_xcvbi" ]
 }
 
+# Return 1 if the ARC-V uDSP extension is available.
+proc check_effective_target_arcv_udsp { } {
+    if { !([istarget riscv32-*-*]) } {
+         return 0
+     }
+    return [check_no_compiler_messages arcv_udsp object {
+        void foo (void)
+        {
+          asm ("arcv.xvadd.vv x0, x0, x0, e16, m1");
+        }
+    } "-march=rv32i_xarcvudsp" ]
+}
+
+
 proc check_effective_target_loongarch_sx { } {
     return [check_no_compiler_messages loongarch_lsx assembly {
        #if !defined(__loongarch_sx)

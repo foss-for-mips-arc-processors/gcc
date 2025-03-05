@@ -18584,6 +18584,7 @@ instructions, but allow the compiler to schedule those calls.
 * PRU Built-in Functions::
 * RISC-V Built-in Functions::
 * RISC-V Vector Intrinsics::
+* ARC-V Built-in Functions::
 * CORE-V Built-in Functions::
 * RX Built-in Functions::
 * S/390 System z Built-in Functions::
@@ -27158,6 +27159,89 @@ RISC-V vector intrinsic specification, which is available from the repository's
 release page:
 @uref{https://github.com/riscv-non-isa/rvv-intrinsic-doc/releases/tag/v1.0-ratified}.
 All of these functions are declared in the include file @file{riscv_vector.h}.
+
+@node ARC-V Built-in Functions
+@subsection ARC-V Built-in Functions
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvadd_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvadd.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvsub_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvsub.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvsadd_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvsadd.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvsadd_vv_i32m1 (int, int)
+Generated assembler @code{arcv.xvsadd.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvssub_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvssub.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvssub_vv_i32m1 (int, int)
+Generated assembler @code{arcv.xvssub.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvsll_vx_i16m1 (int, int)
+Generated assembler @code{arcv.xvsll.vx}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvsra_vx_i16m1 (int, int)
+Generated assembler @code{arcv.xvsra.vx}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvnclip_wx_i16m1 (long long, int)
+Generated assembler @code{arcv.xvnclip.wx}
+@end deftypefn
+
+@deftypefn {Built-in Function} {short} __builtin_riscv_arcv_udsp_xvnclip_wx_i16mf2 (int, int)
+Generated assembler @code{arcv.xvnclip.wx}
+@end deftypefn
+
+@deftypefn {Built-in Function} {long long} __builtin_riscv_arcv_udsp_xvwmul_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvwmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvwmul_vv_i16mf2 (short, short)
+Generated assembler @code{arcv.xvwmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvwsrdot_vv_i16m1 (int, int, int)
+Generated assembler @code{arcv.xvwsrdot.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvscmul_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvscmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_xvscjmul_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvscjmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {long long} __builtin_riscv_arcv_udsp_xvwscmul_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvwscmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {long long} __builtin_riscv_arcv_udsp_xvwscjmul_vv_i16m1 (int, int)
+Generated assembler @code{arcv.xvwscjmul.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {long long} __builtin_riscv_arcv_udsp_xvwscrdot_vv_i16m1 (long long, int, int)
+Generated assembler @code{arcv.xvwscrdot.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {long long} __builtin_riscv_arcv_udsp_xvwscjrdot_vv_i16m1 (long long, int, int)
+Generated assembler @code{arcv.xvwscjrdot.vv}
+@end deftypefn
+
+@deftypefn {Built-in Function} {int} __builtin_riscv_arcv_udsp_bitrev (int, int)
+Generated assembler @code{arcv.bitrev}
+@end deftypefn
+
 
 @node CORE-V Built-in Functions
 @subsection CORE-V Built-in Functions

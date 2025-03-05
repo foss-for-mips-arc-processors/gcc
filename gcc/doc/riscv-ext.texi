@@ -750,4 +750,8 @@
 @tab 1.0
 @tab SpacemiT vector dot product extension
 
+@item @samp{xarcvudsp}
+@tab 1.0
+@tab Synopsys ARC-V micro-DSP extension
+
 @end multitable

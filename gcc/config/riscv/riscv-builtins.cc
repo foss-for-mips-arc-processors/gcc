@@ -142,6 +142,9 @@ AVAIL (andesperf32, !TARGET_64BIT && TARGET_XANDESPERF)
 AVAIL (andesperf64, TARGET_64BIT && TARGET_XANDESPERF)
 AVAIL (andesbfhcvt, TARGET_XANDESBFHCVT)
 
+// ARC-V AVAIL
+AVAIL (xarcvudsp, TARGET_XARCVUDSP && !TARGET_64BIT)
+
 /* Construct a riscv_builtin_description from the given arguments.
 
    INSN is the name of the associated instruction pattern, without the
@@ -221,6 +224,7 @@ static const struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-scalar-crypto.def"
   #include "corev.def"
   #include "andes.def"
+  #include "arcv.def"
 
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
