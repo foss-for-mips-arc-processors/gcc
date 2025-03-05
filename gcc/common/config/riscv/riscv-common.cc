@@ -434,6 +434,8 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
 
   {"xventanacondops", ISA_SPEC_CLASS_NONE, 1, 0},
 
+  {"xarcvudsp", ISA_SPEC_CLASS_NONE, 1, 0},
+
   /* Terminate the list.  */
   {NULL, ISA_SPEC_CLASS_NONE, 0, 0}
 };
@@ -1304,6 +1306,15 @@ riscv_subset_list::check_conflict_ext ()
 	 && lookup ("xtheadvector"))
     error_at (m_loc, "%<-march=%s%>: xtheadvector conflicts with vector "
 		   "extension or its sub-extensions", m_arch);
+
+  if ((lookup ("v") || lookup ("zve32x")
+	 || lookup ("zve64x") || lookup ("zve32f")
+	 || lookup ("zve64f") || lookup ("zve64d")
+	 || lookup ("zvl32b") || lookup ("zvl64b")
+	 || lookup ("zvl128b") || lookup ("zvfh"))
+	 && lookup ("xarcvudsp"))
+    error_at (m_loc, "%<-march=%s%>: xarcvudsp conflicts with vector "
+		   "extension or its sub-extensions", m_arch);
 }
 
 /* Parsing function for multi-letter extensions.
@@ -1723,6 +1734,8 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   {"xtheadvector",  &gcc_options::x_target_flags, MASK_VECTOR},
 
   {"xventanacondops", &gcc_options::x_riscv_xventana_subext, MASK_XVENTANACONDOPS},
+
+  {"xarcvudsp", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVUDSP},
 
   {NULL, NULL, 0}
 };
