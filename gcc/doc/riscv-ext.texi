@@ -798,4 +798,8 @@
 @tab 1.0
 @tab XuanTie vector arith turbo extension
 
+@item @samp{xarcvudsp}
+@tab 1.0
+@tab Synopsys ARC-V micro-DSP extension
+
 @end multitable

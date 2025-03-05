@@ -5723,3 +5723,4 @@
 (include "arcv-rmx100.md")
 (include "arcv-rmx500.md")
 (include "arcv-rhx100.md")
+(include "arcv-udsp.md")

@@ -136,6 +136,9 @@ AVAIL (andesperf32, !TARGET_64BIT && TARGET_XANDESPERF)
 AVAIL (andesperf64, TARGET_64BIT && TARGET_XANDESPERF)
 AVAIL (andesbfhcvt, TARGET_XANDESBFHCVT)
 
+// ARC-V AVAIL
+AVAIL (xarcvudsp, TARGET_XARCVUDSP && !TARGET_64BIT)
+
 /* Construct a riscv_builtin_description from the given arguments like RISCV_BUILTIN.
 
    NAME is the name of the function itself, without the leading
@@ -198,6 +201,7 @@ static struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-scalar-crypto.def"
   #include "corev.def"
   #include "andes.def"
+  #include "arcv.def"
 
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float, 0),
   DIRECT_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float, 0),
