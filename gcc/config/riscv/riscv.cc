@@ -12128,57 +12128,98 @@ arcv_propagate_hard_register_copies (void)
 		reg_originals[i] = 0;
 	    }
 
-	  set = single_set (insn);
-
-	  /* Perform copy->original substitution.  */
-	  if (set && (!REG_P (SET_DEST (set)) || !REG_P (SET_SRC (set))))
+	  switch (GET_CODE (PATTERN (insn)))
 	    {
-	      /* Handle loads...  */
-	      if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
-		{
-		  rtx *op = &XEXP (SET_SRC (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
-		    op = &XEXP (*op, 0);
+	      case CLOBBER:
+		if (REG_P (XEXP (PATTERN (insn), 0)))
+		  {
+		    for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		      if (reg_originals[i] == REGNO (XEXP (PATTERN (insn), 0)))
+			reg_originals[i] = 0;
 
-		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
-		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
-				     reg_originals[REGNO (*op)]), false);
-		}
+		    reg_originals[REGNO (XEXP (PATTERN (insn), 0))] = 0;
+		  }
+		break;
 
-	      /* ... and stores.  */
-	      if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
-		{
-		  if (reg_originals[REGNO (SET_SRC (set))])
-		    validate_change (insn, &SET_SRC (set),
-				  gen_rtx_REG (GET_MODE (SET_SRC (set)),
-				  reg_originals[REGNO (SET_SRC (set))]), false);
+	      case PARALLEL:
+		for (int i = 0; i < XVECLEN (PATTERN (insn), 0); i++)
+		  {
+		    rtx vecexp = XVECEXP (PATTERN (insn), 0, i);
+		    if ((GET_CODE (vecexp) == CLOBBER
+			 || GET_CODE (vecexp) == SET)
+			&& REG_P (XEXP (vecexp, 0)))
+		      {
+			for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+			  if (reg_originals[i] == REGNO (XEXP (vecexp, 0)))
+			    reg_originals[i] = 0;
 
-		  rtx *op = &XEXP (SET_DEST (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
-		    op = &XEXP (*op, 0);
+			reg_originals[REGNO (XEXP (vecexp, 0))] = 0;
+		      }
+		  }
+		break;
 
-		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
-		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
-				     reg_originals[REGNO (*op)]), false);
-		}
+	      case SET:
+		 set = single_set (insn);
+
+		 /* Perform copy->original substitution.  */
+		 if (set && (!REG_P (SET_DEST (set)) || !REG_P (SET_SRC (set))))
+		   {
+		     /* Handle loads...  */
+		     if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
+		       {
+			 rtx *op = &XEXP (SET_SRC (set), 0);
+			 if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+			   op = &XEXP (*op, 0);
+
+			 if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+			   validate_change (insn, op,
+					    gen_rtx_REG (GET_MODE (*op),
+						reg_originals[REGNO (*op)]),
+					    false);
+		       }
+
+		     /* ... and stores.  */
+		     if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
+		       {
+			 if (reg_originals[REGNO (SET_SRC (set))])
+			   validate_change (insn, &SET_SRC (set),
+					gen_rtx_REG (GET_MODE (SET_SRC (set)),
+					 reg_originals[REGNO (SET_SRC (set))]),
+					    false);
+
+			 rtx *op = &XEXP (SET_DEST (set), 0);
+			 if (*op && !CONST_INT_P (*op) && !REG_P (*op))
+			   op = &XEXP (*op, 0);
+
+			 if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+			   validate_change (insn, op,
+					    gen_rtx_REG (GET_MODE (*op),
+						    reg_originals[REGNO (*op)]),
+					    false);
+		      }
+		   }
+
+		 /* Any change of a register invalidates all copies.  */
+		 if (set && REG_P (SET_DEST (set)))
+		   {
+		     for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		       if (reg_originals[i] == REGNO (SET_DEST (set)))
+			 reg_originals[i] = 0;
+		   }
+
+		 /* A load to a register means it loses its original.  */
+		 if (set && REG_P (SET_DEST (set)) && !REG_P (SET_SRC (set)))
+		   reg_originals[REGNO (SET_DEST (set))] = 0;
+
+		 /* If it's a copy, remember it in the array.  */
+		 if (set && REG_P (SET_SRC (set)) && REG_P (SET_DEST (set))
+			 && REGNO (SET_SRC (set)) != REGNO (SET_DEST (set)))
+		  reg_originals[REGNO (SET_DEST (set))] = REGNO (SET_SRC (set));
+		 break;
+
+	      default:
+		break;
 	    }
-
-	  /* Any change of a register invalidates all copies.  */
-	  if (set && REG_P (SET_DEST (set)))
-	    {
-	      for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-		if (reg_originals[i] == REGNO (SET_DEST (set)))
-		  reg_originals[i] = 0;
-	    }
-
-	  /* A load to a register means it loses its original.  */
-	   if (set && REG_P (SET_DEST (set)) && !REG_P (SET_SRC (set)))
-	      reg_originals[REGNO (SET_DEST (set))] = 0;
-
-	  /* If it's a copy, remember it in the array.  */
-	  if (set && REG_P (SET_SRC (set)) && REG_P (SET_DEST (set))
-		  && REGNO (SET_SRC (set)) != REGNO (SET_DEST (set)))
-	      reg_originals[REGNO (SET_DEST (set))] = REGNO (SET_SRC (set));
 	}
     }
 }
