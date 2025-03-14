@@ -4775,136 +4775,6 @@ package body Exp_Util is
       return Alloc_Obj;
    end Build_Temporary_On_Secondary_Stack;
 
-   ---------------------------------------
-   -- Build_Transient_Object_Statements --
-   ---------------------------------------
-
-   procedure Build_Transient_Object_Statements
-     (Obj_Decl     : Node_Id;
-      Fin_Call     : out Node_Id;
-      Hook_Assign  : out Node_Id;
-      Hook_Clear   : out Node_Id;
-      Hook_Decl    : out Node_Id;
-      Ptr_Decl     : out Node_Id;
-      Finalize_Obj : Boolean := True)
-   is
-      Loc     : constant Source_Ptr := Sloc (Obj_Decl);
-      Obj_Id  : constant Entity_Id  := Defining_Entity (Obj_Decl);
-      Obj_Typ : constant Entity_Id  := Base_Type (Etype (Obj_Id));
-
-      Desig_Typ : Entity_Id;
-      Hook_Expr : Node_Id;
-      Hook_Id   : Entity_Id;
-      Obj_Ref   : Node_Id;
-      Ptr_Typ   : Entity_Id;
-
-   begin
-      --  Recover the type of the object
-
-      Desig_Typ := Obj_Typ;
-
-      if Is_Access_Type (Desig_Typ) then
-         Desig_Typ := Available_View (Designated_Type (Desig_Typ));
-      end if;
-
-      --  Create an access type which provides a reference to the transient
-      --  object. Generate:
-
-      --    type Ptr_Typ is access all Desig_Typ;
-
-      Ptr_Typ := Make_Temporary (Loc, 'A');
-      Mutate_Ekind (Ptr_Typ, E_General_Access_Type);
-      Set_Directly_Designated_Type (Ptr_Typ, Desig_Typ);
-
-      Ptr_Decl :=
-        Make_Full_Type_Declaration (Loc,
-          Defining_Identifier => Ptr_Typ,
-          Type_Definition     =>
-            Make_Access_To_Object_Definition (Loc,
-              All_Present        => True,
-              Subtype_Indication => New_Occurrence_Of (Desig_Typ, Loc)));
-
-      --  Create a temporary check which acts as a hook to the transient
-      --  object. Generate:
-
-      --    Hook : Ptr_Typ := null;
-
-      Hook_Id := Make_Temporary (Loc, 'T');
-      Mutate_Ekind (Hook_Id, E_Variable);
-      Set_Etype (Hook_Id, Ptr_Typ);
-
-      Hook_Decl :=
-        Make_Object_Declaration (Loc,
-          Defining_Identifier => Hook_Id,
-          Object_Definition   => New_Occurrence_Of (Ptr_Typ, Loc),
-          Expression          => Make_Null (Loc));
-
-      --  Mark the temporary as a hook. This signals the machinery in
-      --  Build_Finalizer to recognize this special case.
-
-      Set_Status_Flag_Or_Transient_Decl (Hook_Id, Obj_Decl);
-
-      --  Hook the transient object to the temporary. Generate:
-
-      --    Hook := Ptr_Typ (Obj_Id);
-      --      <or>
-      --    Hool := Obj_Id'Unrestricted_Access;
-
-      if Is_Access_Type (Obj_Typ) then
-         Hook_Expr :=
-           Unchecked_Convert_To (Ptr_Typ, New_Occurrence_Of (Obj_Id, Loc));
-      else
-         Hook_Expr :=
-           Make_Attribute_Reference (Loc,
-             Prefix         => New_Occurrence_Of (Obj_Id, Loc),
-             Attribute_Name => Name_Unrestricted_Access);
-      end if;
-
-      Hook_Assign :=
-        Make_Assignment_Statement (Loc,
-          Name       => New_Occurrence_Of (Hook_Id, Loc),
-          Expression => Hook_Expr);
-
-      --  Crear the hook prior to finalizing the object. Generate:
-
-      --    Hook := null;
-
-      Hook_Clear :=
-        Make_Assignment_Statement (Loc,
-          Name       => New_Occurrence_Of (Hook_Id, Loc),
-          Expression => Make_Null (Loc));
-
-      --  Finalize the object. Generate:
-
-      --    [Deep_]Finalize (Obj_Ref[.all]);
-
-      if Finalize_Obj then
-         Obj_Ref := New_Occurrence_Of (Obj_Id, Loc);
-
-         if Is_Access_Type (Obj_Typ) then
-            Obj_Ref := Make_Explicit_Dereference (Loc, Obj_Ref);
-            Set_Etype (Obj_Ref, Desig_Typ);
-         end if;
-
-         Fin_Call :=
-           Make_Final_Call
-             (Obj_Ref => Obj_Ref,
-              Typ     => Desig_Typ);
-
-      --  Otherwise finalize the hook. Generate:
-
-      --    [Deep_]Finalize (Hook.all);
-
-      else
-         Fin_Call :=
-           Make_Final_Call (
-             Obj_Ref =>
-               Make_Explicit_Dereference (Loc,
-                 Prefix => New_Occurrence_Of (Hook_Id, Loc)),
-             Typ     => Desig_Typ);
-      end if;
-   end Build_Transient_Object_Statements;
-
    -----------------------------
    -- Check_Float_Op_Overflow --
    -----------------------------
@@ -12053,7 +11923,7 @@ package body Exp_Util is
 
                         --  When this routine is called while the itype
                         --  is being created, the entity might not yet be
-                        --  decorated with the associated node, but should
+                        --  decorated with the associated node, but will
                         --  have the related expression.
 
                         if Present (Associated_Node_For_Itype (Subt)) then
@@ -12061,21 +11931,10 @@ package body Exp_Util is
                              Possible_Side_Effect_In_SPARK
                                (Associated_Node_For_Itype (Subt));
 
-                        elsif Present (Related_Expression (Subt)) then
+                        else
                            return
                              Possible_Side_Effect_In_SPARK
                                (Related_Expression (Subt));
-
-                        --  When the itype doesn't have any indication of its
-                        --  origin (which currently only happens for packed
-                        --  array types created by freezing that shouldn't
-                        --  be picked by GNATprove anyway), then we can
-                        --  conservatively assume that the expression can
-                        --  be kept as it appears in the source code.
-
-                        else
-                           pragma Assert (Is_Packed_Array_Impl_Type (Subt));
-                           return False;
                         end if;
                      else
                         return True;
@@ -13098,6 +12957,14 @@ package body Exp_Util is
             elsif Is_Ignored_For_Finalization (Obj_Id) then
                null;
 
+            --  Conversely, if one of the above cases created a Master_Node,
+            --  finalization actions are required for the associated object.
+
+            elsif Ekind (Obj_Id) = E_Variable
+              and then Is_RTE (Obj_Typ, RE_Master_Node)
+            then
+               return True;
+
             --  Ignored Ghost objects do not need any cleanup actions because
             --  they will not appear in the final tree.
 
@@ -13138,31 +13005,12 @@ package body Exp_Util is
             then
                return True;
 
-            --  Processing for "hook" objects generated for transient objects
-            --  declared inside an Expression_With_Actions.
-
-            elsif Is_Access_Type (Obj_Typ)
-              and then Present (Status_Flag_Or_Transient_Decl (Obj_Id))
-              and then Nkind (Status_Flag_Or_Transient_Decl (Obj_Id)) =
-                                                        N_Object_Declaration
-            then
-               return True;
-
-            --  Processing for intermediate results of if expressions where
-            --  one of the alternatives uses a controlled function call.
-
-            elsif Is_Access_Type (Obj_Typ)
-              and then Present (Status_Flag_Or_Transient_Decl (Obj_Id))
-              and then Nkind (Status_Flag_Or_Transient_Decl (Obj_Id)) =
-                                                        N_Defining_Identifier
-              and then Present (Expr)
-              and then Nkind (Expr) = N_Null
-            then
-               return True;
-
-            --  Simple protected objects which use type System.Tasking.
+            --  Simple protected objects which use the type System.Tasking.
             --  Protected_Objects.Protection to manage their locks should be
-            --  treated as controlled since they require manual cleanup.
+            --  treated as controlled since they require manual cleanup, but
+            --  not for restricted run-time libraries (Ravenscar), see also
+            --  Cleanup_Protected_Object in Exp_Ch7.
+
             --  The only exception is illustrated in the following example:
 
             --     package Pkg is
@@ -13195,6 +13043,7 @@ package body Exp_Util is
             elsif Ekind (Obj_Id) = E_Variable
               and then not In_Library_Level_Package_Body (Obj_Id)
               and then Has_Simple_Protected_Object (Obj_Typ)
+              and then not Restricted_Profile
             then
                return True;
             end if;
@@ -13217,16 +13066,6 @@ package body Exp_Util is
 
             elsif Is_Ignored_Ghost_Entity (Obj_Id) then
                null;
-
-            --  Return object of extended return statements. This case is
-            --  recognized and marked by the expansion of extended return
-            --  statements (see Expand_N_Extended_Return_Statement).
-
-            elsif Needs_Finalization (Obj_Typ)
-              and then Is_Return_Object (Obj_Id)
-              and then Present (Status_Flag_Or_Transient_Decl (Obj_Id))
-            then
-               return True;
             end if;
 
          --  Inspect the freeze node of an access-to-controlled type and look

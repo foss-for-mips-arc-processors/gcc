@@ -35,6 +35,13 @@ package Exp_Ch7 is
    -- Finalization Management --
    -----------------------------
 
+   procedure Attach_Object_To_Master_Node
+     (Obj_Decl    : Node_Id;
+      Master_Node : Entity_Id);
+   --  Generate code to attach an object denoted by its declaration Obj_Decl
+   --  to a master node denoted by Master_Node. The code is inserted after
+   --  the object is initialized.
+
    procedure Build_Anonymous_Master (Ptr_Typ : Entity_Id);
    --  Build a finalization master for an anonymous access-to-controlled type
    --  denoted by Ptr_Typ. The master is inserted in the declarations of the
@@ -231,6 +238,12 @@ package Exp_Ch7 is
    --  Create a special version of Deep_Finalize with identifier Nam. The
    --  routine has state information and can perform partial finalization.
 
+   function Make_Master_Node_Declaration
+     (Loc         : Source_Ptr;
+      Master_Node : Entity_Id;
+      Obj         : Entity_Id) return Node_Id;
+   --  Build the declaration of the Master_Node for the object Obj
+
    function Make_Set_Finalize_Address_Call
      (Loc     : Source_Ptr;
       Ptr_Typ : Entity_Id) return Node_Id;
@@ -239,6 +252,12 @@ package Exp_Ch7 is
    --
    --    Set_Finalize_Address
    --      (<Ptr_Typ>FM, <Desig_Typ>FD'Unrestricted_Access);
+
+   function Make_Suppress_Object_Finalize_Call
+     (Loc : Source_Ptr;
+      Obj : Entity_Id) return Node_Id;
+   --  Build a call to suppress the finalization of the object Obj, only after
+   --  creating the Master_Node of Obj if it does not already exist.
 
    --------------------------------------------
    -- Task and Protected Object finalization --
