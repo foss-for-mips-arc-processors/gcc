@@ -850,8 +850,6 @@ package Gen_IL.Fields is
       Part_Of_Constituents,
       Part_Of_References,
       Partial_View_Has_Unknown_Discr,
-      Pending_Access_Types,
-      Postconditions_Proc,
       Predicate_Expression,
       Prev_Entity,
       Prival,

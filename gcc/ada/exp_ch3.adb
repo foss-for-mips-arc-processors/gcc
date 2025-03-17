@@ -6738,7 +6738,7 @@ package body Exp_Ch3 is
                --  Then multiply the result by the size of the array
 
                declare
-                  Quantity : constant Int := Number_Of_Elements_In_Array (Typ);
+                  Quantity : constant Nat := Number_Of_Elements_In_Array (Typ);
                   --  Number_Of_Elements_In_Array is non-trival, consequently
                   --  its result is captured as an optimization.
 
@@ -6752,27 +6752,23 @@ package body Exp_Ch3 is
                | E_Record_Subtype
                | E_Record_Type
             =>
-               Component := First_Component_Or_Discriminant (Typ);
+               Component := First_Component (Typ);
 
                --  Recursively descend each component of the composite type
-               --  looking for tasks, but only if the component is marked as
-               --  having a task.
+               --  looking for tasks.
 
                while Present (Component) loop
-                  if Has_Task (Etype (Component)) then
-                     declare
-                        P : Int;
-                        S : Int;
+                  declare
+                     P : Int;
+                     S : Int;
 
-                     begin
-                        Count_Default_Sized_Task_Stacks
-                          (Etype (Component), P, S);
-                        Pri_Stacks := Pri_Stacks + P;
-                        Sec_Stacks := Sec_Stacks + S;
-                     end;
-                  end if;
+                  begin
+                     Count_Default_Sized_Task_Stacks (Etype (Component), P, S);
+                     Pri_Stacks := Pri_Stacks + P;
+                     Sec_Stacks := Sec_Stacks + S;
+                  end;
 
-                  Next_Component_Or_Discriminant (Component);
+                  Next_Component (Component);
                end loop;
 
             when E_Limited_Private_Subtype
@@ -7457,11 +7453,10 @@ package body Exp_Ch3 is
         and then not Restriction_Active (No_Secondary_Stack)
         and then (Restriction_Active (No_Implicit_Heap_Allocations)
           or else Restriction_Active (No_Implicit_Task_Allocations))
-        and then not (Ekind (Typ) in E_Array_Type | E_Array_Subtype
-                      and then Has_Init_Expression (N))
+        and then not (Is_Array_Type (Typ) and then Has_Init_Expression (N))
       then
          declare
-            PS_Count, SS_Count : Int := 0;
+            PS_Count, SS_Count : Int;
          begin
             Count_Default_Sized_Task_Stacks (Typ, PS_Count, SS_Count);
             Increment_Primary_Stack_Count (PS_Count);
@@ -9327,10 +9322,6 @@ package body Exp_Ch3 is
       --  Validate and generate stubs for all RACW types associated with type
       --  Typ.
 
-      procedure Process_Pending_Access_Types (Typ : Entity_Id);
-      --  Associate type Typ's Finalize_Address primitive with the finalization
-      --  masters of pending access-to-Typ types.
-
       ------------------------
       -- Process_RACW_Types --
       ------------------------
@@ -9359,61 +9350,6 @@ package body Exp_Ch3 is
             Remote_Types_Tagged_Full_View_Encountered (Typ);
          end if;
       end Process_RACW_Types;
-
-      ----------------------------------
-      -- Process_Pending_Access_Types --
-      ----------------------------------
-
-      procedure Process_Pending_Access_Types (Typ : Entity_Id) is
-         E : Elmt_Id;
-
-      begin
-         --  Finalize_Address is not generated in CodePeer mode because the
-         --  body contains address arithmetic. This processing is disabled.
-
-         if CodePeer_Mode then
-            null;
-
-         --  Certain itypes are generated for contexts that cannot allocate
-         --  objects and should not set primitive Finalize_Address.
-
-         elsif Is_Itype (Typ)
-           and then Nkind (Associated_Node_For_Itype (Typ)) =
-                      N_Explicit_Dereference
-         then
-            null;
-
-         --  When an access type is declared after the incomplete view of a
-         --  Taft-amendment type, the access type is considered pending in
-         --  case the full view of the Taft-amendment type is controlled. If
-         --  this is indeed the case, associate the Finalize_Address routine
-         --  of the full view with the finalization masters of all pending
-         --  access types. This scenario applies to anonymous access types as
-         --  well. But the Finalize_Address routine is missing if the type is
-         --  class-wide and we are under restriction No_Dispatching_Calls, see
-         --  Expand_Freeze_Class_Wide_Type above for the rationale.
-
-         elsif Needs_Finalization (Typ)
-           and then (not Is_Class_Wide_Type (Typ)
-                      or else not Restriction_Active (No_Dispatching_Calls))
-           and then Present (Pending_Access_Types (Typ))
-         then
-            E := First_Elmt (Pending_Access_Types (Typ));
-            while Present (E) loop
-
-               --  Generate:
-               --    Set_Finalize_Address
-               --      (Ptr_Typ, <Typ>FD'Unrestricted_Access);
-
-               Append_Freeze_Action (Typ,
-                 Make_Set_Finalize_Address_Call
-                   (Loc     => Sloc (N),
-                    Ptr_Typ => Node (E)));
-
-               Next_Elmt (E);
-            end loop;
-         end if;
-      end Process_Pending_Access_Types;
 
       --  Local variables
 
@@ -9723,11 +9659,6 @@ package body Exp_Ch3 is
 
       end if;
 
-      --  Complete the initialization of all pending access types' finalization
-      --  masters now that the designated type has been is frozen and primitive
-      --  Finalize_Address generated.
-
-      Process_Pending_Access_Types (Def_Id);
       Freeze_Stream_Operations (N, Def_Id);
 
       --  Generate the [spec and] body of the invariant procedure tasked with
