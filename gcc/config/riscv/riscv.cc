@@ -954,50 +954,51 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	  codes[1].use_uw = false;
 	  cost = 2;
 	}
-      /* Final cases, particularly focused on bseti.  */
-      else if (cost > 2 && TARGET_ZBS)
+    }
+
+  /* Final cases, particularly focused on bseti.  */
+  if (cost > 2 && TARGET_ZBS)
+    {
+      int i = 0;
+
+      /* First handle any bits set by LUI.  Be careful of the
+	 SImode sign bit!.  */
+      if (value & 0x7ffff800)
 	{
-	  int i = 0;
+	  alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
+	  alt_codes[i].value = value & 0x7ffff800;
+	  alt_codes[i].use_uw = false;
+	  value &= ~0x7ffff800;
+	   i++;
+	}
 
-	  /* First handle any bits set by LUI.  Be careful of the
-	     SImode sign bit!.  */
-	  if (value & 0x7ffff800)
-	    {
-	      alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
-	      alt_codes[i].value = value & 0x7ffff800;
-	      alt_codes[i].use_uw = false;
-	      value &= ~0x7ffff800;
-	      i++;
-	    }
+      /* Next, any bits we can handle with addi.  */
+      if (value & 0x7ff)
+	{
+	  alt_codes[i].code = (i == 0 ? UNKNOWN : PLUS);
+	  alt_codes[i].value = value & 0x7ff;
+	  alt_codes[i].use_uw = false;
+	  value &= ~0x7ff;
+	  i++;
+	}
 
-	  /* Next, any bits we can handle with addi.  */
-	  if (value & 0x7ff)
-	    {
-	      alt_codes[i].code = (i == 0 ? UNKNOWN : PLUS);
-	      alt_codes[i].value = value & 0x7ff;
-	      alt_codes[i].use_uw = false;
-	      value &= ~0x7ff;
-	      i++;
-	    }
+      /* And any residuals with bseti.  */
+      while (i < cost && value)
+	{
+	  HOST_WIDE_INT bit = ctz_hwi (value);
+	  alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
+	  alt_codes[i].value = 1UL << bit;
+	  alt_codes[i].use_uw = false;
+	  value &= ~(1ULL << bit);
+	  i++;
+	}
 
-	  /* And any residuals with bseti.  */
-	  while (i < cost && value)
-	    {
-	      HOST_WIDE_INT bit = ctz_hwi (value);
-	      alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
-	      alt_codes[i].value = 1UL << bit;
-	      alt_codes[i].use_uw = false;
-	      value &= ~(1ULL << bit);
-	      i++;
-	    }
-
-	  /* If LUI+ADDI+BSETI resulted in a more efficient
-	     sequence, then use it.  */
-	  if (i < cost)
-	    {
-	      memcpy (codes, alt_codes, sizeof (alt_codes));
-	      cost = i;
-	    }
+      /* If LUI+ADDI+BSETI resulted in a more efficient
+	 sequence, then use it.  */
+      if (i < cost)
+	{
+	  memcpy (codes, alt_codes, sizeof (alt_codes));
+	  cost = i;
 	}
     }
 
@@ -3208,35 +3209,39 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
     }
 
   /* In order to fit NaN boxing, expand
-     (set FP_REG (reg:HF src))
+     (set FP_REG (reg:HF/BF src))
      to
      (set (reg:SI/DI mask) (const_int -65536)
-     (set (reg:SI/DI temp) (zero_extend:SI/DI (subreg:HI (reg:HF src) 0)))
+     (set (reg:SI/DI temp) (zero_extend:SI/DI (subreg:HI (reg:HF/BF src) 0)))
      (set (reg:SI/DI temp) (ior:SI/DI (reg:SI/DI mask) (reg:SI/DI temp)))
-     (set (reg:HF dest) (unspec:HF [ (reg:SI/DI temp) ] UNSPEC_FMV_SFP16_X))
+     (set (reg:HF/BF dest) (unspec:HF/BF[ (reg:SI/DI temp) ]
+			    UNSPEC_FMV_SFP16_X/UNSPEC_FMV_SBF16_X))
      */
 
- if (TARGET_HARD_FLOAT
-     && !TARGET_ZFHMIN && mode == HFmode
-     && REG_P (dest) && FP_REG_P (REGNO (dest))
-     && REG_P (src) && !FP_REG_P (REGNO (src))
-     && can_create_pseudo_p ())
-   {
-     rtx mask = force_reg (word_mode, gen_int_mode (-65536, word_mode));
-     rtx temp = gen_reg_rtx (word_mode);
-     emit_insn (gen_extend_insn (temp,
-				 simplify_gen_subreg (HImode, src, mode, 0),
-				 word_mode, HImode, 1));
-     if (word_mode == SImode)
-       emit_insn (gen_iorsi3 (temp, mask, temp));
-     else
-       emit_insn (gen_iordi3 (temp, mask, temp));
+  if (TARGET_HARD_FLOAT
+      && ((!TARGET_ZFHMIN && mode == HFmode)
+	  || (!TARGET_ZFBFMIN && mode == BFmode))
+      && REG_P (dest) && FP_REG_P (REGNO (dest))
+      && REG_P (src) && !FP_REG_P (REGNO (src))
+      && can_create_pseudo_p ())
+    {
+      rtx mask = force_reg (word_mode, gen_int_mode (-65536, word_mode));
+      rtx temp = gen_reg_rtx (word_mode);
+      emit_insn (gen_extend_insn (temp,
+				  simplify_gen_subreg (HImode, src, mode, 0),
+				  word_mode, HImode, 1));
+      if (word_mode == SImode)
+	emit_insn (gen_iorsi3 (temp, mask, temp));
+      else
+	emit_insn (gen_iordi3 (temp, mask, temp));
 
-     riscv_emit_move (dest, gen_rtx_UNSPEC (HFmode, gen_rtvec (1, temp),
-					    UNSPEC_FMV_SFP16_X));
+      riscv_emit_move (dest,
+		       gen_rtx_UNSPEC (mode, gen_rtvec (1, temp),
+				       mode == HFmode ? UNSPEC_FMV_SFP16_X
+						      : UNSPEC_FMV_SBF16_X));
 
-     return true;
-   }
+      return true;
+    }
 
   /* We need to deal with constants that would be legitimate
      immediate_operands but aren't legitimate move_operands.  */

@@ -86,8 +86,9 @@
   ;; String unspecs
   UNSPEC_STRLEN
 
-  ;; Workaround for HFmode without hardware extension
+  ;; Workaround for HFmode and BFmode without hardware extension
   UNSPEC_FMV_SFP16_X
+  UNSPEC_FMV_SBF16_X
 
   ;; XTheadFmv moves
   UNSPEC_XTHEADFMV
@@ -1930,6 +1931,15 @@
   [(set_attr "type" "fmove")
    (set_attr "mode" "SF")])
 
+(define_insn "*movbf_softfloat_boxing"
+  [(set (match_operand:BF 0 "register_operand"		  "=f")
+	(unspec:BF [(match_operand:X 1 "register_operand" " r")]
+	 UNSPEC_FMV_SBF16_X))]
+  "!TARGET_ZFBFMIN"
+  "fmv.w.x\t%0,%1"
+  [(set_attr "type" "fmove")
+   (set_attr "mode" "SF")])
+
 ;;
 ;;  ....................
 ;;
@@ -2769,16 +2779,17 @@
   [(set_attr "type" "shift")
    (set_attr "mode" "SI")])
 
-;; Canonical form for a zero-extend of a logical right shift.
-(define_insn "*lshrsi3_zero_extend_2"
+;; Canonical form for a sign/zero-extend of a logical right shift.
+;; Special case: extract MSB bits of lower 32-bit word
+(define_insn "*lshrsi3_extend_2"
   [(set (match_operand:DI                   0 "register_operand" "=r")
-	(zero_extract:DI (match_operand:DI  1 "register_operand" " r")
+	(any_extract:DI (match_operand:DI  1 "register_operand" " r")
 			 (match_operand     2 "const_int_operand")
 			 (match_operand     3 "const_int_operand")))]
   "(TARGET_64BIT && (INTVAL (operands[3]) > 0)
     && (INTVAL (operands[2]) + INTVAL (operands[3]) == 32))"
 {
-  return "srliw\t%0,%1,%3";
+  return "<extract_sidi_shift>\t%0,%1,%3";
 }
   [(set_attr "type" "shift")
    (set_attr "mode" "SI")])
@@ -2795,6 +2806,45 @@
 }
   [(set_attr "type" "shift")
    (set_attr "mode" "SI")])
+
+;; Canonical form for a extend of a logical shift right (sign/zero extraction).
+;; Special cases, that are ignored (handled elsewhere):
+;; * Single-bit extraction (Zbs/XTheadBs)
+;; * Single-bit extraction (Zicondops/XVentanaCondops)
+;; * Single-bit extraction (SFB)
+;; * Extraction instruction th.ext(u) (XTheadBb)
+;; * lshrsi3_extend_2 (see above)
+(define_insn_and_split "*<any_extract:optab><GPR:mode>3"
+  [(set (match_operand:GPR 0 "register_operand" "=r")
+	 (any_extract:GPR
+       (match_operand:GPR 1 "register_operand" " r")
+       (match_operand     2 "const_int_operand")
+       (match_operand     3 "const_int_operand")))
+   (clobber (match_scratch:GPR  4 "=&r"))]
+  "!((TARGET_ZBS || TARGET_XTHEADBS || TARGET_ZICOND
+      || TARGET_XVENTANACONDOPS || TARGET_SFB_ALU)
+     && (INTVAL (operands[2]) == 1))
+   && !TARGET_XTHEADBB
+   && !(TARGET_64BIT
+        && (INTVAL (operands[3]) > 0)
+        && (INTVAL (operands[2]) + INTVAL (operands[3]) == 32))"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 4)
+     (ashift:GPR (match_dup 1) (match_dup 2)))
+   (set (match_dup 0)
+     (<extract_shift>:GPR (match_dup 4) (match_dup 3)))]
+{
+  int regbits = GET_MODE_BITSIZE (GET_MODE (operands[0])).to_constant ();
+  int sizebits = INTVAL (operands[2]);
+  int startbits = INTVAL (operands[3]);
+  int lshamt = regbits - sizebits - startbits;
+  int rshamt = lshamt + startbits;
+  operands[2] = GEN_INT (lshamt);
+  operands[3] = GEN_INT (rshamt);
+}
+  [(set_attr "type" "shift")
+   (set_attr "mode" "<GPR:MODE>")])
 
 ;; Handle AND with 2^N-1 for N from 12 to XLEN.  This can be split into
 ;; two logical shifts.  Otherwise it requires 3 instructions: lui,
