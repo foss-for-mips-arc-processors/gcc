@@ -271,9 +271,8 @@ case ${target}:`uname -v` in
 esac
 
 # Obsolete configurations.
-case ${target}${target_min} in
-    *-*-solaris2.11.[0-3]*		\
-   | ia64*-*-*				\
+case ${target} in
+     ia64*-*-*				\
    | nios2*-*-*				\
  )
     if test "x$enable_obsolete" != xyes; then
@@ -288,7 +287,7 @@ esac
 # Unsupported targets list.  Do not put an entry in this list unless
 # it would otherwise be caught by a more permissive pattern.  The list
 # should be in alphabetical order.
-case ${target} in
+case ${target}${target_min} in
  # Avoid special cases that are not obsolete
    arm*-*-*eabi*			\
  )
@@ -325,6 +324,7 @@ case ${target} in
  | *-*-solaris2.[0-9]			\
  | *-*-solaris2.[0-9].*			\
  | *-*-solaris2.10*			\
+ | *-*-solaris2.11.[0-3]*		\
  | *-*-sysv*				\
  | vax-*-vms*				\
  )
@@ -1046,12 +1046,8 @@ case ${target} in
   sol2_tm_file_head="elfos.h ${cpu_type}/sysv4.h"
   sol2_tm_file_tail="${cpu_type}/sol2.h sol2.h"
   sol2_tm_file="${sol2_tm_file_head} ${sol2_tm_file_tail}"
-  case ${target} in
-    *-*-solaris2.1[1-9]*)
-      # __cxa_atexit was introduced in Solaris 11.4.
-      default_use_cxa_atexit=yes
-      ;;
-  esac
+  # __cxa_atexit was introduced in Solaris 11.4.
+  default_use_cxa_atexit=yes
   use_gcc_stdint=wrap
   if test x$gnu_ld = xyes; then
     tm_file="usegld.h ${tm_file}"
@@ -1273,6 +1269,31 @@ aarch64*-*-gnu*)
         tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-gnu.h"
         tmake_file="${tmake_file} aarch64/t-aarch64"
         tm_defines="${tm_defines}  TARGET_DEFAULT_ASYNC_UNWIND_TABLES=1"
+	;;
+aarch64-*-mingw*)
+	tm_file="${tm_file} aarch64/aarch64-abi-ms.h"
+	tm_file="${tm_file} aarch64/aarch64-coff.h"
+	tm_file="${tm_file} aarch64/cygming.h"
+	tm_file="${tm_file} mingw/mingw32.h"
+	tm_file="${tm_file} mingw/mingw-stdint.h"
+	tmake_file="${tmake_file} aarch64/t-aarch64"
+	target_gtfiles="$target_gtfiles \$(srcdir)/config/mingw/winnt.cc"
+	extra_options="${extra_options} mingw/cygming.opt mingw/mingw.opt"
+	extra_objs="${extra_objs} winnt.o"
+	c_target_objs="${c_target_objs} msformat-c.o"
+	d_target_objs="${d_target_objs} winnt-d.o"
+	tmake_file="${tmake_file} mingw/t-cygming"
+	case ${enable_threads} in
+	  "" | yes | win32)
+	    thread_file='win32'
+	    ;;
+	  posix)
+	    thread_file='posix'
+	    ;;
+	esac
+	default_use_cxa_atexit=yes
+	user_headers_inc_next_post="${user_headers_inc_next_post} float.h"
+	tm_defines="${tm_defines} TARGET_AARCH64_MS_ABI=1"
 	;;
 aarch64*-wrs-vxworks*)
         tm_file="${tm_file} elfos.h aarch64/aarch64-elf.h"
@@ -2156,9 +2177,9 @@ i[4567]86-wrs-vxworks*|x86_64-wrs-vxworks7*)
 i[34567]86-*-cygwin*)
 	tm_file="${tm_file} i386/unix.h i386/bsd.h i386/gas.h i386/cygming.h i386/cygwin.h i386/cygwin-stdint.h"
 	xm_file=i386/xm-cygwin.h
-	tmake_file="${tmake_file} i386/t-cygming t-slibgcc"
-	target_gtfiles="$target_gtfiles \$(srcdir)/config/i386/winnt.cc"
-	extra_options="${extra_options} i386/cygming.opt i386/cygwin.opt"
+	tmake_file="${tmake_file} mingw/t-cygming t-slibgcc"
+	target_gtfiles="$target_gtfiles \$(srcdir)/config/mingw/winnt.cc"
+	extra_options="${extra_options} mingw/cygming.opt i386/cygwin.opt"
 	extra_objs="${extra_objs} winnt.o winnt-stubs.o"
 	c_target_objs="${c_target_objs} msformat-c.o"
 	cxx_target_objs="${cxx_target_objs} winnt-cxx.o msformat-c.o"
@@ -2174,9 +2195,9 @@ x86_64-*-cygwin*)
 	need_64bit_isa=yes
 	tm_file="${tm_file} i386/unix.h i386/bsd.h i386/gas.h i386/cygming.h i386/cygwin.h i386/cygwin-w64.h i386/cygwin-stdint.h"
 	xm_file=i386/xm-cygwin.h
-	tmake_file="${tmake_file} i386/t-cygming t-slibgcc"
-	target_gtfiles="$target_gtfiles \$(srcdir)/config/i386/winnt.cc"
-	extra_options="${extra_options} i386/cygming.opt i386/cygwin.opt"
+	tmake_file="${tmake_file} mingw/t-cygming t-slibgcc"
+	target_gtfiles="$target_gtfiles \$(srcdir)/config/mingw/winnt.cc"
+	extra_options="${extra_options} mingw/cygming.opt i386/cygwin.opt"
 	extra_objs="${extra_objs} winnt.o winnt-stubs.o"
 	c_target_objs="${c_target_objs} msformat-c.o"
 	cxx_target_objs="${cxx_target_objs} winnt-cxx.o msformat-c.o"
@@ -2212,7 +2233,7 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
 	if test x$enable_threads = xmcf ; then
 		tm_file="${tm_file} i386/mingw-mcfgthread.h"
 	fi
-	tm_file="${tm_file} i386/mingw32.h"
+	tm_file="${tm_file} mingw/mingw32.h"
 	# This makes the logic if mingw's or the w64 feature set has to be used
 	case ${target} in
 		*-w64-*)
@@ -2241,8 +2262,8 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
 		*)
 			;;
 	esac
-	tm_file="${tm_file} i386/mingw-stdint.h"
-	tmake_file="${tmake_file} t-winnt i386/t-cygming t-slibgcc"
+	tm_file="${tm_file} mingw/mingw-stdint.h"
+	tmake_file="${tmake_file} t-winnt mingw/t-cygming t-slibgcc"
         case ${target} in
                x86_64-w64-*)
                		tmake_file="${tmake_file} i386/t-mingw-w64"
@@ -2252,8 +2273,8 @@ i[34567]86-*-mingw* | x86_64-*-mingw*)
 			;;
 	esac
         native_system_header_dir=/mingw/include
-	target_gtfiles="$target_gtfiles \$(srcdir)/config/i386/winnt.cc"
-	extra_options="${extra_options} i386/cygming.opt i386/mingw.opt"
+	target_gtfiles="$target_gtfiles \$(srcdir)/config/mingw/winnt.cc"
+	extra_options="${extra_options} mingw/cygming.opt mingw/mingw.opt"
 	case ${target} in
 		*-w64-*)
 			extra_options="${extra_options} i386/mingw-w64.opt"

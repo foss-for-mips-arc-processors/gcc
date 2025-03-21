@@ -9103,6 +9103,14 @@ package body Sem_Util is
                Placement := Private_State_Space;
                return;
 
+            --  The item or its enclosing package appear in the visible state
+            --  space of a generic package.
+
+            elsif Ekind (Pack_Id) = E_Generic_Package then
+               Placement := Not_In_Package;
+               Pack_Id := Empty;
+               return;
+
             --  When the item appears in the visible state space of a package,
             --  continue to climb the scope stack as this may not be the final
             --  state space.
@@ -21226,6 +21234,11 @@ package body Sem_Util is
       then
          return True;
 
+      --  A function with side-effects is volatile
+
+      elsif Is_Function_With_Side_Effects (Func_Id) then
+         return True;
+
       --  Otherwise the function is treated as volatile if it is subject to
       --  enabled pragma Volatile_Function.
 
@@ -25359,12 +25372,12 @@ package body Sem_Util is
    -- Number_Of_Elements_In_Array --
    ---------------------------------
 
-   function Number_Of_Elements_In_Array (T : Entity_Id) return Int is
+   function Number_Of_Elements_In_Array (T : Entity_Id) return Nat is
       Indx : Node_Id;
       Typ  : Entity_Id;
       Low  : Node_Id;
       High : Node_Id;
-      Num  : Int := 1;
+      Num  : Nat := 1;
 
    begin
       pragma Assert (Is_Array_Type (T));
@@ -25391,7 +25404,8 @@ package body Sem_Util is
             return 0;
          else
             Num :=
-              Num * UI_To_Int ((Expr_Value (High) - Expr_Value (Low) + 1));
+              Num * Int'Max
+                (0, UI_To_Int (Expr_Value (High) - Expr_Value (Low) + Uint_1));
          end if;
 
          Next_Index (Indx);
@@ -30549,7 +30563,8 @@ package body Sem_Util is
                               | Pragma_Post
                               | Pragma_Postcondition
                               | Pragma_Post_Class
-                              | Pragma_Refined_Post);
+                              | Pragma_Refined_Post
+                              | Pragma_Test_Case);
 
                            return (1 .. 0 => <>); -- recursion terminates here
                         end if;
@@ -30606,7 +30621,8 @@ package body Sem_Util is
                   Determiners : constant Determining_Expression_List :=
                     Determining_Expressions (Expr);
                begin
-                  pragma Assert (Determiners'Length > 0);
+                  pragma Assert (if Serious_Errors_Detected = 0 then
+                                   Determiners'Length > 0);
 
                   for Idx in Determiners'Range loop
                      if not Is_Known_On_Entry (Determiners (Idx).Expr) then
