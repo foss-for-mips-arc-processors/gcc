@@ -1,10 +1,7 @@
-2024-08-01  Release Manager
+2024-04-26  Jakub Jelinek  <jakub@redhat.com>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* crontab: Snapshots from trunk are now GCC 15 related.
+	Add GCC 14 snapshots from the respective branch.
 
 2023-11-14  Sam James  <sam@gentoo.org>
 

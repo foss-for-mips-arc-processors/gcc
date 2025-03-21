@@ -1,10 +1,7 @@
-2024-08-01  Release Manager
+2024-04-26  Wilco Dijkstra  <wilco.dijkstra@arm.com>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* config/linux/aarch64/atomic_16.S: Add __libat_ prefix in the
+	LSE2/LSE128/CORE macros, remove elsewhere.  Add ATOMIC macro.
 
 2024-04-05  Jakub Jelinek  <jakub@redhat.com>
 
