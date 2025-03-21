@@ -102,23 +102,13 @@ range_op_table::range_op_table ()
   set (MINUS_EXPR, op_minus);
   set (NEGATE_EXPR, op_negate);
   set (MULT_EXPR, op_mult);
-
-  // Occur in both integer and pointer tables, but currently share
-  // integral implementation.
   set (ADDR_EXPR, op_addr);
   set (BIT_NOT_EXPR, op_bitwise_not);
   set (BIT_XOR_EXPR, op_bitwise_xor);
-
-  // These are in both integer and pointer tables, but pointer has a different
-  // implementation.
-  // If commented out, there is a hybrid version in range-op-ptr.cc which
-  // is used until there is a pointer range class.  Then we can simply
-  // uncomment the operator here and use the unified version.
-
-  // set (BIT_AND_EXPR, op_bitwise_and);
-  // set (BIT_IOR_EXPR, op_bitwise_or);
-  // set (MIN_EXPR, op_min);
-  // set (MAX_EXPR, op_max);
+  set (BIT_AND_EXPR, op_bitwise_and);
+  set (BIT_IOR_EXPR, op_bitwise_or);
+  set (MIN_EXPR, op_min);
+  set (MAX_EXPR, op_max);
 }
 
 // Instantiate a default range operator for opcodes with no entry.
@@ -207,7 +197,8 @@ range_op_handler::discriminator_fail (const vrange &r1,
   gcc_checking_assert (r1.m_discriminator < sizeof (name) - 1);
   gcc_checking_assert (r2.m_discriminator < sizeof (name) - 1);
   gcc_checking_assert (r3.m_discriminator < sizeof (name) - 1);
-  fprintf (stderr, "DISCRIMINATOR FAIL.  Dispatch ====> RO_%c%c%c <====\n",
+  fprintf (stderr,
+	   "Unsupported operand combination in dispatch: RO_%c%c%c\n",
 	   name[r1.m_discriminator],
 	   name[r2.m_discriminator],
 	   name[r3.m_discriminator]);
