@@ -11782,14 +11782,11 @@ tsubst_friend_class (tree friend_tmpl, tree args)
 	     anything.  We don't reset CLASSTYPE_TI_TEMPLATE
 	     for the new type because that is supposed to be the
 	     corresponding template decl, i.e., TMPL.  */
-	  if (modules_p ())
-	    {
-	      spec_entry elt;
-	      elt.tmpl = friend_tmpl;
-	      elt.args = CLASSTYPE_TI_ARGS (TREE_TYPE (tmpl));
-	      elt.spec = TREE_TYPE (tmpl);
-	      type_specializations->remove_elt (&elt);
-	    }
+	  spec_entry elt;
+	  elt.tmpl = friend_tmpl;
+	  elt.args = CLASSTYPE_TI_ARGS (TREE_TYPE (tmpl));
+	  elt.spec = TREE_TYPE (tmpl);
+	  type_specializations->remove_elt (&elt);
 
 	  DECL_USE_TEMPLATE (tmpl) = 0;
 	  DECL_TEMPLATE_INFO (tmpl) = NULL_TREE;
