@@ -11627,7 +11627,7 @@ proc check_vect_support_and_set_flags { } {
         if [check_750cl_hw_available] {
             set dg-do-what-default run
         } else {
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif [istarget powerpc*-*-*] {
         # Skip targets not supporting -maltivec.
@@ -11657,14 +11657,14 @@ proc check_vect_support_and_set_flags { } {
                 # some other cpu type specified above.
 		set DEFAULT_VECTCFLAGS [linsert $DEFAULT_VECTCFLAGS 0 "-mcpu=970"]
             }
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif { [istarget i?86-*-*] || [istarget x86_64-*-*] } {
         lappend DEFAULT_VECTCFLAGS "-msse2"
         if { [check_effective_target_sse2_runtime] } {
             set dg-do-what-default run
         } else {
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif { [istarget mips*-*-*]
 	       && [check_effective_target_nomips16] } {
@@ -11683,7 +11683,7 @@ proc check_vect_support_and_set_flags { } {
         if [check_effective_target_ultrasparc_hw] {
             set dg-do-what-default run
         } else {
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif [istarget alpha*-*-*] {
         # Alpha's vectorization capabilities are extremely limited.
@@ -11696,7 +11696,7 @@ proc check_vect_support_and_set_flags { } {
         if [check_alpha_max_hw_available] {
             set dg-do-what-default run
         } else {
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif [istarget ia64-*-*] {
         set dg-do-what-default run
@@ -11709,7 +11709,7 @@ proc check_vect_support_and_set_flags { } {
         if [is-effective-target arm_neon_hw] {
             set dg-do-what-default run
         } else {
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif [istarget aarch64*-*-*] {
         set dg-do-what-default run
@@ -11733,7 +11733,7 @@ proc check_vect_support_and_set_flags { } {
             set dg-do-what-default run
         } else {
 	    lappend DEFAULT_VECTCFLAGS "-march=z14" "-mzarch"
-            set dg-do-what-default compile
+            set dg-do-what-default link
         }
     } elseif [istarget amdgcn-*-*] {
         set dg-do-what-default run
@@ -11744,7 +11744,7 @@ proc check_vect_support_and_set_flags { } {
 	    foreach item [add_options_for_riscv_v ""] {
 		lappend DEFAULT_VECTCFLAGS $item
 	    }
-	    set dg-do-what-default compile
+	    set dg-do-what-default link
 	}
     } elseif [istarget loongarch*-*-*] {
       # Set the default vectorization option to "-mlsx" due to the problem
@@ -11753,7 +11753,7 @@ proc check_vect_support_and_set_flags { } {
       if [check_effective_target_loongarch_sx_hw] {
 	  set dg-do-what-default run
       } else {
-	  set dg-do-what-default compile
+	  set dg-do-what-default link
       }
     } else {
         return 0
