@@ -1460,10 +1460,47 @@ package body Inline is
     (N    : Node_Id;
      Subp : Entity_Id) return Boolean
    is
+      function Has_Dereference (N : Node_Id) return Boolean;
+      --  Return whether N contains an explicit dereference
+
+      ---------------------
+      -- Has_Dereference --
+      ---------------------
+
+      function Has_Dereference (N : Node_Id) return Boolean is
+
+         function Process (N : Node_Id) return Traverse_Result;
+         --  Process one node in search for dereference
+
+         -------------
+         -- Process --
+         -------------
+
+         function Process (N : Node_Id) return Traverse_Result is
+         begin
+            if Nkind (N) = N_Explicit_Dereference then
+               return Abandon;
+            else
+               return OK;
+            end if;
+         end Process;
+
+         function Traverse is new Traverse_Func (Process);
+         --  Traverse tree to look for dereference
+
+      begin
+         return Traverse (N) = Abandon;
+      end Has_Dereference;
+
+      --  Local variables
+
       F : Entity_Id;
       A : Node_Id;
 
    begin
+      --  Check if inlining may lead to missing a check on type conversion of
+      --  input parameters otherwise.
+
       F := First_Formal (Subp);
       A := First_Actual (N);
       while Present (F) loop
@@ -1472,6 +1509,27 @@ package body Inline is
            and then
              (Is_By_Reference_Type (Etype (A))
                or else Is_Limited_Type (Etype (A)))
+         then
+            return False;
+         end if;
+
+         Next_Formal (F);
+         Next_Actual (A);
+      end loop;
+
+      --  Check if inlining may lead to introducing temporaries of access type,
+      --  which can lead to missing checks for memory leaks. This can only
+      --  come from an (IN-)OUT parameter transformed into a renaming by SPARK
+      --  expansion, whose side-effects are removed, and a dereference in the
+      --  corresponding actual. If the formal itself is of a deep type (it has
+      --  access subcomponents), the subprogram already cannot be inlined in
+      --  GNATprove mode.
+
+      F := First_Formal (Subp);
+      A := First_Actual (N);
+      while Present (F) loop
+         if Ekind (F) /= E_In_Parameter
+           and then Has_Dereference (A)
          then
             return False;
          end if;
@@ -1502,6 +1560,12 @@ package body Inline is
       --  Returns true if the subprogram has at least one formal parameter of
       --  an unconstrained record type with per-object constraints on component
       --  types.
+
+      function Has_Hide_Unhide_Annotation
+        (Spec_Id, Body_Id : Entity_Id)
+         return Boolean;
+      --  Returns whether the subprogram has an annotation Hide_Info or
+      --  Unhide_Info on its spec or body.
 
       function Has_Skip_Proof_Annotation (Id : Entity_Id) return Boolean;
       --  Returns True if subprogram Id has an annotation Skip_Proof or
@@ -1705,6 +1769,79 @@ package body Inline is
          return False;
       end Has_Formal_With_Discriminant_Dependent_Fields;
 
+      --------------------------------
+      -- Has_Hide_Unhide_Annotation --
+      --------------------------------
+
+      function Has_Hide_Unhide_Annotation
+        (Spec_Id, Body_Id : Entity_Id)
+         return Boolean
+      is
+         function Has_Hide_Unhide_Pragma (Prag : Node_Id) return Boolean;
+         --  Return whether a pragma Hide/Unhide is present in the list of
+         --  pragmas starting with Prag.
+
+         ----------------------------
+         -- Has_Hide_Unhide_Pragma --
+         ----------------------------
+
+         function Has_Hide_Unhide_Pragma (Prag : Node_Id) return Boolean is
+            Decl : Node_Id := Prag;
+         begin
+            while Present (Decl)
+              and then Nkind (Decl) = N_Pragma
+            loop
+               if Get_Pragma_Id (Decl) = Pragma_Annotate
+                 and then List_Length (Pragma_Argument_Associations (Decl)) = 4
+               then
+                  declare
+                     Arg1      : constant Node_Id :=
+                       First (Pragma_Argument_Associations (Decl));
+                     Arg2      : constant Node_Id := Next (Arg1);
+                     Arg1_Name : constant Name_Id :=
+                       Chars (Get_Pragma_Arg (Arg1));
+                     Arg2_Name : constant String :=
+                       Get_Name_String (Chars (Get_Pragma_Arg (Arg2)));
+                  begin
+                     if Arg1_Name = Name_Gnatprove
+                       and then Arg2_Name in "hide_info" | "unhide_info"
+                     then
+                        return True;
+                     end if;
+                  end;
+               end if;
+
+               Next (Decl);
+            end loop;
+
+            return False;
+         end Has_Hide_Unhide_Pragma;
+
+      begin
+         if Present (Spec_Id)
+           and then Is_List_Member (Unit_Declaration_Node (Spec_Id))
+           and then Has_Hide_Unhide_Pragma
+             (Next (Unit_Declaration_Node (Spec_Id)))
+         then
+            return True;
+
+         elsif Present (Body_Id) then
+            declare
+               Subp_Body : constant N_Subprogram_Body_Id :=
+                 Unit_Declaration_Node (Body_Id);
+            begin
+               return
+                 (Is_List_Member (Subp_Body)
+                   and then Has_Hide_Unhide_Pragma (Next (Subp_Body)))
+                 or else
+                   Has_Hide_Unhide_Pragma (First (Declarations (Subp_Body)));
+            end;
+
+         else
+            return False;
+         end if;
+      end Has_Hide_Unhide_Annotation;
+
       -------------------------------
       -- Has_Skip_Proof_Annotation --
       -------------------------------
@@ -1725,12 +1862,12 @@ package body Inline is
                   Arg1      : constant Node_Id :=
                     First (Pragma_Argument_Associations (Decl));
                   Arg2      : constant Node_Id := Next (Arg1);
-                  Arg1_Name : constant String :=
-                    Get_Name_String (Chars (Get_Pragma_Arg (Arg1)));
+                  Arg1_Name : constant Name_Id :=
+                    Chars (Get_Pragma_Arg (Arg1));
                   Arg2_Name : constant String :=
                     Get_Name_String (Chars (Get_Pragma_Arg (Arg2)));
                begin
-                  if Arg1_Name = "gnatprove"
+                  if Arg1_Name = Name_Gnatprove
                     and then Arg2_Name in "skip_proof" | "skip_flow_and_proof"
                   then
                      return True;
@@ -1950,6 +2087,13 @@ package body Inline is
       --  annotation, which should be handled separately.
 
       elsif Has_Skip_Proof_Annotation (Id) then
+         return False;
+
+      --  Do not inline subprograms with the Hide_Info or Unhide_Info
+      --  annotation, since their scope has special visibility on the
+      --  precise definition of some entities.
+
+      elsif Has_Hide_Unhide_Annotation (Spec_Id, Body_Id) then
          return False;
 
       --  Otherwise, this is a subprogram declared inside the private part of a

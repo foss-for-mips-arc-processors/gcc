@@ -1,10 +1,7 @@
-2024-08-01  Release Manager
+2024-05-06  YunQiang Su  <syq@gcc.gnu.org>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* config-ml.in: Insert an -B option with multi-os-dir into
+	compiler commands used to build libraries.
 
 2024-04-16  Thomas Schwinge  <tschwinge@baylibre.com>
 

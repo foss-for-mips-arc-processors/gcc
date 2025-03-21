@@ -5339,8 +5339,9 @@ zero_length_array_type_p (const_tree type)
 }
 
 /* INIT is a constructor that forms DECL's initializer.  If the final
-   element initializes a flexible array field, add the size of that
-   initializer to DECL's size.  */
+   element initializes a flexible array field, adjust the size of the
+   DECL with the initializer based on whether the DECL is a union or
+   a structure.  */
 
 static void
 add_flexible_array_elts_to_size (tree decl, tree init)
@@ -5355,10 +5356,26 @@ add_flexible_array_elts_to_size (tree decl, tree init)
   if (flexible_array_member_type_p (type))
     {
       complete_array_type (&type, elt, false);
-      DECL_SIZE (decl)
-	= size_binop (PLUS_EXPR, DECL_SIZE (decl), TYPE_SIZE (type));
-      DECL_SIZE_UNIT (decl)
-	= size_binop (PLUS_EXPR, DECL_SIZE_UNIT (decl), TYPE_SIZE_UNIT (type));
+      /* For a structure, add the size of the initializer to the DECL's
+	 size.  */
+      if (TREE_CODE (TREE_TYPE (decl)) == RECORD_TYPE)
+	{
+	  DECL_SIZE (decl)
+	    = size_binop (PLUS_EXPR, DECL_SIZE (decl), TYPE_SIZE (type));
+	  DECL_SIZE_UNIT (decl)
+	    = size_binop (PLUS_EXPR, DECL_SIZE_UNIT (decl),
+			  TYPE_SIZE_UNIT (type));
+	}
+      /* For a union, the DECL's size is the maximum of the current size
+	 and the size of the initializer.  */
+      else
+	{
+	  DECL_SIZE (decl)
+	    = size_binop (MAX_EXPR, DECL_SIZE (decl), TYPE_SIZE (type));
+	  DECL_SIZE_UNIT (decl)
+	    = size_binop (MAX_EXPR, DECL_SIZE_UNIT (decl),
+			  TYPE_SIZE_UNIT (type));
+	}
     }
 }
 
@@ -9551,11 +9568,8 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
       if (flexible_array_member_type_p (TREE_TYPE (x)))
 	{
 	  if (TREE_CODE (t) == UNION_TYPE)
-	    {
-	      error_at (DECL_SOURCE_LOCATION (x),
-			"flexible array member in union");
-	      TREE_TYPE (x) = error_mark_node;
-	    }
+	    pedwarn (DECL_SOURCE_LOCATION (x), OPT_Wpedantic,
+		     "flexible array member in union is a GCC extension");
 	  else if (!is_last_field)
 	    {
 	      error_at (DECL_SOURCE_LOCATION (x),
@@ -9563,12 +9577,9 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
 	      TREE_TYPE (x) = error_mark_node;
 	    }
 	  else if (!saw_named_field)
-	    {
-	      error_at (DECL_SOURCE_LOCATION (x),
-			"flexible array member in a struct with no named "
-			"members");
-	      TREE_TYPE (x) = error_mark_node;
-	    }
+	    pedwarn (DECL_SOURCE_LOCATION (x), OPT_Wpedantic,
+		     "flexible array member in a struct with no named "
+		     "members is a GCC extension");
 	}
 
       if (pedantic && TREE_CODE (t) == RECORD_TYPE

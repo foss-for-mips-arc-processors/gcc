@@ -249,6 +249,7 @@ struct riscv_arg_info {
    where A is an accumulator, each CODE[i] is a binary rtl operation
    and each VALUE[i] is a constant integer.  CODE[0] is undefined.  */
 struct riscv_integer_op {
+  bool use_uw;
   enum rtx_code code;
   unsigned HOST_WIDE_INT value;
 };
@@ -743,6 +744,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
       /* Simply ADDI or LUI.  */
       codes[0].code = UNKNOWN;
       codes[0].value = value;
+      codes[0].use_uw = false;
       return 1;
     }
   if (TARGET_ZBS && SINGLE_BIT_MASK_OPERAND (value))
@@ -750,6 +752,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
       /* Simply BSETI.  */
       codes[0].code = UNKNOWN;
       codes[0].value = value;
+      codes[0].use_uw = false;
 
       /* RISC-V sign-extends all 32bit values that live in a 32bit
 	 register.  To avoid paradoxes, we thus need to use the
@@ -778,6 +781,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	{
 	  alt_codes[alt_cost-1].code = PLUS;
 	  alt_codes[alt_cost-1].value = low_part;
+	  alt_codes[alt_cost-1].use_uw = false;
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = alt_cost;
 	}
@@ -791,6 +795,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	{
 	  alt_codes[alt_cost-1].code = XOR;
 	  alt_codes[alt_cost-1].value = low_part;
+	  alt_codes[alt_cost-1].use_uw = false;
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = alt_cost;
 	}
@@ -801,17 +806,37 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
     {
       int shift = ctz_hwi (value);
       unsigned HOST_WIDE_INT x = value;
+      bool use_uw = false;
       x = sext_hwi (x >> shift, HOST_BITS_PER_WIDE_INT - shift);
 
       /* Don't eliminate the lower 12 bits if LUI might apply.  */
-      if (shift > IMM_BITS && !SMALL_OPERAND (x) && LUI_OPERAND (x << IMM_BITS))
+      if (shift > IMM_BITS
+	  && !SMALL_OPERAND (x)
+	  && (LUI_OPERAND (x << IMM_BITS)
+	      || (TARGET_64BIT
+		  && TARGET_ZBA
+		  && LUI_OPERAND ((x << IMM_BITS)
+				  & ~HOST_WIDE_INT_C (0x80000000)))))
 	shift -= IMM_BITS, x <<= IMM_BITS;
+
+      /* Adjust X if it isn't a LUI operand in isolation, but we can use
+	 a subsequent "uw" instruction form to mask off the undesirable
+	 bits.  */
+      if (!LUI_OPERAND (x)
+	  && TARGET_64BIT
+	  && TARGET_ZBA
+	  && LUI_OPERAND (x & ~HOST_WIDE_INT_C (0x80000000UL)))
+	{
+	  x = sext_hwi (x, 32);
+	  use_uw = true;
+	}
 
       alt_cost = 1 + riscv_build_integer_1 (alt_codes, x, mode);
       if (alt_cost < cost)
 	{
 	  alt_codes[alt_cost-1].code = ASHIFT;
 	  alt_codes[alt_cost-1].value = shift;
+	  alt_codes[alt_cost-1].use_uw = use_uw;
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = alt_cost;
 	}
@@ -832,8 +857,10 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	  /* The sign-bit might be zero, so just rotate to be safe.  */
 	  codes[0].value = (((unsigned HOST_WIDE_INT) value >> trailing_ones)
 			    | (value << (64 - trailing_ones)));
+	  codes[0].use_uw = false;
 	  codes[1].code = ROTATERT;
 	  codes[1].value = 64 - trailing_ones;
+	  codes[1].use_uw = false;
 	  cost = 2;
 	}
       /* Handle the case where the 11 bit range of zero bits wraps around.  */
@@ -845,8 +872,10 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	  codes[0].value = ((value << (32 - upper_trailing_ones))
 			    | ((unsigned HOST_WIDE_INT) value
 			       >> (32 + upper_trailing_ones)));
+	  codes[0].use_uw = false;
 	  codes[1].code = ROTATERT;
 	  codes[1].value = 32 - upper_trailing_ones;
+	  codes[1].use_uw = false;
 	  cost = 2;
 	}
       /* Final cases, particularly focused on bseti.  */
@@ -860,6 +889,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	    {
 	      alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
 	      alt_codes[i].value = value & 0x7ffff800;
+	      alt_codes[i].use_uw = false;
 	      value &= ~0x7ffff800;
 	      i++;
 	    }
@@ -869,6 +899,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	    {
 	      alt_codes[i].code = (i == 0 ? UNKNOWN : PLUS);
 	      alt_codes[i].value = value & 0x7ff;
+	      alt_codes[i].use_uw = false;
 	      value &= ~0x7ff;
 	      i++;
 	    }
@@ -879,6 +910,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	      HOST_WIDE_INT bit = ctz_hwi (value);
 	      alt_codes[i].code = (i == 0 ? UNKNOWN : IOR);
 	      alt_codes[i].value = 1UL << bit;
+	      alt_codes[i].use_uw = false;
 	      value &= ~(1ULL << bit);
 	      i++;
 	    }
@@ -920,6 +952,7 @@ riscv_build_integer (struct riscv_integer_op *codes, HOST_WIDE_INT value,
 	{
 	  alt_codes[alt_cost-1].code = LSHIFTRT;
 	  alt_codes[alt_cost-1].value = shift;
+	  alt_codes[alt_cost-1].use_uw = false;
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = alt_cost;
 	}
@@ -931,6 +964,7 @@ riscv_build_integer (struct riscv_integer_op *codes, HOST_WIDE_INT value,
 	{
 	  alt_codes[alt_cost-1].code = LSHIFTRT;
 	  alt_codes[alt_cost-1].value = shift;
+	  alt_codes[alt_cost-1].use_uw = false;
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = alt_cost;
 	}
@@ -2489,7 +2523,29 @@ riscv_move_integer (rtx temp, rtx dest, HOST_WIDE_INT value,
 	  else
 	    x = force_reg (mode, x);
 	  codes[i].value = trunc_int_for_mode (codes[i].value, mode);
-	  x = gen_rtx_fmt_ee (codes[i].code, mode, x, GEN_INT (codes[i].value));
+	  /* If the sequence requires using a "uw" form of an insn, we're
+	     going to have to construct the RTL ourselves and put it in
+	     a register to avoid force_reg/force_operand from mucking things
+	     up.  */
+	  if (codes[i].use_uw)
+	    {
+	      gcc_assert (TARGET_64BIT || TARGET_ZBA);
+	      rtx t = can_create_pseudo_p () ? gen_reg_rtx (mode) : temp;
+
+	      /* Create the proper mask for the slli.uw instruction.  */
+	      unsigned HOST_WIDE_INT value = 0xffffffff;
+	      value <<= codes[i].value;
+
+	      /* Right now the only "uw" form we use is slli, we may add more
+		 in the future.  */
+	      x = gen_rtx_fmt_ee (codes[i].code, mode,
+				  x, GEN_INT (codes[i].value));
+	      x = gen_rtx_fmt_ee (AND, mode, x, GEN_INT (value));
+	      x = riscv_emit_set (t, x);
+	    }
+	  else
+	    x = gen_rtx_fmt_ee (codes[i].code, mode,
+				x, GEN_INT (codes[i].value));
 	}
     }
 
@@ -10090,9 +10146,17 @@ riscv_asan_shadow_offset (void)
 static const char *
 riscv_mangle_type (const_tree type)
 {
-  /* Half-precision float, _Float16 is "DF16_".  */
+  /* Half-precision float, _Float16 is "DF16_" and _Bfloat16 is "DF16b".  */
   if (SCALAR_FLOAT_TYPE_P (type) && TYPE_PRECISION (type) == 16)
-    return "DF16_";
+    {
+      if (TYPE_MODE (type) == HFmode)
+	return "DF16_";
+
+      if (TYPE_MODE (type) == BFmode)
+	return "DF16b";
+
+      gcc_unreachable ();
+    }
 
   /* Mangle all vector type for vector extension.  */
   /* The mangle name follows the rule of RVV LLVM
@@ -10113,19 +10177,20 @@ riscv_mangle_type (const_tree type)
 static bool
 riscv_scalar_mode_supported_p (scalar_mode mode)
 {
-  if (mode == HFmode)
+  if (mode == HFmode || mode == BFmode)
     return true;
   else
     return default_scalar_mode_supported_p (mode);
 }
 
 /* Implement TARGET_LIBGCC_FLOATING_MODE_SUPPORTED_P - return TRUE
-   if MODE is HFmode, and punt to the generic implementation otherwise.  */
+   if MODE is HFmode or BFmode, and punt to the generic implementation
+   otherwise.  */
 
 static bool
 riscv_libgcc_floating_mode_supported_p (scalar_float_mode mode)
 {
-  if (mode == HFmode)
+  if (mode == HFmode || mode == BFmode)
     return true;
   else
     return default_libgcc_floating_mode_supported_p (mode);
@@ -10176,27 +10241,42 @@ riscv_floatn_mode (int n, bool extended)
   return default_floatn_mode (n, extended);
 }
 
+/* Record that we have no arithmetic or comparison libfuncs for
+   machine_mode MODE.  */
+static void
+riscv_block_arith_comp_libfuncs_for_mode (machine_mode mode)
+{
+  /* Half-precision float or Brain float operations.  The compiler handles all
+     operations with NULL libfuncs by converting to SFmode.  */
+
+  /* Arithmetic.  */
+  set_optab_libfunc (add_optab, mode, NULL);
+  set_optab_libfunc (sdiv_optab, mode, NULL);
+  set_optab_libfunc (smul_optab, mode, NULL);
+  set_optab_libfunc (neg_optab, mode, NULL);
+  set_optab_libfunc (sub_optab, mode, NULL);
+
+  /* Comparisons.  */
+  set_optab_libfunc (eq_optab, mode, NULL);
+  set_optab_libfunc (ne_optab, mode, NULL);
+  set_optab_libfunc (lt_optab, mode, NULL);
+  set_optab_libfunc (le_optab, mode, NULL);
+  set_optab_libfunc (ge_optab, mode, NULL);
+  set_optab_libfunc (gt_optab, mode, NULL);
+  set_optab_libfunc (unord_optab, mode, NULL);
+}
+
 static void
 riscv_init_libfuncs (void)
 {
-  /* Half-precision float operations.  The compiler handles all operations
-     with NULL libfuncs by converting to SFmode.  */
+  riscv_block_arith_comp_libfuncs_for_mode (HFmode);
+  riscv_block_arith_comp_libfuncs_for_mode (BFmode);
 
-  /* Arithmetic.  */
-  set_optab_libfunc (add_optab, HFmode, NULL);
-  set_optab_libfunc (sdiv_optab, HFmode, NULL);
-  set_optab_libfunc (smul_optab, HFmode, NULL);
-  set_optab_libfunc (neg_optab, HFmode, NULL);
-  set_optab_libfunc (sub_optab, HFmode, NULL);
-
-  /* Comparisons.  */
-  set_optab_libfunc (eq_optab, HFmode, NULL);
-  set_optab_libfunc (ne_optab, HFmode, NULL);
-  set_optab_libfunc (lt_optab, HFmode, NULL);
-  set_optab_libfunc (le_optab, HFmode, NULL);
-  set_optab_libfunc (ge_optab, HFmode, NULL);
-  set_optab_libfunc (gt_optab, HFmode, NULL);
-  set_optab_libfunc (unord_optab, HFmode, NULL);
+  /* Convert between BFmode and HFmode using only trunc libfunc if needed.  */
+  set_conv_libfunc (sext_optab, BFmode, HFmode, "__trunchfbf2");
+  set_conv_libfunc (sext_optab, HFmode, BFmode, "__truncbfhf2");
+  set_conv_libfunc (trunc_optab, BFmode, HFmode, "__trunchfbf2");
+  set_conv_libfunc (trunc_optab, HFmode, BFmode, "__truncbfhf2");
 }
 
 #if CHECKING_P

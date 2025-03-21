@@ -1780,7 +1780,8 @@ package body Sem_Util is
       begin
          while Present (Disc) loop
             Append_To (Constraints,
-              New_Copy_Tree (Discriminant_Default_Value (Disc)));
+                       New_Copy_Tree
+                         (Discriminant_Default_Value (Disc), New_Sloc => Loc));
             Next_Discriminant (Disc);
          end loop;
 
@@ -13106,11 +13107,6 @@ package body Sem_Util is
       --  but now without any syntactic checks.
 
       case Ekind (E) is
-         --  Abstract states have option Relaxed_Initialization
-
-         when E_Abstract_State =>
-            return Is_Relaxed_Initialization_State (E);
-
          --  Constants have this aspect attached directly; for deferred
          --  constants, the aspect is attached to the partial view.
 
