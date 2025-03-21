@@ -71,6 +71,9 @@
 #if !__has_builtin (__is_class)
 # error "__has_builtin (__is_class) failed"
 #endif
+#if !__has_builtin (__is_const)
+# error "__has_builtin (__is_const) failed"
+#endif
 #if !__has_builtin (__is_constructible)
 # error "__has_builtin (__is_constructible) failed"
 #endif
@@ -116,11 +119,14 @@
 #if !__has_builtin (__is_object)
 # error "__has_builtin (__is_object) failed"
 #endif
-#if !__has_builtin (__is_pointer_interconvertible_base_of)
-# error "__has_builtin (__is_pointer_interconvertible_base_of) failed"
-#endif
 #if !__has_builtin (__is_pod)
 # error "__has_builtin (__is_pod) failed"
+#endif
+#if !__has_builtin (__is_pointer)
+# error "__has_builtin (__is_pointer) failed"
+#endif
+#if !__has_builtin (__is_pointer_interconvertible_base_of)
+# error "__has_builtin (__is_pointer_interconvertible_base_of) failed"
 #endif
 #if !__has_builtin (__is_polymorphic)
 # error "__has_builtin (__is_polymorphic) failed"
@@ -154,6 +160,9 @@
 #endif
 #if !__has_builtin (__is_union)
 # error "__has_builtin (__is_union) failed"
+#endif
+#if !__has_builtin (__is_volatile)
+# error "__has_builtin (__is_volatile) failed"
 #endif
 #if !__has_builtin (__reference_constructs_from_temporary)
 # error "__has_builtin (__reference_constructs_from_temporary) failed"

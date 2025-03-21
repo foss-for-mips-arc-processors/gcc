@@ -3768,6 +3768,9 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_CLASS:
       inform (loc, "  %qT is not a class", t1);
       break;
+    case CPTK_IS_CONST:
+      inform (loc, "  %qT is not a const type", t1);
+      break;
     case CPTK_IS_CONSTRUCTIBLE:
       if (!t2)
     inform (loc, "  %qT is not default constructible", t1);
@@ -3826,6 +3829,9 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_POD:
       inform (loc, "  %qT is not a POD type", t1);
       break;
+    case CPTK_IS_POINTER:
+      inform (loc, "  %qT is not a pointer", t1);
+      break;
     case CPTK_IS_POLYMORPHIC:
       inform (loc, "  %qT is not a polymorphic type", t1);
       break;
@@ -3858,6 +3864,9 @@ diagnose_trait_expr (tree expr, tree args)
       break;
     case CPTK_IS_UNION:
       inform (loc, "  %qT is not a union", t1);
+      break;
+    case CPTK_IS_VOLATILE:
+      inform (loc, "  %qT is not a volatile type", t1);
       break;
     case CPTK_REF_CONSTRUCTS_FROM_TEMPORARY:
       inform (loc, "  %qT is not a reference that binds to a temporary "

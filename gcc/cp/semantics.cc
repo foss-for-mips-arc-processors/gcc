@@ -12526,6 +12526,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_CLASS:
       return NON_UNION_CLASS_TYPE_P (type1);
 
+    case CPTK_IS_CONST:
+      return CP_TYPE_CONST_P (type1);
+
     case CPTK_IS_CONSTRUCTIBLE:
       return is_xible (INIT_EXPR, type1, type2);
 
@@ -12579,6 +12582,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_POD:
       return pod_type_p (type1);
 
+    case CPTK_IS_POINTER:
+      return TYPE_PTR_P (type1);
+
     case CPTK_IS_POLYMORPHIC:
       return CLASS_TYPE_P (type1) && TYPE_POLYMORPHIC_P (type1);
 
@@ -12608,6 +12614,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
 
     case CPTK_IS_UNION:
       return type_code1 == UNION_TYPE;
+
+    case CPTK_IS_VOLATILE:
+      return CP_TYPE_VOLATILE_P (type1);
 
     case CPTK_REF_CONSTRUCTS_FROM_TEMPORARY:
       return ref_xes_from_temporary (type1, type2, /*direct_init=*/true);
@@ -12808,16 +12817,19 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_ARRAY:
     case CPTK_IS_BOUNDED_ARRAY:
     case CPTK_IS_CLASS:
+    case CPTK_IS_CONST:
     case CPTK_IS_ENUM:
     case CPTK_IS_FUNCTION:
     case CPTK_IS_MEMBER_FUNCTION_POINTER:
     case CPTK_IS_MEMBER_OBJECT_POINTER:
     case CPTK_IS_MEMBER_POINTER:
     case CPTK_IS_OBJECT:
+    case CPTK_IS_POINTER:
     case CPTK_IS_REFERENCE:
     case CPTK_IS_SAME:
     case CPTK_IS_SCOPED_ENUM:
     case CPTK_IS_UNION:
+    case CPTK_IS_VOLATILE:
       break;
 
     case CPTK_IS_LAYOUT_COMPATIBLE:
