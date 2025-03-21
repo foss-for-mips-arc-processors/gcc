@@ -12503,10 +12503,14 @@ trees_in::read_class_def (tree defn, tree maybe_template)
 
 	  if (vtables)
 	    {
-	      if (!CLASSTYPE_KEY_METHOD (type)
-		  /* Sneaky user may have defined it inline
-		     out-of-class.  */
-		  || DECL_DECLARED_INLINE_P (CLASSTYPE_KEY_METHOD (type)))
+	      if ((!CLASSTYPE_KEY_METHOD (type)
+		   /* Sneaky user may have defined it inline
+		      out-of-class.  */
+		   || DECL_DECLARED_INLINE_P (CLASSTYPE_KEY_METHOD (type)))
+		  /* An imported non-template class attached to a module
+		     doesn't need to have its vtables emitted here.  */
+		  && (CLASSTYPE_USE_TEMPLATE (type)
+		      || !DECL_MODULE_ATTACH_P (defn)))
 		vec_safe_push (keyed_classes, type);
 	      unsigned len = vtables->length ();
 	      tree *chain = &CLASSTYPE_VTABLES (type);
@@ -13305,14 +13309,22 @@ depset::hash::add_partial_entities (vec<tree, va_gc> *partial_classes)
       depset *dep = make_dependency (inner, depset::EK_DECL);
 
       if (dep->get_entity_kind () == depset::EK_REDIRECT)
-	/* We should have recorded the template as a partial
-	   specialization.  */
-	gcc_checking_assert (dep->deps[0]->get_entity_kind ()
-			     == depset::EK_PARTIAL);
+	{
+	  dep = dep->deps[0];
+	  /* We should have recorded the template as a partial
+	     specialization.  */
+	  gcc_checking_assert (dep->get_entity_kind ()
+			       == depset::EK_PARTIAL);
+	}
       else
 	/* It was an explicit specialization, not a partial one.  */
 	gcc_checking_assert (dep->get_entity_kind ()
 			     == depset::EK_SPECIALIZATION);
+
+      /* Only emit GM entities if reached.  */
+      if (!DECL_LANG_SPECIFIC (inner)
+	  || !DECL_MODULE_PURVIEW_P (inner))
+	dep->set_flag_bit<DB_UNREACHED_BIT> ();
     }
 }
 
@@ -13633,31 +13645,40 @@ depset::hash::find_dependencies (module_state *module)
 	      if (!walker.is_key_order ()
 		  && TREE_CODE (decl) == TEMPLATE_DECL
 		  && !DECL_UNINSTANTIATED_TEMPLATE_FRIEND_P (decl))
-		/* Mark all the explicit & partial specializations as
-		   reachable.  */
-		for (tree cons = DECL_TEMPLATE_INSTANTIATIONS (decl);
-		     cons; cons = TREE_CHAIN (cons))
-		  {
-		    tree spec = TREE_VALUE (cons);
-		    if (TYPE_P (spec))
-		      spec = TYPE_NAME (spec);
-		    int use_tpl;
-		    node_template_info (spec, use_tpl);
-		    if (use_tpl & 2)
-		      {
-			depset *spec_dep = find_dependency (spec);
-			if (spec_dep->get_entity_kind () == EK_REDIRECT)
-			  spec_dep = spec_dep->deps[0];
-			if (spec_dep->is_unreached ())
-			  {
-			    reached_unreached = true;
-			    spec_dep->clear_flag_bit<DB_UNREACHED_BIT> ();
-			    dump (dumper::DEPEND)
-			      && dump ("Reaching unreached specialization"
-				       " %C:%N", TREE_CODE (spec), spec);
-			  }
-		      }
-		  }
+		{
+		  /* Mark all the explicit & partial specializations as
+		     reachable.  We search both specialization lists as some
+		     constrained partial specializations for class types are
+		     only found in DECL_TEMPLATE_SPECIALIZATIONS.  */
+		  auto mark_reached = [this](tree spec)
+		    {
+		      if (TYPE_P (spec))
+			spec = TYPE_NAME (spec);
+		      int use_tpl;
+		      node_template_info (spec, use_tpl);
+		      if (use_tpl & 2)
+			{
+			  depset *spec_dep = find_dependency (spec);
+			  if (spec_dep->get_entity_kind () == EK_REDIRECT)
+			    spec_dep = spec_dep->deps[0];
+			  if (spec_dep->is_unreached ())
+			    {
+			      reached_unreached = true;
+			      spec_dep->clear_flag_bit<DB_UNREACHED_BIT> ();
+			      dump (dumper::DEPEND)
+				&& dump ("Reaching unreached specialization"
+					 " %C:%N", TREE_CODE (spec), spec);
+			    }
+			}
+		    };
+
+		  for (tree cons = DECL_TEMPLATE_INSTANTIATIONS (decl);
+		       cons; cons = TREE_CHAIN (cons))
+		    mark_reached (TREE_VALUE (cons));
+		  for (tree cons = DECL_TEMPLATE_SPECIALIZATIONS (decl);
+		       cons; cons = TREE_CHAIN (cons))
+		    mark_reached (TREE_VALUE (cons));
+		}
 
 	      dump.outdent ();
 	      current = NULL;
