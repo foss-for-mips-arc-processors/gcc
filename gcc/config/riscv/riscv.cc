@@ -9739,6 +9739,20 @@ arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
   return arcv_mpy_option == ARCV_MPY_OPTION_10C;
 }
 
+bool
+arcv_ld_1c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		      rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_ld_cycles == 1;
+}
+
+bool
+arcv_ld_2c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		      rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_ld_cycles == 2;
+}
+
 /* Implement TARGET_SECONDARY_MEMORY_NEEDED.
 
    When floating-point registers are wider than integer ones, moves between
