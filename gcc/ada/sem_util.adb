@@ -645,96 +645,70 @@ package body Sem_Util is
    -- Append_Entity_Name --
    ------------------------
 
-   procedure Append_Entity_Name (Buf : in out Bounded_String; E : Entity_Id) is
-      Temp : Bounded_String;
-
-      procedure Inner (E : Entity_Id);
-      --  Inner recursive routine, keep outer routine nonrecursive to ease
-      --  debugging when we get strange results from this routine.
-
-      -----------
-      -- Inner --
-      -----------
-
-      procedure Inner (E : Entity_Id) is
-         Scop : Node_Id;
-
-      begin
-         --  If entity has an internal name, skip by it, and print its scope.
-         --  Note that we strip a final R from the name before the test; this
-         --  is needed for some cases of instantiations.
-
-         declare
-            E_Name : Bounded_String;
-
-         begin
-            Append (E_Name, Chars (E));
-
-            if E_Name.Chars (E_Name.Length) = 'R' then
-               E_Name.Length := E_Name.Length - 1;
-            end if;
-
-            if Is_Internal_Name (E_Name) then
-               Inner (Scope (E));
-               return;
-            end if;
-         end;
-
-         Scop := Scope (E);
-
-         --  Just print entity name if its scope is at the outer level
-
-         if Scop = Standard_Standard then
-            null;
-
-         --  If scope comes from source, write scope and entity
-
-         elsif Comes_From_Source (Scop) then
-            Append_Entity_Name (Temp, Scop);
-            Append (Temp, '.');
-
-         --  If in wrapper package skip past it
-
-         elsif Present (Scop) and then Is_Wrapper_Package (Scop) then
-            Append_Entity_Name (Temp, Scope (Scop));
-            Append (Temp, '.');
-
-         --  Otherwise nothing to output (happens in unnamed block statements)
-
-         else
-            null;
-         end if;
-
-         --  Output the name
-
-         declare
-            E_Name : Bounded_String;
-
-         begin
-            Append_Unqualified_Decoded (E_Name, Chars (E));
-
-            --  Remove trailing upper-case letters from the name (useful for
-            --  dealing with some cases of internal names generated in the case
-            --  of references from within a generic).
-
-            while E_Name.Length > 1
-              and then E_Name.Chars (E_Name.Length) in 'A' .. 'Z'
-            loop
-               E_Name.Length := E_Name.Length - 1;
-            end loop;
-
-            --  Adjust casing appropriately (gets name from source if possible)
-
-            Adjust_Name_Case (E_Name, Sloc (E));
-            Append (Temp, E_Name);
-         end;
-      end Inner;
-
-   --  Start of processing for Append_Entity_Name
-
+   procedure Append_Entity_Name
+     (Buf : in out Bounded_String; E : Entity_Id)
+   is
+      Scop : constant Node_Id := Scope (E);
+      --  We recursively print the scope to Buf, and then print the simple
+      --  name, along with some special cases (see below). So for A.B.C.D,
+      --  recursively print A.B.C, then print D.
    begin
-      Inner (E);
-      Append (Buf, Temp);
+      --  If E is not a source entity, then skip the simple name and just
+      --  recursively print its scope. However, subprogram instances have
+      --  Comes_From_Source = False, but we do want to print the simple name
+      --  of the instance.
+
+      if not Comes_From_Source (E) then
+         if Is_Generic_Instance (E)
+           and then Ekind (E) in E_Function | E_Procedure
+         then
+            null;
+         else
+            Append_Entity_Name (Buf, Scope (E));
+            return;
+         end if;
+      end if;
+
+      --  Just print entity name if its scope is at the outer level
+
+      if No (Scop) or Scop = Standard_Standard then
+         null;
+
+      --  If scope comes from source, write scope and entity
+
+      elsif Comes_From_Source (Scop) then
+         Append_Entity_Name (Buf, Scop);
+         Append (Buf, '.');
+
+      --  Otherwise (non-source scope) skip one level
+
+      else
+         Append_Entity_Name (Buf, Scope (Scop));
+         Append (Buf, '.');
+      end if;
+
+      --  Print the simple name
+
+      declare
+         E_Name : Bounded_String;
+      begin
+         Append_Unqualified_Decoded (E_Name, Chars (E));
+
+         --  Remove trailing upper-case letters from the name (useful for
+         --  dealing with some cases of internal names generated in the case
+         --  of references from within a generic).
+
+         while E_Name.Length > 1
+           and then E_Name.Chars (E_Name.Length) in 'A' .. 'Z'
+         loop
+            E_Name.Length := E_Name.Length - 1;
+         end loop;
+
+         --  Adjust casing appropriately (gets name from source if possible)
+
+         Adjust_Name_Case (E_Name, Sloc (E));
+         Append (Buf, E_Name);
+      end;
    end Append_Entity_Name;
 
    ---------------------------------
@@ -4157,16 +4131,7 @@ package body Sem_Util is
             begin
                --  Expr is the conjunct of an enclosing "and" expression
 
-               return Nkind (Parent (Expr)) in N_Subexpr
-
-                 --  or Expr is a conjunct of an enclosing "and then"
-                 --  expression in a postcondition aspect that was split into
-                 --  multiple pragmas. The first conjunct has the "and then"
-                 --  expression as Original_Node, and other conjuncts have
-                 --  Split_PCC set to True.
-
-                 or else Nkind (Original_Node (Expr)) = N_And_Then
-                 or else Split_PPC (Prag);
+               return Nkind (Parent (Expr)) in N_Subexpr;
             end Applied_On_Conjunct;
 
             -----------------------
@@ -4229,7 +4194,7 @@ package body Sem_Util is
             -------------------
 
             function Has_No_Output (Subp : Entity_Id) return Boolean is
-               Param : Node_Id;
+               Param : Entity_Id;
 
             begin
                --  A function has its result as output
@@ -10542,7 +10507,10 @@ package body Sem_Util is
             H := High_Bound (Range_Expression (Constraint (N)));
          end if;
 
-      elsif Is_Entity_Name (N) and then Is_Type (Entity (N)) then
+      elsif Is_Entity_Name (N)
+        and then Present (Entity (N))
+        and then Is_Type (Entity (N))
+      then
          Rng := Scalar_Range_Of_Type (Entity (N));
 
          if Error_Posted (Rng) then
@@ -13506,6 +13474,28 @@ package body Sem_Util is
 
       return False;
    end Has_Effectively_Volatile_Component;
+
+   ------------------------
+   -- Has_Enabled_Aspect --
+   ------------------------
+
+   function Has_Enabled_Aspect
+     (Id : Entity_Id;
+      A  : Aspect_Id)
+      return Boolean
+   is
+      Asp : constant Node_Id := Find_Aspect (Id, A);
+   begin
+      if Present (Asp) then
+         if Present (Expression (Asp)) then
+            return Is_True (Static_Boolean (Expression (Asp)));
+         else
+            return True;
+         end if;
+      else
+         return False;
+      end if;
+   end Has_Enabled_Aspect;
 
    ----------------------------
    -- Has_Volatile_Component --
@@ -19592,39 +19582,14 @@ package body Sem_Util is
 
       --  Local variables
 
-      Par  : Node_Id;
       Expr : Node_Id;
+      Par  : Node_Id;
 
    --  Start of processing for Is_Potentially_Unevaluated
 
    begin
       Expr := N;
-      Par  := N;
-
-      --  A postcondition whose expression is a short-circuit is broken down
-      --  into individual aspects for better exception reporting. The original
-      --  short-circuit expression is rewritten as the second operand, and an
-      --  occurrence of 'Old in that operand is potentially unevaluated.
-      --  See sem_ch13.adb for details of this transformation. The reference
-      --  to 'Old may appear within an expression, so we must look for the
-      --  enclosing pragma argument in the tree that contains the reference.
-
-      while Present (Par)
-        and then Nkind (Par) /= N_Pragma_Argument_Association
-      loop
-         if Is_Rewrite_Substitution (Par)
-           and then Nkind (Original_Node (Par)) = N_And_Then
-         then
-            return True;
-         end if;
-
-         Par := Parent (Par);
-      end loop;
-
-      --  Other cases; 'Old appears within other expression (not the top-level
-      --  conjunct in a postcondition) with a potentially unevaluated operand.
-
-      Par := Parent (Expr);
+      Par  := Parent (Expr);
 
       while Present (Par)
         and then Nkind (Par) /= N_Pragma_Argument_Association
@@ -20379,11 +20344,7 @@ package body Sem_Util is
       --  for efficiency.
 
       return Ada_Version >= Ada_2022
-        and then Has_Aspect (Subp, Aspect_Static)
-        and then
-          (No (Find_Value_Of_Aspect (Subp, Aspect_Static))
-            or else Is_True (Static_Boolean
-                               (Find_Value_Of_Aspect (Subp, Aspect_Static))));
+        and then Has_Enabled_Aspect (Subp, Aspect_Static);
    end Is_Static_Function;
 
    -----------------------------
@@ -30519,56 +30480,18 @@ package body Sem_Util is
                      end if;
 
                   when N_Pragma =>
-                     declare
-                        Previous : constant Node_Id := Prev (Par);
-                        Prev_Expr : Node_Id;
-                     begin
-                        if Nkind (Previous) = N_Pragma and then
-                          Split_PPC (Previous)
-                        then
-                           --  A source-level postcondition of
-                           --    A and then B and then C
-                           --  results in
-                           --    pragma Postcondition (A);
-                           --    pragma Postcondition (B);
-                           --    pragma Postcondition (C);
-                           --  with Split_PPC set to True on all but the
-                           --  last pragma. We account for that here.
+                     pragma Assert
+                       (Get_Pragma_Id (Pragma_Name (Par)) in
+                          Pragma_Check
+                        | Pragma_Contract_Cases
+                        | Pragma_Exceptional_Cases
+                        | Pragma_Post
+                        | Pragma_Postcondition
+                        | Pragma_Post_Class
+                        | Pragma_Refined_Post
+                        | Pragma_Test_Case);
 
-                           Prev_Expr :=
-                             Expression (First
-                               (Pragma_Argument_Associations (Previous)));
-
-                           --  This Analyze call is needed in the case when
-                           --  Sem_Attr.Analyze_Attribute calls
-                           --  Eligible_For_Conditional_Evaluation. Without
-                           --  it, we end up passing an unanalyzed expression
-                           --  to Is_Known_On_Entry and that doesn't work.
-
-                           Analyze (Prev_Expr);
-
-                           Next_Element :=
-                             (Expr        => Prev_Expr,
-                              Context     => Short_Circuit_Op,
-                              Is_And_Then => True);
-
-                           return Determining_Expressions (Prev_Expr)
-                             & Next_Element;
-                        else
-                           pragma Assert
-                             (Get_Pragma_Id (Pragma_Name (Par)) in
-                                Pragma_Check
-                              | Pragma_Contract_Cases
-                              | Pragma_Exceptional_Cases
-                              | Pragma_Post
-                              | Pragma_Postcondition
-                              | Pragma_Post_Class
-                              | Pragma_Refined_Post
-                              | Pragma_Test_Case);
-
-                           return (1 .. 0 => <>); -- recursion terminates here
-                        end if;
-                     end;
+                     return (1 .. 0 => <>); -- recursion terminates here
 
                   when N_Empty =>
                      --  This case should be impossible, but if it does
@@ -31044,8 +30967,8 @@ package body Sem_Util is
                --  When a type associated with an indirect temporary gets
                --  created for a 'Old attribute reference we need to mark
                --  the type as such. This allows, for example, finalization
-               --  masters associated with them to be finalized in the correct
-               --  order after postcondition checks.
+               --  collections associated with them to be finalized in the
+               --  correct order after postcondition checks.
 
                if Attribute_Name (Parent (Attr_Prefix)) = Name_Old then
                   Set_Stores_Attribute_Old_Prefix (Access_Type_Id);

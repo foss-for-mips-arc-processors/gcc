@@ -80,6 +80,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "expr.h"
 #include "dwarf2out.h"
 #include "dwarf2ctf.h"
+#include "dwarf2codeview.h"
 #include "dwarf2asm.h"
 #include "toplev.h"
 #include "md5.h"
@@ -1252,6 +1253,11 @@ dwarf2out_end_epilogue (unsigned int line ATTRIBUTE_UNUSED,
   if (dwarf2out_do_cfi_asm ())
     fprintf (asm_out_file, "\t.cfi_endproc\n");
 
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    codeview_end_epilogue ();
+#endif
+
   /* Output a label to mark the endpoint of the code generated for this
      function.  */
   ASM_GENERATE_INTERNAL_LABEL (label, FUNC_END_LABEL,
@@ -1304,6 +1310,11 @@ dwarf2out_switch_text_section (void)
       fde->dw_fde_second_end = crtl->subsections.cold_section_end_label;
     }
   have_multiple_function_sections = true;
+
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    codeview_switch_text_section ();
+#endif
 
   if (dwarf2out_do_cfi_asm ())
     fprintf (asm_out_file, "\t.cfi_endproc\n");
@@ -28668,6 +28679,11 @@ dwarf2out_source_line (unsigned int line, unsigned int column,
   dw_line_info_table *table;
   static var_loc_view lvugid;
 
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    codeview_source_line (line, filename);
+#endif
+
   /* 'line_info_table' information gathering is not needed when the debug
      info level is set to the lowest value.  Also, the current DWARF-based
      debug formats do not use this info.  */
@@ -28888,6 +28904,11 @@ dwarf2out_set_ignored_loc (unsigned int line, unsigned int column,
 static void
 dwarf2out_start_source_file (unsigned int lineno, const char *filename)
 {
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    codeview_start_source_file (filename);
+#endif
+
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
       macinfo_entry e;
@@ -32277,6 +32298,11 @@ dwarf2out_finish (const char *filename)
   if ((ctf_debug_info_level > CTFINFO_LEVEL_NONE
        || btf_debuginfo_p ()) && lang_GNU_C ())
     ctf_debug_finish (filename);
+
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    codeview_debug_finish ();
+#endif
 
   /* Skip emitting DWARF if not required.  */
   if (!dwarf_debuginfo_p ())

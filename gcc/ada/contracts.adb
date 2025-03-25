@@ -512,7 +512,6 @@ package body Contracts is
                if Present (It) then
                   Validate_Iterable_Aspect (E, It);
                end if;
-
                if Present (I_Lit) then
                   Validate_Literal_Aspect (E, I_Lit);
                end if;
@@ -2714,22 +2713,7 @@ package body Contracts is
          --  Otherwise, add the item
 
          else
-            if No (List) then
-               List := New_List;
-            end if;
-
-            --  If the pragma is a conjunct in a composite postcondition, it
-            --  has been processed in reverse order. In the postcondition body
-            --  it must appear before the others.
-
-            if Nkind (Item) = N_Pragma
-              and then From_Aspect_Specification (Item)
-              and then Split_PPC (Item)
-            then
-               Prepend (Item, List);
-            else
-               Append (Item, List);
-            end if;
+            Append_New (Item, List);
          end if;
       end Append_Enabled_Item;
 
@@ -3620,7 +3604,7 @@ package body Contracts is
          end if;
       end Inherit_Pragma;
 
-   --   Start of processing for Inherit_Subprogram_Contract
+   --  Start of processing for Inherit_Subprogram_Contract
 
    begin
       --  Inheritance is carried out only when both entities are subprograms
@@ -4995,9 +4979,7 @@ package body Contracts is
 
       Push_Scope (Gen_Id);
 
-      if Permits_Aspect_Specifications (Templ)
-        and then Has_Aspects (Templ)
-      then
+      if Permits_Aspect_Specifications (Templ) then
          Save_Global_References_In_Aspects (Templ);
       end if;
 

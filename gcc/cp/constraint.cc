@@ -3792,6 +3792,12 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_FUNCTION:
       inform (loc, "  %qT is not a function", t1);
       break;
+    case CPTK_IS_INVOCABLE:
+      if (!t2)
+    inform (loc, "  %qT is not invocable", t1);
+      else
+    inform (loc, "  %qT is not invocable by %qE", t1, t2);
+      break;
     case CPTK_IS_LAYOUT_COMPATIBLE:
       inform (loc, "  %qT is not layout compatible with %qT", t1, t2);
       break;
@@ -3819,6 +3825,12 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_NOTHROW_CONVERTIBLE:
 	  inform (loc, "  %qT is not nothrow convertible from %qE", t2, t1);
       break;
+    case CPTK_IS_NOTHROW_INVOCABLE:
+	if (!t2)
+	  inform (loc, "  %qT is not nothrow invocable", t1);
+	else
+	  inform (loc, "  %qT is not nothrow invocable by %qE", t1, t2);
+	break;
     case CPTK_IS_OBJECT:
       inform (loc, "  %qT is not an object type", t1);
       break;
@@ -3862,11 +3874,17 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_TRIVIALLY_COPYABLE:
       inform (loc, "  %qT is not trivially copyable", t1);
       break;
+    case CPTK_IS_UNBOUNDED_ARRAY:
+      inform (loc, "  %qT is not an unbounded array", t1);
+      break;
     case CPTK_IS_UNION:
       inform (loc, "  %qT is not a union", t1);
       break;
     case CPTK_IS_VOLATILE:
       inform (loc, "  %qT is not a volatile type", t1);
+      break;
+    case CPTK_RANK:
+      inform (loc, "  %qT cannot yield a rank", t1);
       break;
     case CPTK_REF_CONSTRUCTS_FROM_TEMPORARY:
       inform (loc, "  %qT is not a reference that binds to a temporary "

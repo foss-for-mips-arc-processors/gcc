@@ -1251,7 +1251,6 @@ begin -- Gen_IL.Gen.Gen_Nodes
        (Sy (Identifier, Node_Id, Default_Empty),
         Sy (Expression, Node_Id, Default_Empty),
         Sy (Class_Present, Flag),
-        Sy (Split_PPC, Flag),
         Sm (Aspect_On_Partial_View, Flag),
         Sm (Aspect_Rep_Item, Node_Id),
         Sm (Entity_Or_Associated_Node, Node_Id), -- just Entity
@@ -1330,7 +1329,6 @@ begin -- Gen_IL.Gen.Gen_Nodes
    Cc (N_Contract, Node_Kind,
        (Sm (Classifications, Node_Id),
         Sm (Contract_Test_Cases, Node_Id),
-        Sm (Is_Expanded_Contract, Flag),
         Sm (Pre_Post_Conditions, Node_Id)));
 
    Cc (N_Derived_Type_Definition, Node_Kind,
@@ -1557,7 +1555,6 @@ begin -- Gen_IL.Gen.Gen_Nodes
        (Sy (Pragma_Argument_Associations, List_Id, Default_No_List),
         Sy (Pragma_Identifier, Node_Id),
         Sy (Class_Present, Flag),
-        Sy (Split_PPC, Flag),
         Sm (Corresponding_Aspect, Node_Id),
         Sm (From_Aspect_Specification, Flag),
         Sm (Import_Interface_Present, Flag),

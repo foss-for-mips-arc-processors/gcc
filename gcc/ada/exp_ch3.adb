@@ -1462,31 +1462,6 @@ package body Exp_Ch3 is
       return Agg;
    end Build_Equivalent_Record_Aggregate;
 
-   ----------------------------
-   -- Init_Proc_Level_Formal --
-   ----------------------------
-
-   function Init_Proc_Level_Formal (Proc : Entity_Id) return Entity_Id is
-      Form : Entity_Id;
-   begin
-      --  Move through the formals of the initialization procedure Proc to find
-      --  the extra accessibility level parameter associated with the object
-      --  being initialized.
-
-      Form := First_Formal (Proc);
-      while Present (Form) loop
-         if Chars (Form) = Name_uInit_Level then
-            return Form;
-         end if;
-
-         Next_Formal (Form);
-      end loop;
-
-      --  No formal was found, return Empty
-
-      return Empty;
-   end Init_Proc_Level_Formal;
-
    -------------------------------
    -- Build_Initialization_Call --
    -------------------------------
@@ -6249,13 +6224,12 @@ package body Exp_Ch3 is
       --
       --    * Controlled case
       --
-      --       if BIPfinalizationmaster = null then
+      --       if BIPcollection = null then
       --          Temp_Id := <Alloc_Expr>;
       --       else
       --          declare
       --             type Ptr_Typ is access Ret_Typ;
-      --             for Ptr_Typ'Storage_Pool use
-      --                   Base_Pool (BIPfinalizationmaster.all).all;
+      --             for Ptr_Typ'Storage_Pool use BIPstoragepool.all;
       --             Local : Ptr_Typ;
       --
       --          begin
@@ -6486,40 +6460,42 @@ package body Exp_Ch3 is
 
          if Needs_Finalization (Ret_Typ) then
             declare
-               Decls      : constant List_Id := New_List;
-               Fin_Mas_Id : constant Entity_Id :=
-                 Build_In_Place_Formal (Func_Id, BIP_Finalization_Master);
-               Orig_Expr  : constant Node_Id := New_Copy_Tree (Alloc_Expr);
-               Stmts      : constant List_Id := New_List;
-               Local_Id   : Entity_Id;
-               Pool_Id    : Entity_Id;
-               Ptr_Typ    : Entity_Id;
+               Decls       : constant List_Id := New_List;
+               Fin_Coll_Id : constant Entity_Id :=
+                 Build_In_Place_Formal (Func_Id, BIP_Collection);
+               Orig_Expr   : constant Node_Id := New_Copy_Tree (Alloc_Expr);
+               Stmts       : constant List_Id := New_List;
+               Local_Id    : Entity_Id;
+               Pool_Id     : Entity_Id;
+               Ptr_Typ     : Entity_Id;
 
             begin
                --  Generate:
-               --    Pool_Id renames Base_Pool (BIPfinalizationmaster.all).all;
+               --    Pool_Id renames BIPstoragepool.all;
 
-               Pool_Id := Make_Temporary (Loc, 'P');
+               --  This formal is not added on ZFP as those targets do not
+               --  support pools.
 
-               Append_To (Decls,
-                 Make_Object_Renaming_Declaration (Loc,
-                   Defining_Identifier => Pool_Id,
-                   Subtype_Mark        =>
-                     New_Occurrence_Of (RTE (RE_Root_Storage_Pool), Loc),
-                   Name                =>
-                     Make_Explicit_Dereference (Loc,
-                       Prefix =>
-                         Make_Function_Call (Loc,
-                           Name                   =>
-                             New_Occurrence_Of (RTE (RE_Base_Pool), Loc),
-                           Parameter_Associations => New_List (
-                             Make_Explicit_Dereference (Loc,
-                               Prefix =>
-                                 New_Occurrence_Of (Fin_Mas_Id, Loc)))))));
+               if RTE_Available (RE_Root_Storage_Pool_Ptr) then
+                  Pool_Id := Make_Temporary (Loc, 'P');
+
+                  Append_To (Decls,
+                    Make_Object_Renaming_Declaration (Loc,
+                      Defining_Identifier => Pool_Id,
+                      Subtype_Mark        =>
+                        New_Occurrence_Of (RTE (RE_Root_Storage_Pool), Loc),
+                      Name                =>
+                        Make_Explicit_Dereference (Loc,
+                          New_Occurrence_Of
+                            (Build_In_Place_Formal
+                               (Func_Id, BIP_Storage_Pool), Loc))));
+               else
+                  Pool_Id := Empty;
+               end if;
 
                --  Create an access type which uses the storage pool of the
-               --  caller's master. This additional type is necessary because
-               --  the finalization master cannot be associated with the type
+               --  caller. This additional type is necessary because the
+               --  finalization collection cannot be associated with the type
                --  of the temporary. Otherwise the secondary stack allocation
                --  will fail.
 
@@ -6536,11 +6512,11 @@ package body Exp_Ch3 is
                        Subtype_Indication =>
                          New_Occurrence_Of (Ret_Typ, Loc))));
 
-               --  Perform minor decoration in order to set the master and the
-               --  storage pool attributes.
+               --  Perform minor decoration in order to set the collection and
+               --  the storage pool attributes.
 
                Mutate_Ekind                (Ptr_Typ, E_Access_Type);
-               Set_Finalization_Master     (Ptr_Typ, Fin_Mas_Id);
+               Set_Finalization_Collection (Ptr_Typ, Fin_Coll_Id);
                Set_Associated_Storage_Pool (Ptr_Typ, Pool_Id);
 
                --  Create the temporary, generate:
@@ -6572,13 +6548,11 @@ package body Exp_Ch3 is
                      Unchecked_Convert_To (Temp_Typ,
                        New_Occurrence_Of (Local_Id, Loc))));
 
-               --  Wrap the allocation in a block. This is further conditioned
-               --  by checking the caller finalization master at runtime. A
-               --  null value indicates a non-existent master, most likely due
-               --  to a Finalize_Storage_Only allocation.
+               --  Wrap the allocation in a block to make it conditioned by the
+               --  presence of the caller's collection at run time.
 
                --  Generate:
-               --    if BIPfinalizationmaster = null then
+               --    if BIPcollection = null then
                --       Temp_Id := <Orig_Expr>;
                --    else
                --       declare
@@ -6592,7 +6566,7 @@ package body Exp_Ch3 is
                  Make_If_Statement (Loc,
                    Condition       =>
                      Make_Op_Eq (Loc,
-                       Left_Opnd  => New_Occurrence_Of (Fin_Mas_Id, Loc),
+                       Left_Opnd  => New_Occurrence_Of (Fin_Coll_Id, Loc),
                        Right_Opnd => Make_Null (Loc)),
 
                    Then_Statements => New_List (
@@ -8746,6 +8720,14 @@ package body Exp_Ch3 is
             Initialize_Return_Object
               (Tag_Assign, Adj_Call, Expr_Q, Init_Stmt, Init_After);
 
+            --  Save the assignment statement when returning a controlled
+            --  object. This reference is used later by the finalization
+            --  machinery to mark the object as successfully initialized.
+
+            if Present (Init_Stmt) and then Needs_Finalization (Typ) then
+               Set_Last_Aggregate_Assignment (Def_Id, Init_Stmt);
+            end if;
+
             --  Replace the return object declaration with a renaming of a
             --  dereference of the access value designating the return object.
 
@@ -9601,22 +9583,22 @@ package body Exp_Ch3 is
             then
                null;
 
-            --  Create a finalization master for an access-to-controlled type
-            --  or an access-to-incomplete type. It is assumed that the full
-            --  view will be controlled.
+            --  Create a finalization collection for an access-to-controlled
+            --  type or an access-to-incomplete type. It is assumed that the
+            --  full view will be controlled.
 
             elsif Needs_Finalization (Desig_Type)
               or else (Is_Incomplete_Type (Desig_Type)
                         and then No (Full_View (Desig_Type)))
             then
-               Build_Finalization_Master (Def_Id);
+               Build_Finalization_Collection (Def_Id);
 
-            --  Create a finalization master when the designated type contains
-            --  a private component. It is assumed that the full view will be
-            --  controlled.
+            --  Also create a finalization collection when the designated type
+            --  contains a private component. It is assumed that the full view
+            --  will be controlled.
 
             elsif Has_Private_Component (Desig_Type) then
-               Build_Finalization_Master
+               Build_Finalization_Collection
                  (Typ            => Def_Id,
                   For_Private    => True,
                   Context_Scope  => Scope (Def_Id),
@@ -12747,10 +12729,6 @@ package body Exp_Ch3 is
       --  derived from a private view of the abstract type that doesn't have
       --  a visible Input).
 
-      --  Do not generate stream routines for type Finalization_Master because
-      --  a master may never appear in types and therefore cannot be read or
-      --  written.
-
       return
           (not Is_Limited_Type (Typ)
             or else Is_Interface (Typ)
@@ -12767,8 +12745,7 @@ package body Exp_Ch3 is
         and then not No_Run_Time_Mode
         and then RTE_Available (RE_Tag)
         and then No (Type_Without_Stream_Operation (Typ))
-        and then RTE_Available (RE_Root_Stream_Type)
-        and then not Is_RTE (Typ, RE_Finalization_Master);
+        and then RTE_Available (RE_Root_Stream_Type);
    end Stream_Operation_OK;
 
 end Exp_Ch3;
