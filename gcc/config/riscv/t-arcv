@@ -38,6 +38,7 @@ arcv_march_variants += rv32emac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr
 # RMX-100/500
 arcv_march_variants += rv32ic_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
 arcv_march_variants += rv32im_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
+arcv_march_variants += rv32im_zba_zbb_zbs_zicsr
 arcv_march_variants += rv32imc_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
 arcv_march_variants += rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr
 arcv_march_variants += rv32imac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zicsr
@@ -101,6 +102,7 @@ MULTILIB_REQUIRED   += march=rv64imafdc/mabi=lp64d/mtune=arc-v-rmx-100-series/mc
 MULTILIB_REQUIRED   += march=rv32emac_zcb_zcmp_zcmt_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp32e/mtune=arc-v-rmx-100-series
 
 # RMX-100
+MULTILIB_REQUIRED   += march=rv32im_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32ic_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32im_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32imc_zcb_zcmp_zcmt_zba_zbb_zbs_zicsr/mabi=ilp32/mtune=arc-v-rmx-100-series
