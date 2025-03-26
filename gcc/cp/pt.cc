@@ -992,7 +992,6 @@ maybe_new_partial_specialization (tree& type)
       tree t = make_class_type (TREE_CODE (type));
       CLASSTYPE_DECLARED_CLASS (t) = CLASSTYPE_DECLARED_CLASS (type);
       SET_TYPE_TEMPLATE_INFO (t, build_template_info (tmpl, args));
-      TYPE_CONTEXT (t) = TYPE_CONTEXT (type);
 
       /* We only need a separate type node for storing the definition of this
 	 partial specialization; uses of S<T*> are unconstrained, so all are
@@ -3941,7 +3940,7 @@ find_parameter_packs_r (tree *tp, int *walk_subtrees, void* data)
 	 parameter pack (14.6.3), or the type-specifier-seq of a type-id that
 	 is a pack expansion, the invented template parameter is a template
 	 parameter pack.  */
-      if (flag_concepts_ts && ppd->type_pack_expansion_p && is_auto (t)
+      if (ppd->type_pack_expansion_p && is_auto (t)
 	  && TEMPLATE_TYPE_LEVEL (t) != 0)
 	TEMPLATE_TYPE_PARAMETER_PACK (t) = true;
       if (TEMPLATE_TYPE_PARAMETER_PACK (t))
@@ -6654,11 +6653,6 @@ complex_alias_template_p (const_tree tmpl, tree *seen_out)
   if (get_constraints (tmpl))
     return true;
 
-  /* An alias with dependent type attributes is complex.  */
-  if (any_dependent_type_attributes_p (DECL_ATTRIBUTES
-				       (DECL_TEMPLATE_RESULT (tmpl))))
-    return true;
-
   if (!complex_alias_tmpl_info)
     complex_alias_tmpl_info = hash_map<const_tree, tree>::create_ggc (13);
 
@@ -6809,11 +6803,6 @@ get_underlying_template (tree tmpl)
       /* If TMPL adds or changes any constraints, it isn't equivalent.  I think
 	 it's appropriate to treat a less-constrained alias as equivalent.  */
       if (!at_least_as_constrained (underlying, tmpl))
-	break;
-
-      /* If TMPL adds dependent type attributes, it isn't equivalent.  */
-      if (any_dependent_type_attributes_p (DECL_ATTRIBUTES
-					   (DECL_TEMPLATE_RESULT (tmpl))))
 	break;
 
       /* Alias is equivalent.  Strip it and repeat.  */
@@ -21530,7 +21519,7 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 
 	if (DECL_TEMPLATE_PARM_P (t))
 	  RETURN (RECUR (DECL_INITIAL (t)));
-	if (!args || !uses_template_parms (DECL_CONTEXT (t)))
+	if (!uses_template_parms (DECL_CONTEXT (t)))
 	  RETURN (t);
 
 	/* Unfortunately, we cannot just call lookup_name here.
@@ -30209,13 +30198,6 @@ maybe_aggr_guide (tree tmpl, tree init, vec<tree,va_gc> *args)
   else if (TREE_CODE (init) == TREE_LIST)
     {
       int len = list_length (init);
-      for (tree binfo : BINFO_BASE_BINFOS (TYPE_BINFO (template_type)))
-	{
-	  if (!len)
-	    break;
-	  parms = tree_cons (NULL_TREE, BINFO_TYPE (binfo), parms);
-	  --len;
-	}
       for (tree field = TYPE_FIELDS (template_type);
 	   len;
 	   --len, field = DECL_CHAIN (field))
@@ -30311,14 +30293,13 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
      any).  */
 
   enum { alias, inherited } ctad_kind;
-  tree atype, fullatparms, utype, name;
+  tree atype, fullatparms, utype;
   if (TREE_CODE (tmpl) == TEMPLATE_DECL)
     {
       ctad_kind = alias;
       atype = TREE_TYPE (tmpl);
       fullatparms = DECL_TEMPLATE_PARMS (tmpl);
       utype = DECL_ORIGINAL_TYPE (DECL_TEMPLATE_RESULT (tmpl));
-      name = dguide_name (tmpl);
     }
   else
     {
@@ -30326,8 +30307,6 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
       atype = NULL_TREE;
       fullatparms = TREE_PURPOSE (tmpl);
       utype = TREE_VALUE (tmpl);
-      name = dguide_name (TPARMS_PRIMARY_TEMPLATE
-			  (INNERMOST_TEMPLATE_PARMS (fullatparms)));
     }
 
   tsubst_flags_t complain = tf_warning_or_error;
@@ -30423,7 +30402,6 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
 	    }
 	  if (g == error_mark_node)
 	    continue;
-	  DECL_NAME (g) = name;
 	  if (nfparms == 0)
 	    {
 	      /* The targs are all non-dependent, so g isn't a template.  */
