@@ -38,11 +38,11 @@ with Ada.Unchecked_Conversion;
 
 with Interfaces.C;
 
-with System.Tasking.Debug;
 with System.Interrupt_Management;
 with System.OS_Constants;
 with System.OS_Primitives;
 with System.Task_Info;
+with System.Tasking.Debug;
 
 with System.Soft_Links;
 --  We use System.Soft_Links instead of System.Tasking.Initialization
@@ -55,12 +55,14 @@ package body System.Task_Primitives.Operations is
    package OSC renames System.OS_Constants;
    package SSL renames System.Soft_Links;
 
-   use System.Tasking.Debug;
-   use System.Tasking;
    use Interfaces.C;
+
    use System.OS_Interface;
-   use System.Parameters;
+   use System.OS_Locks;
    use System.OS_Primitives;
+   use System.Parameters;
+   use System.Tasking;
+   use System.Tasking.Debug;
 
    ----------------
    -- Local Data --
@@ -202,6 +204,11 @@ package body System.Task_Primitives.Operations is
    pragma Import (C,
      GNAT_pthread_condattr_setup, "__gnat_pthread_condattr_setup");
 
+   procedure Initialize_Lock
+     (L    : not null access RTS_Lock;
+      Prio : System.Any_Priority);
+   --  Initialize an RTS_Lock with the specified priority
+
    -------------------
    -- Abort_Handler --
    -------------------
@@ -329,11 +336,11 @@ package body System.Task_Primitives.Operations is
    --  routines should be able to be handled safely.
 
    procedure Initialize_Lock
-     (Prio : System.Any_Priority;
-      L    : not null access Lock)
+     (L    : not null access RTS_Lock;
+      Prio : System.Any_Priority)
    is
       Attributes : aliased pthread_mutexattr_t;
-      Result : Interfaces.C.int;
+      Result     : Interfaces.C.int;
 
    begin
       Result := pthread_mutexattr_init (Attributes'Access);
@@ -358,7 +365,7 @@ package body System.Task_Primitives.Operations is
          pragma Assert (Result = 0);
       end if;
 
-      Result := pthread_mutex_init (L.WO'Access, Attributes'Access);
+      Result := pthread_mutex_init (L, Attributes'Access);
       pragma Assert (Result = 0 or else Result = ENOMEM);
 
       if Result = ENOMEM then
@@ -371,46 +378,20 @@ package body System.Task_Primitives.Operations is
    end Initialize_Lock;
 
    procedure Initialize_Lock
-     (L : not null access RTS_Lock; Level : Lock_Level)
+     (Prio : System.Any_Priority;
+      L    : not null access Lock)
+   is
+   begin
+      Initialize_Lock (L.WO'Access, Prio);
+   end Initialize_Lock;
+
+   procedure Initialize_Lock
+     (L     : not null access RTS_Lock;
+      Level : Lock_Level)
    is
       pragma Unreferenced (Level);
-
-      Attributes : aliased pthread_mutexattr_t;
-      Result     : Interfaces.C.int;
-
    begin
-      Result := pthread_mutexattr_init (Attributes'Access);
-      pragma Assert (Result = 0 or else Result = ENOMEM);
-
-      if Result = ENOMEM then
-         raise Storage_Error;
-      end if;
-
-      if Locking_Policy = 'C' then
-         Result := pthread_mutexattr_setprotocol
-           (Attributes'Access, PTHREAD_PRIO_PROTECT);
-         pragma Assert (Result = 0);
-
-         Result := pthread_mutexattr_setprioceiling
-            (Attributes'Access, Interfaces.C.int (System.Any_Priority'Last));
-         pragma Assert (Result = 0);
-
-      elsif Locking_Policy = 'I' then
-         Result := pthread_mutexattr_setprotocol
-           (Attributes'Access, PTHREAD_PRIO_INHERIT);
-         pragma Assert (Result = 0);
-      end if;
-
-      Result := pthread_mutex_init (L, Attributes'Access);
-      pragma Assert (Result = 0 or else Result = ENOMEM);
-
-      if Result = ENOMEM then
-         Result := pthread_mutexattr_destroy (Attributes'Access);
-         raise Storage_Error;
-      end if;
-
-      Result := pthread_mutexattr_destroy (Attributes'Access);
-      pragma Assert (Result = 0);
+      Initialize_Lock (L, System.Any_Priority'Last);
    end Initialize_Lock;
 
    -------------------

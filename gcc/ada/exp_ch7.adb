@@ -798,10 +798,10 @@ package body Exp_Ch7 is
          return;
       end if;
 
-      --  When the transient object is initialized by an aggregate, the
-      --  attachment must occur after the last aggregate assignment takes
-      --  place. Only then is the object considered initialized. Likewise
-      --  if we have a build-in-place call: we must attach only after it.
+      --  When the object is initialized by an aggregate, the attachment must
+      --  occur after the last aggregate assignment takes place; only then is
+      --  the object considered initialized. Likewise if it is initialized by
+      --  a build-in-place call: we must attach only after the call.
 
       if Ekind (Obj_Id) in E_Constant | E_Variable then
          if Present (Last_Aggregate_Assignment (Obj_Id)) then
@@ -963,6 +963,12 @@ package body Exp_Ch7 is
       --  for controlled types and therefore do not need collections.
 
       if Restriction_Active (No_Finalization) then
+         return False;
+
+      --  The System.Finalization_Primitives unit must have been preloaded if
+      --  finalization is really required.
+
+      elsif not RTU_Loaded (System_Finalization_Primitives) then
          return False;
 
       --  Do not consider C and C++ types since it is assumed that the non-Ada
@@ -3646,9 +3652,10 @@ package body Exp_Ch7 is
       --  unnesting actions, which depend on proper setting of the Scope links
       --  to determine the nesting level of each subprogram.
 
-      -----------------------
-      --  Find_Local_Scope --
-      -----------------------
+      --------------------------------------
+      --  Reset_Scopes_To_Block_Elab_Proc --
+      --------------------------------------
+      Maybe_Reset_Scopes_For_Decl : constant Elist_Id := New_Elmt_List;
 
       procedure Reset_Scopes_To_Block_Elab_Proc (L : List_Id) is
          Id   : Entity_Id;
@@ -3707,7 +3714,8 @@ package body Exp_Ch7 is
                      Next (Node);
                   end loop;
 
-               --  Reset the Scope of a subprogram occurring at the top level
+               --  Reset the Scope of a subprogram and object declaration
+               --  occurring at the top level
 
                when N_Subprogram_Body =>
                   Id := Defining_Entity (Stat);
@@ -3715,12 +3723,33 @@ package body Exp_Ch7 is
                   Set_Block_Elab_Proc;
                   Set_Scope (Id, Block_Elab_Proc);
 
+               when N_Object_Declaration
+                 | N_Object_Renaming_Declaration =>
+                  Id := Defining_Entity (Stat);
+                  if No (Block_Elab_Proc) then
+                     Append_Elmt (Id, Maybe_Reset_Scopes_For_Decl);
+                  else
+                     Set_Scope (Id, Block_Elab_Proc);
+                  end if;
+
                when others =>
                   null;
             end case;
 
             Next (Stat);
          end loop;
+
+         --  If we are creating an Elab procedure, move all the gathered
+         --  declarations in its scope.
+
+         if Present (Block_Elab_Proc) then
+            while not Is_Empty_Elmt_List (Maybe_Reset_Scopes_For_Decl) loop
+               Set_Scope
+                 (Elists.Node
+                   (Last_Elmt (Maybe_Reset_Scopes_For_Decl)), Block_Elab_Proc);
+               Remove_Last_Elmt (Maybe_Reset_Scopes_For_Decl);
+            end loop;
+         end if;
       end Reset_Scopes_To_Block_Elab_Proc;
 
       --  Local variables
@@ -8601,6 +8630,38 @@ package body Exp_Ch7 is
       return Scope_Stack.Table (Scope_Stack.Last).Node_To_Be_Wrapped;
    end Node_To_Be_Wrapped;
 
+   --------------------------------------
+   -- Preload_Finalization_Collection --
+   --------------------------------------
+
+   procedure Preload_Finalization_Collection (Compilation_Unit : Node_Id) is
+   begin
+      --  We can't call RTE (Finalization_Collection) for at least some
+      --  predefined units, because it would introduce cyclic dependences,
+      --  as the type is itself a controlled type.
+      --
+      --  It's only needed when finalization is involved in the unit, which
+      --  requires the presence of controlled or class-wide types in the unit
+      --  (see the Sem_Util.Needs_Finalization predicate for the rationale).
+      --  But controlled types are tagged or contain tagged (sub)components
+      --  so it is sufficient for the parser to detect the "interface" and
+      --  "tagged" keywords.
+      --
+      --  Don't do it if Finalization_Collection is unavailable in the runtime
+
+      if not In_Predefined_Unit (Compilation_Unit)
+        and then (Interface_Seen or else Tagged_Seen)
+        and then not No_Run_Time_Mode
+        and then RTE_Available (RE_Finalization_Collection)
+      then
+         declare
+            Ignore : constant Entity_Id := RTE (RE_Finalization_Collection);
+         begin
+            null;
+         end;
+      end if;
+   end Preload_Finalization_Collection;
+
    ----------------------------
    -- Store_Actions_In_Scope --
    ----------------------------
@@ -8809,8 +8870,11 @@ package body Exp_Ch7 is
 
    procedure Unnest_Loop (Loop_Stmt : Node_Id) is
 
-      procedure Fixup_Inner_Scopes (Loop_Stmt : Node_Id);
-      --  The loops created by the compiler for array aggregates can have
+      procedure Fixup_Inner_Scopes (Loop_Or_Block : Node_Id);
+      --  This procedure fixes the scope for 2 identified cases of incorrect
+      --  scope information.
+      --
+      --  1) The loops created by the compiler for array aggregates can have
       --  nested finalization procedure when the type of the array components
       --  needs finalization. It has the following form:
 
@@ -8825,7 +8889,7 @@ package body Exp_Ch7 is
       --        obj (J4b) := ...;
 
       --  When the compiler creates the N_Block_Statement, it sets its scope to
-      --  the upper scope (the one containing the loop).
+      --  the outer scope (the one containing the loop).
 
       --  The Unnest_Loop procedure moves the N_Loop_Statement inside a new
       --  procedure and correctly sets the scopes for both the new procedure
@@ -8833,25 +8897,68 @@ package body Exp_Ch7 is
       --  leaves the Tree in an incoherent state (i.e. the inner procedure must
       --  have its enclosing procedure in its scope ancestries).
 
-      --  This procedure fixes the scope links.
+      --  2) The second case happens when an object declaration is created
+      --  within a loop used to initialize the 'others' components of an
+      --  aggregate that is nested within a transient scope. When the transient
+      --  scope is removed, the object scope is set to the outer scope. For
+      --  example:
+
+      --  package pack
+      --   ...
+      --     L98s : for J90s in 2 .. 19 loop
+      --        B101s : declare
+      --           R92s : aliased some_type;
+      --           ...
+
+      --  The loop L98s was initially wrapped in a transient scope B72s and
+      --  R92s was nested within it. Then the transient scope is removed and
+      --  the scope of R92s is set to 'pack'. And finally, when the unnester
+      --  moves the loop body in a new procedure, R92s's scope is still left
+      --  unchanged.
+
+      --  This procedure finds the two previous patterns and fixes the scope
+      --  information.
 
       --  Another (better) fix would be to have the block scope set to be the
       --  loop entity earlier (when the block is created or when the loop gets
       --  an actual entity set). But unfortunately this proved harder to
       --  implement ???
 
-      procedure Fixup_Inner_Scopes (Loop_Stmt : Node_Id) is
-         Stmt          : Node_Id            := First (Statements (Loop_Stmt));
-         Loop_Stmt_Ent : constant Entity_Id := Entity (Identifier (Loop_Stmt));
-         Ent_To_Fix    : Entity_Id;
+      procedure Fixup_Inner_Scopes (Loop_Or_Block : Node_Id) is
+         Stmt              : Node_Id;
+         Loop_Or_Block_Ent : Entity_Id;
+         Ent_To_Fix        : Entity_Id;
+         Decl              : Node_Id := Empty;
       begin
+         pragma Assert (Nkind (Loop_Or_Block) in
+           N_Loop_Statement | N_Block_Statement);
+
+         Loop_Or_Block_Ent := Entity (Identifier (Loop_Or_Block));
+         if Nkind (Loop_Or_Block) = N_Loop_Statement then
+            Stmt := First (Statements (Loop_Or_Block));
+         else -- N_Block_Statement
+            Stmt := First
+              (Statements (Handled_Statement_Sequence (Loop_Or_Block)));
+            Decl := First (Declarations (Loop_Or_Block));
+         end if;
+
+         --  Fix scopes for any object declaration found in the block
+         while Present (Decl) loop
+            if Nkind (Decl) = N_Object_Declaration then
+               Ent_To_Fix := Defining_Identifier (Decl);
+               Set_Scope (Ent_To_Fix, Loop_Or_Block_Ent);
+            end if;
+            Next (Decl);
+         end loop;
+
          while Present (Stmt) loop
             if Nkind (Stmt) = N_Block_Statement
               and then Is_Abort_Block (Stmt)
             then
                Ent_To_Fix := Entity (Identifier (Stmt));
-               Set_Scope (Ent_To_Fix, Loop_Stmt_Ent);
-            elsif Nkind (Stmt) = N_Loop_Statement then
+               Set_Scope (Ent_To_Fix, Loop_Or_Block_Ent);
+            elsif Nkind (Stmt) in N_Block_Statement | N_Loop_Statement
+            then
                Fixup_Inner_Scopes (Stmt);
             end if;
             Next (Stmt);

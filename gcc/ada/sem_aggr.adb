@@ -409,11 +409,10 @@ package body Sem_Aggr is
    --  string as an aggregate, prior to resolution.
 
    function Resolve_Null_Array_Aggregate (N : Node_Id) return Boolean;
-   --  For the Ada 2022 construct, build a subtype with a null range for each
-   --  dimension, using the bounds from the context subtype (if the subtype
-   --  is constrained). If the subtype is unconstrained, then the bounds
-   --  are determined in much the same way as the bounds for a null string
-   --  literal with no applicable index constraint.
+   --  The recursive method used to construct an aggregate's bounds in
+   --  Resolve_Array_Aggregate cannot work for null array aggregates. This
+   --  function constructs an appropriate list of ranges and stores its first
+   --  element in Aggregate_Bounds (N).
 
    ---------------------------------
    --  Delta aggregate processing --
@@ -1336,7 +1335,7 @@ package body Sem_Aggr is
       Index_Base_High : constant Node_Id   := Type_High_Bound (Index_Base);
       --  Ditto for the base type
 
-      Others_Present : Boolean := False;
+      Others_N : Node_Id := Empty;
 
       Nb_Choices : Nat := 0;
       --  Contains the overall number of named choices in this sub-aggregate
@@ -1871,7 +1870,7 @@ package body Sem_Aggr is
 
             while Present (Choice) loop
                if Nkind (Choice) = N_Others_Choice then
-                  Others_Present := True;
+                  Others_N := Choice;
 
                else
                   Analyze (Choice);
@@ -2190,7 +2189,7 @@ package body Sem_Aggr is
             Delete_Choice := False;
             while Present (Choice) loop
                if Nkind (Choice) = N_Others_Choice then
-                  Others_Present := True;
+                  Others_N := Choice;
 
                   if Choice /= First (Choice_List (Assoc))
                     or else Present (Next (Choice))
@@ -2290,7 +2289,7 @@ package body Sem_Aggr is
 
       if Present (Expressions (N))
         and then (Nb_Choices > 1
-                   or else (Nb_Choices = 1 and then not Others_Present))
+                   or else (Nb_Choices = 1 and then No (Others_N)))
       then
          Error_Msg_N
            ("cannot mix named and positional associations in array aggregate",
@@ -2300,16 +2299,11 @@ package body Sem_Aggr is
 
       --  Test for the validity of an others choice if present
 
-      if Others_Present and then not Others_Allowed then
-         declare
-            Others_N : constant Node_Id :=
-              First (Choice_List (First (Component_Associations (N))));
-         begin
-            Error_Msg_N ("OTHERS choice not allowed here", Others_N);
-            Error_Msg_N ("\qualify the aggregate with a constrained subtype "
-                         & "to provide bounds for it", Others_N);
-            return Failure;
-         end;
+      if Present (Others_N) and then not Others_Allowed then
+         Error_Msg_N ("OTHERS choice not allowed here", Others_N);
+         Error_Msg_N ("\qualify the aggregate with a constrained subtype "
+                      & "to provide bounds for it", Others_N);
+         return Failure;
       end if;
 
       --  Protect against cascaded errors
@@ -2321,7 +2315,7 @@ package body Sem_Aggr is
       --  STEP 2: Process named components
 
       if No (Expressions (N)) then
-         if Others_Present then
+         if Present (Others_N) then
             Case_Table_Size := Nb_Choices - 1;
          else
             Case_Table_Size := Nb_Choices;
@@ -2710,7 +2704,7 @@ package body Sem_Aggr is
 
                      if Lo_Val <= Hi_Val
                        or else (Lo_Val > Hi_Val + 1
-                                 and then not Others_Present)
+                                 and then No (Others_N))
                      then
                         Missing_Or_Duplicates := True;
                         exit;
@@ -2797,7 +2791,7 @@ package body Sem_Aggr is
                      --  Loop through entries in table to find missing indexes.
                      --  Not needed if others, since missing impossible.
 
-                     if not Others_Present then
+                     if No (Others_N) then
                         for J in 2 .. Nb_Discrete_Choices loop
                            Lo_Val := Expr_Value (Table (J).Lo);
                            Hi_Val := Table (J - 1).Highest;
@@ -2863,7 +2857,7 @@ package body Sem_Aggr is
             --  If Others is present, then bounds of aggregate come from the
             --  index constraint (not the choices in the aggregate itself).
 
-            if Others_Present then
+            if Present (Others_N) then
                Get_Index_Bounds (Index_Constr, Aggr_Low, Aggr_High);
 
                --  Abandon processing if either bound is already signalled as
@@ -2879,9 +2873,9 @@ package body Sem_Aggr is
             --  No others clause present
 
             else
-               --  Special processing if others allowed and not present. This
-               --  means that the bounds of the aggregate come from the index
-               --  constraint (and the length must match).
+               --  Special processing if others allowed and not present. In
+               --  this case, the bounds of the aggregate come from the
+               --  choices (RM 4.3.3 (27)).
 
                if Others_Allowed then
                   Get_Index_Bounds (Index_Constr, Aggr_Low, Aggr_High);
@@ -2896,30 +2890,28 @@ package body Sem_Aggr is
                      return False;
                   end if;
 
-                  --  If others allowed, and no others present, then the array
-                  --  should cover all index values. If it does not, we will
-                  --  get a length check warning, but there is two cases where
-                  --  an additional warning is useful:
+                  --  If there is an applicable index constraint and others is
+                  --  not present, then sliding is allowed and only a length
+                  --  check will be performed. However, additional warnings are
+                  --  useful if the index type is an enumeration type, as
+                  --  sliding is dubious in this case. We emit two kinds of
+                  --  warnings:
+                  --
+                  --    1. If the length is wrong then there are missing
+                  --       components; we issue appropriate warnings about
+                  --       these missing components. They are only warnings,
+                  --       since the aggregate is fine, it's just the wrong
+                  --       length. We skip this check for standard character
+                  --       types (since there are no literals and it is too
+                  --       much trouble to concoct them), and also if any of
+                  --       the bounds have values that are not known at compile
+                  --       time.
+                  --
+                  --    2. If the length is right but the bounds do not match,
+                  --       we issue a warning, as we consider sliding dubious
+                  --       when the index type is an enumeration type.
 
-                  --  If we have no positional components, and the length is
-                  --  wrong (which we can tell by others being allowed with
-                  --  missing components), and the index type is an enumeration
-                  --  type, then issue appropriate warnings about these missing
-                  --  components. They are only warnings, since the aggregate
-                  --  is fine, it's just the wrong length. We skip this check
-                  --  for standard character types (since there are no literals
-                  --  and it is too much trouble to concoct them), and also if
-                  --  any of the bounds have values that are not known at
-                  --  compile time.
-
-                  --  Another case warranting a warning is when the length
-                  --  is right, but as above we have an index type that is
-                  --  an enumeration, and the bounds do not match. This is a
-                  --  case where dubious sliding is allowed and we generate a
-                  --  warning that the bounds do not match.
-
-                  if No (Expressions (N))
-                    and then Nkind (Index) = N_Range
+                  if Nkind (Index) = N_Range
                     and then Is_Enumeration_Type (Etype (Index))
                     and then not Is_Standard_Character_Type (Etype (Index))
                     and then Compile_Time_Known_Value (Aggr_Low)
@@ -3044,7 +3036,7 @@ package body Sem_Aggr is
             Next (Expr);
          end loop;
 
-         if Others_Present then
+         if Present (Others_N) then
             Assoc := Last (Component_Associations (N));
 
             --  Ada 2005 (AI-231)
@@ -3103,7 +3095,7 @@ package body Sem_Aggr is
 
          --  STEP 3 (B): Compute the aggregate bounds
 
-         if Others_Present then
+         if Present (Others_N) then
             Get_Index_Bounds (Index_Constr, Aggr_Low, Aggr_High);
 
          else
@@ -3127,7 +3119,7 @@ package body Sem_Aggr is
 
       --  Check (B)
 
-      if Others_Present and then Nb_Discrete_Choices > 0 then
+      if Present (Others_N) and then Nb_Discrete_Choices > 0 then
          Check_Bounds (Aggr_Low, Aggr_High, Choices_Low, Choices_High);
          Check_Bounds (Index_Typ_Low, Index_Typ_High,
                        Choices_Low, Choices_High);
@@ -3136,7 +3128,7 @@ package body Sem_Aggr is
 
       --  Check (C)
 
-      elsif Others_Present and then Nb_Elements > 0 then
+      elsif Present (Others_N) and then Nb_Elements > 0 then
          Check_Length (Aggr_Low, Aggr_High, Nb_Elements);
          Check_Length (Index_Typ_Low, Index_Typ_High, Nb_Elements);
          Check_Length (Index_Base_Low, Index_Base_High, Nb_Elements);
@@ -3155,7 +3147,7 @@ package body Sem_Aggr is
       --  to tree and analyze first. Reset analyzed flag to ensure it will get
       --  analyzed when it is a literal bound whose type must be properly set.
 
-      if Others_Present or else Nb_Discrete_Choices > 0 then
+      if Present (Others_N) or else Nb_Discrete_Choices > 0 then
          Aggr_High := Duplicate_Subexpr (Aggr_High);
 
          if Etype (Aggr_High) = Universal_Integer then
@@ -3187,7 +3179,7 @@ package body Sem_Aggr is
       Analyze_And_Resolve (Aggregate_Bounds (N), Index_Typ);
       Check_Unset_Reference (Aggregate_Bounds (N));
 
-      if not Others_Present and then Nb_Discrete_Choices = 0 then
+      if No (Others_N) and then Nb_Discrete_Choices = 0 then
          Set_High_Bound
            (Aggregate_Bounds (N),
             Duplicate_Subexpr (High_Bound (Aggregate_Bounds (N))));
@@ -4540,7 +4532,8 @@ package body Sem_Aggr is
 
       Set_Parent (Constr, N);
 
-      --  Create a constrained subtype with null dimensions
+      --  Populate the list with null ranges. The relevant RM clauses are
+      --  RM 4.3.3 (26.1) and RM 4.3.3 (26).
 
       Index := First_Index (Typ);
       while Present (Index) loop

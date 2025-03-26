@@ -3166,9 +3166,6 @@ expand_vec_cond_mask_optab_fn (internal_fn, gcall *stmt, convert_optab optab)
   rtx_op1 = expand_normal (op1);
   rtx_op2 = expand_normal (op2);
 
-  mask = force_reg (mask_mode, mask);
-  rtx_op1 = force_reg (mode, rtx_op1);
-
   rtx target = expand_expr (lhs, NULL_RTX, VOIDmode, EXPAND_WRITE);
   create_output_operand (&ops[0], target, mode);
   create_input_operand (&ops[1], rtx_op1, mode);
@@ -4257,6 +4254,7 @@ commutative_binary_fn_p (internal_fn fn)
     case IFN_UBSAN_CHECK_MUL:
     case IFN_ADD_OVERFLOW:
     case IFN_MUL_OVERFLOW:
+    case IFN_SAT_ADD:
     case IFN_VEC_WIDEN_PLUS:
     case IFN_VEC_WIDEN_PLUS_LO:
     case IFN_VEC_WIDEN_PLUS_HI:

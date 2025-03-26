@@ -53,6 +53,7 @@ with Sem_Cat;        use Sem_Cat;
 with Sem_Ch6;        use Sem_Ch6;
 with Sem_Ch8;        use Sem_Ch8;
 with Sem_Ch13;       use Sem_Ch13;
+with Sem_Dim;        use Sem_Dim;
 with Sem_Disp;       use Sem_Disp;
 with Sem_Elab;       use Sem_Elab;
 with Sem_Eval;       use Sem_Eval;
@@ -15182,6 +15183,13 @@ package body Sem_Util is
                and then Has_Aliased_Components
                           (Designated_Type (Etype (Prefix (Obj)))));
 
+      --  Handle a 'Super view conversion
+
+      elsif Nkind (Obj) = N_Attribute_Reference
+        and then Attribute_Name (Obj) = Name_Super
+      then
+         return Is_Aliased_View (Prefix (Obj));
+
       elsif Nkind (Obj) in N_Unchecked_Type_Conversion | N_Type_Conversion then
          return Is_Tagged_Type (Etype (Obj))
            and then Is_Aliased_View (Expression (Obj));
@@ -20701,6 +20709,29 @@ package body Sem_Util is
       return T = Universal_Integer or else T = Universal_Real;
    end Is_Universal_Numeric_Type;
 
+   -------------------------------------
+   -- Is_Unconstrained_Or_Tagged_Item --
+   -------------------------------------
+
+   function Is_Unconstrained_Or_Tagged_Item
+     (Item : Entity_Id) return Boolean
+   is
+      Typ : constant Entity_Id := Etype (Item);
+   begin
+      if Is_Tagged_Type (Typ) then
+         return True;
+
+      elsif Is_Array_Type (Typ)
+        or else Is_Record_Type (Typ)
+        or else Is_Private_Type (Typ)
+      then
+         return not Is_Constrained (Typ);
+
+      else
+         return False;
+      end if;
+   end Is_Unconstrained_Or_Tagged_Item;
+
    ------------------------------
    -- Is_User_Defined_Equality --
    ------------------------------
@@ -21064,6 +21095,16 @@ package body Sem_Util is
                     and then not Is_Access_Constant (Root_Type (Typ))
                     and then Ekind (Typ) /= E_Access_Subprogram_Type;
                end;
+
+            --  Handle the case where 'Super is present - representing a view
+            --  conversion.
+
+            when N_Attribute_Reference =>
+               if Attribute_Name (Orig_Node) = Name_Super then
+                  return Is_Variable (Prefix (Orig_Node));
+               end if;
+
+               return False;
 
             --  The type conversion is the case where we do not deal with the
             --  context dependent special case of an actual parameter. Thus
@@ -22202,7 +22243,11 @@ package body Sem_Util is
             elsif Is_Record_Type (Input_Typ) then
                Comp := First_Component (Input_Typ);
                while Present (Comp) loop
-                  if Needs_Finalization (Etype (Comp)) then
+                  --  Skip _Parent component like Expand_Freeze_Record_Type
+
+                  if Chars (Comp) /= Name_uParent
+                    and then Needs_Finalization (Etype (Comp))
+                  then
                      return True;
                   end if;
 
@@ -23447,6 +23492,8 @@ package body Sem_Util is
                   Set_Chars (Result, Chars (Entity (Result)));
                end if;
             end if;
+
+            Copy_Dimensions (From => N, To => Result);
          end if;
 
          return Result;
@@ -30744,6 +30791,14 @@ package body Sem_Util is
                               return False;
                            end if;
 
+                           --  Handle constants introduced by side-effect
+                           --  removal, e.g. by validity checks.
+
+                           if not Comes_From_Source (Obj) then
+                              return
+                                Is_Known_On_Entry (Expression (Parent (Obj)));
+                           end if;
+
                            --  return False if not "all views are constant".
                            if Is_Immutably_Limited_Type (Obj_Typ)
                              or Needs_Finalization (Obj_Typ)
@@ -30781,9 +30836,7 @@ package body Sem_Util is
                   return Is_Known_On_Entry (Expression (Expr));
 
                when N_If_Expression =>
-                  if not All_Exps_Known_On_Entry (Expressions (Expr)) then
-                     return False;
-                  end if;
+                  return All_Exps_Known_On_Entry (Expressions (Expr));
 
                when N_Case_Expression =>
                   if not Is_Known_On_Entry (Expression (Expr)) then
@@ -31080,8 +31133,7 @@ package body Sem_Util is
          begin
             if Is_Anonymous_Access_Type (Typ) then
                --  No indirection in this case; just evaluate the temp.
-               Result := New_Occurrence_Of (Temp, Loc);
-               Set_Etype (Result, Etype (Temp));
+               return New_Occurrence_Of (Temp, Loc);
 
             else
                Result := Make_Explicit_Dereference (Loc,
@@ -31100,10 +31152,14 @@ package body Sem_Util is
 
                   Set_Etype (Result, Typ);
                end if;
-            end if;
 
-            return Result;
+               return Result;
+            end if;
          end Indirect_Temp_Value;
+
+         --------------------------------------
+         -- Is_Access_Type_For_Indirect_Temp --
+         --------------------------------------
 
          function Is_Access_Type_For_Indirect_Temp
            (T : Entity_Id) return Boolean is

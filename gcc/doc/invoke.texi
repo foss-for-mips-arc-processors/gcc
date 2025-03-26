@@ -307,6 +307,7 @@ Objective-C and Objective-C++ Dialects}.
 -fdiagnostics-format=@r{[}text@r{|}sarif-stderr@r{|}sarif-file@r{|}json@r{|}json-stderr@r{|}json-file@r{]}
 -fno-diagnostics-json-formatting
 -fno-diagnostics-show-option  -fno-diagnostics-show-caret
+-fno-diagnostics-show-event-links
 -fno-diagnostics-show-labels  -fno-diagnostics-show-line-numbers
 -fno-diagnostics-show-cwe
 -fno-diagnostics-show-rule
@@ -4785,7 +4786,34 @@ undefined behavior at runtime.  This warning is enabled by default.
 @opindex Wextra-semi
 @opindex Wno-extra-semi
 @item -Wextra-semi @r{(C++, Objective-C++ only)}
-Warn about redundant semicolons after in-class function definitions.
+Warn about redundant semicolons.  There are various contexts in which an extra
+semicolon can occur.  One is a semicolon after in-class function definitions,
+which is valid in all C++ dialects (and is never a pedwarn):
+
+@smallexample
+struct S @{
+  void foo () @{@};
+@};
+@end smallexample
+
+Another is an extra semicolon at namespace scope, which has been allowed
+since C++11 (therefore is a pedwarn in C++98):
+
+@smallexample
+struct S @{
+@};
+;
+@end smallexample
+
+And yet another is an extra semicolon in class definitions, which has been
+allowed since C++11 (therefore is a pedwarn in C++98):
+
+@smallexample
+struct S @{
+  int a;
+  ;
+@};
+@end smallexample
 
 @opindex Wno-global-module
 @opindex Wglobal-module
@@ -5189,7 +5217,8 @@ options:
 -fdiagnostics-color=never
 -fdiagnostics-urls=never
 -fdiagnostics-path-format=separate-events
--fdiagnostics-text-art-charset=none}
+-fdiagnostics-text-art-charset=none
+-fno-diagnostics-show-event-links}
 In the future, if GCC changes the default appearance of its diagnostics, the
 corresponding option to disable the new behavior will be added to this list.
 
@@ -5424,6 +5453,31 @@ as the types of expressions:
 This option suppresses the printing of these labels (in the example above,
 the vertical bars and the ``char *'' and ``long int'' text).
 
+@opindex fno-diagnostics-show-event-links
+@opindex fdiagnostics-show-event-links
+@item -fno-diagnostics-show-event-links
+By default, when printing execution paths (via
+@option{-fdiagnostics-path-format=inline-events}), GCC will print lines
+connecting related events, such as the line connecting events 1 and 2 in:
+
+@smallexample
+    3 |   if (p)
+      |       ^
+      |       |
+      |       (1) following `false' branch (when `p' is NULL)... ->-+
+      |                                                             |
+      |                                                             |
+      |+------------------------------------------------------------+
+    4 ||    return 0;
+    5 ||  return *p;
+      ||         ~
+      ||         |
+      |+-------->(2) ...to here
+      |          (3) dereference of NULL `p'
+@end smallexample
+
+This option suppresses the printing of such connector lines.
+
 @opindex fno-diagnostics-show-cwe
 @opindex fdiagnostics-show-cwe
 @item -fno-diagnostics-show-cwe
@@ -5576,22 +5630,20 @@ For example, the same events as above might be printed as:
 
 @smallexample
   'test': events 1-3
-    |
-    |   25 |   list = PyList_New(0);
-    |      |          ^~~~~~~~~~~~~
-    |      |          |
-    |      |          (1) when 'PyList_New' fails, returning NULL
-    |   26 |
-    |   27 |   for (i = 0; i < count; i++) @{
-    |      |   ~~~
-    |      |   |
-    |      |   (2) when 'i < count'
-    |   28 |     item = PyLong_FromLong(random());
-    |   29 |     PyList_Append(list, item);
-    |      |     ~~~~~~~~~~~~~~~~~~~~~~~~~
-    |      |     |
-    |      |     (3) when calling 'PyList_Append', passing NULL from (1) as argument 1
-    |
+   25 |   list = PyList_New(0);
+      |          ^~~~~~~~~~~~~
+      |          |
+      |          (1) when 'PyList_New' fails, returning NULL
+   26 |
+   27 |   for (i = 0; i < count; i++) @{
+      |   ~~~
+      |   |
+      |   (2) when 'i < count'
+   28 |     item = PyLong_FromLong(random());
+   29 |     PyList_Append(list, item);
+      |     ~~~~~~~~~~~~~~~~~~~~~~~~~
+      |     |
+      |     (3) when calling 'PyList_Append', passing NULL from (1) as argument 1
 @end smallexample
 
 Interprocedural control flow is shown by grouping the events by stack frame,

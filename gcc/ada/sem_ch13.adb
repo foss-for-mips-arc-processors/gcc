@@ -1838,7 +1838,7 @@ package body Sem_Ch13 is
                        Make_Pragma_Argument_Association (Loc,
                          Expression => Conv),
                        Make_Pragma_Argument_Association (Loc,
-                         Expression => New_Occurrence_Of (E, Loc))));
+                         Expression => Ent)));
 
                   Decorate (Aspect, Aitem);
                   Insert_Pragma (Aitem);
@@ -2417,7 +2417,7 @@ package body Sem_Ch13 is
 
             begin
                if Ada_Version < Ada_2022 then
-                  Error_Msg_Ada_2022_Feature ("aspect %", Sloc (Aspect));
+                  Error_Msg_Ada_2022_Feature ("aspect %", Loc);
                   return;
                end if;
 
@@ -2442,7 +2442,7 @@ package body Sem_Ch13 is
 
                   elsif Is_Imported_Intrinsic then
                      Error_Msg_GNAT_Extension
-                       ("aspect % on intrinsic function", Sloc (Aspect),
+                       ("aspect % on intrinsic function", Loc,
                         Is_Core_Extension => True);
 
                   else
@@ -3099,7 +3099,7 @@ package body Sem_Ch13 is
                   Aitem := Make_Aitem_Pragma
                     (Pragma_Argument_Associations => New_List (
                        Make_Pragma_Argument_Association (Loc,
-                         Expression => New_Occurrence_Of (E, Loc)),
+                         Expression => Ent),
                        Make_Pragma_Argument_Association (Sloc (Expr),
                          Expression => Relocate_Node (Expr))),
                      Pragma_Name                  => Name_Linker_Section);
@@ -3120,7 +3120,7 @@ package body Sem_Ch13 is
                   Aitem := Make_Aitem_Pragma
                     (Pragma_Argument_Associations => New_List (
                        Make_Pragma_Argument_Association (Loc,
-                         Expression => New_Occurrence_Of (E, Loc)),
+                         Expression => Ent),
                        Make_Pragma_Argument_Association (Sloc (Expr),
                          Expression => Relocate_Node (Expr))),
                      Pragma_Name                  => Name_Implemented);
@@ -3439,7 +3439,7 @@ package body Sem_Ch13 is
                        Make_Pragma_Argument_Association (Loc,
                          Expression => Relocate_Node (Expr)),
                        Make_Pragma_Argument_Association (Sloc (Expr),
-                         Expression => New_Occurrence_Of (E, Loc))),
+                         Expression => Ent)),
                      Pragma_Name                  => Nam);
 
                   Delay_Required := False;
@@ -3452,7 +3452,7 @@ package body Sem_Ch13 is
                        Make_Pragma_Argument_Association (Sloc (Expr),
                          Expression => Relocate_Node (Expr)),
                        Make_Pragma_Argument_Association (Loc,
-                         Expression => New_Occurrence_Of (E, Loc))),
+                         Expression => Ent)),
                      Pragma_Name                  => Name_Warnings);
 
                   Decorate (Aspect, Aitem);
@@ -4133,7 +4133,7 @@ package body Sem_Ch13 is
 
                when Aspect_Designated_Storage_Model =>
                   if not All_Extensions_Allowed then
-                     Error_Msg_GNAT_Extension ("aspect %", Sloc (Aspect));
+                     Error_Msg_GNAT_Extension ("aspect %", Loc);
 
                   elsif not Is_Type (E)
                     or else Ekind (E) /= E_Access_Type
@@ -4148,7 +4148,7 @@ package body Sem_Ch13 is
 
                when Aspect_Storage_Model_Type =>
                   if not All_Extensions_Allowed then
-                     Error_Msg_GNAT_Extension ("aspect %", Sloc (Aspect));
+                     Error_Msg_GNAT_Extension ("aspect %", Loc);
 
                   elsif not Is_Type (E)
                     or else not Is_Immutably_Limited_Type (E)
@@ -4479,7 +4479,7 @@ package body Sem_Ch13 is
                   --  Ada 2022 (AI12-0363): Full_Access_Only
 
                   elsif A_Id = Aspect_Full_Access_Only then
-                     Error_Msg_Ada_2022_Feature ("aspect %", Sloc (Aspect));
+                     Error_Msg_Ada_2022_Feature ("aspect %", Loc);
 
                   --  Ada 2022 (AI12-0075): static expression functions
 
@@ -8754,7 +8754,7 @@ package body Sem_Ch13 is
          Arg : Node_Id;
       begin
          if No (UAD_Pragma) then
-            Error_Msg_N ("No definition for user-defined aspect", Id);
+            Error_Msg_N ("no definition for user-defined aspect", Id);
             return;
          end if;
 
@@ -16527,13 +16527,10 @@ package body Sem_Ch13 is
          if Etype (E) /= Typ or else Scope (E) /= Scope (Typ) then
             return False;
 
-         elsif Ekind (E) = E_Constant then
-            return True;
-
          elsif Ekind (E) = E_Function then
             return No (First_Formal (E))
               or else
-                (Is_Integer_Type (Etype (First_Formal (E)))
+                (Is_Signed_Integer_Type (Etype (First_Formal (E)))
                   and then No (Next_Formal (First_Formal (E))));
          else
             return False;

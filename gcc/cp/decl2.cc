@@ -3326,16 +3326,23 @@ tentative_decl_linkage (tree decl)
 	     linkage of all functions, and as that causes writes to
 	     the data mapped in from the PCH file, it's advantageous
 	     to mark the functions at this point.  */
-	  if (DECL_DECLARED_INLINE_P (decl)
-	      && (!DECL_IMPLICIT_INSTANTIATION (decl)
-		  || DECL_DEFAULTED_FN (decl)))
+	  if (DECL_DECLARED_INLINE_P (decl))
 	    {
-	      /* This function must have external linkage, as
-		 otherwise DECL_INTERFACE_KNOWN would have been
-		 set.  */
-	      gcc_assert (TREE_PUBLIC (decl));
-	      comdat_linkage (decl);
-	      DECL_INTERFACE_KNOWN (decl) = 1;
+	      if (!DECL_IMPLICIT_INSTANTIATION (decl)
+		  || DECL_DEFAULTED_FN (decl))
+		{
+		  /* This function must have external linkage, as
+		     otherwise DECL_INTERFACE_KNOWN would have been
+		     set.  */
+		  gcc_assert (TREE_PUBLIC (decl));
+		  comdat_linkage (decl);
+		  DECL_INTERFACE_KNOWN (decl) = 1;
+		}
+	      else if (DECL_MAYBE_IN_CHARGE_CDTOR_P (decl))
+		/* For implicit instantiations of cdtors try to make
+		   it comdat, so that maybe_clone_body can use aliases.
+		   See PR113208.  */
+		maybe_make_one_only (decl);
 	    }
 	}
       else if (VAR_P (decl))
@@ -3605,9 +3612,6 @@ import_export_decl (tree decl)
     }
 
   DECL_INTERFACE_KNOWN (decl) = 1;
-
-  if (DECL_CLONED_FUNCTION_P (decl))
-    maybe_optimize_cdtor (decl);
 }
 
 /* Return an expression that performs the destruction of DECL, which
@@ -5332,7 +5336,7 @@ c_parse_final_cleanups (void)
 		node = node->get_alias_target ();
 
 	      node->call_for_symbol_thunks_and_aliases (clear_decl_external,
-						      NULL, true);
+							NULL, true);
 	      /* If we mark !DECL_EXTERNAL one of the symbols in some comdat
 		 group, we need to mark all symbols in the same comdat group
 		 that way.  */
@@ -5342,7 +5346,7 @@ c_parse_final_cleanups (void)
 		     next != node;
 		     next = dyn_cast<cgraph_node *> (next->same_comdat_group))
 		  next->call_for_symbol_thunks_and_aliases (clear_decl_external,
-							  NULL, true);
+							    NULL, true);
 	    }
 
 	  /* If we're going to need to write this function out, and

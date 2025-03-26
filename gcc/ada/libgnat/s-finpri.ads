@@ -31,6 +31,7 @@
 
 with Ada.Finalization;
 
+with System.OS_Locks;
 with System.Storage_Elements;
 
 --  This package encapsulates the types and operations used by the compiler
@@ -38,6 +39,8 @@ with System.Storage_Elements;
 --  from types Controlled and Limited_Controlled).
 
 package System.Finalization_Primitives with Preelaborate is
+
+   use type System.Storage_Elements.Storage_Offset;
 
    type Finalize_Address_Ptr is access procedure (Obj : System.Address);
    --  Values of this type denote finalization procedures associated with
@@ -168,8 +171,13 @@ package System.Finalization_Primitives with Preelaborate is
    --  Calls to the procedure with an object that has already been detached
    --  have no effects.
 
-   function Header_Size return System.Storage_Elements.Storage_Count;
-   --  Return the size of type Collection_Node as Storage_Count
+   function Header_Alignment return System.Storage_Elements.Storage_Count is
+     (Collection_Node'Alignment);
+   --  Return the alignment of type Collection_Node as Storage_Count
+
+   function Header_Size return System.Storage_Elements.Storage_Count is
+     (Collection_Node'Object_Size / Storage_Unit);
+   --  Return the object size of type Collection_Node as Storage_Count
 
 private
 
@@ -182,11 +190,13 @@ private
 
    --  Finalization masters:
 
-   --  Master node type structure
+   --  Master node type structure. Finalize_Address comes first because it is
+   --  an access-to-subprogram and, therefore, might be twice as large and as
+   --  aligned as an access-to-object on some platforms.
 
    type Master_Node is record
-      Object_Address   : System.Address       := System.Null_Address;
       Finalize_Address : Finalize_Address_Ptr := null;
+      Object_Address   : System.Address       := System.Null_Address;
       Next             : Master_Node_Ptr      := null;
    end record;
 
@@ -211,15 +221,23 @@ private
 
    --  Finalization collections:
 
-   --  Collection node type structure
+   --  Collection node type structure. Finalize_Address comes first because it
+   --  is an access-to-subprogram and, therefore, might be twice as large and
+   --  as aligned as an access-to-object on some platforms.
 
    type Collection_Node is record
       Finalize_Address : Finalize_Address_Ptr := null;
+      --  A pointer to the Finalize_Address procedure of the object
+
+      Enclosing_Collection : Finalization_Collection_Ptr := null;
+      --  A pointer to the collection to which the node is attached
 
       Prev : Collection_Node_Ptr := null;
       Next : Collection_Node_Ptr := null;
-      --  Finalization_Collections are managed as a circular doubly-linked list
+      --  Collection nodes are managed as a circular doubly-linked list
    end record;
+
+   type Lock_Type is mod 2**8 with Size => 8;
 
    --  Finalization collection type structure
 
@@ -233,6 +251,9 @@ private
       --  A flag used to detect allocations which occur during the finalization
       --  of a collection. The allocations must raise Program_Error. This may
       --  arise in a multitask environment.
+
+      Lock : aliased System.OS_Locks.RTS_Lock;
+      --  A lock to synchronize concurrent accesses to the collection
    end record;
 
    --  This operation is very simple and thus can be performed in line
