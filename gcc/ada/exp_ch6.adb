@@ -8486,7 +8486,7 @@ package body Exp_Ch6 is
       begin
          if Might_Have_Tasks (Result_Subt) then
             Actions := New_List;
-            Build_Task_Allocate_Block_With_Init_Stmts
+            Build_Task_Allocate_Block
               (Actions, Allocator, Init_Stmts => New_List (Assign));
             Chain := Activation_Chain_Entity (Last (Actions));
          else
@@ -9515,7 +9515,7 @@ package body Exp_Ch6 is
       Insert_Action (Allocator, Tmp_Obj);
 
       Insert_List_After_And_Analyze (Tmp_Obj,
-        Build_Initialization_Call (Loc,
+        Build_Initialization_Call (Allocator,
           Id_Ref =>
             Make_Explicit_Dereference (Loc,
               Prefix => New_Occurrence_Of (Return_Obj_Access, Loc)),

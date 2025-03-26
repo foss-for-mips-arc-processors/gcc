@@ -11695,7 +11695,7 @@ package body Sem_Ch6 is
                   Check_Private_Overriding (B_Typ);
                   --  The Ghost policy in effect at the point of declaration
                   --  or a tagged type and a primitive operation must match
-                  --  (SPARK RM 6.9(16)).
+                  --  (SPARK RM 6.9(18)).
 
                   Check_Ghost_Primitive (S, B_Typ);
                end if;
@@ -11739,7 +11739,7 @@ package body Sem_Ch6 is
 
                   --  The Ghost policy in effect at the point of declaration
                   --  of a tagged type and a primitive operation must match
-                  --  (SPARK RM 6.9(16)).
+                  --  (SPARK RM 6.9(18)).
 
                   Check_Ghost_Primitive (S, B_Typ);
                end if;
@@ -11772,7 +11772,7 @@ package body Sem_Ch6 is
 
                --  The Ghost policy in effect at the point of declaration of a
                --  tagged type and a primitive operation must match
-               --  (SPARK RM 6.9(16)).
+               --  (SPARK RM 6.9(18)).
 
                Check_Ghost_Primitive (S, B_Typ);
             end if;
@@ -12228,7 +12228,7 @@ package body Sem_Ch6 is
 
             --  The Ghost policy in effect at the point of declaration of a
             --  parent subprogram and an overriding subprogram must match
-            --  (SPARK RM 6.9(17)).
+            --  (SPARK RM 6.9(19)).
 
             Check_Ghost_Overriding (S, Overridden_Subp);
          end if;
@@ -12391,7 +12391,7 @@ package body Sem_Ch6 is
 
                      --  The Ghost policy in effect at the point of declaration
                      --  of a parent subprogram and an overriding subprogram
-                     --  must match (SPARK RM 6.9(17)).
+                     --  must match (SPARK RM 6.9(19)).
 
                      Check_Ghost_Overriding (E, S);
                   end if;
@@ -12600,7 +12600,7 @@ package body Sem_Ch6 is
 
                   --  The Ghost policy in effect at the point of declaration
                   --  of a parent subprogram and an overriding subprogram
-                  --  must match (SPARK RM 6.9(17)).
+                  --  must match (SPARK RM 6.9(19)).
 
                   Check_Ghost_Overriding (S, E);
 
@@ -12753,7 +12753,7 @@ package body Sem_Ch6 is
 
          --  The Ghost policy in effect at the point of declaration of a parent
          --  subprogram and an overriding subprogram must match
-         --  (SPARK RM 6.9(17)).
+         --  (SPARK RM 6.9(19)).
 
          Check_Ghost_Overriding (S, Overridden_Subp);
 
