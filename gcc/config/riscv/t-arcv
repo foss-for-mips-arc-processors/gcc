@@ -8,7 +8,9 @@ MULTILIB_REUSE =
 
 # -march multilib options for RMX-100 mini
 arcv_march_variants  = rv32e
+arcv_march_variants += rv32em
 arcv_march_variants += rv32ea
+arcv_march_variants += rv32ema
 arcv_march_variants += rv32emac_zcb_zba_zbb_zbs_zfinx_zdinx
 
 # -march multilib options for RMX-100 and RMX-500
@@ -65,7 +67,9 @@ MULTILIB_DIRNAMES   +=         medany
 
 # Configurations for RMX-100 mini
 MULTILIB_REQUIRED   += march=rv32e/mabi=ilp32e/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32em/mabi=ilp32e/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32ea/mabi=ilp32e/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32ema/mabi=ilp32e/mtune=arc-v-rmx-100-series
 MULTILIB_REQUIRED   += march=rv32emac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32e/mtune=arc-v-rmx-100-series
 
 # Configurations for RMX-100 - general
