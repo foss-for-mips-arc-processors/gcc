@@ -289,6 +289,40 @@ riscv_pragma_intrinsic (cpp_reader *)
     error ("unknown %<#pragma riscv intrinsic%> option %qs", name);
 }
 
+/* Implement #pragma riscv luis_nop.  This pragma is used to insert a
+   "nop" instruction into the current function body.  Thus, the pragma MUST
+   be inside a function.  */
+static void
+riscv_pragma_luis_nop (cpp_reader *)
+{
+	location_t loc = UNKNOWN_LOCATION;
+
+	/* The assembly string must be enclosed in quotes (e.g., `"nop"`) */
+	tree asm_string = build_string(5, "\"nop\""); /* Length 5: '"', 'n', 'o', 'p', '"' */
+
+	/* For a simple `nop`, we don't need outputs, inputs, or clobbers.  */
+	tree outputs = NULL_TREE;
+	tree inputs = NULL_TREE;
+	tree clobbers = NULL_TREE;
+	tree labels = NULL_TREE;
+
+	/* Build the ASM_EXPR using build_stmt.  */
+	tree asm_stmt = build_stmt(loc, ASM_EXPR,
+							asm_string,   /* Assembly code (string).  */
+							outputs,      /* Output operands.  */
+							inputs,       /* Input operands.  */
+							clobbers,     /* Clobbered registers.  */
+							labels);      /* Goto labels.  */
+
+	/* Mark it as volatile (to prevent optimization).  */
+	ASM_VOLATILE_P(asm_stmt) = 1;
+
+	/* Add it to the current statement list.  */
+	add_stmt(asm_stmt);
+
+	warning(0, "LUIS: pragma riscv luis_nop triggered");
+}
+
 struct pragma_luis_flags
 {
   const char *function_name;
@@ -324,7 +358,8 @@ riscv_pragma_luis (cpp_reader *)
 //  const char *intrinsic_name = TREE_STRING_POINTER (x);
   const char *intrinsic_name = IDENTIFIER_POINTER (x);
 
-  flags->function_name = intrinsic_name;
+  /* Segmentation fault.  */
+  //flags->function_name = intrinsic_name;
 
   /* Parse key-value pairs.  */
   while (1)
@@ -475,4 +510,5 @@ riscv_register_pragmas (void)
   targetm.check_builtin_call = riscv_check_builtin_call;
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
   c_register_pragma ("riscv", "luis", riscv_pragma_luis);
+  c_register_pragma ("riscv", "luis_nop", riscv_pragma_luis_nop);
 }
