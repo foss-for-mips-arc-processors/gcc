@@ -5103,6 +5103,22 @@ case "${target}" in
 			exit 1
 			;;
 		esac
+
+		# Handle --with-tune.
+		case ${with_tune} in
+		"")
+			case ${target} in
+			*-snps-*)
+				# Use a default mtune for Synopsys ARC-V.
+				with_tune=arc-v-rmx-100-series
+				;;
+			*)
+				;;
+			esac
+			;;
+		*)
+			;;
+		esac
 		;;
 
 	mips*-*-*)
