@@ -598,6 +598,23 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   NULL,						/* vector cost */
 };
 
+/* Costs to use when optimizing for Synopsys RPX-100.  */
+static const struct riscv_tune_param arcv_rpx100_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
+  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},	/* int_mul */
+  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
+  4,						/* issue_rate */
+  9,						/* branch_cost */
+  2,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* use_divmod_expansion */
+  RISCV_FUSE_ARCV,				/* fusible_ops */
+  NULL,						/* vector cost */
+};
+
 /* Costs to use when optimizing for a generic ooo profile.  */
 static const struct riscv_tune_param generic_ooo_tune_info = {
   {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_add */
@@ -742,6 +759,13 @@ bool
 riscv_is_micro_arch (enum riscv_microarchitecture_type arch)
 {
   return (riscv_microarchitecture == arch);
+}
+
+bool
+arcv_micro_arch_supports_fusion_p (void)
+{
+  return (riscv_is_micro_arch (arcv_rhx100)
+	  || riscv_is_micro_arch (arcv_rpx100));
 }
 
 void riscv_frame_info::reset(void)
@@ -3632,7 +3656,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
+      if ((arcv_micro_arch_supports_fusion_p () || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -8643,6 +8667,20 @@ arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
   return arcv_mpy_option == ARCV_MPY_OPTION_10C;
 }
 
+bool
+arcv_ld_1c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		      rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_ld_cycles == 1;
+}
+
+bool
+arcv_ld_2c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
+		      rtx_insn *in_insn ATTRIBUTE_UNUSED)
+{
+  return arcv_ld_cycles == 2;
+}
+
 /* Implement TARGET_SECONDARY_MEMORY_NEEDED.
 
    When floating-point registers are wider than integer ones, moves between
@@ -8938,13 +8976,15 @@ riscv_fusion_enabled_p(enum riscv_fusion_pairs op)
 static bool
 pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!arcv_micro_arch_supports_fusion_p ())
     return true;
 
-  return ((is_load && (mode == SImode
+  return ((is_load && (mode == DImode
+		     || mode == SImode
 		     || mode == HImode
 		     || mode == QImode))
-	 || (!is_load && mode == SImode));
+	 || (!is_load && (mode == DImode
+			|| mode == SImode)));
 }
 
 /* Return TRUE if two addresses can be fused.  */
@@ -9538,6 +9578,8 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
     tmp /= 2;
   else if (mode == QImode)
     tmp /= 4;
+  else if (mode == DImode)
+    tmp /= 8;
 
   /* INSN with smaller base register goes first.  */
   tmp -= ((REGNO (base) & 0xff) << 20);
@@ -9571,7 +9613,7 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  if (riscv_is_micro_arch (arcv_rhx100) && dep_type == REG_DEP_ANTI
+  if (arcv_micro_arch_supports_fusion_p () && dep_type == REG_DEP_ANTI
       && !SCHED_GROUP_P (insn))
     return cost + 1;
 
@@ -9636,7 +9678,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!arcv_micro_arch_supports_fusion_p ())
     return priority;
 
   if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
@@ -10790,57 +10832,100 @@ arcv_propagate_hard_register_copies (void)
 		reg_originals[i] = 0;
 	    }
 
-	  set = single_set (insn);
-
-	  /* Perform copy->original substitution.  */
-	  if (set && (!REG_P (SET_DEST (set)) || !REG_P (SET_SRC (set))))
+	  switch (GET_CODE (PATTERN (insn)))
 	    {
-	      /* Handle loads...  */
-	      if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
-		{
-		  rtx *op = &XEXP (SET_SRC (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
-		    op = &XEXP (*op, 0);
+	      case CLOBBER:
+		if (REG_P (XEXP (PATTERN (insn), 0)))
+		  {
+		    for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		      if (reg_originals[i] == REGNO (XEXP (PATTERN (insn), 0)))
+			reg_originals[i] = 0;
 
-		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
-		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
-				     reg_originals[REGNO (*op)]), false);
-		}
+		    reg_originals[REGNO (XEXP (PATTERN (insn), 0))] = 0;
+		  }
+		break;
 
-	      /* ... and stores.  */
-	      if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
-		{
-		  if (reg_originals[REGNO (SET_SRC (set))])
-		    validate_change (insn, &SET_SRC (set),
-				  gen_rtx_REG (GET_MODE (SET_SRC (set)),
-				  reg_originals[REGNO (SET_SRC (set))]), false);
+	      case PARALLEL:
+		for (int i = 0; i < XVECLEN (PATTERN (insn), 0); i++)
+		  {
+		    rtx vecexp = XVECEXP (PATTERN (insn), 0, i);
+		    if ((GET_CODE (vecexp) == CLOBBER
+			 || GET_CODE (vecexp) == SET)
+			&& REG_P (XEXP (vecexp, 0)))
+		      {
+			for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+			  if (reg_originals[i] == REGNO (XEXP (vecexp, 0)))
+			    reg_originals[i] = 0;
 
-		  rtx *op = &XEXP (SET_DEST (set), 0);
-		  if (*op && !CONST_INT_P (*op) && !REG_P (*op))
-		    op = &XEXP (*op, 0);
+			reg_originals[REGNO (XEXP (vecexp, 0))] = 0;
+		      }
+		  }
+		break;
 
-		  if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
-		    validate_change (insn, op, gen_rtx_REG (GET_MODE (*op),
-				     reg_originals[REGNO (*op)]), false);
-		}
+	      case SET:
+		 set = single_set (insn);
+
+		 /* Perform copy->original substitution.  */
+		 if (set && (!REG_P (SET_DEST (set)) || !REG_P (SET_SRC (set))))
+		   {
+		     /* Handle loads...  */
+		     if (REG_P (SET_DEST (set)) && MEM_P (SET_SRC (set)))
+		       {
+			 rtx *op = &XEXP (SET_SRC (set), 0);
+			 if (*op && !CONST_INT_P (*op) && !REG_P (*op)
+				 && !SYMBOL_REF_P (*op))
+			   op = &XEXP (*op, 0);
+
+			 if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+			   validate_change (insn, op,
+					    gen_rtx_REG (GET_MODE (*op),
+						reg_originals[REGNO (*op)]),
+					    false);
+		       }
+
+		     /* ... and stores.  */
+		     if (REG_P (SET_SRC (set)) && MEM_P (SET_DEST (set)))
+		       {
+			 if (reg_originals[REGNO (SET_SRC (set))])
+			   validate_change (insn, &SET_SRC (set),
+					gen_rtx_REG (GET_MODE (SET_SRC (set)),
+					 reg_originals[REGNO (SET_SRC (set))]),
+					    false);
+
+			 rtx *op = &XEXP (SET_DEST (set), 0);
+			 if (*op && !CONST_INT_P (*op) && !REG_P (*op)
+				 && !SYMBOL_REF_P (*op))
+			   op = &XEXP (*op, 0);
+
+			 if (*op && REG_P (*op) && reg_originals[REGNO (*op)])
+			   validate_change (insn, op,
+					    gen_rtx_REG (GET_MODE (*op),
+						    reg_originals[REGNO (*op)]),
+					    false);
+		      }
+		   }
+
+		 /* Any change of a register invalidates all copies.  */
+		 if (set && REG_P (SET_DEST (set)))
+		   {
+		     for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+		       if (reg_originals[i] == REGNO (SET_DEST (set)))
+			 reg_originals[i] = 0;
+		   }
+
+		 /* A load to a register means it loses its original.  */
+		 if (set && REG_P (SET_DEST (set)) && !REG_P (SET_SRC (set)))
+		   reg_originals[REGNO (SET_DEST (set))] = 0;
+
+		 /* If it's a copy, remember it in the array.  */
+		 if (set && REG_P (SET_SRC (set)) && REG_P (SET_DEST (set))
+			 && REGNO (SET_SRC (set)) != REGNO (SET_DEST (set)))
+		  reg_originals[REGNO (SET_DEST (set))] = REGNO (SET_SRC (set));
+		 break;
+
+	      default:
+		break;
 	    }
-
-	  /* Any change of a register invalidates all copies.  */
-	  if (set && REG_P (SET_DEST (set)))
-	    {
-	      for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-		if (reg_originals[i] == REGNO (SET_DEST (set)))
-		  reg_originals[i] = 0;
-	    }
-
-	  /* A load to a register means it loses its original.  */
-	   if (set && REG_P (SET_DEST (set)) && !REG_P (SET_SRC (set)))
-	      reg_originals[REGNO (SET_DEST (set))] = 0;
-
-	  /* If it's a copy, remember it in the array.  */
-	  if (set && REG_P (SET_SRC (set)) && REG_P (SET_DEST (set))
-		  && REGNO (SET_SRC (set)) != REGNO (SET_DEST (set)))
-	      reg_originals[REGNO (SET_DEST (set))] = REGNO (SET_SRC (set));
 	}
     }
 }
@@ -10858,7 +10943,7 @@ riscv_reorg (void)
   /* After bb-reorder, some instructions may be using a copy of
      a register where the original is available.  Modify those
      instructions to use the original instead.  */
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (arcv_micro_arch_supports_fusion_p ())
      arcv_propagate_hard_register_copies ();
 }
 
