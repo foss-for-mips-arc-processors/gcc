@@ -59,41 +59,41 @@ MULTILIB_DIRNAMES   += $(arcv_march_variants)
 MULTILIB_OPTIONS    += mabi=ilp32e/mabi=ilp32/mabi=ilp32f/mabi=ilp32d/mabi=lp64/mabi=lp64d
 MULTILIB_DIRNAMES   +=      ilp32e      ilp32      ilp32f      ilp32d      lp64      lp64d
 
-MULTILIB_OPTIONS    += mtune=arc-v-rmx-100-series/mtune=arc-v-rmx-500-series/mtune=arc-v-rhx-100-series/mtune=arc-v-rpx-100-series
-MULTILIB_DIRNAMES   +=       rmx100                     rmx500                     rhx100                     rpx100
+MULTILIB_OPTIONS    += mtune=arc-v-rmx-500-series/mtune=arc-v-rhx-100-series/mtune=arc-v-rpx-100-series
+MULTILIB_DIRNAMES   +=       rmx500                     rhx100                     rpx100
 
 MULTILIB_OPTIONS    += mcmodel=medany
 MULTILIB_DIRNAMES   +=         medany
 
 # Configurations for RMX-100 mini
-MULTILIB_REQUIRED   += march=rv32e/mabi=ilp32e/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32em/mabi=ilp32e/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ea/mabi=ilp32e/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ema/mabi=ilp32e/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32emac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32e/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32e/mabi=ilp32e
+MULTILIB_REQUIRED   += march=rv32em/mabi=ilp32e
+MULTILIB_REQUIRED   += march=rv32ea/mabi=ilp32e
+MULTILIB_REQUIRED   += march=rv32ema/mabi=ilp32e
+MULTILIB_REQUIRED   += march=rv32emac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32e
 
 # Configurations for RMX-100 - general
-MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ic/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32im/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ima/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32iac/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32imac/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ic/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32im/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ia/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ima/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32iac/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32imac/mabi=ilp32
 
 # Configurations for RMX-100 - optimized
-MULTILIB_REQUIRED   += march=rv32ic_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32imc_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32ic_zcb_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32imc_zcb_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32
 
 # Configurations for RMX-100 - optimized (without C and Zc*)
-MULTILIB_REQUIRED   += march=rv32i_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32im_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs_zfinx/mabi=ilp32/mtune=arc-v-rmx-100-series
-MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32/mtune=arc-v-rmx-100-series
+MULTILIB_REQUIRED   += march=rv32i_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32im_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs_zfinx/mabi=ilp32
+MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32
 
 # Configurations for RMX-500 - general
 MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rmx-500-series
