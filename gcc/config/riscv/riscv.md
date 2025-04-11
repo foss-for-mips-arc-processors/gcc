@@ -707,6 +707,46 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
+;; Special case of adding a reg and constant if latter is sum of two S12
+;; values (in range -2048 to 2047). Avoid materialized the const and fuse
+;; into the add (with an additional add for 2nd value). Makes a 3 insn
+;; sequence into 2 insn.
+
+(define_insn_and_split "*add<mode>3_const_sum_of_two_s12"
+  [(set (match_operand:P	 0 "register_operand" "=r,r")
+	(plus:P (match_operand:P 1 "register_operand" " r,r")
+		(match_operand:P 2 "const_two_s12"    " MiG,r")))]
+  "!riscv_reg_frame_related (operands[0])"
+{
+  /* operand matching MiG constraint is always meant to be split.  */
+  if (which_alternative == 0)
+    return "#";
+  else
+    return "add %0,%1,%2";
+}
+  ""
+  [(set (match_dup 0)
+	(plus:P (match_dup 1) (match_dup 3)))
+   (set (match_dup 0)
+	(plus:P (match_dup 0) (match_dup 4)))]
+{
+  int val = INTVAL (operands[2]);
+  if (SUM_OF_TWO_S12_P (val))
+    {
+       operands[3] = GEN_INT (2047);
+       operands[4] = GEN_INT (val - 2047);
+    }
+  else if (SUM_OF_TWO_S12_N (val))
+    {
+       operands[3] = GEN_INT (-2048);
+       operands[4] = GEN_INT (val + 2048);
+    }
+  else
+      gcc_unreachable ();
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "<P:MODE>")])
+
 (define_expand "addv<mode>4"
   [(set (match_operand:GPR           0 "register_operand" "=r,r")
 	(plus:GPR (match_operand:GPR 1 "register_operand" " r,r")
@@ -2612,28 +2652,29 @@
     FAIL;
 })
 
-;; Inlining general memmove is a pessimisation as we can't avoid having to
-;; decide which direction to go at runtime, which can be costly.  Until we
-;; can benchmark implementations on real V hardware implement a conservative
-;; approach of inlining cases which can be performed with a single vector
-;; load + store.  For tiny moves, fallback to scalar.
-(define_expand "movmem<mode>"
-  [(parallel [(set (match_operand:BLK 0 "general_operand")
-		   (match_operand:BLK 1 "general_operand"))
-	      (use (match_operand:P 2 "const_int_operand"))
+;; Fill memory with constant byte.
+;; Argument 0 is the destination
+;; Argument 1 is the constant byte
+;; Argument 2 is the length
+;; Argument 3 is the alignment
+
+(define_expand "setmem<mode>"
+  [(parallel [(set (match_operand:BLK 0 "memory_operand")
+		   (match_operand:QI 2 "const_int_operand"))
+	      (use (match_operand:P 1 ""))
 	      (use (match_operand:SI 3 "const_int_operand"))])]
-  "TARGET_VECTOR"
-{
-  if (CONST_INT_P (operands[2])
-      && INTVAL (operands[2]) >= TARGET_MIN_VLEN / 8
-      && INTVAL (operands[2]) <= TARGET_MIN_VLEN
-      && riscv_vector::expand_block_move (operands[0],
-					  operands[1],
-					  operands[2]))
+ ""
+ {
+  /* If value to set is not zero, use the library routine.  */
+  if (operands[2] != const0_rtx)
+    FAIL;
+
+  if (riscv_expand_block_clear (operands[0], operands[1]))
     DONE;
   else
     FAIL;
 })
+
 
 ;; Expand in-line code to clear the instruction cache between operand[0] and
 ;; operand[1].
