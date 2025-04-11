@@ -1,10 +1,6 @@
-2024-08-01  Release Manager
+2024-05-07  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* Make-lang.in (cc1objplus$(exeext)): Remove $(NETLIBS).
 
 2023-11-27  Alex Coplan  <alex.coplan@arm.com>
 	    Iain Sandoe  <iain@sandoe.co.uk>
