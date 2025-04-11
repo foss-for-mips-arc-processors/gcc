@@ -12430,6 +12430,16 @@ fold_builtin_is_corresponding_member (location_t loc, int nargs,
 				   fold_convert (TREE_TYPE (arg1), arg2)));
 }
 
+/* [basic.types] 8.  True iff TYPE is an object type.  */
+
+static bool
+object_type_p (const_tree type)
+{
+  return (TREE_CODE (type) != FUNCTION_TYPE
+          && !TYPE_REF_P (type)
+          && !VOID_TYPE_P (type));
+}
+
 /* Actually evaluates the trait.  */
 
 static bool
@@ -12547,6 +12557,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_FUNCTION:
       return type_code1 == FUNCTION_TYPE;
 
+    case CPTK_IS_INVOCABLE:
+      return !error_operand_p (build_invoke (type1, type2, tf_none));
+
     case CPTK_IS_LAYOUT_COMPATIBLE:
       return layout_compatible_type_p (type1, type2);
 
@@ -12571,10 +12584,11 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_NOTHROW_CONVERTIBLE:
       return is_nothrow_convertible (type1, type2);
 
+    case CPTK_IS_NOTHROW_INVOCABLE:
+      return expr_noexcept_p (build_invoke (type1, type2, tf_none), tf_none);
+
     case CPTK_IS_OBJECT:
-      return (type_code1 != FUNCTION_TYPE
-	      && type_code1 != REFERENCE_TYPE
-	      && type_code1 != VOID_TYPE);
+      return object_type_p (type1);
 
     case CPTK_IS_POINTER_INTERCONVERTIBLE_BASE_OF:
       return pointer_interconvertible_base_of_p (type1, type2);
@@ -12612,6 +12626,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_TRIVIALLY_COPYABLE:
       return trivially_copyable_p (type1);
 
+    case CPTK_IS_UNBOUNDED_ARRAY:
+      return array_of_unknown_bound_p (type1);
+
     case CPTK_IS_UNION:
       return type_code1 == UNION_TYPE;
 
@@ -12626,6 +12643,10 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
 
     case CPTK_IS_DEDUCIBLE:
       return type_targs_deducible_from (type1, type2);
+
+    /* __array_rank is handled in finish_trait_expr. */
+    case CPTK_RANK:
+      gcc_unreachable ();
 
 #define DEFTRAIT_TYPE(CODE, NAME, ARITY) \
     case CPTK_##CODE:
@@ -12700,6 +12721,8 @@ same_type_ref_bind_p (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_CONSTRUCTIBLE:
     case CPTK_IS_NOTHROW_CONSTRUCTIBLE:
     case CPTK_IS_TRIVIALLY_CONSTRUCTIBLE:
+    case CPTK_IS_INVOCABLE:
+    case CPTK_IS_NOTHROW_INVOCABLE:
     case CPTK_REF_CONSTRUCTS_FROM_TEMPORARY:
     case CPTK_REF_CONVERTS_FROM_TEMPORARY:
       to = type1;
@@ -12726,6 +12749,18 @@ same_type_ref_bind_p (cp_trait_kind kind, tree type1, tree type2)
 	      (non_reference (to), non_reference (from))));
 }
 
+/* [defns.referenceable] True iff TYPE is a referenceable type.  */
+
+static bool
+referenceable_type_p (const_tree type)
+{
+  return (TYPE_REF_P (type)
+	  || object_type_p (type)
+	  || (FUNC_OR_METHOD_TYPE_P (type)
+	      && (type_memfn_quals (type) == TYPE_UNQUALIFIED
+		  && type_memfn_rqual (type) == REF_QUAL_NONE)));
+}
+
 /* Process a trait expression.  */
 
 tree
@@ -12738,7 +12773,10 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
   if (processing_template_decl)
     {
       tree trait_expr = make_node (TRAIT_EXPR);
-      TREE_TYPE (trait_expr) = boolean_type_node;
+      if (kind == CPTK_RANK)
+	TREE_TYPE (trait_expr) = size_type_node;
+      else
+	TREE_TYPE (trait_expr) = boolean_type_node;
       TRAIT_EXPR_TYPE1 (trait_expr) = type1;
       TRAIT_EXPR_TYPE2 (trait_expr) = type2;
       TRAIT_EXPR_KIND (trait_expr) = kind;
@@ -12787,8 +12825,10 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
 
     case CPTK_IS_CONSTRUCTIBLE:
     case CPTK_IS_CONVERTIBLE:
+    case CPTK_IS_INVOCABLE:
     case CPTK_IS_NOTHROW_CONSTRUCTIBLE:
     case CPTK_IS_NOTHROW_CONVERTIBLE:
+    case CPTK_IS_NOTHROW_INVOCABLE:
     case CPTK_IS_TRIVIALLY_CONSTRUCTIBLE:
     case CPTK_REF_CONSTRUCTS_FROM_TEMPORARY:
     case CPTK_REF_CONVERTS_FROM_TEMPORARY:
@@ -12828,8 +12868,10 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_REFERENCE:
     case CPTK_IS_SAME:
     case CPTK_IS_SCOPED_ENUM:
+    case CPTK_IS_UNBOUNDED_ARRAY:
     case CPTK_IS_UNION:
     case CPTK_IS_VOLATILE:
+    case CPTK_RANK:
       break;
 
     case CPTK_IS_LAYOUT_COMPATIBLE:
@@ -12861,8 +12903,18 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
       gcc_unreachable ();
     }
 
-  tree val = (trait_expr_value (kind, type1, type2)
-	      ? boolean_true_node : boolean_false_node);
+  tree val;
+  if (kind == CPTK_RANK)
+    {
+      size_t __array_rank = 0;
+      for (; TREE_CODE (type1) == ARRAY_TYPE; type1 = TREE_TYPE (type1))
+	++__array_rank;
+      val = build_int_cst (size_type_node, __array_rank);
+    }
+  else
+    val = (trait_expr_value (kind, type1, type2)
+	   ? boolean_true_node : boolean_false_node);
+
   return maybe_wrap_with_location (val, loc);
 }
 
@@ -12892,6 +12944,43 @@ finish_trait_type (cp_trait_kind kind, tree type1, tree type2,
 
   switch (kind)
     {
+    case CPTK_ADD_LVALUE_REFERENCE:
+      /* [meta.trans.ref].  */
+      if (referenceable_type_p (type1))
+	return cp_build_reference_type (type1, /*rval=*/false);
+      return type1;
+
+    case CPTK_ADD_POINTER:
+      /* [meta.trans.ptr].  */
+      if (VOID_TYPE_P (type1) || referenceable_type_p (type1))
+	{
+	  if (TYPE_REF_P (type1))
+	    type1 = TREE_TYPE (type1);
+	  return build_pointer_type (type1);
+	}
+      return type1;
+
+    case CPTK_ADD_RVALUE_REFERENCE:
+      /* [meta.trans.ref].  */
+      if (referenceable_type_p (type1))
+	return cp_build_reference_type (type1, /*rval=*/true);
+      return type1;
+
+    case CPTK_DECAY:
+      if (TYPE_REF_P (type1))
+	type1 = TREE_TYPE (type1);
+
+      if (TREE_CODE (type1) == ARRAY_TYPE)
+	return finish_trait_type (CPTK_ADD_POINTER, TREE_TYPE (type1), type2,
+				  complain);
+      else if (TREE_CODE (type1) == FUNCTION_TYPE)
+	return finish_trait_type (CPTK_ADD_POINTER, type1, type2, complain);
+      else
+	return cv_unqualified (type1);
+
+    case CPTK_REMOVE_ALL_EXTENTS:
+      return strip_array_types (type1);
+
     case CPTK_REMOVE_CV:
       return cv_unqualified (type1);
 
@@ -12899,6 +12988,11 @@ finish_trait_type (cp_trait_kind kind, tree type1, tree type2,
       if (TYPE_REF_P (type1))
 	type1 = TREE_TYPE (type1);
       return cv_unqualified (type1);
+
+    case CPTK_REMOVE_EXTENT:
+      if (TREE_CODE (type1) == ARRAY_TYPE)
+	type1 = TREE_TYPE (type1);
+      return type1;
 
     case CPTK_REMOVE_POINTER:
       if (TYPE_PTR_P (type1))

@@ -1776,12 +1776,12 @@ package body Sem_Ch13 is
                Pragma_Name                  : Name_Id) return Node_Id;
             --  This is a wrapper for Make_Pragma used for converting aspects
             --  to pragmas. It takes care of Sloc (set from Loc) and building
-            --  the pragma identifier from the given name. In addition the
-            --  flags Class_Present and Split_PPC are set from the aspect
-            --  node, as well as Is_Ignored. This routine also sets the
-            --  From_Aspect_Specification in the resulting pragma node to
-            --  True, and sets Corresponding_Aspect to point to the aspect.
-            --  The resulting pragma is assigned to Aitem.
+            --  the pragma identifier from the given name. In addition the flag
+            --  Class_Present is set from the aspect node, as well as
+            --  Is_Ignored. This routine also sets the
+            --  From_Aspect_Specification in the resulting pragma node to True,
+            --  and sets Corresponding_Aspect to point to the aspect. The
+            --  resulting pragma is assigned to Aitem.
 
             -------------------------------
             -- Analyze_Aspect_Convention --
@@ -2703,8 +2703,7 @@ package body Sem_Ch13 is
                    Pragma_Argument_Associations => Args,
                    Pragma_Identifier =>
                      Make_Identifier (Sloc (Id), Pragma_Name),
-                   Class_Present     => Class_Present (Aspect),
-                   Split_PPC         => Split_PPC (Aspect));
+                   Class_Present     => Class_Present (Aspect));
 
                --  Set additional semantic fields
 
@@ -4436,44 +4435,6 @@ package body Sem_Ch13 is
                      end if;
                   end if;
 
-                  --  If the expressions is of the form A and then B, then
-                  --  we generate separate Pre/Post aspects for the separate
-                  --  clauses. Since we allow multiple pragmas, there is no
-                  --  problem in allowing multiple Pre/Post aspects internally.
-                  --  These should be treated in reverse order (B first and
-                  --  A second) since they are later inserted just after N in
-                  --  the order they are treated. This way, the pragma for A
-                  --  ends up preceding the pragma for B, which may have an
-                  --  importance for the error raised (either constraint error
-                  --  or precondition error).
-
-                  --  We do not do this for Pre'Class, since we have to put
-                  --  these conditions together in a complex OR expression.
-
-                  --  We don't do this in GNATprove mode, because it brings no
-                  --  benefit for proof and causes annoyance for flow analysis,
-                  --  which prefers to be as close to the original source code
-                  --  as possible. Also we don't do this when analyzing generic
-                  --  units since it causes spurious visibility errors in the
-                  --  preanalysis of instantiations.
-
-                  if not GNATprove_Mode
-                    and then (Pname = Name_Postcondition
-                               or else not Class_Present (Aspect))
-                    and then not Inside_A_Generic
-                  then
-                     while Nkind (Expr) = N_And_Then loop
-                        Insert_After (Aspect,
-                          Make_Aspect_Specification (Sloc (Left_Opnd (Expr)),
-                            Identifier    => Identifier (Aspect),
-                            Expression    => Relocate_Node (Left_Opnd (Expr)),
-                            Class_Present => Class_Present (Aspect),
-                            Split_PPC     => True));
-                        Rewrite (Expr, Relocate_Node (Right_Opnd (Expr)));
-                        Eloc := Sloc (Expr);
-                     end loop;
-                  end if;
-
                   --  Build the precondition/postcondition pragma
 
                   Aitem := Make_Aitem_Pragma
@@ -4482,20 +4443,6 @@ package body Sem_Ch13 is
                          Chars      => Name_Check,
                          Expression => Relocate_Expression (Expr))),
                        Pragma_Name                => Pname);
-
-                  --  Add message unless exception messages are suppressed
-
-                  if not Opt.Exception_Locations_Suppressed then
-                     Append_To (Pragma_Argument_Associations (Aitem),
-                       Make_Pragma_Argument_Association (Eloc,
-                         Chars      => Name_Message,
-                         Expression =>
-                           Make_String_Literal (Eloc,
-                             Strval => "failed "
-                                       & Get_Name_String (Pname)
-                                       & " from "
-                                       & Build_Location_String (Eloc))));
-                  end if;
 
                   Set_Is_Delayed_Aspect (Aspect);
 
@@ -15111,6 +15058,11 @@ package body Sem_Ch13 is
         and then Has_Delayed_Freeze (Ent)
       then
          Append_Freeze_Action (Ent, Subp_Decl);
+
+         --  We may freeze Subp_Id immediately since Ent has just been frozen.
+         --  This will help to shield us from potential late freezing issues.
+
+         Set_Is_Frozen (Subp_Id);
 
       else
          Insert_Action (N, Subp_Decl);

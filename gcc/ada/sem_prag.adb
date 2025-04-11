@@ -5192,7 +5192,7 @@ package body Sem_Prag is
          --  status in SCO.
          --  ??? nothing checks that the pragma is in the main source unit
 
-         if Is_Checked (N) and then not Split_PPC (N) then
+         if Is_Checked (N) then
             Set_SCO_Pragma_Enabled (Loc);
          end if;
 
@@ -14516,7 +14516,6 @@ package body Sem_Prag is
             --  check for a dynamic predicate.
 
             if Is_Checked (N)
-              and then not Split_PPC (N)
               and then Cname /= Name_Dynamic_Predicate
             then
                Set_SCO_Pragma_Enabled (Loc);
@@ -19950,6 +19949,7 @@ package body Sem_Prag is
             Val : Boolean;
 
          begin
+            GNAT_Pragma;
             Check_No_Identifiers;
             Check_At_Most_N_Arguments (1);
 
@@ -30844,7 +30844,6 @@ package body Sem_Prag is
       Loc        : constant Source_Ptr := Sloc (Prag);
       Prag_Nam   : constant Name_Id    := Pragma_Name (Prag);
       Check_Prag : Node_Id;
-      Msg_Arg    : Node_Id;
       Nam        : Name_Id;
 
    --  Start of processing for Build_Pragma_Check_Equivalent
@@ -30927,23 +30926,6 @@ package body Sem_Prag is
          Prepend_To (Pragma_Argument_Associations (Check_Prag),
            Make_Pragma_Argument_Association (Loc,
              Expression => Make_Identifier (Loc, Nam)));
-      end if;
-
-      --  Update the error message when the pragma is inherited
-
-      if Present (Inher_Id) then
-         Msg_Arg := Last (Pragma_Argument_Associations (Check_Prag));
-
-         if Chars (Msg_Arg) = Name_Message then
-            String_To_Name_Buffer (Strval (Expression (Msg_Arg)));
-
-            --  Insert "inherited" to improve the error message
-
-            if Name_Buffer (1 .. 8) = "failed p" then
-               Insert_Str_In_Name_Buffer ("inherited ", 8);
-               Set_Strval (Expression (Msg_Arg), String_From_Name_Buffer);
-            end if;
-         end if;
       end if;
 
       return Check_Prag;
@@ -32013,13 +31995,10 @@ package body Sem_Prag is
       Stmt := Prev (Prag);
       while Present (Stmt) loop
 
-         --  Skip prior pragmas, but check for duplicates. Pragmas produced
-         --  by splitting a complex pre/postcondition are not considered to
-         --  be duplicates.
+         --  Skip prior pragmas, but check for duplicates
 
          if Nkind (Stmt) = N_Pragma then
             if Do_Checks
-              and then not Split_PPC (Stmt)
               and then Original_Aspect_Pragma_Name (Stmt) = Prag_Nam
             then
                Duplication_Error
