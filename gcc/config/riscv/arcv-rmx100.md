@@ -54,7 +54,12 @@
 
 (define_insn_reservation "arcv_rmx100_load_insn" 3
   (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "load,fpload"))
+       (eq_attr "type" "load"))
+  "arcv_rmx100_DMP,nothing*2")
+
+(define_insn_reservation "arcv_rmx100_fpload_insn" 3
+  (and (eq_attr "tune" "arcv_rmx100")
+       (eq_attr "type" "fpload"))
   "arcv_rmx100_DMP,nothing*2")
 
 (define_insn_reservation "arcv_rmx100_store_insn" 1
@@ -109,3 +114,6 @@
 
 (define_bypass 9 "arcv_rmx100_div_insn" "arcv_rmx100_*" "arcv_mpy_1c_bypass_p")
 (define_bypass 9 "arcv_rmx100_div_insn" "arcv_rmx100_*" "arcv_mpy_2c_bypass_p")
+
+(define_bypass 1 "arcv_rmx100_load_insn" "arcv_rmx100_*" "arcv_ld_1c_bypass_p")
+(define_bypass 2 "arcv_rmx100_load_insn" "arcv_rmx100_*" "arcv_ld_2c_bypass_p")

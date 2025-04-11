@@ -157,6 +157,8 @@ extern bool riscv_store_data_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+extern bool arcv_ld_1c_bypass_p (rtx_insn *, rtx_insn *);
+extern bool arcv_ld_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern rtx riscv_gen_gpr_save_insn (struct riscv_frame_info *);
 extern bool riscv_gpr_save_operation_p (rtx);
 extern void riscv_reinit (void);
@@ -775,6 +777,8 @@ extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
 
 extern bool riscv_macro_fusion_p ();
 extern bool riscv_is_micro_arch (enum riscv_microarchitecture_type);
+
+extern bool arcv_micro_arch_supports_fusion_p (void);
 
 #ifdef RTX_CODE
 extern const char*
