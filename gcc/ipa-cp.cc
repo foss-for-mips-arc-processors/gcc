@@ -1740,6 +1740,13 @@ ipa_value_range_from_jfunc (vrange &vr,
 
 	  if (!handler
 	      || !op_res.supports_type_p (vr_type)
+	      /* Sometimes we try to fold comparison operators using a
+		 pointer type to hold the result instead of a boolean
+		 type.  Avoid trapping in the sanity check in
+		 fold_range until this is fixed.  */
+	      || srcvr.undefined_p ()
+	      || op_vr.undefined_p ()
+	      || !handler.operand_check_p (vr_type, srcvr.type (), op_vr.type ())
 	      || !handler.fold_range (op_res, vr_type, srcvr, op_vr))
 	    op_res.set_varying (vr_type);
 
@@ -2547,6 +2554,15 @@ propagate_vr_across_jump_function (cgraph_edge *cs, ipa_jump_func *jfunc,
 
 	  if (!handler
 	      || !ipa_supports_p (operand_type)
+	      /* Sometimes we try to fold comparison operators using a
+		 pointer type to hold the result instead of a boolean
+		 type.  Avoid trapping in the sanity check in
+		 fold_range until this is fixed.  */
+	      || src_lats->m_value_range.m_vr.undefined_p ()
+	      || op_vr.undefined_p ()
+	      || !handler.operand_check_p (operand_type,
+					   src_lats->m_value_range.m_vr.type (),
+					   op_vr.type ())
 	      || !handler.fold_range (op_res, operand_type,
 				      src_lats->m_value_range.m_vr, op_vr))
 	    op_res.set_varying (param_type);

@@ -8038,11 +8038,11 @@ wrap_cleanups_r (tree *stmt_p, int *walk_subtrees, void *data)
    Unfortunately, there's no way to express this properly in terms of
    nesting, as the regions for the temporaries overlap the region for the
    variable itself; if there are two temporaries, the variable needs to be
-   the first thing destroyed if either of them throws.  However, we only
-   want to run the variable's cleanup if it actually got constructed.  So
-   we need to guard the temporary cleanups with the variable's cleanup if
-   they are run on the normal path, but not if they are run on the
-   exceptional path.  We implement this by telling
+   the first thing destroyed if either of the temporary destructors throws.
+   However, we only want to run the variable's cleanup if it actually got
+   constructed.  So we need to guard the temporary cleanups with the
+   variable's cleanup if they are run on the normal path, but not if they
+   are run on the exceptional path.  We implement this by telling
    honor_protect_cleanup_actions to strip the variable cleanup from the
    exceptional path.
 
@@ -19297,6 +19297,13 @@ cxx_comdat_group (tree decl)
 	  else
 	    break;
 	}
+      /* If a ctor/dtor has already set the comdat group by
+	 maybe_clone_body, don't override it.  */
+      if (SUPPORTS_ONE_ONLY
+	  && TREE_CODE (decl) == FUNCTION_DECL
+	  && DECL_CLONED_FUNCTION_P (decl))
+	if (tree comdat = DECL_COMDAT_GROUP (decl))
+	  return comdat;
     }
 
   return decl;

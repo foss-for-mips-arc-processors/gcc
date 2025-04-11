@@ -2639,6 +2639,21 @@
   DONE;
 })
 
+(define_expand "cmpmemsi"
+  [(parallel [(set (match_operand:SI 0)
+               (compare:SI (match_operand:BLK 1)
+                           (match_operand:BLK 2)))
+	      (use (match_operand:SI 3))
+	      (use (match_operand:SI 4))])]
+  "!optimize_size"
+{
+  if (riscv_expand_block_compare (operands[0], operands[1], operands[2],
+                                  operands[3]))
+    DONE;
+  else
+    FAIL;
+})
+
 (define_expand "cpymem<mode>"
   [(parallel [(set (match_operand:BLK 0 "general_operand")
 		   (match_operand:BLK 1 "general_operand"))
@@ -4190,6 +4205,42 @@
   "ld\t%0,%1"
   [(set_attr "type" "load")
    (set (attr "length") (const_int 8))])
+
+;; The AND is redunant here.  It always turns off the high 32 bits  and the
+;; low number of bits equal to the shift count.  Those upper 32 bits will be
+;; reset by the SIGN_EXTEND at the end.
+;;
+;; One could argue combine should have realized this and simplified what it
+;; presented to the backend.  But we can obviously cope with what it gave us.
+(define_insn_and_split ""
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(sign_extend:DI
+	  (plus:SI (subreg:SI
+		     (and:DI
+		       (ashift:DI (match_operand:DI 1 "register_operand" "r")
+				  (match_operand 2 "const_int_operand" "n"))
+		       (match_operand 3 "const_int_operand" "n")) 0)
+		   (match_operand:SI 4 "register_operand" "r"))))
+   (clobber (match_scratch:DI 5 "=&r"))]
+  "TARGET_64BIT
+   && (INTVAL (operands[3]) | ((1 << INTVAL (operands[2])) - 1)) == 0xffffffff"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 5) (ashift:DI (match_dup 1) (match_dup 2)))
+   (set (match_dup 0) (sign_extend:DI (plus:SI (match_dup 6) (match_dup 4))))]
+  "{ operands[6] = gen_lowpart (SImode, operands[5]); }"
+  [(set_attr "type" "arith")])
+
+(define_expand "usadd<mode>3"
+  [(match_operand:ANYI 0 "register_operand")
+   (match_operand:ANYI 1 "register_operand")
+   (match_operand:ANYI 2 "register_operand")]
+  ""
+  {
+    riscv_expand_usadd (operands[0], operands[1], operands[2]);
+    DONE;
+  }
+)
 
 (include "bitmanip.md")
 (include "crypto.md")

@@ -36,13 +36,29 @@ with System.Soft_Links; use System.Soft_Links;
 
 package body System.Finalization_Primitives is
 
-   use type System.Storage_Elements.Storage_Offset;
+   procedure Raise_From_Controlled_Operation (X : Exception_Occurrence);
+   pragma Import (Ada, Raise_From_Controlled_Operation,
+                              "__gnat_raise_from_controlled_operation");
 
    function To_Collection_Node_Ptr is
      new Ada.Unchecked_Conversion (Address, Collection_Node_Ptr);
 
    procedure Detach_Node_From_Collection (Node : not null Collection_Node_Ptr);
-   --  Removes a collection node from its associated finalization collection
+   --  Remove a collection node from its associated finalization collection.
+   --  Calls to the procedure with a Node that has already been detached have
+   --  no effects.
+
+   procedure Lock_Collection (Collection : in out Finalization_Collection);
+   --  Lock the finalization collection. Upon return, the caller owns the lock
+   --  to the collection and no other call with the same actual parameter will
+   --  return until a corresponding call to Unlock_Collection has been made by
+   --  the caller. This means that it is not possible to call Lock_Collection
+   --  more than once on a collection without a call to Unlock_Collection in
+   --  between.
+
+   procedure Unlock_Collection (Collection : in out Finalization_Collection);
+   --  Unlock the finalization collection, i.e. relinquish ownership of the
+   --  lock to the collection.
 
    ---------------------------
    -- Add_Offset_To_Address --
@@ -69,7 +85,7 @@ package body System.Finalization_Primitives is
                To_Collection_Node_Ptr (Object_Address - Header_Size);
 
    begin
-      Lock_Task.all;
+      Lock_Collection (Collection);
 
       --  Do not allow the attachment of controlled objects while the
       --  associated collection is being finalized.
@@ -89,22 +105,23 @@ package body System.Finalization_Primitives is
       pragma Assert
         (Finalize_Address /= null, "primitive Finalize_Address not available");
 
-      Node.Finalize_Address := Finalize_Address;
-      Node.Prev             := Collection.Head'Unchecked_Access;
-      Node.Next             := Collection.Head.Next;
+      Node.Enclosing_Collection := Collection'Unrestricted_Access;
+      Node.Finalize_Address     := Finalize_Address;
+      Node.Prev                 := Collection.Head'Unchecked_Access;
+      Node.Next                 := Collection.Head.Next;
 
       Collection.Head.Next.Prev := Node;
       Collection.Head.Next      := Node;
 
-      Unlock_Task.all;
+      Unlock_Collection (Collection);
 
    exception
       when others =>
 
-         --  Unlock the task in case the attachment failed and reraise the
-         --  exception.
+         --  Unlock the collection in case the attachment failed and reraise
+         --  the exception.
 
-         Unlock_Task.all;
+         Unlock_Collection (Collection);
          raise;
    end Attach_Object_To_Collection;
 
@@ -180,11 +197,11 @@ package body System.Finalization_Primitives is
                To_Collection_Node_Ptr (Object_Address - Header_Size);
 
    begin
-      Lock_Task.all;
+      Lock_Collection (Node.Enclosing_Collection.all);
 
       Detach_Node_From_Collection (Node);
 
-      Unlock_Task.all;
+      Unlock_Collection (Node.Enclosing_Collection.all);
    end Detach_Object_From_Collection;
 
    --------------
@@ -213,14 +230,14 @@ package body System.Finalization_Primitives is
       end Is_Empty_List;
 
    begin
-      Lock_Task.all;
+      Lock_Collection (Collection);
 
       --  Synchronization:
       --    Read  - attachment, finalization
       --    Write - finalization
 
       if Collection.Finalization_Started then
-         Unlock_Task.all;
+         Unlock_Collection (Collection);
 
          --  Double finalization may occur during the handling of stand-alone
          --  libraries or the finalization of a pool with subpools.
@@ -258,6 +275,11 @@ package body System.Finalization_Primitives is
 
          Obj_Addr := Curr_Ptr.all'Address + Header_Size;
 
+         --  Temporarily release the lock because the call to Finalize_Address
+         --  may ultimately invoke Detach_Object_From_Collection.
+
+         Unlock_Collection (Collection);
+
          begin
             Curr_Ptr.Finalize_Address (Obj_Addr);
          exception
@@ -267,14 +289,18 @@ package body System.Finalization_Primitives is
                   Save_Occurrence (Exc_Occur, Fin_Occur);
                end if;
          end;
+
+         --  Retake the lock for the next iteration
+
+         Lock_Collection (Collection);
       end loop;
 
-      Unlock_Task.all;
+      Unlock_Collection (Collection);
 
       --  If one of the finalization actions raised an exception, reraise it
 
       if Finalization_Exception_Raised then
-         Reraise_Occurrence (Exc_Occur);
+         Raise_From_Controlled_Operation (Exc_Occur);
       end if;
    end Finalize;
 
@@ -283,12 +309,8 @@ package body System.Finalization_Primitives is
    ---------------------
 
    procedure Finalize_Master (Master : in out Finalization_Master) is
-      procedure Raise_From_Controlled_Operation (X : Exception_Occurrence);
-      pragma Import (Ada, Raise_From_Controlled_Operation,
-                                 "__gnat_raise_from_controlled_operation");
-
-      Finalization_Exception_Raised : Boolean := False;
       Exc_Occur                     : Exception_Occurrence;
+      Finalization_Exception_Raised : Boolean := False;
       Node                          : Master_Node_Ptr;
 
    begin
@@ -364,15 +386,6 @@ package body System.Finalization_Primitives is
       end if;
    end Finalize_Object;
 
-   -----------------
-   -- Header_Size --
-   -----------------
-
-   function Header_Size return System.Storage_Elements.Storage_Count is
-   begin
-      return Collection_Node'Size / Storage_Unit;
-   end Header_Size;
-
    ----------------
    -- Initialize --
    ----------------
@@ -387,7 +400,18 @@ package body System.Finalization_Primitives is
 
       Collection.Head.Prev := Collection.Head'Unchecked_Access;
       Collection.Head.Next := Collection.Head'Unchecked_Access;
+
+      Initialize_RTS_Lock (Collection.Lock'Address);
    end Initialize;
+
+   ---------------------
+   -- Lock_Collection --
+   ---------------------
+
+   procedure Lock_Collection (Collection : in out Finalization_Collection) is
+   begin
+      Acquire_RTS_Lock (Collection.Lock'Address);
+   end Lock_Collection;
 
    -------------------------------------
    -- Suppress_Object_Finalize_At_End --
@@ -397,5 +421,14 @@ package body System.Finalization_Primitives is
    begin
       Node.Finalize_Address := null;
    end Suppress_Object_Finalize_At_End;
+
+   -----------------------
+   -- Unlock_Collection --
+   -----------------------
+
+   procedure Unlock_Collection (Collection : in out Finalization_Collection) is
+   begin
+      Release_RTS_Lock (Collection.Lock'Address);
+   end Unlock_Collection;
 
 end System.Finalization_Primitives;

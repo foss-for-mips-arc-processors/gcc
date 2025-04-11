@@ -34,14 +34,14 @@
 --  This package contains all the GNULL primitives that interface directly with
 --  the underlying OS.
 
-with Interfaces.C; use Interfaces; use type Interfaces.C.int;
+with Interfaces.C;
 
-with System.Task_Info;
-with System.Tasking.Debug;
 with System.Interrupt_Management;
+with System.Multiprocessors;
 with System.OS_Constants;
 with System.OS_Primitives;
-with System.Multiprocessors;
+with System.Task_Info;
+with System.Tasking.Debug;
 
 with System.Soft_Links;
 --  We use System.Soft_Links instead of System.Tasking.Initialization
@@ -54,12 +54,17 @@ package body System.Task_Primitives.Operations is
    package OSC renames System.OS_Constants;
    package SSL renames System.Soft_Links;
 
-   use System.Tasking.Debug;
-   use System.Tasking;
-   use System.OS_Interface;
+   use Interfaces;
+
    use System.Parameters;
+   use System.OS_Interface;
+   use System.OS_Locks;
    use System.OS_Primitives;
    use System.Task_Info;
+   use System.Tasking.Debug;
+   use System.Tasking;
+
+   use type Interfaces.C.int;
 
    ----------------
    -- Local Data --
@@ -248,10 +253,10 @@ package body System.Task_Primitives.Operations is
    --  as in "sudo /sbin/setcap cap_sys_nice=ep exe_file". If it doesn't have
    --  permission, then a request for Ceiling_Locking is ignored.
 
-   type RTS_Lock_Ptr is not null access all RTS_Lock;
-
-   function Init_Mutex (L : RTS_Lock_Ptr; Prio : Any_Priority) return C.int;
-   --  Initialize the mutex L. If Ceiling_Support is True, then set the ceiling
+   function Initialize_Lock
+     (L    : not null access RTS_Lock;
+      Prio : Any_Priority) return C.int;
+   --  Initialize the lock L. If Ceiling_Support is True, then set the ceiling
    --  to Prio. Returns 0 for success, or ENOMEM for out-of-memory.
 
    -------------------
@@ -340,11 +345,20 @@ package body System.Task_Primitives.Operations is
 
    function Self return Task_Id renames Specific.Self;
 
-   ----------------
-   -- Init_Mutex --
-   ----------------
+   ---------------------
+   -- Initialize_Lock --
+   ---------------------
 
-   function Init_Mutex (L : RTS_Lock_Ptr; Prio : Any_Priority) return C.int is
+   --  Note: mutexes and cond_variables needed per-task basis are initialized
+   --  in Initialize_TCB and the Storage_Error is handled. Other mutexes (such
+   --  as RTS_Lock, Memory_Lock...) used in RTS is initialized before any
+   --  status change of RTS. Therefore raising Storage_Error in the following
+   --  routines should be able to be handled safely.
+
+   function Initialize_Lock
+     (L    : not null access RTS_Lock;
+      Prio : Any_Priority) return C.int
+   is
       Mutex_Attr : aliased pthread_mutexattr_t;
       Result, Result_2 : C.int;
 
@@ -377,17 +391,7 @@ package body System.Task_Primitives.Operations is
       Result_2 := pthread_mutexattr_destroy (Mutex_Attr'Access);
       pragma Assert (Result_2 = 0);
       return Result; -- of pthread_mutex_init, not pthread_mutexattr_destroy
-   end Init_Mutex;
-
-   ---------------------
-   -- Initialize_Lock --
-   ---------------------
-
-   --  Note: mutexes and cond_variables needed per-task basis are initialized
-   --  in Initialize_TCB and the Storage_Error is handled. Other mutexes (such
-   --  as RTS_Lock, Memory_Lock...) used in RTS is initialized before any
-   --  status change of RTS. Therefore raising Storage_Error in the following
-   --  routines should be able to be handled safely.
+   end Initialize_Lock;
 
    procedure Initialize_Lock
      (Prio : Any_Priority;
@@ -420,18 +424,19 @@ package body System.Task_Primitives.Operations is
          end;
 
       else
-         if Init_Mutex (L.WO'Access, Prio) = ENOMEM then
+         if Initialize_Lock (L.WO'Access, Prio) = ENOMEM then
             raise Storage_Error with "Failed to allocate a lock";
          end if;
       end if;
    end Initialize_Lock;
 
    procedure Initialize_Lock
-     (L : not null access RTS_Lock; Level : Lock_Level)
+     (L     : not null access RTS_Lock;
+      Level : Lock_Level)
    is
       pragma Unreferenced (Level);
    begin
-      if Init_Mutex (L.all'Access, Any_Priority'Last) = ENOMEM then
+      if Initialize_Lock (L, Any_Priority'Last) = ENOMEM then
          raise Storage_Error with "Failed to allocate a lock";
       end if;
    end Initialize_Lock;
@@ -840,7 +845,8 @@ package body System.Task_Primitives.Operations is
 
       Self_ID.Common.LL.Thread := Null_Thread_Id;
 
-      if Init_Mutex (Self_ID.Common.LL.L'Access, Any_Priority'Last) /= 0 then
+      if Initialize_Lock (Self_ID.Common.LL.L'Access, Any_Priority'Last) /= 0
+      then
          Succeeded := False;
          return;
       end if;

@@ -3575,6 +3575,10 @@ get_constraint_for_1 (tree t, vec<ce_s> *results, bool address_p,
       }
     case tcc_reference:
       {
+	if (TREE_THIS_VOLATILE (t))
+	  /* Fall back to anything.  */
+	  break;
+
 	switch (TREE_CODE (t))
 	  {
 	  case MEM_REF:
@@ -3676,6 +3680,9 @@ get_constraint_for_1 (tree t, vec<ce_s> *results, bool address_p,
       }
     case tcc_declaration:
       {
+	if (VAR_P (t) && TREE_THIS_VOLATILE (t))
+	  /* Fall back to anything.  */
+	  break;
 	get_constraint_for_ssa_var (t, results, address_p);
 	return;
       }
@@ -6792,8 +6799,7 @@ find_what_var_points_to (tree fndecl, varinfo_t orig_vi)
 	  else if (vi->id == nonlocal_id)
 	    pt->nonlocal = 1;
 	  else if (vi->id == string_id)
-	    /* Nobody cares - STRING_CSTs are read-only entities.  */
-	    ;
+	    pt->const_pool = 1;
 	  else if (vi->id == anything_id
 		   || vi->id == integer_id)
 	    pt->anything = 1;
@@ -6833,7 +6839,7 @@ find_what_p_points_to (tree fndecl, tree p)
   struct ptr_info_def *pi;
   tree lookup_p = p;
   varinfo_t vi;
-  value_range vr;
+  prange vr;
   get_range_query (DECL_STRUCT_FUNCTION (fndecl))->range_of_expr (vr, p);
   bool nonnull = vr.nonzero_p ();
 
@@ -6949,6 +6955,7 @@ pt_solution_ior_into (struct pt_solution *dest, struct pt_solution *src)
   dest->escaped |= src->escaped;
   dest->ipa_escaped |= src->ipa_escaped;
   dest->null |= src->null;
+  dest->const_pool |= src->const_pool ;
   dest->vars_contains_nonlocal |= src->vars_contains_nonlocal;
   dest->vars_contains_escaped |= src->vars_contains_escaped;
   dest->vars_contains_escaped_heap |= src->vars_contains_escaped_heap;
@@ -7071,6 +7078,17 @@ pt_solution_includes (struct pt_solution *pt, const_tree decl)
   else
     ++pta_stats.pt_solution_includes_no_alias;
   return res;
+}
+
+/* Return true if the points-to solution *PT contains a reference to a
+   constant pool entry.  */
+
+bool
+pt_solution_includes_const_pool (struct pt_solution *pt)
+{
+  return (pt->const_pool
+	  || (pt->escaped && (!cfun || cfun->gimple_df->escaped.const_pool))
+	  || (pt->ipa_escaped && ipa_escaped_pt.const_pool));
 }
 
 /* Return true if both points-to solutions PT1 and PT2 have a non-empty
@@ -8121,7 +8139,7 @@ make_pass_build_ealias (gcc::context *ctxt)
 
 /* IPA PTA solutions for ESCAPED.  */
 struct pt_solution ipa_escaped_pt
-  = { true, false, false, false, false,
+  = { true, false, false, false, false, false,
       false, false, false, false, false, NULL };
 
 /* Associate node with varinfo DATA. Worker for

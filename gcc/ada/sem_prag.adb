@@ -280,11 +280,6 @@ package body Sem_Prag is
    --  Determine whether dependency clause Clause is surrounded by extra
    --  parentheses. If this is the case, issue an error message.
 
-   function Is_Unconstrained_Or_Tagged_Item (Item : Entity_Id) return Boolean;
-   --  Subsidiary to Collect_Subprogram_Inputs_Outputs and the analysis of
-   --  pragma Depends. Determine whether the type of dependency item Item is
-   --  tagged, unconstrained array or unconstrained record.
-
    procedure Record_Possible_Body_Reference
      (State_Id : Entity_Id;
       Ref      : Node_Id);
@@ -13993,11 +13988,11 @@ package body Sem_Prag is
          --                          No_Caching                          --
          ------------------------------------------------------------------
 
-         --  pragma Async_Readers    [ (boolean_EXPRESSION) ];
-         --  pragma Async_Writers    [ (boolean_EXPRESSION) ];
-         --  pragma Effective_Reads  [ (boolean_EXPRESSION) ];
-         --  pragma Effective_Writes [ (boolean_EXPRESSION) ];
-         --  pragma No_Caching       [ (boolean_EXPRESSION) ];
+         --  pragma Async_Readers    [ (static_boolean_EXPRESSION) ];
+         --  pragma Async_Writers    [ (static_boolean_EXPRESSION) ];
+         --  pragma Effective_Reads  [ (static_boolean_EXPRESSION) ];
+         --  pragma Effective_Writes [ (static_boolean_EXPRESSION) ];
+         --  pragma No_Caching       [ (static_boolean_EXPRESSION) ];
 
          when Pragma_Async_Readers
             | Pragma_Async_Writers
@@ -15425,6 +15420,8 @@ package body Sem_Prag is
          -- CUDA_Device --
          -----------------
 
+         --  pragma CUDA_Device (LOCAL_NAME);
+
          when Pragma_CUDA_Device => CUDA_Device : declare
             Arg_Node      : Node_Id;
             Device_Entity : Entity_Id;
@@ -15457,11 +15454,11 @@ package body Sem_Prag is
          -- CUDA_Execute --
          ------------------
 
-         --    pragma CUDA_Execute (PROCEDURE_CALL_STATEMENT,
-         --                         EXPRESSION,
-         --                         EXPRESSION,
-         --                         [, EXPRESSION
-         --                         [, EXPRESSION]]);
+         --  pragma CUDA_Execute (PROCEDURE_CALL_STATEMENT,
+         --                       EXPRESSION,
+         --                       EXPRESSION,
+         --                       [, EXPRESSION
+         --                       [, EXPRESSION]]);
 
          when Pragma_CUDA_Execute => CUDA_Execute : declare
 
@@ -15556,7 +15553,7 @@ package body Sem_Prag is
          -- CUDA_Global --
          -----------------
 
-         --  pragma CUDA_Global ([Entity =>] IDENTIFIER);
+         --  pragma CUDA_Global ([Entity =>] procedure_LOCAL_NAME);
 
          when Pragma_CUDA_Global => CUDA_Global : declare
             Arg_Node    : Node_Id;
@@ -17326,7 +17323,7 @@ package body Sem_Prag is
          -- Extensions_Visible --
          ------------------------
 
-         --  pragma Extensions_Visible [ (boolean_EXPRESSION) ];
+         --  pragma Extensions_Visible [ (static_boolean_EXPRESSION) ];
 
          --  Characteristics:
 
@@ -17565,7 +17562,7 @@ package body Sem_Prag is
          -- Favor_Top_Level --
          --------------------------
 
-         --  pragma Favor_Top_Level (type_NAME);
+         --  pragma Favor_Top_Level (type_LOCAL_NAME);
 
          when Pragma_Favor_Top_Level => Favor_Top_Level : declare
             Typ : Entity_Id;
@@ -17643,7 +17640,7 @@ package body Sem_Prag is
          -- Ghost --
          -----------
 
-         --  pragma Ghost [ (boolean_EXPRESSION) ];
+         --  pragma Ghost [ (static_boolean_EXPRESSION) ];
 
          when Pragma_Ghost => Ghost : declare
             Context   : Node_Id;
@@ -19668,8 +19665,8 @@ package body Sem_Prag is
          ------------------
 
          --  pragma Linker_Alias (
-         --      [Entity =>]  LOCAL_NAME
-         --      [Target =>]  static_string_EXPRESSION);
+         --      [Entity =>] LOCAL_NAME
+         --      [Target =>] static_string_EXPRESSION);
 
          when Pragma_Linker_Alias =>
             GNAT_Pragma;
@@ -19940,7 +19937,7 @@ package body Sem_Prag is
          -- Lock_Free --
          ---------------
 
-         --  pragma Lock_Free [(Boolean_EXPRESSION)];
+         --  pragma Lock_Free [(static_boolean_EXPRESSION)];
 
          when Pragma_Lock_Free => Lock_Free : declare
             P   : constant Node_Id := Parent (N);
@@ -20685,7 +20682,7 @@ package body Sem_Prag is
          -- No_Return --
          ---------------
 
-         --  pragma No_Return (procedure_LOCAL_NAME {, procedure_Local_Name});
+         --  pragma No_Return (procedure_LOCAL_NAME {, procedure_LOCAL_NAME});
 
          when Pragma_No_Return => Prag_No_Return : declare
 
@@ -21887,91 +21884,11 @@ package body Sem_Prag is
                Check_Arg_Is_One_Of (Arg1, Name_Semaphore, Name_No);
             end if;
 
-         ----------------------------------
-         -- Preelaborable_Initialization --
-         ----------------------------------
-
-         --  pragma Preelaborable_Initialization (DIRECT_NAME);
-
-         when Pragma_Preelaborable_Initialization => Preelab_Init : declare
-            Ent : Entity_Id;
-
-         begin
-            Ada_2005_Pragma;
-            Check_Arg_Count (1);
-            Check_No_Identifiers;
-            Check_Arg_Is_Identifier (Arg1);
-            Check_Arg_Is_Local_Name (Arg1);
-            Check_First_Subtype (Arg1);
-            Ent := Entity (Get_Pragma_Arg (Arg1));
-
-            --  A pragma that applies to a Ghost entity becomes Ghost for the
-            --  purposes of legality checks and removal of ignored Ghost code.
-
-            Mark_Ghost_Pragma (N, Ent);
-
-            --  The pragma may come from an aspect on a private declaration,
-            --  even if the freeze point at which this is analyzed in the
-            --  private part after the full view.
-
-            if Has_Private_Declaration (Ent)
-              and then From_Aspect_Specification (N)
-            then
-               null;
-
-            --  Check appropriate type argument
-
-            elsif Is_Private_Type (Ent)
-              or else Is_Protected_Type (Ent)
-              or else (Is_Generic_Type (Ent) and then Is_Derived_Type (Ent))
-
-              --  AI05-0028: The pragma applies to all composite types. Note
-              --  that we apply this binding interpretation to earlier versions
-              --  of Ada, so there is no Ada 2012 guard. Seems a reasonable
-              --  choice since there are other compilers that do the same.
-
-              or else Is_Composite_Type (Ent)
-            then
-               null;
-
-            else
-               Error_Pragma_Arg
-                 ("pragma % can only be applied to private, formal derived, "
-                  & "protected, or composite type", Arg1);
-            end if;
-
-            --  Give an error if the pragma is applied to a protected type that
-            --  does not qualify (due to having entries, or due to components
-            --  that do not qualify).
-
-            if Is_Protected_Type (Ent)
-              and then not Has_Preelaborable_Initialization (Ent)
-            then
-               Error_Msg_N
-                 ("protected type & does not have preelaborable "
-                  & "initialization", Ent);
-
-            --  Otherwise mark the type as definitely having preelaborable
-            --  initialization.
-
-            else
-               Set_Known_To_Have_Preelab_Init (Ent);
-            end if;
-
-            if Has_Pragma_Preelab_Init (Ent)
-              and then Warn_On_Redundant_Constructs
-            then
-               Error_Pragma ("?r?duplicate pragma%!");
-            else
-               Set_Has_Pragma_Preelab_Init (Ent);
-            end if;
-         end Preelab_Init;
-
          --------------------
          -- Persistent_BSS --
          --------------------
 
-         --  pragma Persistent_BSS [(object_NAME)];
+         --  pragma Persistent_BSS [(object_LOCAL_NAME)];
 
          when Pragma_Persistent_BSS => Persistent_BSS :  declare
             Decl : Node_Id;
@@ -22054,6 +21971,86 @@ package body Sem_Prag is
                Persistent_BSS_Mode := True;
             end if;
          end Persistent_BSS;
+
+         ----------------------------------
+         -- Preelaborable_Initialization --
+         ----------------------------------
+
+         --  pragma Preelaborable_Initialization (DIRECT_NAME);
+
+         when Pragma_Preelaborable_Initialization => Preelab_Init : declare
+            Ent : Entity_Id;
+
+         begin
+            Ada_2005_Pragma;
+            Check_Arg_Count (1);
+            Check_No_Identifiers;
+            Check_Arg_Is_Identifier (Arg1);
+            Check_Arg_Is_Local_Name (Arg1);
+            Check_First_Subtype (Arg1);
+            Ent := Entity (Get_Pragma_Arg (Arg1));
+
+            --  A pragma that applies to a Ghost entity becomes Ghost for the
+            --  purposes of legality checks and removal of ignored Ghost code.
+
+            Mark_Ghost_Pragma (N, Ent);
+
+            --  The pragma may come from an aspect on a private declaration,
+            --  even if the freeze point at which this is analyzed in the
+            --  private part after the full view.
+
+            if Has_Private_Declaration (Ent)
+              and then From_Aspect_Specification (N)
+            then
+               null;
+
+            --  Check appropriate type argument
+
+            elsif Is_Private_Type (Ent)
+              or else Is_Protected_Type (Ent)
+              or else (Is_Generic_Type (Ent) and then Is_Derived_Type (Ent))
+
+              --  AI05-0028: The pragma applies to all composite types. Note
+              --  that we apply this binding interpretation to earlier versions
+              --  of Ada, so there is no Ada 2012 guard. Seems a reasonable
+              --  choice since there are other compilers that do the same.
+
+              or else Is_Composite_Type (Ent)
+            then
+               null;
+
+            else
+               Error_Pragma_Arg
+                 ("pragma % can only be applied to private, formal derived, "
+                  & "protected, or composite type", Arg1);
+            end if;
+
+            --  Give an error if the pragma is applied to a protected type that
+            --  does not qualify (due to having entries, or due to components
+            --  that do not qualify).
+
+            if Is_Protected_Type (Ent)
+              and then not Has_Preelaborable_Initialization (Ent)
+            then
+               Error_Msg_N
+                 ("protected type & does not have preelaborable "
+                  & "initialization", Ent);
+
+            --  Otherwise mark the type as definitely having preelaborable
+            --  initialization.
+
+            else
+               Set_Known_To_Have_Preelab_Init (Ent);
+            end if;
+
+            if Has_Pragma_Preelab_Init (Ent)
+              and then Warn_On_Redundant_Constructs
+            then
+               Error_Pragma ("?r?duplicate pragma%!");
+            else
+               Set_Has_Pragma_Preelab_Init (Ent);
+            end if;
+         end Preelab_Init;
 
          --------------------
          -- Rename_Pragma --
@@ -25318,7 +25315,7 @@ package body Sem_Prag is
          -- Suppress_Initialization --
          -----------------------------
 
-         --  pragma Suppress_Initialization ([Entity =>] type_Name);
+         --  pragma Suppress_Initialization ([Entity =>] type_LOCAL_NAME);
 
          when Pragma_Suppress_Initialization => Suppress_Init : declare
             E    : Entity_Id;
@@ -25945,7 +25942,7 @@ package body Sem_Prag is
          -- Unchecked_Union --
          ---------------------
 
-         --  pragma Unchecked_Union (first_subtype_LOCAL_NAME)
+         --  pragma Unchecked_Union (first_subtype_LOCAL_NAME);
 
          when Pragma_Unchecked_Union => Unchecked_Union : declare
             Assoc   : constant Node_Id := Arg1;
@@ -26155,7 +26152,7 @@ package body Sem_Prag is
 
          --    or when used in a context clause:
 
-         --  pragma Unreferenced (library_unit_NAME {, library_unit_NAME}
+         --  pragma Unreferenced (library_unit_NAME {, library_unit_NAME});
 
          when Pragma_Unreferenced =>
             Analyze_Unreferenced_Or_Unused;
@@ -26563,7 +26560,7 @@ package body Sem_Prag is
          -- Volatile_Function --
          -----------------------
 
-         --  pragma Volatile_Function [ (boolean_EXPRESSION) ];
+         --  pragma Volatile_Function [ (static_boolean_EXPRESSION) ];
 
          when Pragma_Volatile_Function => Volatile_Function : declare
             Over_Id   : Entity_Id;
@@ -32955,32 +32952,6 @@ package body Sem_Prag is
           and then Nkind (Parent (N)) = N_Package_Specification
           and then List_Containing (N) = Private_Declarations (Parent (N));
    end Is_Private_SPARK_Mode;
-
-   -------------------------------------
-   -- Is_Unconstrained_Or_Tagged_Item --
-   -------------------------------------
-
-   function Is_Unconstrained_Or_Tagged_Item
-     (Item : Entity_Id) return Boolean
-   is
-      Typ : constant Entity_Id := Etype (Item);
-   begin
-      if Is_Tagged_Type (Typ) then
-         return True;
-
-      elsif Is_Array_Type (Typ) and then not Is_Constrained (Typ) then
-         return True;
-
-      elsif Is_Record_Type (Typ) then
-         return Has_Discriminants (Typ) and then not Is_Constrained (Typ);
-
-      elsif Is_Private_Type (Typ) and then Has_Discriminants (Typ) then
-         return True;
-
-      else
-         return False;
-      end if;
-   end Is_Unconstrained_Or_Tagged_Item;
 
    -----------------------------
    -- Is_Valid_Assertion_Kind --

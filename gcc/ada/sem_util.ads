@@ -373,7 +373,7 @@ package Sem_Util is
    --  call C2 (not including the construct N itself), there is no other name
    --  anywhere within a direct constituent of the construct C other than
    --  the one containing C2, that is known to refer to the same object (RM
-   --  6.4.1(6.17/3)).
+   --  6.4.1(6.18-6.19)).
 
    procedure Check_Implicit_Dereference (N : Node_Id; Typ : Entity_Id);
    --  AI05-139-2: Accessors and iterators for containers. This procedure
@@ -2396,6 +2396,11 @@ package Sem_Util is
    function Is_Universal_Numeric_Type (T : Entity_Id) return Boolean;
    pragma Inline (Is_Universal_Numeric_Type);
    --  True if T is Universal_Integer or Universal_Real
+
+   function Is_Unconstrained_Or_Tagged_Item (Item : Entity_Id) return Boolean;
+   --  Subsidiary to Collect_Subprogram_Inputs_Outputs and the analysis of
+   --  pragma Depends. Determine whether the type of dependency item Item is
+   --  tagged, unconstrained array or unconstrained record.
 
    function Is_User_Defined_Equality (Id : Entity_Id) return Boolean;
    --  Determine whether an entity denotes a user-defined equality

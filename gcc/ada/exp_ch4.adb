@@ -2340,12 +2340,12 @@ package body Exp_Ch4 is
                pragma Assert
                  (Is_First_Subtype (Outer_Type)
                    or else Is_Generic_Actual_Type (Outer_Type));
-               Error_Msg_Node_1 := Outer_Type;
                Error_Msg_Node_2 := Comp_Type;
-               Error_Msg
-                 ("?_q?""="" for type & uses predefined ""="" for }", Loc);
+               Error_Msg_N
+                 ("?_q?""="" for type & uses predefined ""="" for }",
+                  Outer_Type);
                Error_Msg_Sloc := Sloc (Op);
-               Error_Msg ("\?_q?""="" # is ignored here", Loc);
+               Error_Msg_N ("\?_q?""="" # is ignored here", Outer_Type);
             end if;
          end;
 
@@ -4694,6 +4694,8 @@ package body Exp_Ch4 is
                Build_Allocate_Deallocate_Proc (Temp_Decl);
                Rewrite (N, New_Occurrence_Of (Temp, Loc));
                Analyze_And_Resolve (N, PtrT);
+
+               Apply_Predicate_Check (N, Dtyp, Deref => True);
             end;
 
          --  Or else build the fully-fledged initialization if need be
@@ -5098,10 +5100,20 @@ package body Exp_Ch4 is
 
             else
                if not Is_Copy_Type (Typ) then
-                  Alt_Expr :=
-                    Make_Attribute_Reference (Alt_Loc,
-                      Prefix         => Relocate_Node (Alt_Expr),
-                      Attribute_Name => Name_Unrestricted_Access);
+                  --  It's possible that a call to Apply_Length_Check in
+                  --  Resolve_Case_Expression rewrote the dependent expression
+                  --  into a N_Raise_Constraint_Error. If that's the case, we
+                  --  don't create a reference to Unrestricted_Access, but we
+                  --  update the type of the N_Raise_Constraint_Error node.
+
+                  if Nkind (Alt_Expr) in N_Raise_Constraint_Error then
+                     Set_Etype (Alt_Expr, Target_Typ);
+                  else
+                     Alt_Expr :=
+                       Make_Attribute_Reference (Alt_Loc,
+                         Prefix         => Alt_Expr,
+                         Attribute_Name => Name_Unrestricted_Access);
+                  end if;
                end if;
 
                LHS := New_Occurrence_Of (Target, Loc);

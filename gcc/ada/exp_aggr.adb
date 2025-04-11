@@ -711,9 +711,10 @@ package body Exp_Aggr is
             return True;
          end if;
 
-         --  One-component aggregates are suspicious, and if the context type
-         --  is an object declaration with nonstatic bounds it will trip gcc;
-         --  such an aggregate must be expanded into a single assignment.
+         --  One-component named aggregates where the index constraint is not
+         --  known at compile time are suspicious as the user might have
+         --  intended to write a subtype name but wrote the name of an object
+         --  instead. We emit a warning if we're in such a case.
 
          if Hiv = Lov and then Nkind (Parent (N)) = N_Object_Declaration then
             declare
@@ -741,8 +742,6 @@ package body Exp_Aggr is
                         Error_Msg_N ("\maybe subtype name was meant??", Indx);
                      end if;
                   end if;
-
-                  return False;
                end if;
             end;
          end if;
@@ -1649,11 +1648,14 @@ package body Exp_Aggr is
            and then Local_Expr_Value (H) - Local_Expr_Value (L) <= 2
            and then not Is_Iterated_Component
          then
-            Append_List_To (S, Gen_Assign (New_Copy_Tree (L), Expr));
-            Append_List_To (S, Gen_Assign (Add (1, To => L), Expr));
+            Append_List_To
+              (S, Gen_Assign (New_Copy_Tree (L), New_Copy_Tree (Expr)));
+            Append_List_To
+              (S, Gen_Assign (Add (1, To => L), New_Copy_Tree (Expr)));
 
             if Local_Expr_Value (H) - Local_Expr_Value (L) = 2 then
-               Append_List_To (S, Gen_Assign (Add (2, To => L), Expr));
+               Append_List_To
+                 (S, Gen_Assign (Add (2, To => L), New_Copy_Tree (Expr)));
             end if;
 
             return S;
@@ -4626,6 +4628,14 @@ package body Exp_Aggr is
             Component_Loop : while Present (Elmt) loop
                Expr := Expression (Elmt);
 
+               --  If the expression involves a construct that generates a
+               --  loop, we must generate individual assignments and no
+               --  flattening is possible.
+
+               if Nkind (Expr) = N_Quantified_Expression then
+                  return False;
+               end if;
+
                --  In the case of a multidimensional array, check that the
                --  aggregate can be recursively flattened.
 
@@ -4641,14 +4651,6 @@ package body Exp_Aggr is
 
                   if Nkind (Choice) = N_Others_Choice then
                      Rep_Count := 0;
-
-                     --  If the expression involves a construct that generates
-                     --  a loop, we must generate individual assignments and
-                     --  no flattening is possible.
-
-                     if Nkind (Expr) = N_Quantified_Expression then
-                        return False;
-                     end if;
 
                      for J in Vals'Range loop
                         if No (Vals (J)) then
@@ -5714,6 +5716,7 @@ package body Exp_Aggr is
          Iter     : Node_Id;
          New_Comp : Node_Id;
          One_Loop : Node_Id;
+         Iter_Id  : Entity_Id;
 
          Size_Expr_Code : List_Id;
          Insertion_Code : List_Id := New_List;
@@ -5730,6 +5733,7 @@ package body Exp_Aggr is
 
          while Present (Assoc) loop
             Iter := Iterator_Specification (Assoc);
+            Iter_Id := Defining_Identifier (Iter);
             Incr := Make_Assignment_Statement (Loc,
                       Name => New_Occurrence_Of (Size_Id, Loc),
                       Expression =>
@@ -5737,10 +5741,16 @@ package body Exp_Aggr is
                          Left_Opnd  => New_Occurrence_Of (Size_Id, Loc),
                          Right_Opnd => Make_Integer_Literal (Loc, 1)));
 
+            --  Avoid using the same iterator definition in both loops by
+            --  creating a new iterator for each loop and mapping it over the
+            --  original iterator references.
+
             One_Loop := Make_Implicit_Loop_Statement (N,
               Iteration_Scheme =>
                 Make_Iteration_Scheme (Loc,
-                  Iterator_Specification => New_Copy_Tree (Iter)),
+                  Iterator_Specification =>
+                     New_Copy_Tree (Iter,
+                        Map => New_Elmt_List (Iter_Id, New_Copy (Iter_Id)))),
                 Statements => New_List (Incr));
 
             Append (One_Loop, Size_Expr_Code);
@@ -5837,6 +5847,7 @@ package body Exp_Aggr is
 
          while Present (Assoc) loop
             Iter := Iterator_Specification (Assoc);
+            Iter_Id := Defining_Identifier (Iter);
             New_Comp := Make_Assignment_Statement (Loc,
                Name =>
                  Make_Indexed_Component (Loc,
@@ -5869,10 +5880,16 @@ package body Exp_Aggr is
                       Attribute_Name => Name_Last)),
                Then_Statements => New_List (Incr));
 
+            --  Avoid using the same iterator definition in both loops by
+            --  creating a new iterator for each loop and mapping it over the
+            --  original iterator references.
+
             One_Loop := Make_Implicit_Loop_Statement (N,
               Iteration_Scheme =>
                 Make_Iteration_Scheme (Loc,
-                  Iterator_Specification => Copy_Separate_Tree (Iter)),
+                  Iterator_Specification =>
+                     New_Copy_Tree (Iter,
+                        Map => New_Elmt_List (Iter_Id, New_Copy (Iter_Id)))),
                 Statements => New_List (New_Comp, Incr));
 
             Append (One_Loop, Insertion_Code);
@@ -6676,9 +6693,9 @@ package body Exp_Aggr is
 
             --  If one or more of the associations is one of the iterated
             --  forms, and is either an association with nonstatic bounds
-            --  or is an iterator over an iterable object, then treat the
-            --  whole container aggregate as having a nonstatic number of
-            --  elements.
+            --  or is an iterator over an iterable object where the size
+            --  cannot be derived, then treat the whole container aggregate as
+            --  having a nonstatic number of elements.
 
             declare
                Has_Nonstatic_Length : Boolean := False;
@@ -6708,37 +6725,43 @@ package body Exp_Aggr is
             Comp := First (Component_Associations (N));
 
             while Present (Comp) loop
-               Choice := First (Choice_List (Comp));
+               if Present (Choice_List (Comp)) then
+                  Choice := First (Choice_List (Comp));
 
-               while Present (Choice) loop
-                  Analyze (Choice);
+                  while Present (Choice) loop
+                     Analyze (Choice);
 
-                  if Nkind (Choice) = N_Range then
-                     Lo := Low_Bound (Choice);
-                     Hi := High_Bound (Choice);
-                     Add_Range_Size;
+                     if Nkind (Choice) = N_Range then
+                        Lo := Low_Bound (Choice);
+                        Hi := High_Bound (Choice);
+                        Add_Range_Size;
 
-                  elsif Is_Entity_Name (Choice)
-                    and then Is_Type (Entity (Choice))
-                  then
-                     Lo := Type_Low_Bound (Entity (Choice));
-                     Hi := Type_High_Bound (Entity (Choice));
-                     Add_Range_Size;
+                     elsif Is_Entity_Name (Choice)
+                       and then Is_Type (Entity (Choice))
+                     then
+                        Lo := Type_Low_Bound (Entity (Choice));
+                        Hi := Type_High_Bound (Entity (Choice));
+                        Add_Range_Size;
 
-                     Rewrite (Choice,
-                       Make_Range (Loc,
-                         New_Copy_Tree (Lo),
-                         New_Copy_Tree (Hi)));
+                        Rewrite (Choice,
+                          Make_Range (Loc,
+                            New_Copy_Tree (Lo),
+                            New_Copy_Tree (Hi)));
 
-                  else
-                     --  Single choice (syntax excludes a subtype
-                     --  indication).
+                     else
+                        --  Single choice (syntax excludes a subtype
+                        --  indication).
 
-                     Siz := Siz + 1;
-                  end if;
+                        Siz := Siz + 1;
+                     end if;
 
-                  Next (Choice);
-               end loop;
+                     Next (Choice);
+                  end loop;
+
+               elsif Nkind (Comp) = N_Iterated_Component_Association then
+
+                  Siz := Siz + Build_Siz_Exp (Comp);
+               end if;
                Next (Comp);
             end loop;
          end if;
@@ -6753,6 +6776,7 @@ package body Exp_Aggr is
       function Build_Siz_Exp (Comp : Node_Id) return Int is
          Lo, Hi       : Node_Id;
          Temp_Siz_Exp : Node_Id;
+         It           : Node_Id;
 
       begin
          if Nkind (Comp) = N_Range then
@@ -6818,8 +6842,28 @@ package body Exp_Aggr is
             end if;
 
          elsif Nkind (Comp) = N_Iterated_Component_Association then
-            return Build_Siz_Exp (First (Discrete_Choices (Comp)));
+            if Present (Iterator_Specification (Comp)) then
 
+               --  If the static size of the iterable object is known,
+               --  attempt to return it.
+
+               It := Name (Iterator_Specification (Comp));
+               Preanalyze (It);
+
+               --  Handle the simplest cases for now where It denotes a
+               --  top-level one-dimensional array objects".
+
+               if Nkind (It) in N_Identifier
+                 and then Ekind (Etype (It)) = E_Array_Subtype
+                 and then No (Next_Index (First_Index (Etype (It))))
+               then
+                  return Build_Siz_Exp (First_Index (Etype (It)));
+               end if;
+
+               return -1;
+            else
+               return Build_Siz_Exp (First (Discrete_Choices (Comp)));
+            end if;
          elsif Nkind (Comp) = N_Iterated_Element_Association then
             return -1;
 
@@ -7104,10 +7148,12 @@ package body Exp_Aggr is
          Append (Init_Stat, Aggr_Code);
 
       --  The container will grow dynamically. Create a declaration for
-      --  the object, and initialize it either from a call to the Empty
-      --  function, or from the Empty constant.
+      --  the object, and initialize it from a call to the parameterless
+      --  Empty function.
 
       else
+         pragma Assert (Ekind (Entity (Empty_Subp)) = E_Function);
+
          Decl :=
            Make_Object_Declaration (Loc,
              Defining_Identifier => Temp,
@@ -7115,20 +7161,12 @@ package body Exp_Aggr is
 
          Insert_Action (N, Decl);
 
-         --  The Empty entity is either a parameterless function, or
-         --  a constant.
+         --  The Empty entity is a parameterless function
 
-         if Ekind (Entity (Empty_Subp)) = E_Function then
-            Init_Stat := Make_Assignment_Statement (Loc,
-              Name => New_Occurrence_Of (Temp, Loc),
-              Expression => Make_Function_Call (Loc,
-                Name => New_Occurrence_Of (Entity (Empty_Subp), Loc)));
-
-         else
-            Init_Stat := Make_Assignment_Statement (Loc,
-              Name => New_Occurrence_Of (Temp, Loc),
-              Expression => New_Occurrence_Of (Entity (Empty_Subp), Loc));
-         end if;
+         Init_Stat := Make_Assignment_Statement (Loc,
+           Name => New_Occurrence_Of (Temp, Loc),
+           Expression => Make_Function_Call (Loc,
+             Name => New_Occurrence_Of (Entity (Empty_Subp), Loc)));
 
          Append (Init_Stat, Aggr_Code);
       end if;

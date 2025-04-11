@@ -133,6 +133,7 @@ extern void riscv_asm_output_external (FILE *, const tree, const char *);
 extern bool
 riscv_zcmp_valid_stack_adj_bytes_p (HOST_WIDE_INT, int);
 extern void riscv_legitimize_poly_move (machine_mode, rtx, rtx, rtx);
+extern void riscv_expand_usadd (rtx, rtx, rtx);
 
 #ifdef RTX_CODE
 extern void riscv_expand_int_scc (rtx, enum rtx_code, rtx, rtx, bool *invert_ptr = 0);
@@ -197,6 +198,7 @@ rtl_opt_pass * make_pass_avlprop (gcc::context *ctxt);
 rtl_opt_pass * make_pass_vsetvl (gcc::context *ctxt);
 
 /* Routines implemented in riscv-string.c.  */
+extern bool riscv_expand_block_compare (rtx, rtx, rtx, rtx);
 extern bool riscv_expand_block_move (rtx, rtx, rtx);
 extern bool riscv_expand_block_clear (rtx, rtx);
 
@@ -228,6 +230,15 @@ struct common_vector_cost
   /* Gather/scatter vectorization cost.  */
   const int gather_load_cost;
   const int scatter_store_cost;
+
+  /* Segment load/store permute cost.  */
+  const int segment_permute_2;
+  const int segment_permute_3;
+  const int segment_permute_4;
+  const int segment_permute_5;
+  const int segment_permute_6;
+  const int segment_permute_7;
+  const int segment_permute_8;
 
   /* Cost of a vector-to-scalar operation.  */
   const int vec_to_scalar_cost;
@@ -635,6 +646,7 @@ void expand_vec_lrint (rtx, rtx, machine_mode, machine_mode, machine_mode);
 void expand_vec_lround (rtx, rtx, machine_mode, machine_mode, machine_mode);
 void expand_vec_lceil (rtx, rtx, machine_mode, machine_mode);
 void expand_vec_lfloor (rtx, rtx, machine_mode, machine_mode);
+void expand_vec_usadd (rtx, rtx, rtx, machine_mode);
 #endif
 bool sew64_scalar_helper (rtx *, rtx *, rtx, machine_mode,
 			  bool, void (*)(rtx *, rtx), enum avl_type);
