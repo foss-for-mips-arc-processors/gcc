@@ -3771,7 +3771,7 @@ Pragma Max_Queue_Length
 
 Syntax::
 
-   pragma Max_Entry_Queue (static_integer_EXPRESSION);
+   pragma Max_Queue_Length (static_integer_EXPRESSION);
 
 
 This pragma is used to specify the maximum callers per entry queue for
@@ -3999,6 +3999,12 @@ When pragmas ``Discard_Names`` and ``No_Tagged_Streams`` are simultaneously
 applied to a tagged type its Expanded_Name and External_Tag are initialized
 with empty strings. This is useful to avoid exposing entity names at binary
 level but has a negative impact on the debuggability of tagged types.
+
+Alternatively, when pragmas ``Discard_Names`` and ``Restrictions (No_Streams)``
+simultanously apply to a tagged type, its Expanded_Name and External_Tag are
+also initialized with empty strings. In particular, both these pragmas can be
+applied as configuration pragmas to avoid exposing entity names at binary
+level for the entire parition.
 
 Pragma Normalize_Scalars
 ========================
@@ -6949,10 +6955,9 @@ Syntax:
 
 ``type_LOCAL_NAME`` must refer to a type declaration in the current
 declarative part.  The effect is to inhibit strict type-based aliasing
-optimization for the given type.  In other words, the effect is as though
-access types designating this type were subject to pragma No_Strict_Aliasing.
-For a detailed description of the strict aliasing optimization, and the
-situations in which it must be suppressed, see the section on
+optimizations for the given type.  For a detailed description of the
+strict type-based aliasing optimizations and the situations in which
+they need to be suppressed, see the section on
 ``Optimization and Strict Aliasing`` in the :title:`GNAT User's Guide`.
 
 .. _Pragma-Unmodified:

@@ -1,3 +1,38 @@
+2024-05-20  Mikael Morin  <mikael@gcc.gnu.org>
+
+	PR fortran/99798
+	* symbol.cc (gfc_release_symbol): Move the condition guarding
+	the handling cyclic references...
+	(cyclic_reference_break_needed): ... here as a new predicate.
+	Remove superfluous parts.  Add a condition preventing any premature
+	release with submodule symbols.
+
+2024-05-20  Tobias Burnus  <tburnus@baylibre.com>
+
+	PR fortran/115150
+	* trans-intrinsic.cc (gfc_conv_intrinsic_bound): Fix SHAPE
+	for zero-size arrays
+
+2024-05-20  Tobias Burnus  <tburnus@baylibre.com>
+
+	* invoke.texi (fcoarray): Link to OpenCoarrays.org;
+	mention libcaf_single.
+
+2024-05-17  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/114874
+	* gfortran.h: Add 'assoc_name_inferred' to gfc_namespace.
+	* match.cc (gfc_match_select_type): Set 'assoc_name_inferred'
+	in select type namespace if the selector has inferred type.
+	* primary.cc (gfc_match_varspec): If a select type temporary
+	is apparently scalar and a left parenthesis has been detected,
+	check the current namespace has 'assoc_name_inferred' set. If
+	so, set inferred_type.
+	* resolve.cc (resolve_variable): If the namespace of a select
+	type temporary is marked with 'assoc_name_inferred' call
+	gfc_fixup_inferred_type_refs to ensure references are OK.
+	(gfc_fixup_inferred_type_refs): Catch invalid array refs..
+
 2024-05-15  Jakub Jelinek  <jakub@redhat.com>
 
 	PR c/115103

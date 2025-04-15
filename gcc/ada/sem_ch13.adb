@@ -6573,6 +6573,21 @@ package body Sem_Ch13 is
                     ("alignment for & set to Maximum_Aligment??", Nam);
                   Set_Alignment (U_Ent, Max_Align);
 
+               --  Because Object_Size must be multiple of Alignment (in bits),
+               --  System_Max_Integer_Size limit for discrete and fixed point
+               --  types implies a limit on alignment for such types.
+
+               elsif (Is_Discrete_Type (U_Ent)
+                        or else Is_Fixed_Point_Type (U_Ent))
+                 and then Align > System_Max_Integer_Size / System_Storage_Unit
+               then
+                  Error_Msg_N
+                    ("specified alignment too large for discrete or fixed " &
+                     "point type", Expr);
+                  Set_Alignment
+                    (U_Ent, UI_From_Int (System_Max_Integer_Size /
+                                         System_Storage_Unit));
+
                --  All other cases
 
                else
@@ -18117,20 +18132,23 @@ package body Sem_Ch13 is
          Set_No_Strict_Aliasing (Implementation_Base_Type (Target));
       end if;
 
-      --  If the unchecked conversion is between Address and an access
-      --  subprogram type, show that we shouldn't use an internal
-      --  representation for the access subprogram type.
+      --  For code generators that do not support nested subprograms, if the
+      --  unchecked conversion is between Address and an access subprogram
+      --  type, show that we shouldn't use an internal representation for the
+      --  access subprogram type.
 
-      if Is_Access_Subprogram_Type (Target)
-        and then Is_Descendant_Of_Address (Source)
-        and then In_Same_Source_Unit (Target, N)
-      then
-         Set_Can_Use_Internal_Rep (Base_Type (Target), False);
-      elsif Is_Access_Subprogram_Type (Source)
-        and then Is_Descendant_Of_Address (Target)
-        and then In_Same_Source_Unit (Source, N)
-      then
-         Set_Can_Use_Internal_Rep (Base_Type (Source), False);
+      if Unnest_Subprogram_Mode then
+         if Is_Access_Subprogram_Type (Target)
+           and then Is_Descendant_Of_Address (Source)
+           and then In_Same_Source_Unit (Target, N)
+         then
+            Set_Can_Use_Internal_Rep (Base_Type (Target), False);
+         elsif Is_Access_Subprogram_Type (Source)
+           and then Is_Descendant_Of_Address (Target)
+           and then In_Same_Source_Unit (Source, N)
+         then
+            Set_Can_Use_Internal_Rep (Base_Type (Source), False);
+         end if;
       end if;
 
       --  Generate N_Validate_Unchecked_Conversion node for back end in case

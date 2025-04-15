@@ -138,8 +138,237 @@ struct alt_base
   poly_int64 offset;
 };
 
+// Virtual base class for load/store walkers used in alias analysis.
+struct alias_walker
+{
+  virtual bool conflict_p (int &budget) const = 0;
+  virtual insn_info *insn () const = 0;
+  virtual bool valid () const = 0;
+  virtual void advance () = 0;
+};
+
+// When querying should_handle_writeback, this enum is used to
+// qualify which opportunities we are asking about.
+enum class writeback {
+  // Only those writeback opportunities that arise from existing
+  // auto-increment accesses.
+  EXISTING,
+
+  // All writeback opportunities, including those that involve folding
+  // base register updates into a non-writeback pair.
+  ALL
+};
+
+// This class can be overriden by targets to give a pass that fuses
+// adjacent loads and stores into load/store pair instructions.
+//
+// The target can override the various virtual functions to customize
+// the behaviour of the pass as appropriate for the target.
+struct pair_fusion {
+  pair_fusion ();
+
+  // Given:
+  // - an rtx REG_OP, the non-memory operand in a load/store insn,
+  // - a machine_mode MEM_MODE, the mode of the MEM in that insn, and
+  // - a boolean LOAD_P (true iff the insn is a load), then:
+  // return true if the access should be considered an FP/SIMD access.
+  // Such accesses are segregated from GPR accesses, since we only want
+  // to form pairs for accesses that use the same register file.
+  virtual bool fpsimd_op_p (rtx, machine_mode, bool)
+  {
+    return false;
+  }
+
+  // Return true if we should consider forming pairs from memory
+  // accesses with operand mode MODE at this stage in compilation.
+  virtual bool pair_operand_mode_ok_p (machine_mode mode) = 0;
+
+  // Return true iff REG_OP is a suitable register operand for a paired
+  // memory access, where LOAD_P is true if we're asking about loads and
+  // false for stores.  MODE gives the mode of the operand.
+  virtual bool pair_reg_operand_ok_p (bool load_p, rtx reg_op,
+				      machine_mode mode) = 0;
+
+  // Return alias check limit.
+  // This is needed to avoid unbounded quadratic behaviour when
+  // performing alias analysis.
+  virtual int pair_mem_alias_check_limit () = 0;
+
+  // Return true if we should try to handle writeback opportunities.
+  // WHICH determines the kinds of writeback opportunities the caller
+  // is asking about.
+  virtual bool should_handle_writeback (enum writeback which) = 0;
+
+  // Given BASE_MEM, the mem from the lower candidate access for a pair,
+  // and LOAD_P (true if the access is a load), check if we should proceed
+  // to form the pair given the target's code generation policy on
+  // paired accesses.
+  virtual bool pair_mem_ok_with_policy (rtx base_mem, bool load_p) = 0;
+
+  // Generate the pattern for a paired access.  PATS gives the patterns
+  // for the individual memory accesses (which by this point must share a
+  // common base register).  If WRITEBACK is non-NULL, then this rtx
+  // describes the update to the base register that should be performed by
+  // the resulting insn.  LOAD_P is true iff the accesses are loads.
+  virtual rtx gen_pair (rtx *pats, rtx writeback, bool load_p) = 0;
+
+  // Return true if INSN is a paired memory access.  If so, set LOAD_P to
+  // true iff INSN is a load pair.
+  virtual bool pair_mem_insn_p (rtx_insn *insn, bool &load_p) = 0;
+
+  // Return true if we should track loads.
+  virtual bool track_loads_p ()
+  {
+    return true;
+  }
+
+  // Return true if we should track stores.
+  virtual bool track_stores_p ()
+  {
+    return true;
+  }
+
+  // Return true if OFFSET is in range for a paired memory access.
+  virtual bool pair_mem_in_range_p (HOST_WIDE_INT offset) = 0;
+
+  // Given a load/store pair insn in PATTERN, unpack the insn, storing
+  // the register operands in REGS, and returning the mem.  LOAD_P is
+  // true for loads and false for stores.
+  virtual rtx destructure_pair (rtx regs[2], rtx pattern, bool load_p) = 0;
+
+  // Given a pair mem in MEM, register operands in REGS, and an rtx
+  // representing the effect of writeback on the base register in WB_EFFECT,
+  // return an insn representing a writeback variant of this pair.
+  // LOAD_P is true iff the pair is a load.
+  // This is used when promoting existing non-writeback pairs to writeback
+  // variants.
+  virtual rtx gen_promote_writeback_pair (rtx wb_effect, rtx mem,
+					  rtx regs[2], bool load_p) = 0;
+
+  void process_block (bb_info *bb);
+  inline insn_info *find_trailing_add (insn_info *insns[2],
+				       const insn_range_info &pair_range,
+				       int initial_writeback,
+				       rtx *writeback_effect,
+				       def_info **add_def,
+				       def_info *base_def,
+				       poly_int64 initial_offset,
+				       unsigned access_size);
+  inline int get_viable_bases (insn_info *insns[2],
+			       vec<base_cand> &base_cands,
+			       rtx cand_mems[2],
+			       unsigned access_size,
+			       bool reversed);
+  inline void do_alias_analysis (insn_info *alias_hazards[4],
+				 alias_walker *walkers[4],
+				 bool load_p);
+  inline void try_promote_writeback (insn_info *insn, bool load_p);
+  inline void run ();
+  ~pair_fusion ();
+};
+
+pair_fusion::pair_fusion ()
+{
+  calculate_dominance_info (CDI_DOMINATORS);
+  df_analyze ();
+  crtl->ssa = new rtl_ssa::function_info (cfun);
+}
+
+pair_fusion::~pair_fusion ()
+{
+  if (crtl->ssa->perform_pending_updates ())
+    cleanup_cfg (0);
+
+  free_dominance_info (CDI_DOMINATORS);
+
+  delete crtl->ssa;
+  crtl->ssa = nullptr;
+}
+
+// This is the main function to start the pass.
+void
+pair_fusion::run ()
+{
+  if (!track_loads_p () && !track_stores_p ())
+    return;
+
+  for (auto bb : crtl->ssa->bbs ())
+    process_block (bb);
+}
+
+struct aarch64_pair_fusion : public pair_fusion
+{
+  bool fpsimd_op_p (rtx reg_op, machine_mode mem_mode,
+		    bool load_p) override final
+  {
+    // Before RA, we use the modes, noting that stores of constant zero
+    // operands use GPRs (even in non-integer modes).  After RA, we use
+    // the hard register numbers.
+    return reload_completed
+      ? (REG_P (reg_op) && FP_REGNUM_P (REGNO (reg_op)))
+      : (GET_MODE_CLASS (mem_mode) != MODE_INT
+	 && (load_p || !aarch64_const_zero_rtx_p (reg_op)));
+  }
+
+  bool pair_mem_insn_p (rtx_insn *rti, bool &load_p) override final;
+
+  bool pair_mem_ok_with_policy (rtx base_mem, bool load_p) override final
+  {
+    return aarch64_mem_ok_with_ldpstp_policy_model (base_mem,
+						    load_p,
+						    GET_MODE (base_mem));
+  }
+
+  bool pair_operand_mode_ok_p (machine_mode mode) override final;
+
+  rtx gen_pair (rtx *pats, rtx writeback, bool load_p) override final;
+
+  bool pair_reg_operand_ok_p (bool load_p, rtx reg_op,
+			      machine_mode mode) override final
+  {
+    return (load_p
+	    ? aarch64_ldp_reg_operand (reg_op, mode)
+	    : aarch64_stp_reg_operand (reg_op, mode));
+  }
+
+  int pair_mem_alias_check_limit () override final
+  {
+    return aarch64_ldp_alias_check_limit;
+  }
+
+  bool should_handle_writeback (enum writeback which) override final
+  {
+    if (which == writeback::ALL)
+      return aarch64_ldp_writeback > 1;
+    else
+      return aarch64_ldp_writeback;
+  }
+
+  bool track_loads_p () override final
+  {
+    return aarch64_tune_params.ldp_policy_model
+	   != AARCH64_LDP_STP_POLICY_NEVER;
+  }
+
+  bool track_stores_p () override final
+  {
+    return aarch64_tune_params.stp_policy_model
+	   != AARCH64_LDP_STP_POLICY_NEVER;
+  }
+
+  bool pair_mem_in_range_p (HOST_WIDE_INT offset) override final
+  {
+    return (offset >= LDP_MIN_IMM && offset <= LDP_MAX_IMM);
+  }
+
+  rtx gen_promote_writeback_pair (rtx wb_effect, rtx mem, rtx regs[2],
+				  bool load_p) override final;
+
+  rtx destructure_pair (rtx regs[2], rtx pattern, bool load_p) override final;
+};
+
 // State used by the pass for a given basic block.
-struct ldp_bb_info
+struct pair_fusion_bb_info
 {
   using def_hash = nofree_ptr_hash<def_info>;
   using expr_key_t = pair_hash<tree_operand_hash, int_hash<int, -1, -2>>;
@@ -159,15 +388,15 @@ struct ldp_bb_info
   hash_map<def_hash, alt_base> canon_base_map;
 
   static const size_t obstack_alignment = sizeof (void *);
-  bb_info *m_bb;
 
-  ldp_bb_info (bb_info *bb) : m_bb (bb), m_emitted_tombstone (false)
+  pair_fusion_bb_info (bb_info *bb, pair_fusion *d)
+    : m_bb (bb), m_pass (d), m_emitted_tombstone (false)
   {
     obstack_specify_allocation (&m_obstack, OBSTACK_CHUNK_SIZE,
 				obstack_alignment, obstack_chunk_alloc,
 				obstack_chunk_free);
   }
-  ~ldp_bb_info ()
+  ~pair_fusion_bb_info ()
   {
     obstack_free (&m_obstack, nullptr);
 
@@ -184,6 +413,8 @@ struct ldp_bb_info
 
 private:
   obstack m_obstack;
+  bb_info *m_bb;
+  pair_fusion *m_pass;
 
   // State for keeping track of tombstone insns emitted for this BB.
   bitmap_obstack m_bitmap_obstack;
@@ -213,8 +444,47 @@ private:
   inline bool track_via_mem_expr (insn_info *, rtx mem, lfs_fields lfs);
 };
 
+bool
+aarch64_pair_fusion::pair_mem_insn_p (rtx_insn *rti, bool &load_p)
+{
+  rtx pat = PATTERN (rti);
+  if (GET_CODE (pat) == PARALLEL
+      && XVECLEN (pat, 0) == 2)
+    {
+      const auto attr = get_attr_ldpstp (rti);
+      if (attr == LDPSTP_NONE)
+	return false;
+
+      load_p = (attr == LDPSTP_LDP);
+      gcc_checking_assert (load_p || attr == LDPSTP_STP);
+      return true;
+    }
+  return false;
+}
+
+rtx
+aarch64_pair_fusion::gen_pair (rtx *pats, rtx writeback, bool load_p)
+{
+  rtx pair_pat;
+
+  if (writeback)
+    {
+      auto patvec = gen_rtvec (3, writeback, pats[0], pats[1]);
+      return gen_rtx_PARALLEL (VOIDmode, patvec);
+    }
+  else if (load_p)
+    return aarch64_gen_load_pair (XEXP (pats[0], 0),
+				  XEXP (pats[1], 0),
+				  XEXP (pats[0], 1));
+  else
+    return aarch64_gen_store_pair (XEXP (pats[0], 0),
+				   XEXP (pats[0], 1),
+				   XEXP (pats[1], 1));
+  return pair_pat;
+}
+
 splay_tree_node<access_record *> *
-ldp_bb_info::node_alloc (access_record *access)
+pair_fusion_bb_info::node_alloc (access_record *access)
 {
   using T = splay_tree_node<access_record *>;
   void *addr = obstack_alloc (&m_obstack, sizeof (T));
@@ -262,7 +532,7 @@ drop_writeback (rtx mem)
 // RTX_AUTOINC addresses.  The interface is like strip_offset except we take a
 // MEM so that we know the mode of the access.
 static rtx
-ldp_strip_offset (rtx mem, poly_int64 *offset)
+pair_mem_strip_offset (rtx mem, poly_int64 *offset)
 {
   rtx addr = XEXP (mem, 0);
 
@@ -312,8 +582,8 @@ any_post_modify_p (rtx x)
 
 // Return true if we should consider forming ldp/stp insns from memory
 // accesses with operand mode MODE at this stage in compilation.
-static bool
-ldp_operand_mode_ok_p (machine_mode mode)
+bool
+aarch64_pair_fusion::pair_operand_mode_ok_p (machine_mode mode)
 {
   if (!aarch64_ldpstp_operand_mode_p (mode))
     return false;
@@ -388,7 +658,8 @@ access_group::track (Alloc alloc_node, poly_int64 offset, insn_info *insn)
 // MEM_EXPR base (i.e. a tree decl) relative to which we can track the access.
 // LFS is used as part of the key to the hash table, see track_access.
 bool
-ldp_bb_info::track_via_mem_expr (insn_info *insn, rtx mem, lfs_fields lfs)
+pair_fusion_bb_info::track_via_mem_expr (insn_info *insn, rtx mem,
+					 lfs_fields lfs)
 {
   if (!MEM_EXPR (mem) || !MEM_OFFSET_KNOWN_P (mem))
     return false;
@@ -404,9 +675,10 @@ ldp_bb_info::track_via_mem_expr (insn_info *insn, rtx mem, lfs_fields lfs)
   const machine_mode mem_mode = GET_MODE (mem);
   const HOST_WIDE_INT mem_size = GET_MODE_SIZE (mem_mode).to_constant ();
 
-  // Punt on misaligned offsets.  LDP/STP instructions require offsets to be a
-  // multiple of the access size, and we believe that misaligned offsets on
-  // MEM_EXPR bases are likely to lead to misaligned offsets w.r.t. RTL bases.
+  // Punt on misaligned offsets.  Paired memory access instructions require
+  // offsets to be a multiple of the access size, and we believe that
+  // misaligned offsets on MEM_EXPR bases are likely to lead to misaligned
+  // offsets w.r.t. RTL bases.
   if (!multiple_p (offset, mem_size))
     return false;
 
@@ -430,46 +702,35 @@ ldp_bb_info::track_via_mem_expr (insn_info *insn, rtx mem, lfs_fields lfs)
 }
 
 // Main function to begin pair discovery.  Given a memory access INSN,
-// determine whether it could be a candidate for fusing into an ldp/stp,
-// and if so, track it in the appropriate data structure for this basic
-// block.  LOAD_P is true if the access is a load, and MEM is the mem
-// rtx that occurs in INSN.
+// determine whether it could be a candidate for fusing into a paired
+// access, and if so, track it in the appropriate data structure for
+// this basic block.  LOAD_P is true if the access is a load, and MEM
+// is the mem rtx that occurs in INSN.
 void
-ldp_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
+pair_fusion_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
 {
   // We can't combine volatile MEMs, so punt on these.
   if (MEM_VOLATILE_P (mem))
     return;
 
-  // Ignore writeback accesses if the param says to do so.
-  if (!aarch64_ldp_writeback
+  // Ignore writeback accesses if the hook says to do so.
+  if (!m_pass->should_handle_writeback (writeback::EXISTING)
       && GET_RTX_CLASS (GET_CODE (XEXP (mem, 0))) == RTX_AUTOINC)
     return;
 
   const machine_mode mem_mode = GET_MODE (mem);
-  if (!ldp_operand_mode_ok_p (mem_mode))
+  if (!m_pass->pair_operand_mode_ok_p (mem_mode))
     return;
 
   rtx reg_op = XEXP (PATTERN (insn->rtl ()), !load_p);
 
-  // Ignore the access if the register operand isn't suitable for ldp/stp.
-  if (load_p
-      ? !aarch64_ldp_reg_operand (reg_op, mem_mode)
-      : !aarch64_stp_reg_operand (reg_op, mem_mode))
+  if (!m_pass->pair_reg_operand_ok_p (load_p, reg_op, mem_mode))
     return;
 
   // We want to segregate FP/SIMD accesses from GPR accesses.
-  //
-  // Before RA, we use the modes, noting that stores of constant zero
-  // operands use GPRs (even in non-integer modes).  After RA, we use
-  // the hard register numbers.
-  const bool fpsimd_op_p
-    = reload_completed
-    ? (REG_P (reg_op) && FP_REGNUM_P (REGNO (reg_op)))
-    : (GET_MODE_CLASS (mem_mode) != MODE_INT
-       && (load_p || !aarch64_const_zero_rtx_p (reg_op)));
+  const bool fpsimd_op_p = m_pass->fpsimd_op_p (reg_op, mem_mode, load_p);
 
-  // Note ldp_operand_mode_ok_p already rejected VL modes.
+  // Note pair_operand_mode_ok_p already rejected VL modes.
   const HOST_WIDE_INT mem_size = GET_MODE_SIZE (mem_mode).to_constant ();
   const lfs_fields lfs = { load_p, fpsimd_op_p, mem_size };
 
@@ -479,7 +740,7 @@ ldp_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
   poly_int64 mem_off;
   rtx addr = XEXP (mem, 0);
   const bool autoinc_p = GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC;
-  rtx base = ldp_strip_offset (mem, &mem_off);
+  rtx base = pair_mem_strip_offset (mem, &mem_off);
   if (!REG_P (base))
     return;
 
@@ -498,8 +759,8 @@ ldp_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
   // elimination offset pre-RA, we should postpone forming pairs on such
   // accesses until after RA.
   //
-  // As it stands, addresses with offsets in range for LDR but not
-  // in range for LDP/STP are currently reloaded inefficiently,
+  // As it stands, addresses in range for an individual load/store but not
+  // for a paired access are currently reloaded inefficiently,
   // ending up with a separate base register for each pair.
   //
   // In theory LRA should make use of
@@ -511,10 +772,10 @@ ldp_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
   // that calls targetm.legitimize_address_displacement.
   //
   // So for now, it's better to punt when we can't be sure that the
-  // offset is in range for LDP/STP.  Out-of-range cases can then be
-  // handled after RA by the out-of-range LDP/STP peepholes.  Eventually, it
-  // would be nice to handle known out-of-range opportunities in the
-  // pass itself (for stack accesses, this would be in the post-RA pass).
+  // offset is in range for paired access.  On aarch64, out-of-range cases
+  // can then be handled after RA by the out-of-range LDP/STP peepholes.
+  // Eventually, it would be nice to handle known out-of-range opportunities
+  // in the pass itself (for stack accesses, this would be in the post-RA pass).
   if (!reload_completed
       && (REGNO (base) == FRAME_POINTER_REGNUM
 	  || REGNO (base) == ARG_POINTER_REGNUM))
@@ -565,8 +826,8 @@ ldp_bb_info::track_access (insn_info *insn, bool load_p, rtx mem)
 	gcc_unreachable (); // Base defs should be unique.
     }
 
-  // Punt on misaligned offsets.  LDP/STP require offsets to be a multiple of
-  // the access size.
+  // Punt on misaligned offsets.  Paired memory accesses require offsets
+  // to be a multiple of the access size.
   if (!multiple_p (mem_off, mem_size))
     return;
 
@@ -839,7 +1100,7 @@ def_upwards_move_range (def_info *def)
 // Class that implements a state machine for building the changes needed to form
 // a store pair instruction.  This allows us to easily build the changes in
 // program order, as required by rtl-ssa.
-struct stp_change_builder
+struct store_change_builder
 {
   enum class state
   {
@@ -866,9 +1127,9 @@ struct stp_change_builder
 
   bool done () const { return m_state == state::DONE; }
 
-  stp_change_builder (insn_info *insns[2],
-		      insn_info *repurpose,
-		      insn_info *dest)
+  store_change_builder (insn_info *insns[2],
+			insn_info *repurpose,
+			insn_info *dest)
     : m_state (state::FIRST), m_insns { insns[0], insns[1] },
       m_repurpose (repurpose), m_dest (dest), m_use (nullptr) {}
 
@@ -1142,7 +1403,7 @@ extract_writebacks (bool load_p, rtx pats[2], int changed)
       const bool autoinc_p = GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC;
 
       poly_int64 offset;
-      rtx this_base = ldp_strip_offset (mem, &offset);
+      rtx this_base = pair_mem_strip_offset (mem, &offset);
       gcc_assert (REG_P (this_base));
       if (base_reg)
 	gcc_assert (rtx_equal_p (base_reg, this_base));
@@ -1199,15 +1460,15 @@ extract_writebacks (bool load_p, rtx pats[2], int changed)
 // base register.  If there is one, we choose the first such update after
 // PAIR_DST that is still in the same BB as our pair.  We return the new def in
 // *ADD_DEF and the resulting writeback effect in *WRITEBACK_EFFECT.
-static insn_info *
-find_trailing_add (insn_info *insns[2],
-		   const insn_range_info &pair_range,
-		   int initial_writeback,
-		   rtx *writeback_effect,
-		   def_info **add_def,
-		   def_info *base_def,
-		   poly_int64 initial_offset,
-		   unsigned access_size)
+insn_info *
+pair_fusion::find_trailing_add (insn_info *insns[2],
+				const insn_range_info &pair_range,
+				int initial_writeback,
+				rtx *writeback_effect,
+				def_info **add_def,
+				def_info *base_def,
+				poly_int64 initial_offset,
+				unsigned access_size)
 {
   // Punt on frame-related insns, it is better to be conservative and
   // not try to form writeback pairs here, and means we don't have to
@@ -1278,7 +1539,7 @@ find_trailing_add (insn_info *insns[2],
 
   off_hwi /= access_size;
 
-  if (off_hwi < LDP_MIN_IMM || off_hwi > LDP_MAX_IMM)
+  if (!pair_mem_in_range_p (off_hwi))
     return nullptr;
 
   auto dump_prefix = [&]()
@@ -1320,7 +1581,7 @@ find_trailing_add (insn_info *insns[2],
 // We just emitted a tombstone with uid UID, track it in a bitmap for
 // this BB so we can easily identify it later when cleaning up tombstones.
 void
-ldp_bb_info::track_tombstone (int uid)
+pair_fusion_bb_info::track_tombstone (int uid)
 {
   if (!m_emitted_tombstone)
     {
@@ -1520,7 +1781,7 @@ fixup_debug_uses (obstack_watermark &attempt,
 	  gcc_checking_assert (GET_RTX_CLASS (GET_CODE (XEXP (mem, 0)))
 			       == RTX_AUTOINC);
 
-	  base = ldp_strip_offset (mem, &offset);
+	  base = pair_mem_strip_offset (mem, &offset);
 	  gcc_checking_assert (REG_P (base) && REGNO (base) == base_regno);
 	}
       fixup_debug_use (attempt, use, def, base, offset);
@@ -1656,12 +1917,12 @@ fixup_debug_uses (obstack_watermark &attempt,
 // BASE gives the chosen base candidate for the pair and MOVE_RANGE is
 // a singleton range which says where to place the pair.
 bool
-ldp_bb_info::fuse_pair (bool load_p,
-			unsigned access_size,
-			int writeback,
-			insn_info *i1, insn_info *i2,
-			base_cand &base,
-			const insn_range_info &move_range)
+pair_fusion_bb_info::fuse_pair (bool load_p,
+				unsigned access_size,
+				int writeback,
+				insn_info *i1, insn_info *i2,
+				base_cand &base,
+				const insn_range_info &move_range)
 {
   auto attempt = crtl->ssa->new_change_attempt ();
 
@@ -1792,7 +2053,7 @@ ldp_bb_info::fuse_pair (bool load_p,
     {
       if (dump_file)
 	fprintf (dump_file,
-		 "  ldp: i%d has wb but subsequent i%d has non-wb "
+		 "  load pair: i%d has wb but subsequent i%d has non-wb "
 		 "update of base (r%d), dropping wb\n",
 		 insns[0]->uid (), insns[1]->uid (), base_regno);
       gcc_assert (writeback_effect);
@@ -1815,9 +2076,9 @@ ldp_bb_info::fuse_pair (bool load_p,
     }
 
   // If either of the original insns had writeback, but the resulting pair insn
-  // does not (can happen e.g. in the ldp edge case above, or if the writeback
-  // effects cancel out), then drop the def(s) of the base register as
-  // appropriate.
+  // does not (can happen e.g. in the load pair edge case above, or if the
+  // writeback effects cancel out), then drop the def (s) of the base register
+  // as appropriate.
   //
   // Also drop the first def in the case that both of the original insns had
   // writeback.  The second def could well have uses, but the first def should
@@ -1834,7 +2095,7 @@ ldp_bb_info::fuse_pair (bool load_p,
   // update of the base register and try and fold it in to make this into a
   // writeback pair.
   insn_info *trailing_add = nullptr;
-  if (aarch64_ldp_writeback > 1
+  if (m_pass->should_handle_writeback (writeback::ALL)
       && !writeback_effect
       && (!load_p || (!refers_to_regno_p (base_regno, base_regno + 1,
 					 XEXP (pats[0], 0), nullptr)
@@ -1842,10 +2103,10 @@ ldp_bb_info::fuse_pair (bool load_p,
 					     XEXP (pats[1], 0), nullptr))))
     {
       def_info *add_def;
-      trailing_add = find_trailing_add (insns, move_range, writeback,
-					&writeback_effect,
-					&add_def, base.def, offsets[0],
-					access_size);
+      trailing_add = m_pass->find_trailing_add (insns, move_range, writeback,
+						&writeback_effect,
+						&add_def, base.def, offsets[0],
+						access_size);
       if (trailing_add)
 	{
 	  // The def of the base register from the trailing add should prevail.
@@ -1855,35 +2116,20 @@ ldp_bb_info::fuse_pair (bool load_p,
     }
 
   // Now that we know what base mem we're going to use, check if it's OK
-  // with the ldp/stp policy.
+  // with the pair mem policy.
   rtx first_mem = XEXP (pats[0], load_p);
-  if (!aarch64_mem_ok_with_ldpstp_policy_model (first_mem,
-						load_p,
-						GET_MODE (first_mem)))
+  if (!m_pass->pair_mem_ok_with_policy (first_mem, load_p))
     {
       if (dump_file)
-	fprintf (dump_file, "punting on pair (%d,%d), ldp/stp policy says no\n",
+	fprintf (dump_file,
+		 "punting on pair (%d,%d), pair mem policy says no\n",
 		 i1->uid (), i2->uid ());
       return false;
     }
 
   rtx reg_notes = combine_reg_notes (first, second, load_p);
 
-  rtx pair_pat;
-  if (writeback_effect)
-    {
-      auto patvec = gen_rtvec (3, writeback_effect, pats[0], pats[1]);
-      pair_pat = gen_rtx_PARALLEL (VOIDmode, patvec);
-    }
-  else if (load_p)
-    pair_pat = aarch64_gen_load_pair (XEXP (pats[0], 0),
-				      XEXP (pats[1], 0),
-				      XEXP (pats[0], 1));
-  else
-    pair_pat = aarch64_gen_store_pair (XEXP (pats[0], 0),
-				       XEXP (pats[0], 1),
-				       XEXP (pats[1], 1));
-
+  rtx pair_pat = m_pass->gen_pair (pats, writeback_effect, load_p);
   insn_change *pair_change = nullptr;
   auto set_pair_pat = [pair_pat,reg_notes](insn_change *change) {
     rtx_insn *rti = change->insn ()->rtl ();
@@ -1912,10 +2158,10 @@ ldp_bb_info::fuse_pair (bool load_p,
     }
   else
     {
-      using Action = stp_change_builder::action;
+      using Action = store_change_builder::action;
       insn_info *store_to_change = try_repurpose_store (first, second,
 							move_range);
-      stp_change_builder builder (insns, store_to_change, pair_dst);
+      store_change_builder builder (insns, store_to_change, pair_dst);
       insn_change *change;
       set_info *new_set = nullptr;
       for (; !builder.done (); builder.advance ())
@@ -1935,9 +2181,9 @@ ldp_bb_info::fuse_pair (bool load_p,
 	      auto d2 = drop_memory_access (input_defs[1]);
 	      change->new_defs = merge_access_arrays (attempt, d1, d2);
 	      gcc_assert (change->new_defs.is_valid ());
-	      def_info *stp_def = memory_access (change->insn ()->defs ());
+	      def_info *store_def = memory_access (change->insn ()->defs ());
 	      change->new_defs = insert_access (attempt,
-						stp_def,
+						store_def,
 						change->new_defs);
 	      gcc_assert (change->new_defs.is_valid ());
 	      change->move_range = move_range;
@@ -2125,15 +2371,6 @@ load_modified_by_store_p (insn_info *load,
   return false;
 }
 
-// Virtual base class for load/store walkers used in alias analysis.
-struct alias_walker
-{
-  virtual bool conflict_p (int &budget) const = 0;
-  virtual insn_info *insn () const = 0;
-  virtual bool valid () const = 0;
-  virtual void advance () = 0;
-};
-
 // Implement some common functionality used by both store_walker
 // and load_walker.
 template<bool reverse>
@@ -2251,13 +2488,13 @@ public:
 //
 // We try to maintain the invariant that if a walker becomes invalid, we
 // set its pointer to null.
-static void
-do_alias_analysis (insn_info *alias_hazards[4],
-		   alias_walker *walkers[4],
-		   bool load_p)
+void
+pair_fusion::do_alias_analysis (insn_info *alias_hazards[4],
+				alias_walker *walkers[4],
+				bool load_p)
 {
   const int n_walkers = 2 + (2 * !load_p);
-  int budget = aarch64_ldp_alias_check_limit;
+  int budget = pair_mem_alias_check_limit ();
 
   auto next_walker = [walkers,n_walkers](int current) -> int {
     for (int j = 1; j <= n_walkers; j++)
@@ -2342,12 +2579,12 @@ do_alias_analysis (insn_info *alias_hazards[4],
 //
 // Returns an integer where bit (1 << i) is set if INSNS[i] uses writeback
 // addressing.
-static int
-get_viable_bases (insn_info *insns[2],
-		  vec<base_cand> &base_cands,
-		  rtx cand_mems[2],
-		  unsigned access_size,
-		  bool reversed)
+int
+pair_fusion::get_viable_bases (insn_info *insns[2],
+			       vec<base_cand> &base_cands,
+			       rtx cand_mems[2],
+			       unsigned access_size,
+			       bool reversed)
 {
   // We discovered this pair through a common base.  Need to ensure that
   // we have a common base register that is live at both locations.
@@ -2357,7 +2594,7 @@ get_viable_bases (insn_info *insns[2],
     {
       const bool is_lower = (i == reversed);
       poly_int64 poly_off;
-      rtx base = ldp_strip_offset (cand_mems[i], &poly_off);
+      rtx base = pair_mem_strip_offset (cand_mems[i], &poly_off);
       if (GET_RTX_CLASS (GET_CODE (XEXP (cand_mems[i], 0))) == RTX_AUTOINC)
 	writeback |= (1 << i);
 
@@ -2365,7 +2602,7 @@ get_viable_bases (insn_info *insns[2],
 	continue;
 
       // Punt on accesses relative to eliminable regs.  See the comment in
-      // ldp_bb_info::track_access for a detailed explanation of this.
+      // pair_fusion_bb_info::track_access for a detailed explanation of this.
       if (!reload_completed
 	  && (REGNO (base) == FRAME_POINTER_REGNUM
 	      || REGNO (base) == ARG_POINTER_REGNUM))
@@ -2389,7 +2626,7 @@ get_viable_bases (insn_info *insns[2],
       if (!is_lower)
 	base_off--;
 
-      if (base_off < LDP_MIN_IMM || base_off > LDP_MAX_IMM)
+      if (!pair_mem_in_range_p (base_off))
 	continue;
 
       use_info *use = find_access (insns[i]->uses (), REGNO (base));
@@ -2446,13 +2683,13 @@ get_viable_bases (insn_info *insns[2],
 }
 
 // Given two adjacent memory accesses of the same size, I1 and I2, try
-// and see if we can merge them into a ldp or stp.
+// and see if we can merge them into a paired access.
 //
 // ACCESS_SIZE gives the (common) size of a single access, LOAD_P is true
 // if the accesses are both loads, otherwise they are both stores.
 bool
-ldp_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
-			    insn_info *i1, insn_info *i2)
+pair_fusion_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
+				    insn_info *i1, insn_info *i2)
 {
   if (dump_file)
     fprintf (dump_file, "analyzing pair (load=%d): (%d,%d)\n",
@@ -2486,7 +2723,7 @@ ldp_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
     {
       if (dump_file)
 	fprintf (dump_file,
-		 "punting on ldp due to reg conflcits (%d,%d)\n",
+		 "punting on load pair due to reg conflcits (%d,%d)\n",
 		 insns[0]->uid (), insns[1]->uid ());
       return false;
     }
@@ -2504,8 +2741,8 @@ ldp_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
 
   auto_vec<base_cand, 2> base_cands (2);
 
-  int writeback = get_viable_bases (insns, base_cands, cand_mems,
-				    access_size, reversed);
+  int writeback = m_pass->get_viable_bases (insns, base_cands, cand_mems,
+					    access_size, reversed);
   if (base_cands.is_empty ())
     {
       if (dump_file)
@@ -2633,7 +2870,7 @@ ldp_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
     walkers[1] = &backward_store_walker;
 
   if (load_p && (mem_defs[0] || mem_defs[1]))
-    do_alias_analysis (alias_hazards, walkers, load_p);
+    m_pass->do_alias_analysis (alias_hazards, walkers, load_p);
   else
     {
       // We want to find any loads hanging off the first store.
@@ -2642,7 +2879,7 @@ ldp_bb_info::try_fuse_pair (bool load_p, unsigned access_size,
       load_walker<true> backward_load_walker (mem_defs[1], insns[1], insns[0]);
       walkers[2] = &forward_load_walker;
       walkers[3] = &backward_load_walker;
-      do_alias_analysis (alias_hazards, walkers, load_p);
+      m_pass->do_alias_analysis (alias_hazards, walkers, load_p);
       // Now consolidate hazards back down.
       if (alias_hazards[2]
 	  && (!alias_hazards[0] || (*alias_hazards[2] < *alias_hazards[0])))
@@ -2835,7 +3072,7 @@ debug (const insn_list_t &l)
 // we can't re-order them anyway, so provided earlier passes have cleaned up
 // redundant loads, we shouldn't miss opportunities by doing this.
 void
-ldp_bb_info::merge_pairs (insn_list_t &left_list,
+pair_fusion_bb_info::merge_pairs (insn_list_t &left_list,
 			  insn_list_t &right_list,
 			  bool load_p,
 			  unsigned access_size)
@@ -2882,7 +3119,7 @@ ldp_bb_info::merge_pairs (insn_list_t &left_list,
 // of accesses.  If we find two sets of adjacent accesses, call
 // merge_pairs.
 void
-ldp_bb_info::transform_for_base (int encoded_lfs,
+pair_fusion_bb_info::transform_for_base (int encoded_lfs,
 				 access_group &group)
 {
   const auto lfs = decode_lfs (encoded_lfs);
@@ -2911,7 +3148,7 @@ ldp_bb_info::transform_for_base (int encoded_lfs,
 // and remove all the tombstone insns, being sure to reparent any uses
 // of mem to previous defs when we do this.
 void
-ldp_bb_info::cleanup_tombstones ()
+pair_fusion_bb_info::cleanup_tombstones ()
 {
   // No need to do anything if we didn't emit a tombstone insn for this BB.
   if (!m_emitted_tombstone)
@@ -2939,7 +3176,7 @@ ldp_bb_info::cleanup_tombstones ()
 
 template<typename Map>
 void
-ldp_bb_info::traverse_base_map (Map &map)
+pair_fusion_bb_info::traverse_base_map (Map &map)
 {
   for (auto kv : map)
     {
@@ -2950,30 +3187,10 @@ ldp_bb_info::traverse_base_map (Map &map)
 }
 
 void
-ldp_bb_info::transform ()
+pair_fusion_bb_info::transform ()
 {
   traverse_base_map (expr_map);
   traverse_base_map (def_map);
-}
-
-static void
-ldp_fusion_init ()
-{
-  calculate_dominance_info (CDI_DOMINATORS);
-  df_analyze ();
-  crtl->ssa = new rtl_ssa::function_info (cfun);
-}
-
-static void
-ldp_fusion_destroy ()
-{
-  if (crtl->ssa->perform_pending_updates ())
-    cleanup_cfg (0);
-
-  free_dominance_info (CDI_DOMINATORS);
-
-  delete crtl->ssa;
-  crtl->ssa = nullptr;
 }
 
 // Given a load pair insn in PATTERN, unpack the insn, storing
@@ -3015,16 +3232,19 @@ aarch64_destructure_store_pair (rtx regs[2], rtx pattern)
   return mem;
 }
 
-// Given a pair mem in PAIR_MEM, register operands in REGS, and an rtx
-// representing the effect of writeback on the base register in WB_EFFECT,
-// return an insn representing a writeback variant of this pair.
-// LOAD_P is true iff the pair is a load.
-//
-// This is used when promoting existing non-writeback pairs to writeback
-// variants.
-static rtx
-aarch64_gen_writeback_pair (rtx wb_effect, rtx pair_mem, rtx regs[2],
-			    bool load_p)
+rtx
+aarch64_pair_fusion::destructure_pair (rtx regs[2], rtx pattern, bool load_p)
+{
+  if (load_p)
+    return aarch64_destructure_load_pair (regs, pattern);
+  else
+    return aarch64_destructure_store_pair (regs, pattern);
+}
+
+rtx
+aarch64_pair_fusion::gen_promote_writeback_pair (rtx wb_effect, rtx pair_mem,
+						 rtx regs[2],
+						 bool load_p)
 {
   auto op_mode = aarch64_operand_mode_for_pair_mode (GET_MODE (pair_mem));
 
@@ -3059,23 +3279,12 @@ aarch64_gen_writeback_pair (rtx wb_effect, rtx pair_mem, rtx regs[2],
 // Given an existing pair insn INSN, look for a trailing update of
 // the base register which we can fold in to make this pair use
 // a writeback addressing mode.
-static void
-try_promote_writeback (insn_info *insn)
+void
+pair_fusion::try_promote_writeback (insn_info *insn, bool load_p)
 {
-  auto rti = insn->rtl ();
-  const auto attr = get_attr_ldpstp (rti);
-  if (attr == LDPSTP_NONE)
-    return;
-
-  bool load_p = (attr == LDPSTP_LDP);
-  gcc_checking_assert (load_p || attr == LDPSTP_STP);
-
   rtx regs[2];
-  rtx mem = NULL_RTX;
-  if (load_p)
-    mem = aarch64_destructure_load_pair (regs, PATTERN (rti));
-  else
-    mem = aarch64_destructure_store_pair (regs, PATTERN (rti));
+
+  rtx mem = destructure_pair (regs, PATTERN (insn->rtl ()), load_p);
   gcc_checking_assert (MEM_P (mem));
 
   poly_int64 offset;
@@ -3112,9 +3321,10 @@ try_promote_writeback (insn_info *insn)
   def_info *add_def;
   const insn_range_info pair_range (insn);
   insn_info *insns[2] = { nullptr, insn };
-  insn_info *trailing_add = find_trailing_add (insns, pair_range, 0, &wb_effect,
-					       &add_def, base_def, offset,
-					       access_size);
+  insn_info *trailing_add
+    = find_trailing_add (insns, pair_range, 0, &wb_effect,
+			 &add_def, base_def, offset,
+			 access_size);
   if (!trailing_add)
     return;
 
@@ -3124,8 +3334,9 @@ try_promote_writeback (insn_info *insn)
   insn_change del_change (trailing_add, insn_change::DELETE);
   insn_change *changes[] = { &pair_change, &del_change };
 
-  rtx pair_pat = aarch64_gen_writeback_pair (wb_effect, mem, regs, load_p);
-  validate_unshare_change (rti, &PATTERN (rti), pair_pat, true);
+  rtx pair_pat = gen_promote_writeback_pair (wb_effect, mem, regs, load_p);
+  validate_unshare_change (insn->rtl (), &PATTERN (insn->rtl ()), pair_pat,
+			   true);
 
   // The pair must gain the def of the base register from the add.
   pair_change.new_defs = insert_access (attempt,
@@ -3159,14 +3370,12 @@ try_promote_writeback (insn_info *insn)
 // for load/store candidates.  If running after RA, also try and promote
 // non-writeback pairs to use writeback addressing.  Then try to fuse
 // candidates into pairs.
-void ldp_fusion_bb (bb_info *bb)
+void pair_fusion::process_block (bb_info *bb)
 {
-  const bool track_loads
-    = aarch64_tune_params.ldp_policy_model != AARCH64_LDP_STP_POLICY_NEVER;
-  const bool track_stores
-    = aarch64_tune_params.stp_policy_model != AARCH64_LDP_STP_POLICY_NEVER;
+  const bool track_loads = track_loads_p ();
+  const bool track_stores = track_stores_p ();
 
-  ldp_bb_info bb_state (bb);
+  pair_fusion_bb_info bb_state (bb, this);
 
   for (auto insn : bb->nondebug_insns ())
     {
@@ -3176,11 +3385,11 @@ void ldp_fusion_bb (bb_info *bb)
 	continue;
 
       rtx pat = PATTERN (rti);
+      bool load_p;
       if (reload_completed
-	  && aarch64_ldp_writeback > 1
-	  && GET_CODE (pat) == PARALLEL
-	  && XVECLEN (pat, 0) == 2)
-	try_promote_writeback (insn);
+	  && should_handle_writeback (writeback::ALL)
+	  && pair_mem_insn_p (rti, load_p))
+	try_promote_writeback (insn, load_p);
 
       if (GET_CODE (pat) != SET)
 	continue;
@@ -3193,16 +3402,6 @@ void ldp_fusion_bb (bb_info *bb)
 
   bb_state.transform ();
   bb_state.cleanup_tombstones ();
-}
-
-void ldp_fusion ()
-{
-  ldp_fusion_init ();
-
-  for (auto bb : crtl->ssa->bbs ())
-    ldp_fusion_bb (bb);
-
-  ldp_fusion_destroy ();
 }
 
 namespace {
@@ -3234,14 +3433,6 @@ public:
       if (!optimize || optimize_debug)
 	return false;
 
-      // If the tuning policy says never to form ldps or stps, don't run
-      // the pass.
-      if ((aarch64_tune_params.ldp_policy_model
-	   == AARCH64_LDP_STP_POLICY_NEVER)
-	  && (aarch64_tune_params.stp_policy_model
-	      == AARCH64_LDP_STP_POLICY_NEVER))
-	return false;
-
       if (reload_completed)
 	return flag_aarch64_late_ldp_fusion;
       else
@@ -3250,7 +3441,8 @@ public:
 
   unsigned execute (function *) final override
     {
-      ldp_fusion ();
+      aarch64_pair_fusion pass;
+      pass.run ();
       return 0;
     }
 };

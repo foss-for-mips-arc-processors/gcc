@@ -20400,8 +20400,6 @@ mips_option_override (void)
     error ("unsupported combination: %s", "-mfp64 -mfpxx");
   else if (ISA_MIPS1 && !TARGET_FLOAT32)
     error ("%<-march=%s%> requires %<-mfp32%>", mips_arch_info->name);
-  else if (TARGET_FLOATXX && !mips_lra_flag)
-    error ("%<-mfpxx%> requires %<-mlra%>");
 
   /* End of code shared with GAS.  */
 
@@ -22880,14 +22878,6 @@ mips_spill_class (reg_class_t rclass ATTRIBUTE_UNUSED,
   return NO_REGS;
 }
 
-/* Implement TARGET_LRA_P.  */
-
-static bool
-mips_lra_p (void)
-{
-  return mips_lra_flag;
-}
-
 /* Implement TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS.  */
 
 static reg_class_t
@@ -23316,8 +23306,6 @@ mips_bit_clear_p (enum machine_mode mode, unsigned HOST_WIDE_INT m)
 
 #undef TARGET_SPILL_CLASS
 #define TARGET_SPILL_CLASS mips_spill_class
-#undef TARGET_LRA_P
-#define TARGET_LRA_P mips_lra_p
 #undef TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS
 #define TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS mips_ira_change_pseudo_allocno_class
 

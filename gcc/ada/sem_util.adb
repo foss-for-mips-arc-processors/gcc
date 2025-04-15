@@ -10714,26 +10714,38 @@ package body Sem_Util is
 
    function Get_Max_Queue_Length (Id : Entity_Id) return Uint is
       pragma Assert (Is_Entry (Id));
-      Prag : constant Entity_Id := Get_Pragma (Id, Pragma_Max_Queue_Length);
-      Max  : Uint;
+      PMQL  : constant Entity_Id := Get_Pragma (Id, Pragma_Max_Queue_Length);
+      PMEQD : constant Entity_Id :=
+         Get_Pragma (Id, Pragma_Max_Entry_Queue_Depth);
+      PMEQL : constant Entity_Id :=
+         Get_Pragma (Id, Pragma_Max_Entry_Queue_Length);
+      Max   : Uint;
 
    begin
       --  A value of 0 or -1 represents no maximum specified, and entries and
       --  entry families with no Max_Queue_Length aspect or pragma default to
       --  it.
 
-      if No (Prag) then
-         return Uint_0;
-      end if;
+      --  We have already checked that there is at most one of these pragmas
 
-      Max := Expr_Value
-        (Expression (First (Pragma_Argument_Associations (Prag))));
+      if Present (PMQL) then
+         Max := Expr_Value
+            (Expression (First (Pragma_Argument_Associations (PMQL))));
+      elsif Present (PMEQD) then
+         Max := Expr_Value
+            (Expression (First (Pragma_Argument_Associations (PMEQD))));
+      elsif Present (PMEQL) then
+         Max := Expr_Value
+            (Expression (First (Pragma_Argument_Associations (PMEQL))));
+      else
+         Max := Uint_0;
+      end if;
 
       --  Since -1 and 0 are equivalent, return 0 for instances of -1 for
       --  uniformity.
 
       if Max = -1 then
-         return Uint_0;
+         Max := Uint_0;
       end if;
 
       return Max;
@@ -12217,7 +12229,10 @@ package body Sem_Util is
    begin
       return
         Ekind (Id) = E_Entry
-          and then Present (Get_Pragma (Id, Pragma_Max_Queue_Length));
+          and then
+        (Present (Get_Pragma (Id, Pragma_Max_Queue_Length)) or else
+         Present (Get_Pragma (Id, Pragma_Max_Entry_Queue_Depth)) or else
+         Present (Get_Pragma (Id, Pragma_Max_Entry_Queue_Length)));
    end Has_Max_Queue_Length;
 
    ---------------------------------
@@ -22394,12 +22409,24 @@ package body Sem_Util is
             return False;
          end Depends_On_Discriminant;
 
+      --  Start of processing for Caller_Known_Size_Record
+
       begin
          --  This is a protected type without Corresponding_Record_Type set,
          --  typically because expansion is disabled. The safe thing to do is
          --  to return True, so Needs_Secondary_Stack returns False.
 
          if No (Typ) then
+            return True;
+         end if;
+
+         --  If either size is specified for the type, then it's known in the
+         --  caller in particular. Note that, even if the clause is confirming,
+         --  this does not change the outcome since the size was already known.
+
+         if Has_Size_Clause (First_Subtype (Typ))
+           or else Has_Object_Size_Clause (First_Subtype (Typ))
+         then
             return True;
          end if;
 

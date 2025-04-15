@@ -170,7 +170,10 @@ package body Sem_Attr is
      (Attribute_First_Valid                  |
       Attribute_Has_Same_Storage             |
       Attribute_Last_Valid                   |
-      Attribute_Max_Alignment_For_Allocation => True,
+      Attribute_Max_Alignment_For_Allocation |
+      Attribute_Old                          |
+      Attribute_Overlaps_Storage             |
+      Attribute_Result                       => True,
       others                                 => False);
 
    --  The following array is the list of attributes defined in the Ada 2022
@@ -3221,11 +3224,12 @@ package body Sem_Attr is
 
       Check_Restriction_No_Use_Of_Attribute (N);
 
-      --  Deal with Ada 83 issues
-
       if Comes_From_Source (N) then
+
+         --  Deal with Ada 83 issues
+
          if not Attribute_83 (Attr_Id) then
-            if Ada_Version = Ada_83 and then Comes_From_Source (N) then
+            if Ada_Version = Ada_83 then
                Error_Msg_Name_1 := Aname;
                Error_Msg_N ("(Ada 83) attribute% is not standard??", N);
             end if;
@@ -3234,19 +3238,19 @@ package body Sem_Attr is
                Check_Restriction (No_Implementation_Attributes, N);
             end if;
          end if;
-      end if;
 
-      --  Deal with Ada 2005 attributes that are implementation attributes
-      --  because they appear in a version of Ada before Ada 2005, ditto for
-      --  Ada 2012 and Ada 2022 attributes appearing in an earlier version.
+         --  Deal with Ada 2005 attributes that are implementation attributes
+         --  because they appear in a version of Ada before Ada 2005, ditto for
+         --  Ada 2012 and Ada 2022 attributes appearing in an earlier version.
 
-      if (Attribute_05 (Attr_Id) and then Ada_Version < Ada_2005)
-            or else
-         (Attribute_12 (Attr_Id) and then Ada_Version < Ada_2012)
-            or else
-         (Attribute_22 (Attr_Id) and then Ada_Version < Ada_2022)
-      then
-         Check_Restriction (No_Implementation_Attributes, N);
+         if (Attribute_05 (Attr_Id) and then Ada_Version < Ada_2005)
+               or else
+            (Attribute_12 (Attr_Id) and then Ada_Version < Ada_2012)
+               or else
+            (Attribute_22 (Attr_Id) and then Ada_Version < Ada_2022)
+         then
+            Check_Restriction (No_Implementation_Attributes, N);
+         end if;
       end if;
 
       --   Remote access to subprogram type access attribute reference needs
@@ -6679,10 +6683,6 @@ package body Sem_Attr is
             elsif Depends_On_Private (P_Type) then
                Error_Attr_P ("prefix type of % is a private extension");
 
-            --  Check that we don't view convert to an abstract type
-
-            elsif Is_Abstract_Type (Node (First_Elmt (Parents))) then
-               Error_Attr_P ("type of % cannot be abstract");
             end if;
 
             --  Generate a view conversion and analyze it
@@ -8221,13 +8221,26 @@ package body Sem_Attr is
       then
          declare
             Lit : constant Entity_Id := Expr_Value_E (P);
+            Typ : constant Entity_Id := Etype (Entity (P));
             Str : String_Id;
 
          begin
             Start_String;
-            Get_Unqualified_Decoded_Name_String (Chars (Lit));
-            Set_Casing (All_Upper_Case);
-            Store_String_Chars (Name_Buffer (1 .. Name_Len));
+
+            --  If Discard_Names is in effect for the type, then we emit the
+            --  numeric representation of the prefix literal 'Pos attribute,
+            --  prefixed with a single space.
+
+            if Discard_Names (Typ) then
+               UI_Image (Enumeration_Pos (Lit), Decimal);
+               Store_String_Char  (' ');
+               Store_String_Chars (UI_Image_Buffer (1 .. UI_Image_Length));
+            else
+               Get_Unqualified_Decoded_Name_String (Chars (Lit));
+               Set_Casing (All_Upper_Case);
+               Store_String_Chars (Name_Buffer (1 .. Name_Len));
+            end if;
+
             Str := End_String;
 
             Rewrite (N, Make_String_Literal (Loc, Strval => Str));
@@ -10906,9 +10919,10 @@ package body Sem_Attr is
                      --  that accommodates the Pos of the largest value, which
                      --  is the high bound of the range + one for the space.
 
-                     W := 1;
-                     T := Hi;
-                     while T /= 0 loop
+                     W := 1;      --  one character for the leading space
+                     W := W + 1;  --  one character for the 0 .. 9 digit
+                     T := Hi;     --  one character for every decimal digit
+                     while T >= 10 loop
                         T := T / 10;
                         W := W + 1;
                      end loop;
