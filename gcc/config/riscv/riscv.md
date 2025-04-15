@@ -87,8 +87,7 @@
   UNSPEC_STRLEN
 
   ;; Workaround for HFmode and BFmode without hardware extension
-  UNSPEC_FMV_SFP16_X
-  UNSPEC_FMV_SBF16_X
+  UNSPEC_FMV_FP16_X
 
   ;; XTheadFmv moves
   UNSPEC_XTHEADFMV
@@ -1963,19 +1962,11 @@
    (set_attr "type" "fmove,move,load,store,mtc,mfc")
    (set_attr "mode" "<MODE>")])
 
-(define_insn "*movhf_softfloat_boxing"
-  [(set (match_operand:HF 0 "register_operand"            "=f")
-        (unspec:HF [(match_operand:X 1 "register_operand" " r")] UNSPEC_FMV_SFP16_X))]
+(define_insn "*mov<HFBF:mode>_softfloat_boxing"
+  [(set (match_operand:HFBF 0 "register_operand"	    "=f")
+	(unspec:HFBF [(match_operand:X 1 "register_operand" " r")]
+	 UNSPEC_FMV_FP16_X))]
   "!TARGET_ZFHMIN"
-  "fmv.w.x\t%0,%1"
-  [(set_attr "type" "fmove")
-   (set_attr "mode" "SF")])
-
-(define_insn "*movbf_softfloat_boxing"
-  [(set (match_operand:BF 0 "register_operand"		  "=f")
-	(unspec:BF [(match_operand:X 1 "register_operand" " r")]
-	 UNSPEC_FMV_SBF16_X))]
-  "!TARGET_ZFBFMIN"
   "fmv.w.x\t%0,%1"
   [(set_attr "type" "fmove")
    (set_attr "mode" "SF")])
@@ -4241,6 +4232,62 @@
     DONE;
   }
 )
+
+;; These are forms of (x << C1) + C2, potentially canonicalized from
+;; ((x + C2') << C1.  Depending on the cost to load C2 vs C2' we may
+;; want to go ahead and recognize this form as C2 may be cheaper to
+;; synthesize than C2'.
+;;
+;; It might be better to refactor riscv_const_insns a bit so that we
+;; can have an API that passes integer values around rather than
+;; constructing a lot of garbage RTL.
+;;
+;; The mvconst_internal pattern in effect requires this pattern to
+;; also be a define_insn_and_split due to insn count costing when
+;; splitting in combine.
+(define_insn_and_split ""
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(plus:DI (ashift:DI (match_operand:DI 1 "register_operand" "r")
+			    (match_operand 2 "const_int_operand" "n"))
+		 (match_operand 3 "const_int_operand" "n")))
+   (clobber (match_scratch:DI 4 "=&r"))]
+  "(TARGET_64BIT
+    && riscv_const_insns (operands[3])
+    && ((riscv_const_insns (operands[3])
+	 < riscv_const_insns (GEN_INT (INTVAL (operands[3]) >> INTVAL (operands[2]))))
+	|| riscv_const_insns (GEN_INT (INTVAL (operands[3]) >> INTVAL (operands[2]))) == 0))"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0) (ashift:DI (match_dup 1) (match_dup 2)))
+   (set (match_dup 4) (match_dup 3))
+   (set (match_dup 0) (plus:DI (match_dup 0) (match_dup 4)))]
+  ""
+  [(set_attr "type" "arith")])
+
+(define_insn_and_split ""
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(sign_extend:DI (plus:SI (ashift:SI
+				   (match_operand:SI 1 "register_operand" "r")
+				   (match_operand 2 "const_int_operand" "n"))
+				 (match_operand 3 "const_int_operand" "n"))))
+   (clobber (match_scratch:DI 4 "=&r"))]
+  "(TARGET_64BIT
+    && riscv_const_insns (operands[3])
+    && ((riscv_const_insns (operands[3])
+	 < riscv_const_insns (GEN_INT (INTVAL (operands[3]) >> INTVAL (operands[2]))))
+	|| riscv_const_insns (GEN_INT (INTVAL (operands[3]) >> INTVAL (operands[2]))) == 0))"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0) (ashift:DI (match_dup 1) (match_dup 2)))
+   (set (match_dup 4) (match_dup 3))
+   (set (match_dup 0) (sign_extend:DI (plus:SI (match_dup 5) (match_dup 6))))]
+  "{
+     operands[1] = gen_lowpart (DImode, operands[1]);
+     operands[5] = gen_lowpart (SImode, operands[0]);
+     operands[6] = gen_lowpart (SImode, operands[4]);
+   }"
+  [(set_attr "type" "arith")])
+
 
 (include "bitmanip.md")
 (include "crypto.md")
