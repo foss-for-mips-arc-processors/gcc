@@ -1,10 +1,8 @@
-2024-08-01  Release Manager
+2024-05-26  Gerald Pfeifer  <gerald@pfeifer.com>
 
-	* GCC 14.2.0 released.
-
-2024-05-07  Release Manager
-
-	* GCC 14.1.0 released.
+	* gccgo.texi (Top): Move a web reference from golang.org to go.dev.
+	(C Interoperability): Move a web reference from golang.org to
+	pkg.go.dev.
 
 2024-04-05  Christophe Lyon  <christophe.lyon@linaro.org>
 

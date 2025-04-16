@@ -75,13 +75,18 @@ public:
   virtual bool range_on_entry (vrange &r, basic_block bb, tree expr);
   virtual bool range_on_exit (vrange &r, basic_block bb, tree expr);
 
-  // Query if there is any relation between SSA1 and SSA2.
-  relation_kind query_relation (gimple *s, tree ssa1, tree ssa2,
-				bool get_range = true);
-  relation_kind query_relation (edge e, tree ssa1, tree ssa2,
-				bool get_range = true);
-  // If present, Access relation oracle for more advanced uses.
-  inline relation_oracle *oracle () const  { return m_oracle; }
+  inline class relation_oracle &relation () const  { return *m_relation; }
+  void create_relation_oracle ();
+  void destroy_relation_oracle ();
+
+  inline class infer_range_oracle &infer_oracle () const { return *m_infer; }
+  void create_infer_oracle (bool do_search = TRUE);
+  void destroy_infer_oracle ();
+
+  inline class gimple_outgoing_range &gori () const { return *m_gori; }
+  inline class gori_map *gori_ssa () const { return m_map; }
+  void create_gori (int not_executable_flag = 0, int sw_max_edges = INT_MAX);
+  void destroy_gori ();
 
   virtual void dump (FILE *);
 
@@ -91,7 +96,15 @@ protected:
   bool invoke_range_of_expr (vrange &v, tree expr, gimple *stmt,
 			     basic_block bbentry, basic_block bbexit);
   bool get_arith_expr_range (vrange &r, tree expr, gimple *stmt);
-  relation_oracle *m_oracle;
+  relation_oracle *m_relation;
+  infer_range_oracle *m_infer;
+  gimple_outgoing_range *m_gori;
+  gori_map *m_map;
+  // When multiple related range queries wish to share oracles.
+  // This is an internal interface
+  void share_query (range_query &q);
+  bool m_shared_copy_p;
+
 };
 
 // Global ranges for SSA names using SSA_NAME_RANGE_INFO.
@@ -122,5 +135,4 @@ get_range_query (const struct function *fun)
 // Query the global range of NAME in function F.  Default to cfun.
 extern void gimple_range_global (vrange &v, tree name,
 				 struct function *f = cfun);
-
 #endif // GCC_QUERY_H

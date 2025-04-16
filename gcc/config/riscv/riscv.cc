@@ -994,6 +994,40 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	  codes[1].use_uw = false;
 	  cost = 2;
 	}
+
+      /* If LUI/ADDI are going to set bits 32..63 and we need a small
+	 number of them cleared, we might be able to use bclri profitably.
+
+	 Note we may allow clearing of bit 31 using bclri.  There's a class
+	 of constants with that bit clear where this helps.  */
+      else if (TARGET_64BIT
+	       && TARGET_ZBS
+	       && (32 - popcount_hwi (value & HOST_WIDE_INT_C (0xffffffff80000000))) + 1 < cost)
+	{
+	  /* Turn on all those upper bits and synthesize the result.  */
+	  HOST_WIDE_INT nval = value | HOST_WIDE_INT_C (0xffffffff80000000);
+	  alt_cost = riscv_build_integer_1 (alt_codes, nval, mode);
+
+	  /* Now iterate over the bits we want to clear until the cost is
+	     too high or we're done.  */
+	  nval = value ^ HOST_WIDE_INT_C (-1);
+	  nval &= HOST_WIDE_INT_C (~0x7fffffff);
+	  while (nval && alt_cost < cost)
+	    {
+	      HOST_WIDE_INT bit = ctz_hwi (nval);
+	      alt_codes[alt_cost].code = AND;
+	      alt_codes[alt_cost].value = ~(1UL << bit);
+	      alt_codes[alt_cost].use_uw = false;
+	      alt_cost++;
+	      nval &= ~(1UL << bit);
+	    }
+
+	  if (nval == 0 && alt_cost <= cost)
+	    {
+	      memcpy (codes, alt_codes, sizeof (alt_codes));
+	      cost = alt_cost;
+	    }
+	}
     }
 
   if (cost > 2 && TARGET_64BIT && TARGET_ZBA)
@@ -1027,6 +1061,26 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	   alt_codes[alt_cost - 1].use_uw = false;
 	   memcpy (codes, alt_codes, sizeof (alt_codes));
 	   cost = alt_cost;
+	}
+    }
+
+  /* We might be able to generate a constant close to our target
+     then a final ADDI to get the desired constant.  */
+  if (cost > 2
+      && (value & 0xfff) != 0
+      && (value & 0x1800) == 0x1000)
+    {
+      HOST_WIDE_INT adjustment = -(0x800 - (value & 0xfff));
+      alt_cost = 1 + riscv_build_integer_1 (alt_codes,
+					    value - adjustment, mode);
+
+      if (alt_cost < cost)
+	{
+	  alt_codes[alt_cost - 1].code = PLUS;
+	  alt_codes[alt_cost - 1].value = adjustment;
+	  alt_codes[alt_cost - 1].use_uw = false;
+	  memcpy (codes, alt_codes, sizeof (alt_codes));
+	  cost = alt_cost;
 	}
     }
 
@@ -1069,7 +1123,7 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 
       /* If LUI+ADDI+BSETI resulted in a more efficient
 	 sequence, then use it.  */
-      if (i < cost)
+      if (value == 0 && i < cost)
 	{
 	  memcpy (codes, alt_codes, sizeof (alt_codes));
 	  cost = i;
@@ -1120,6 +1174,31 @@ riscv_build_integer (struct riscv_integer_op *codes, HOST_WIDE_INT value,
 	  cost = alt_cost;
 	}
     }
+
+  /* See if we can generate the inverted constant, then use
+     not to get the desired constant.
+
+     This can't be in riscv_build_integer_1 as it'll mutually
+     recurse with another case in there.  And it has to recurse
+     into riscv_build_integer so we get the trailing 0s case
+     above.  */
+  if (cost > 2 && value < 0)
+    {
+      struct riscv_integer_op alt_codes[RISCV_MAX_INTEGER_OPS];
+      int alt_cost;
+
+      HOST_WIDE_INT nval = ~value;
+      alt_cost = 1 + riscv_build_integer (alt_codes, nval, mode);
+      if (alt_cost < cost)
+	{
+	  alt_codes[alt_cost - 1].code = XOR;
+	  alt_codes[alt_cost - 1].value = -1;
+	  alt_codes[alt_cost - 1].use_uw = false;
+	  memcpy (codes, alt_codes, sizeof (alt_codes));
+	  cost = alt_cost;
+	}
+    }
+
 
   if (!TARGET_64BIT
       && (value > INT32_MAX || value < INT32_MIN))

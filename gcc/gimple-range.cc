@@ -43,8 +43,8 @@ gimple_ranger::gimple_ranger (bool use_imm_uses) :
 	tracer (""),
 	current_bb (NULL)
 {
-  // If the cache has a relation oracle, use it.
-  m_oracle = m_cache.oracle ();
+  // Share the oracle from the cache.
+  share_query (m_cache);
   if (dump_file && (param_ranger_debug & RANGER_DEBUG_TRACE))
     tracer.enable_trace ();
   m_stmt_list.create (0);
@@ -253,7 +253,7 @@ gimple_ranger::range_on_edge (vrange &r, edge e, tree name)
       range_on_exit (r, e->src, name);
       // If this is not an abnormal edge, check for a non-null exit .
       if ((e->flags & (EDGE_EH | EDGE_ABNORMAL)) == 0)
-	m_cache.m_exit.maybe_adjust_range (r, name, e->src);
+	infer_oracle ().maybe_adjust_range (r, name, e->src);
       gcc_checking_assert  (r.undefined_p ()
 			    || range_compatible_p (r.type(), TREE_TYPE (name)));
 
@@ -273,7 +273,7 @@ bool
 gimple_ranger::fold_range_internal (vrange &r, gimple *s, tree name)
 {
   fold_using_range f;
-  fur_depend src (s, &(gori ()), this);
+  fur_depend src (s, this);
   return f.fold_stmt (r, s, src, name);
 }
 
@@ -310,7 +310,7 @@ gimple_ranger::range_of_stmt (vrange &r, gimple *s, tree name)
 	  // Update any exports in the cache if this is a gimple cond statement.
 	  tree exp;
 	  basic_block bb = gimple_bb (s);
-	  FOR_EACH_GORI_EXPORT_NAME (m_cache.m_gori, bb, exp)
+	  FOR_EACH_GORI_EXPORT_NAME (gori_ssa (), bb, exp)
 	    m_cache.propagate_updated_value (exp, bb);
 	}
     }
@@ -516,8 +516,7 @@ void
 gimple_ranger::register_transitive_inferred_ranges (basic_block bb)
 {
   // Return if there are no inferred ranges in BB.
-  infer_range_manager &infer = m_cache.m_exit;
-  if (!infer.has_range_p (bb))
+  if (!infer_oracle ().has_range_p (bb))
     return;
 
   if (dump_file && (dump_flags & TDF_DETAILS))
@@ -530,7 +529,7 @@ gimple_ranger::register_transitive_inferred_ranges (basic_block bb)
       gimple *s = gsi_stmt (si);
       tree lhs = gimple_get_lhs (s);
       // If the LHS already has an inferred effect, leave it be.
-      if (!gimple_range_ssa_p (lhs) || infer.has_range_p (lhs, bb))
+      if (!gimple_range_ssa_p (lhs) || infer_oracle ().has_range_p (bb, lhs))
 	continue;
       // Pick up global value.
       Value_Range g (TREE_TYPE (lhs));
@@ -541,15 +540,16 @@ gimple_ranger::register_transitive_inferred_ranges (basic_block bb)
       // an inferred range as well.
       Value_Range r (TREE_TYPE (lhs));
       r.set_undefined ();
-      tree name1 = gori ().depend1 (lhs);
-      tree name2 = gori ().depend2 (lhs);
-      if ((name1 && infer.has_range_p (name1, bb))
-	  || (name2 && infer.has_range_p (name2, bb)))
+      tree name1 = gori_ssa ()->depend1 (lhs);
+      tree name2 = gori_ssa ()->depend2 (lhs);
+      if ((name1 && infer_oracle ().has_range_p (bb, name1))
+	  || (name2 && infer_oracle ().has_range_p (bb, name2)))
 	{
 	  // Check if folding S produces a different result.
 	  if (fold_range (r, s, this) && g != r)
 	    {
-	      infer.add_range (lhs, bb, r);
+	      gimple_infer_range ir (lhs, r);
+	      infer_oracle ().add_ranges (s, ir);
 	      m_cache.register_inferred_value (r, lhs, bb);
 	    }
 	}
@@ -755,6 +755,7 @@ assume_query::range_of_expr (vrange &r, tree expr, gimple *stmt)
 
 assume_query::assume_query ()
 {
+  create_gori (0, param_vrp_switch_limit);
   basic_block exit_bb = EXIT_BLOCK_PTR_FOR_FN (cfun);
   if (single_pred_p (exit_bb))
     {
@@ -785,6 +786,11 @@ assume_query::assume_query ()
     }
 }
 
+assume_query::~assume_query ()
+{
+  destroy_gori ();
+}
+
 // Evaluate operand OP on statement S, using the provided LHS range.
 // If successful, set the range in the global table, then visit OP's def stmt.
 
@@ -792,7 +798,7 @@ void
 assume_query::calculate_op (tree op, gimple *s, vrange &lhs, fur_source &src)
 {
   Value_Range op_range (TREE_TYPE (op));
-  if (m_gori.compute_operand_range (op_range, s, lhs, op, src)
+  if (gori ().compute_operand_range (op_range, s, lhs, op, src)
       && !op_range.varying_p ())
     {
       // Set the global range, merging if there is already a range.

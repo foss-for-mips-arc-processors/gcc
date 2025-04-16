@@ -178,13 +178,106 @@ range_query::dump (FILE *)
 {
 }
 
+// Default oracle for all range queries.  This contains no storage and thus
+// can be used anywhere.
+relation_oracle default_relation_oracle;
+infer_range_oracle default_infer_oracle;
+gimple_outgoing_range default_gori;
+
+void
+range_query::create_gori (int not_executable_flag, int sw_max_edges)
+{
+  gcc_checking_assert (m_gori == &default_gori);
+  gcc_checking_assert (m_map == NULL);
+  m_map = new gori_map ();
+  gcc_checking_assert (m_map);
+  m_gori = new gori_compute (*m_map, not_executable_flag, sw_max_edges);
+  gcc_checking_assert (m_gori);
+}
+
+void
+range_query::destroy_gori ()
+{
+  if (m_gori && m_gori != &default_gori)
+    delete m_gori;
+  if (m_map)
+    delete m_map;
+  m_map = NULL;
+  m_gori= &default_gori;
+}
+
+void
+range_query::create_infer_oracle (bool do_search)
+{
+  gcc_checking_assert (m_infer == &default_infer_oracle);
+  m_infer = new infer_range_manager (do_search);
+  gcc_checking_assert (m_infer);
+}
+
+void
+range_query::destroy_infer_oracle ()
+{
+  if (m_infer && m_infer != &default_infer_oracle)
+    delete m_infer;
+  m_infer = &default_infer_oracle;
+}
+
+// Create dominance based range oracle for the current query if dom info is
+// available.
+
+void
+range_query::create_relation_oracle ()
+{
+  gcc_checking_assert (this != &global_ranges);
+  gcc_checking_assert (m_relation == &default_relation_oracle);
+
+  if (!dom_info_available_p (CDI_DOMINATORS))
+    return;
+  m_relation = new dom_oracle ();
+  gcc_checking_assert (m_relation);
+}
+
+// Destroy any relation oracle that was created.
+
+void
+range_query::destroy_relation_oracle ()
+{
+  // m_relation can be NULL if a derived range_query class took care of
+  // disposing its own oracle.
+  if (m_relation && m_relation != &default_relation_oracle)
+    {
+      delete m_relation;
+      m_relation = &default_relation_oracle;
+    }
+}
+
+void
+range_query::share_query (range_query &q)
+{
+  m_relation = q.m_relation;
+  m_infer = q.m_infer;
+  m_gori = q.m_gori;
+  m_map = q.m_map;
+  m_shared_copy_p = true;
+}
+
 range_query::range_query ()
 {
-  m_oracle = NULL;
+  m_relation = &default_relation_oracle;
+  m_infer = &default_infer_oracle;
+  m_gori = &default_gori;
+  m_map = NULL;
+  m_shared_copy_p = false;
 }
 
 range_query::~range_query ()
 {
+  // Do not destroy anything if this is a shared copy.
+  if (m_shared_copy_p)
+    return;
+  destroy_gori ();
+  destroy_infer_oracle ();
+  destroy_relation_oracle ();
 }
 
 // This routine will invoke the equivalent of range_of_expr on
@@ -436,54 +529,4 @@ global_range_query::range_of_expr (vrange &r, tree expr, gimple *stmt)
   gimple_range_global (r, expr);
 
   return true;
-}
-
-// Return any known relation between SSA1 and SSA2 before stmt S is executed.
-// If GET_RANGE is true, query the range of both operands first to ensure
-// the definitions have been processed and any relations have be created.
-
-relation_kind
-range_query::query_relation (gimple *s, tree ssa1, tree ssa2, bool get_range)
-{
-  if (!m_oracle || TREE_CODE (ssa1) != SSA_NAME || TREE_CODE (ssa2) != SSA_NAME)
-    return VREL_VARYING;
-
-  // Ensure ssa1 and ssa2 have both been evaluated.
-  if (get_range)
-    {
-      Value_Range tmp1 (TREE_TYPE (ssa1));
-      Value_Range tmp2 (TREE_TYPE (ssa2));
-      range_of_expr (tmp1, ssa1, s);
-      range_of_expr (tmp2, ssa2, s);
-    }
-  return m_oracle->query_relation (gimple_bb (s), ssa1, ssa2);
-}
-
-// Return any known relation between SSA1 and SSA2 on edge E.
-// If GET_RANGE is true, query the range of both operands first to ensure
-// the definitions have been processed and any relations have be created.
-
-relation_kind
-range_query::query_relation (edge e, tree ssa1, tree ssa2, bool get_range)
-{
-  basic_block bb;
-  if (!m_oracle || TREE_CODE (ssa1) != SSA_NAME || TREE_CODE (ssa2) != SSA_NAME)
-    return VREL_VARYING;
-
-  // Use destination block if it has a single predecessor, and this picks
-  // up any relation on the edge.
-  // Otherwise choose the src edge and the result is the same as on-exit.
-  if (!single_pred_p (e->dest))
-    bb = e->src;
-  else
-    bb = e->dest;
-
-  // Ensure ssa1 and ssa2 have both been evaluated.
-  if (get_range)
-    {
-      Value_Range tmp (TREE_TYPE (ssa1));
-      range_on_edge (tmp, e, ssa1);
-      range_on_edge (tmp, e, ssa2);
-    }
-  return m_oracle->query_relation (bb, ssa1, ssa2);
 }

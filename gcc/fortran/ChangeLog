@@ -1,3 +1,33 @@
+2024-05-24  Harald Anlauf  <anlauf@gmx.de>
+	    Steven G. Kargl  <kargl@gcc.gnu.org>
+
+	PR fortran/93635
+	* symbol.cc (conflict_std): Helper function for reporting attribute
+	conflicts depending on the Fortran standard version.
+	(conf_std): Helper macro for checking standard-dependent conflicts.
+	(gfc_check_conflict): Use it.
+
+2024-05-24  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/86100
+	* trans-array.cc (gfc_conv_ss_startstride): Use abridged_ref_name
+	to generate a more user-friendly name for bounds-check messages.
+	* trans-expr.cc (gfc_copy_class_to_class): Fix bounds check for
+	rank>1 by looping over the dimensions.
+
+2024-05-23  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/103312
+	* dependency.cc (gfc_dep_compare_expr): Handle component call
+	expressions. Return -2 as default and return 0 if compared with
+	a function expression that is from an interface body and has
+	the same name.
+	* expr.cc (gfc_reduce_init_expr): If the expression is a comp
+	call do not attempt to reduce, defer to resolution and return
+	false.
+	* trans-types.cc (gfc_get_dtype_rank_type,
+	gfc_get_nodesc_array_type): Fix whitespace.
+
 2024-05-20  Mikael Morin  <mikael@gcc.gnu.org>
 
 	PR fortran/99798
