@@ -1,7 +1,5 @@
 /* { dg-do compile } */
 /* { dg-options "-mcmse -fshort-enums" } */
-/* ARMv8-M expectation with target { ! arm_cmse_clear_ok }.  */
-/* ARMv8.1-M expectation with target arm_cmse_clear_ok.  */
 /* { dg-final { check-function-bodies "**" "" "" } } */
 
 #include <arm_cmse.h>
