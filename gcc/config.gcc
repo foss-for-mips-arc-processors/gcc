@@ -4958,7 +4958,8 @@ case "${target}" in
 		esac
 
 		# Handle --with-tune.
-		if test "x${with_tune}" = xdefault; then
+		case ${with_tune} in
+		"")
 			case ${target} in
 			*-snps-*)
 				# Use a default mtune for Synopsys ARC-V.
@@ -4967,7 +4968,10 @@ case "${target}" in
 			*)
 				;;
 			esac
-		fi
+			;;
+		*)
+			;;
+		esac
 		;;
 
 	mips*-*-*)
