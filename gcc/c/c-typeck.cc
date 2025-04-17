@@ -101,7 +101,6 @@ static bool function_types_compatible_p (const_tree, const_tree,
 					 struct comptypes_data *);
 static bool type_lists_compatible_p (const_tree, const_tree,
 				     struct comptypes_data *);
-static tree lookup_field (tree, tree);
 static int convert_arguments (location_t, vec<location_t>, tree,
 			      vec<tree, va_gc> *, vec<tree, va_gc> *, tree,
 			      tree);
@@ -1167,6 +1166,28 @@ common_type (tree t1, tree t2)
   return c_common_type (t1, t2);
 }
 
+
+
+/* Helper function for comptypes.  For two compatible types, return 1
+   if they pass consistency checks.  In particular we test that
+   TYPE_CANONICAL is set correctly, i.e. the two types can alias.  */
+
+static bool
+comptypes_verify (tree type1, tree type2)
+{
+  if (TYPE_CANONICAL (type1) != TYPE_CANONICAL (type2)
+      && !TYPE_STRUCTURAL_EQUALITY_P (type1)
+      && !TYPE_STRUCTURAL_EQUALITY_P (type2))
+    {
+      /* FIXME: check other types. */
+      if (RECORD_OR_UNION_TYPE_P (type1)
+	  || TREE_CODE (type1) == ENUMERAL_TYPE
+	  || TREE_CODE (type2) == ENUMERAL_TYPE)
+	return false;
+    }
+  return true;
+}
+
 struct comptypes_data {
   bool enum_and_int_p;
   bool different_types_p;
@@ -1188,6 +1209,8 @@ comptypes (tree type1, tree type2)
   struct comptypes_data data = { };
   bool ret = comptypes_internal (type1, type2, &data);
 
+  gcc_checking_assert (!ret || comptypes_verify (type1, type2));
+
   return ret ? (data.warning_needed ? 2 : 1) : 0;
 }
 
@@ -1200,6 +1223,8 @@ comptypes_same_p (tree type1, tree type2)
 {
   struct comptypes_data data = { };
   bool ret = comptypes_internal (type1, type2, &data);
+
+  gcc_checking_assert (!ret || comptypes_verify (type1, type2));
 
   if (data.different_types_p)
     return false;
@@ -1218,6 +1243,8 @@ comptypes_check_enum_int (tree type1, tree type2, bool *enum_and_int_p)
   bool ret = comptypes_internal (type1, type2, &data);
   *enum_and_int_p = data.enum_and_int_p;
 
+  gcc_checking_assert (!ret || comptypes_verify (type1, type2));
+
   return ret ? (data.warning_needed ? 2 : 1) : 0;
 }
 
@@ -1231,6 +1258,8 @@ comptypes_check_different_types (tree type1, tree type2,
   struct comptypes_data data = { };
   bool ret = comptypes_internal (type1, type2, &data);
   *different_types_p = data.different_types_p;
+
+  gcc_checking_assert (!ret || comptypes_verify (type1, type2));
 
   return ret ? (data.warning_needed ? 2 : 1) : 0;
 }
@@ -1273,6 +1302,10 @@ comptypes_equiv_p (tree type1, tree type2)
   struct comptypes_data data = { };
   data.equiv = true;
   bool ret = comptypes_internal (type1, type2, &data);
+
+  /* check that different equivance classes are assigned only
+     to types that are not compatible.  */
+  gcc_checking_assert (ret || !comptypes (type1, type2));
 
   return ret;
 }
@@ -1629,9 +1662,6 @@ tagged_types_tu_compatible_p (const_tree t1, const_tree t2,
 	if (list_length (TYPE_FIELDS (t1)) != list_length (TYPE_FIELDS (t2)))
 	  return false;
 
-	if (data->equiv && (C_TYPE_VARIABLE_SIZE (t1) || C_TYPE_VARIABLE_SIZE (t2)))
-	  return false;
-
 	for (s1 = TYPE_FIELDS (t1), s2 = TYPE_FIELDS (t2);
 	     s1 && s2;
 	     s1 = DECL_CHAIN (s1), s2 = DECL_CHAIN (s2))
@@ -1660,6 +1690,38 @@ tagged_types_tu_compatible_p (const_tree t1, const_tree t2,
 		&& st2 && TREE_CODE (st2) == INTEGER_CST
 		&& !tree_int_cst_equal (st1, st2))
 	     return false;
+
+	    tree counted_by1 = lookup_attribute ("counted_by",
+						 DECL_ATTRIBUTES (s1));
+	    tree counted_by2 = lookup_attribute ("counted_by",
+						 DECL_ATTRIBUTES (s2));
+	    /* If there is no counted_by attribute for both fields.  */
+	    if (!counted_by1 && !counted_by2)
+	      continue;
+
+	    /* If only one field has counted_by attribute.  */
+	    if ((counted_by1 && !counted_by2)
+		|| (!counted_by1 && counted_by2))
+	      return false;
+
+	    /* Now both s1 and s2 have counted_by attributes, check
+	       whether they are the same.  */
+
+	    tree counted_by_field1
+	      = lookup_field (t1, TREE_VALUE (TREE_VALUE (counted_by1)));
+	    tree counted_by_field2
+	      = lookup_field (t2, TREE_VALUE (TREE_VALUE (counted_by2)));
+
+	    gcc_assert (counted_by_field1 && counted_by_field2);
+
+	    while (TREE_CHAIN (counted_by_field1))
+	      counted_by_field1 = TREE_CHAIN (counted_by_field1);
+	    while (TREE_CHAIN (counted_by_field2))
+	      counted_by_field2 = TREE_CHAIN (counted_by_field2);
+
+	    if (DECL_NAME (TREE_VALUE (counted_by_field1))
+		!= DECL_NAME (TREE_VALUE (counted_by_field2)))
+	      return false;
 	  }
 	return true;
 
@@ -2418,8 +2480,8 @@ default_conversion (tree exp)
    the component is embedded within (nested) anonymous structures or
    unions, the list steps down the chain to the component.  */
 
-static tree
-lookup_field (tree type, tree component)
+tree
+lookup_field (const_tree type, tree component)
 {
   tree field;
 
