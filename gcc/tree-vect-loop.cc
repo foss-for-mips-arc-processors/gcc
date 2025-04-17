@@ -5274,8 +5274,7 @@ have_whole_vector_shift (machine_mode mode)
    See vect_emulate_mixed_dot_prod for the actual sequence used.  */
 
 static bool
-vect_is_emulated_mixed_dot_prod (loop_vec_info loop_vinfo,
-				 stmt_vec_info stmt_info)
+vect_is_emulated_mixed_dot_prod (stmt_vec_info stmt_info)
 {
   gassign *assign = dyn_cast<gassign *> (stmt_info->stmt);
   if (!assign || gimple_assign_rhs_code (assign) != DOT_PROD_EXPR)
@@ -5286,10 +5285,9 @@ vect_is_emulated_mixed_dot_prod (loop_vec_info loop_vinfo,
   if (TYPE_SIGN (TREE_TYPE (rhs1)) == TYPE_SIGN (TREE_TYPE (rhs2)))
     return false;
 
-  stmt_vec_info reduc_info = info_for_reduction (loop_vinfo, stmt_info);
-  gcc_assert (reduc_info->is_reduc_info);
+  gcc_assert (STMT_VINFO_REDUC_VECTYPE_IN (stmt_info));
   return !directly_supported_p (DOT_PROD_EXPR,
-				STMT_VINFO_REDUC_VECTYPE_IN (reduc_info),
+				STMT_VINFO_REDUC_VECTYPE_IN (stmt_info),
 				optab_vector_mixed_sign);
 }
 
@@ -5328,8 +5326,8 @@ vect_model_reduction_cost (loop_vec_info loop_vinfo,
   if (!gimple_extract_op (orig_stmt_info->stmt, &op))
     gcc_unreachable ();
 
-  bool emulated_mixed_dot_prod
-    = vect_is_emulated_mixed_dot_prod (loop_vinfo, stmt_info);
+  bool emulated_mixed_dot_prod = vect_is_emulated_mixed_dot_prod (stmt_info);
+
   if (reduction_type == EXTRACT_LAST_REDUCTION)
     /* No extra instructions are needed in the prologue.  The loop body
        operations are costed in vectorizable_condition.  */
@@ -7403,6 +7401,79 @@ build_vect_cond_expr (code_helper code, tree vop[3], tree mask,
     }
 }
 
+/* Given an operation with CODE in loop reduction path whose reduction PHI is
+   specified by REDUC_INFO, the operation has TYPE of scalar result, and its
+   input vectype is represented by VECTYPE_IN. The vectype of vectorized result
+   may be different from VECTYPE_IN, either in base type or vectype lanes,
+   lane-reducing operation is the case.  This function check if it is possible,
+   and how to perform partial vectorization on the operation in the context
+   of LOOP_VINFO.  */
+
+static void
+vect_reduction_update_partial_vector_usage (loop_vec_info loop_vinfo,
+					    stmt_vec_info reduc_info,
+					    slp_tree slp_node,
+					    code_helper code, tree type,
+					    tree vectype_in)
+{
+  enum vect_reduction_type reduc_type = STMT_VINFO_REDUC_TYPE (reduc_info);
+  internal_fn reduc_fn = STMT_VINFO_REDUC_FN (reduc_info);
+  internal_fn cond_fn = get_conditional_internal_fn (code, type);
+
+  if (reduc_type != FOLD_LEFT_REDUCTION
+      && !use_mask_by_cond_expr_p (code, cond_fn, vectype_in)
+      && (cond_fn == IFN_LAST
+	  || !direct_internal_fn_supported_p (cond_fn, vectype_in,
+					      OPTIMIZE_FOR_SPEED)))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			 "can't operate on partial vectors because"
+			 " no conditional operation is available.\n");
+      LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+    }
+  else if (reduc_type == FOLD_LEFT_REDUCTION
+	   && reduc_fn == IFN_LAST
+	   && !expand_vec_cond_expr_p (vectype_in, truth_type_for (vectype_in),
+				       SSA_NAME))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			"can't operate on partial vectors because"
+			" no conditional operation is available.\n");
+      LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+    }
+  else if (reduc_type == FOLD_LEFT_REDUCTION
+	   && internal_fn_mask_index (reduc_fn) == -1
+	   && FLOAT_TYPE_P (vectype_in)
+	   && HONOR_SIGN_DEPENDENT_ROUNDING (vectype_in))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			 "can't operate on partial vectors because"
+			 " signed zeros cannot be preserved.\n");
+      LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+    }
+  else
+    {
+      internal_fn mask_reduc_fn
+			= get_masked_reduction_fn (reduc_fn, vectype_in);
+      vec_loop_masks *masks = &LOOP_VINFO_MASKS (loop_vinfo);
+      vec_loop_lens *lens = &LOOP_VINFO_LENS (loop_vinfo);
+      unsigned nvectors;
+
+      if (slp_node)
+	nvectors = SLP_TREE_NUMBER_OF_VEC_STMTS (slp_node);
+      else
+	nvectors = vect_get_num_copies (loop_vinfo, vectype_in);
+
+      if (mask_reduc_fn == IFN_MASK_LEN_FOLD_LEFT_PLUS)
+	vect_record_loop_len (loop_vinfo, lens, nvectors, vectype_in, 1);
+      else
+	vect_record_loop_mask (loop_vinfo, masks, nvectors, vectype_in, NULL);
+    }
+}
+
 /* Function vectorizable_reduction.
 
    Check if STMT_INFO performs a reduction operation that can be vectorized.
@@ -7468,7 +7539,6 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
   bool single_defuse_cycle = false;
   bool nested_cycle = false;
   bool double_reduc = false;
-  int vec_num;
   tree cr_index_scalar_type = NULL_TREE, cr_index_vector_type = NULL_TREE;
   tree cond_reduc_val = NULL_TREE;
 
@@ -7662,9 +7732,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
   gimple_match_op op;
   if (!gimple_extract_op (stmt_info->stmt, &op))
     gcc_unreachable ();
-  bool lane_reduc_code_p = (op.code == DOT_PROD_EXPR
-			    || op.code == WIDEN_SUM_EXPR
-			    || op.code == SAD_EXPR);
+  bool lane_reducing = lane_reducing_op_p (op.code);
 
   if (!POINTER_TYPE_P (op.type) && !INTEGRAL_TYPE_P (op.type)
       && !SCALAR_FLOAT_TYPE_P (op.type))
@@ -7676,7 +7744,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 
   /* For lane-reducing ops we're reducing the number of reduction PHIs
      which means the only use of that may be in the lane-reducing operation.  */
-  if (lane_reduc_code_p
+  if (lane_reducing
       && reduc_chain_length != 1
       && !only_slp_reduc_chain)
     {
@@ -7690,7 +7758,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
      since we'll mix lanes belonging to different reductions.  But it's
      OK to use them in a reduction chain or when the reduction group
      has just one element.  */
-  if (lane_reduc_code_p
+  if (lane_reducing
       && slp_node
       && !REDUC_GROUP_FIRST_ELEMENT (stmt_info)
       && SLP_TREE_LANES (slp_node) > 1)
@@ -7750,7 +7818,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
       /* To properly compute ncopies we are interested in the widest
 	 non-reduction input type in case we're looking at a widening
 	 accumulation that we later handle in vect_transform_reduction.  */
-      if (lane_reduc_code_p
+      if (lane_reducing
 	  && vectype_op[i]
 	  && (!vectype_in
 	      || (GET_MODE_SIZE (SCALAR_TYPE_MODE (TREE_TYPE (vectype_in)))
@@ -7778,6 +7846,11 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
   if (!vectype_in)
     vectype_in = STMT_VINFO_VECTYPE (phi_info);
   STMT_VINFO_REDUC_VECTYPE_IN (reduc_info) = vectype_in;
+
+  /* Each lane-reducing operation has its own input vectype, while reduction
+     PHI records the input vectype with least lanes.  */
+  if (lane_reducing)
+    STMT_VINFO_REDUC_VECTYPE_IN (stmt_info) = vectype_in;
 
   enum vect_reduction_type v_reduc_type = STMT_VINFO_REDUC_TYPE (phi_info);
   STMT_VINFO_REDUC_TYPE (reduc_info) = v_reduc_type;
@@ -8223,7 +8296,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
       && loop_vinfo->suggested_unroll_factor == 1)
     single_defuse_cycle = true;
 
-  if (single_defuse_cycle || lane_reduc_code_p)
+  if (single_defuse_cycle || lane_reducing)
     {
       gcc_assert (op.code != COND_EXPR);
 
@@ -8239,7 +8312,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 	 mixed-sign dot-products can be implemented using signed
 	 dot-products.  */
       machine_mode vec_mode = TYPE_MODE (vectype_in);
-      if (!lane_reduc_code_p
+      if (!lane_reducing
 	  && !directly_supported_p (op.code, vectype_in, optab_vector))
         {
           if (dump_enabled_p ())
@@ -8264,7 +8337,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
          For the other cases try without the single cycle optimization.  */
       if (!ok)
 	{
-	  if (lane_reduc_code_p)
+	  if (lane_reducing)
 	    return false;
 	  else
 	    single_defuse_cycle = false;
@@ -8275,7 +8348,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
   /* If the reduction stmt is one of the patterns that have lane
      reduction embedded we cannot handle the case of ! single_defuse_cycle.  */
   if ((ncopies > 1 && ! single_defuse_cycle)
-      && lane_reduc_code_p)
+      && lane_reducing)
     {
       if (dump_enabled_p ())
 	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
@@ -8286,7 +8359,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 
   if (slp_node
       && !(!single_defuse_cycle
-	   && !lane_reduc_code_p
+	   && !lane_reducing
 	   && reduction_type != FOLD_LEFT_REDUCTION))
     for (i = 0; i < (int) op.num_ops; i++)
       if (!vect_maybe_update_slp_op_vectype (slp_op[i], vectype_op[i]))
@@ -8297,20 +8370,15 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 	  return false;
 	}
 
-  if (slp_node)
-    vec_num = SLP_TREE_NUMBER_OF_VEC_STMTS (slp_node);
-  else
-    vec_num = 1;
-
   vect_model_reduction_cost (loop_vinfo, stmt_info, reduc_fn,
 			     reduction_type, ncopies, cost_vec);
   /* Cost the reduction op inside the loop if transformed via
      vect_transform_reduction.  Otherwise this is costed by the
      separate vectorizable_* routines.  */
-  if (single_defuse_cycle || lane_reduc_code_p)
+  if (single_defuse_cycle || lane_reducing)
     {
       int factor = 1;
-      if (vect_is_emulated_mixed_dot_prod (loop_vinfo, stmt_info))
+      if (vect_is_emulated_mixed_dot_prod (stmt_info))
 	/* Three dot-products and a subtraction.  */
 	factor = 4;
       record_stmt_cost (cost_vec, ncopies * factor, vector_stmt,
@@ -8325,7 +8393,7 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
   /* All but single defuse-cycle optimized, lane-reducing and fold-left
      reductions go through their own vectorizable_* routines.  */
   if (!single_defuse_cycle
-      && !lane_reduc_code_p
+      && !lane_reducing
       && reduction_type != FOLD_LEFT_REDUCTION)
     {
       stmt_vec_info tem
@@ -8338,60 +8406,10 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
       STMT_VINFO_DEF_TYPE (vect_orig_stmt (tem)) = vect_internal_def;
       STMT_VINFO_DEF_TYPE (tem) = vect_internal_def;
     }
-  else if (loop_vinfo && LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo))
-    {
-      vec_loop_masks *masks = &LOOP_VINFO_MASKS (loop_vinfo);
-      vec_loop_lens *lens = &LOOP_VINFO_LENS (loop_vinfo);
-      internal_fn cond_fn = get_conditional_internal_fn (op.code, op.type);
-
-      if (reduction_type != FOLD_LEFT_REDUCTION
-	  && !use_mask_by_cond_expr_p (op.code, cond_fn, vectype_in)
-	  && (cond_fn == IFN_LAST
-	      || !direct_internal_fn_supported_p (cond_fn, vectype_in,
-						  OPTIMIZE_FOR_SPEED)))
-	{
-	  if (dump_enabled_p ())
-	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
-			     "can't operate on partial vectors because"
-			     " no conditional operation is available.\n");
-	  LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
-	}
-      else if (reduction_type == FOLD_LEFT_REDUCTION
-	       && reduc_fn == IFN_LAST
-	       && !expand_vec_cond_expr_p (vectype_in,
-					   truth_type_for (vectype_in),
-					   SSA_NAME))
-	{
-	  if (dump_enabled_p ())
-	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
-			     "can't operate on partial vectors because"
-			     " no conditional operation is available.\n");
-	  LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
-	}
-      else if (reduction_type == FOLD_LEFT_REDUCTION
-	       && internal_fn_mask_index (reduc_fn) == -1
-	       && FLOAT_TYPE_P (vectype_in)
-	       && HONOR_SIGN_DEPENDENT_ROUNDING (vectype_in))
-	{
-	  if (dump_enabled_p ())
-	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
-			     "can't operate on partial vectors because"
-			     " signed zeros cannot be preserved.\n");
-	  LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
-	}
-      else
-	{
-	  internal_fn mask_reduc_fn
-	    = get_masked_reduction_fn (reduc_fn, vectype_in);
-
-	  if (mask_reduc_fn == IFN_MASK_LEN_FOLD_LEFT_PLUS)
-	    vect_record_loop_len (loop_vinfo, lens, ncopies * vec_num,
-				  vectype_in, 1);
-	  else
-	    vect_record_loop_mask (loop_vinfo, masks, ncopies * vec_num,
-				   vectype_in, NULL);
-	}
-    }
+  else if (LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo))
+    vect_reduction_update_partial_vector_usage (loop_vinfo, reduc_info,
+						slp_node, op.code, op.type,
+						vectype_in);
   return true;
 }
 
@@ -8567,10 +8585,7 @@ vect_transform_reduction (loop_vec_info loop_vinfo,
     }
 
   bool single_defuse_cycle = STMT_VINFO_FORCE_SINGLE_CYCLE (reduc_info);
-  gcc_assert (single_defuse_cycle
-	      || code == DOT_PROD_EXPR
-	      || code == WIDEN_SUM_EXPR
-	      || code == SAD_EXPR);
+  gcc_assert (single_defuse_cycle || lane_reducing_op_p (code));
 
   /* Create the destination vector  */
   tree scalar_dest = gimple_get_lhs (stmt_info->stmt);
@@ -8615,8 +8630,8 @@ vect_transform_reduction (loop_vec_info loop_vinfo,
 					: &vec_oprnds2));
     }
 
-  bool emulated_mixed_dot_prod
-    = vect_is_emulated_mixed_dot_prod (loop_vinfo, stmt_info);
+  bool emulated_mixed_dot_prod = vect_is_emulated_mixed_dot_prod (stmt_info);
+
   FOR_EACH_VEC_ELT (vec_oprnds0, i, def0)
     {
       gimple *new_stmt;
