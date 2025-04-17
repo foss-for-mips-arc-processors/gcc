@@ -1312,7 +1312,12 @@ build_pred_graph (void)
 	{
 	  /* *x = y.  */
 	  if (rhs.offset == 0 && lhs.offset == 0 && rhs.type == SCALAR)
-	    add_pred_graph_edge (graph, FIRST_REF_NODE + lhsvar, rhsvar);
+	    {
+	      if (lhs.var == anything_id)
+		add_pred_graph_edge (graph, storedanything_id, rhsvar);
+	      else
+		add_pred_graph_edge (graph, FIRST_REF_NODE + lhsvar, rhsvar);
+	    }
 	}
       else if (rhs.type == DEREF)
 	{
@@ -1398,7 +1403,12 @@ build_succ_graph (void)
       if (lhs.type == DEREF)
 	{
 	  if (rhs.offset == 0 && lhs.offset == 0 && rhs.type == SCALAR)
-	    add_graph_edge (graph, FIRST_REF_NODE + lhsvar, rhsvar);
+	    {
+	      if (lhs.var == anything_id)
+		add_graph_edge (graph, storedanything_id, rhsvar);
+	      else
+		add_graph_edge (graph, FIRST_REF_NODE + lhsvar, rhsvar);
+	    }
 	}
       else if (rhs.type == DEREF)
 	{
@@ -1418,13 +1428,11 @@ build_succ_graph (void)
 	}
     }
 
-  /* Add edges from STOREDANYTHING to all non-direct nodes that can
-     receive pointers.  */
+  /* Add edges from STOREDANYTHING to all nodes that can receive pointers.  */
   t = find (storedanything_id);
   for (i = integer_id + 1; i < FIRST_REF_NODE; ++i)
     {
-      if (!bitmap_bit_p (graph->direct_nodes, i)
-	  && get_varinfo (i)->may_have_pointers)
+      if (get_varinfo (i)->may_have_pointers)
 	add_graph_edge (graph, find (i), t);
     }
 
@@ -1534,8 +1542,10 @@ scc_visit (constraint_graph_t graph, class scc_info *si, unsigned int n)
 		  graph->indirect_cycles[i - FIRST_REF_NODE] = lowest_node;
 		}
 	    }
+	  bitmap_set_bit (si->deleted, lowest_node);
 	}
-      bitmap_set_bit (si->deleted, n);
+      else
+	bitmap_set_bit (si->deleted, n);
     }
   else
     si->scc_stack.safe_push (n);
@@ -5267,7 +5277,11 @@ find_func_aliases (struct function *fn, gimple *origt)
 
 	  /* A memory constraint makes the address of the operand escape.  */
 	  if (!allows_reg && allows_mem)
-	    make_escape_constraint (build_fold_addr_expr (op));
+	    {
+	      auto_vec<ce_s> tmpc;
+	      get_constraint_for_address_of (op, &tmpc);
+	      make_constraints_to (escaped_id, tmpc);
+	    }
 
 	  /* The asm may read global memory, so outputs may point to
 	     any global memory.  */
@@ -5296,7 +5310,11 @@ find_func_aliases (struct function *fn, gimple *origt)
 
 	  /* A memory constraint makes the address of the operand escape.  */
 	  if (!allows_reg && allows_mem)
-	    make_escape_constraint (build_fold_addr_expr (op));
+	    {
+	      auto_vec<ce_s> tmpc;
+	      get_constraint_for_address_of (op, &tmpc);
+	      make_constraints_to (escaped_id, tmpc);
+	    }
 	  /* Strictly we'd only need the constraint to ESCAPED if
 	     the asm clobbers memory, otherwise using something
 	     along the lines of per-call clobbers/uses would be enough.  */
