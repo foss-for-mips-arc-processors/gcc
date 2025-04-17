@@ -1,10 +1,11 @@
-2024-08-01  Release Manager
+2024-05-29  Tobias Burnus  <tburnus@baylibre.com>
 
-	* GCC 14.2.0 released.
+	* hsa.h (HSA_AMD_SYSTEM_INFO_SVM_ACCESSIBLE_BY_DEFAULT): Add
+	enum value.
 
-2024-05-07  Release Manager
+2024-05-29  Tobias Burnus  <tburnus@baylibre.com>
 
-	* GCC 14.1.0 released.
+	* cuda/cuda.h (CU_DEVICE_ATTRIBUTE_PAGEABLE_MEMORY_ACCESS): Add.
 
 2024-04-08  Thomas Schwinge  <tschwinge@baylibre.com>
 
