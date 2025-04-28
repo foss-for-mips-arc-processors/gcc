@@ -3485,7 +3485,7 @@ vect_analyze_loop_1 (class loop *loop, vec_info_shared *shared,
   if (dump_enabled_p ())
     dump_printf_loc (MSG_NOTE, vect_location,
 		     "***** Analysis %s with vector mode %s\n",
-		     res ? "succeeded" : " failed",
+		     res ? "succeeded" : "failed",
 		     GET_MODE_NAME (loop_vinfo->vector_mode));
 
   if (res && !main_loop_vinfo && suggested_unroll_factor > 1)
@@ -5610,6 +5610,12 @@ get_initial_defs_for_reduction (loop_vec_info loop_vinfo,
   tree_vector_builder elts (vector_type, nunits, 1);
   elts.quick_grow (nunits);
   gimple_seq ctor_seq = NULL;
+  if (neutral_op
+      && !useless_type_conversion_p (TREE_TYPE (vector_type),
+				     TREE_TYPE (neutral_op)))
+    neutral_op = gimple_convert (&ctor_seq,
+				 TREE_TYPE (vector_type),
+				 neutral_op);
   for (j = 0; j < nunits * number_of_vectors; ++j)
     {
       tree op;
@@ -5618,14 +5624,7 @@ get_initial_defs_for_reduction (loop_vec_info loop_vinfo,
       /* Get the def before the loop.  In reduction chain we have only
 	 one initial value.  Else we have as many as PHIs in the group.  */
       if (i >= initial_values.length () || (j > i && neutral_op))
-	{
-	  if (!useless_type_conversion_p (TREE_TYPE (vector_type),
-					  TREE_TYPE (neutral_op)))
-	    neutral_op = gimple_convert (&ctor_seq,
-					 TREE_TYPE (vector_type),
-					 neutral_op);
-	  op = neutral_op;
-	}
+	op = neutral_op;
       else
 	{
 	  if (!useless_type_conversion_p (TREE_TYPE (vector_type),
@@ -6509,7 +6508,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
   /* 2.3 Create the reduction code, using one of the three schemes described
          above. In SLP we simply need to extract all the elements from the 
          vector (without reducing them), so we use scalar shifts.  */
-  else if (reduc_fn != IFN_LAST && !slp_reduc)
+  else if (reduc_fn != IFN_LAST && (!slp_reduc || group_size == 1))
     {
       tree tmp;
       tree vec_elem_type;
@@ -6679,7 +6678,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
       gsi_insert_seq_before (&exit_gsi, stmts, GSI_SAME_STMT);
       reduc_inputs[0] = new_temp;
 
-      if (reduce_with_shift && !slp_reduc)
+      if (reduce_with_shift && (!slp_reduc || group_size == 1))
 	{
 	  int element_bitsize = tree_to_uhwi (bitsize);
 	  /* Enforced by vectorizable_reduction, which disallows SLP reductions
