@@ -568,6 +568,7 @@ static const struct riscv_tune_param arcv_rmx100_tune_info = {
   2,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,				/* fusible_ops */
@@ -586,6 +587,7 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   2,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ARCV,				/* fusible_ops */
@@ -604,6 +606,7 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   2,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ARCV,				/* fusible_ops */
@@ -622,6 +625,7 @@ static const struct riscv_tune_param arcv_rpx100_tune_info = {
   2,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ARCV,				/* fusible_ops */
