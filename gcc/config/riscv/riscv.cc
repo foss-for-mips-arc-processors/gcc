@@ -289,6 +289,7 @@ struct riscv_tune_param
   unsigned short memory_cost;
   unsigned short fmv_cost;
   bool slow_unaligned_access;
+  bool vector_unaligned_access;
   bool use_divmod_expansion;
   bool overlap_op_by_pieces;
   unsigned int fusible_ops;
@@ -300,6 +301,10 @@ struct riscv_tune_param
 
 /* Whether unaligned accesses execute very slowly.  */
 bool riscv_slow_unaligned_access_p;
+
+/* Whether misaligned vector accesses are supported (i.e. do not
+   throw an exception).  */
+bool riscv_vector_unaligned_access_p;
 
 /* Whether user explicitly passed -mstrict-align.  */
 bool riscv_user_wants_strict_align;
@@ -449,6 +454,7 @@ static const struct riscv_tune_param rocket_tune_info = {
   5,						/* memory_cost */
   8,						/* fmv_cost */
   true,						/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,                           /* fusible_ops */
@@ -467,6 +473,7 @@ static const struct riscv_tune_param sifive_7_tune_info = {
   3,						/* memory_cost */
   8,						/* fmv_cost */
   true,						/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,                           /* fusible_ops */
@@ -485,6 +492,7 @@ static const struct riscv_tune_param sifive_p400_tune_info = {
   3,						/* memory_cost */
   4,						/* fmv_cost */
   true,						/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_LUI_ADDI | RISCV_FUSE_AUIPC_ADDI,  /* fusible_ops */
@@ -503,6 +511,7 @@ static const struct riscv_tune_param sifive_p600_tune_info = {
   3,						/* memory_cost */
   4,						/* fmv_cost */
   true,						/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_LUI_ADDI | RISCV_FUSE_AUIPC_ADDI,  /* fusible_ops */
@@ -521,6 +530,7 @@ static const struct riscv_tune_param thead_c906_tune_info = {
   5,            /* memory_cost */
   8,		/* fmv_cost */
   false,            /* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,	/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,                           /* fusible_ops */
@@ -539,6 +549,7 @@ static const struct riscv_tune_param xiangshan_nanhu_tune_info = {
   3,						/* memory_cost */
   3,						/* fmv_cost */
   true,						/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_ZEXTW | RISCV_FUSE_ZEXTH,          /* fusible_ops */
@@ -629,6 +640,7 @@ static const struct riscv_tune_param generic_ooo_tune_info = {
   4,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  true,						/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   true,						/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,                           /* fusible_ops */
@@ -647,6 +659,7 @@ static const struct riscv_tune_param optimize_size_tune_info = {
   2,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
   RISCV_FUSE_NOTHING,                           /* fusible_ops */
@@ -10395,6 +10408,12 @@ riscv_override_options_internal (struct gcc_options *opts)
      -m[no-]strict-align is left unspecified, heed -mtune's advice.  */
   riscv_slow_unaligned_access_p = (cpu->tune_param->slow_unaligned_access
 				   || TARGET_STRICT_ALIGN);
+
+  /* By default, when -mno-vector-strict-align is not specified, do not allow
+     unaligned vector memory accesses except if -mtune's setting explicitly
+     allows it.  */
+  riscv_vector_unaligned_access_p = opts->x_rvv_vector_strict_align == 0
+    || cpu->tune_param->vector_unaligned_access;
 
   /* Make a note if user explicitly passed -mstrict-align for later
      builtin macro generation.  Can't use target_flags_explicitly since
