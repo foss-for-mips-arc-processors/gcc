@@ -12126,7 +12126,7 @@ vectorizable_condition (vec_info *vinfo,
     = STMT_VINFO_REDUC_DEF (vect_orig_stmt (stmt_info)) != NULL;
   if (for_reduction)
     {
-      if (slp_node)
+      if (slp_node && SLP_TREE_LANES (slp_node) > 1)
 	return false;
       reduc_info = info_for_reduction (vinfo, stmt_info);
       reduction_type = STMT_VINFO_REDUC_TYPE (reduc_info);
@@ -12215,6 +12215,10 @@ vectorizable_condition (vec_info *vinfo,
 	      cond_expr = NULL_TREE;
 	    }
 	}
+      /* ???  The vectorized operand query below doesn't allow swapping
+	 this way for SLP.  */
+      if (slp_node)
+	return false;
       std::swap (then_clause, else_clause);
     }
 
@@ -13265,6 +13269,10 @@ vect_analyze_stmt (vec_info *vinfo,
 			 || relevance == vect_unused_in_scope
 			 || relevance == vect_used_only_live));
          break;
+
+      case vect_double_reduction_def:
+	gcc_assert (!bb_vinfo && node);
+	break;
 
       case vect_induction_def:
       case vect_first_order_recurrence:
