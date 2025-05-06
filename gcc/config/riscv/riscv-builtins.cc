@@ -236,6 +236,7 @@ tree riscv_float16_type_node = NULL_TREE;
 static tree
 riscv_build_function_type (enum riscv_function_type type)
 {
+  warning(0, "LUIS: riscv_build_function_type");
   static tree types[(int) RISCV_MAX_FTYPE_MAX];
 
   if (types[(int) type] == NULL_TREE)
@@ -280,6 +281,7 @@ riscv_init_builtin_types (void)
 void
 riscv_init_builtins (void)
 {
+  warning (0, "luis: riscv_init_builtins");
   riscv_init_builtin_types ();
   riscv_vector::init_builtins ();
 

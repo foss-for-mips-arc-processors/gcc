@@ -323,6 +323,47 @@ riscv_pragma_luis_nop (cpp_reader *)
 	warning(0, "LUIS: pragma riscv luis_nop triggered");
 }
 
+#include "stringpool.h"
+#include "gimplify.h"
+
+/* Implement #pragma riscv luis_foo.  This pragma is used to insert a
+   "nop" instruction into the current function body.  Thus, the pragma MUST
+   be inside a function.  */
+static void
+riscv_pragma_luis_foo (cpp_reader *)
+{
+	location_t loc = input_location;
+
+  tree dest = build_decl (loc, VAR_DECL, get_identifier("dest"), integer_type_node);
+  tree op1  = build_decl (loc, VAR_DECL, get_identifier("op1"), integer_type_node);
+  tree op2  = build_decl (loc, VAR_DECL, get_identifier("op2"), integer_type_node);
+
+  tree output_constraints = build_string (2, "=r");
+  tree output_vec = make_tree_vec (1);
+  TREE_VEC_ELT (output_vec, 0) = build_tree_list (output_constraints, dest);
+
+  tree input_vec = make_tree_vec (2);
+  TREE_VEC_ELT (input_vec, 0) = build_tree_list (build_string (1, "r"), op1);
+  TREE_VEC_ELT (input_vec, 1) = build_tree_list (build_string (1, "r"), op2);
+
+  tree asm_string = build_string (strlen ("foo %0, %1, %2"), "foo %0, %1, %2");
+
+  tree clobbers = NULL_TREE;
+  tree labels = NULL_TREE;
+  tree asm_stmt = build_stmt (loc, ASM_EXPR,
+            asm_string,   /* Assembly code (string).  */
+            output_vec,   /* Output operands.  */
+            input_vec,    /* Input operands.  */
+            clobbers,     /* Clobbered registers.  */
+            labels);      /* Goto labels.  */
+
+  ASM_VOLATILE_P (asm_stmt) = 1;
+
+  add_stmt (asm_stmt);
+
+	warning(0, "LUIS: pragma riscv luis_foo triggered");
+}
+
 struct pragma_luis_flags
 {
   const char *function_name;
@@ -511,4 +552,5 @@ riscv_register_pragmas (void)
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
   c_register_pragma ("riscv", "luis", riscv_pragma_luis);
   c_register_pragma ("riscv", "luis_nop", riscv_pragma_luis_nop);
+  c_register_pragma ("riscv", "luis_foo", riscv_pragma_luis_foo);
 }
