@@ -4510,7 +4510,21 @@
 	rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
 	emit_insn (gen_extendhisi2 (tmp0, operands[1]));
 	emit_insn (gen_extendhisi2 (tmp1, operands[2]));
-	emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+
+	if (TARGET_64BIT)
+	  {
+	    rtx op0 = gen_reg_rtx (DImode);
+	    emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
+	    op0 = gen_lowpart (SImode, op0);
+	    SUBREG_PROMOTED_VAR_P (op0) = 1;
+	    SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+	    emit_move_insn (operands[0], op0);
+	  }
+	else
+	  {
+	    emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+	  }
+
 	DONE;
       }
   }
@@ -4528,7 +4542,21 @@
     rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
     emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
     emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
-    emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+
+    if (TARGET_64BIT)
+      {
+	rtx op0 = gen_reg_rtx (DImode);
+	emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
+	op0 = gen_lowpart (SImode, op0);
+	SUBREG_PROMOTED_VAR_P (op0) = 1;
+	SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+	emit_move_insn (operands[0], op0);
+      }
+    else
+      {
+	emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+      }
+
     DONE;
   }
 )
@@ -4559,6 +4587,29 @@
      else
        {
 	 return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
+       }
+  }
+  [(set_attr "type" "imul_fused")]
+)
+
+(define_insn "madd_split_fused_extended"
+  [(set (match_operand:DI 0 "register_operand" "=&r,r")
+     (sign_extend:DI
+      (plus:SI
+	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
+		 (match_operand:SI 2 "register_operand" "r,r"))
+	(match_operand:SI 3 "register_operand" "r,?0"))))
+    (clobber (match_scratch:SI 4 "=&r,&r"))]
+  "arcv_micro_arch_supports_fusion_p ()
+   && (TARGET_ZMMUL || TARGET_MUL)"
+  {
+     if (REGNO (operands[0]) == REGNO (operands[3]))
+       {
+	 return "mulw\t%4,%1,%2\n\taddw\t%4,%3,%4\n\tmv\t%0,%4";
+       }
+     else
+       {
+	 return "mulw\t%0,%1,%2\n\taddw\t%0,%0,%3";
        }
   }
   [(set_attr "type" "imul_fused")]
