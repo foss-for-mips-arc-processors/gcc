@@ -216,6 +216,9 @@ static const struct riscv_builtin_description riscv_builtins[] = {
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
   RISCV_BUILTIN (pause, "pause", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE, hint_pause),
+
+  /* "apex" string must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
+  RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
 };
 
 /* Index I is the function declaration for riscv_builtins[I], or null if the

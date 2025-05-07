@@ -70,6 +70,9 @@
   UNSPEC_FMINM
   UNSPEC_FMAXM
 
+  ;; luis
+  UNSPEC_LUIS
+
   ;; Stack tie
   UNSPEC_TIE
 
@@ -653,6 +656,17 @@
 (define_insn_reservation "ghost" 0
   (eq_attr "type" "ghost")
   "nothing")
+
+;; luis
+(define_insn "riscv_apex"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+        (unspec:SI [(match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "register_operand" "r")]
+                UNSPEC_LUIS))]
+    ""
+    "luis\t%0, %1, %2"
+    [(set_attr "type" "arith")]
+)
 
 ;;
 ;;  ....................
