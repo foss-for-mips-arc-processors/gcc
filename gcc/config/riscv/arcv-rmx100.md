@@ -57,57 +57,44 @@
        (eq_attr "type" "load"))
   "arcv_rmx100_DMP,nothing*2")
 
-(define_insn_reservation "arcv_rmx100_fpload_insn" 3
-  (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "fpload"))
-  "arcv_rmx100_DMP,nothing*2")
-
 (define_insn_reservation "arcv_rmx100_store_insn" 1
   (and (eq_attr "tune" "arcv_rmx100")
        (eq_attr "type" "store,fpstore"))
   "arcv_rmx100_DMP")
 
+;; FPU scheduling. FIXME: This is based on the "fast" unit for now, the "slow"
+;; option remains to be implemented later (together with the -mfpu flag).
+
+(define_insn_reservation "arcv_rmx100_fpload_insn" 3
+  (and (eq_attr "tune" "arcv_rmx100")
+       (eq_attr "type" "fpload"))
+  "arcv_rmx100_DMP,nothing*2")
+
 (define_insn_reservation "arcv_rmx100_farith_insn" 2
   (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "fadd,fmul,fmadd,fcmp"))
-  "arcv_rmx100_FPU*2")
+       (eq_attr "type" "fadd,fcmp"))
+  "arcv_rmx100_FPU,nothing")
 
-(define_insn_reservation "arcv_rmx100_xfer" 2
+(define_insn_reservation "arcv_rmx100_xfer" 1
   (and (eq_attr "tune" "arcv_rmx100")
        (eq_attr "type" "fmove,mtc,mfc,fcvt,fcvt_f2i,fcvt_i2f"))
-   "arcv_rmx100_FPU*2")
+   "arcv_rmx100_FPU")
 
-;;(define_insn_reservation "core" 1
-;;  (eq_attr "type" "block, brk, dmb, flag, lr, sr, sync")
-;;  "arcv_rmx100_ALU0 + arcv_rmx100_ALU1 + arcv_rmx100_DMP + arcv_rmx100_MPY + arcv_rmx100_MPY64 + arcv_rmx100_DIV")
-
-(define_insn_reservation "arcv_rmx100_fmul_half" 5
+(define_insn_reservation "arcv_rmx100_fmul_insn" 2
   (and (eq_attr "tune" "arcv_rmx100")
-       (and (eq_attr "type" "fadd,fmul,fmadd")
-	    (eq_attr "mode" "HF")))
+       (eq_attr "type" "fmul"))
+  "arcv_rmx100_FPU,nothing")
+
+(define_insn_reservation "arcv_rmx100_fmac_insn" 2
+  (and (eq_attr "tune" "arcv_rmx100")
+       (eq_attr "type" "fmadd"))
+  "arcv_rmx100_FPU,nothing")
+
+(define_insn_reservation "arcv_rmx100_fdiv_insn" 10
+  (and (eq_attr "tune" "arcv_rmx100")
+       (eq_attr "type" "fdiv,fsqrt"))
   "arcv_rmx100_FPU")
 
-(define_insn_reservation "arcv_rmx100_fmul_single" 5
-  (and (eq_attr "tune" "arcv_rmx100")
-       (and (eq_attr "type" "fadd,fmul,fmadd")
-	    (eq_attr "mode" "SF")))
-  "arcv_rmx100_FPU")
-
-(define_insn_reservation "arcv_rmx100_fmul_double" 7
-  (and (eq_attr "tune" "arcv_rmx100")
-       (and (eq_attr "type" "fadd,fmul,fmadd")
-	    (eq_attr "mode" "DF")))
-  "arcv_rmx100_FPU")
-
-(define_insn_reservation "arcv_rmx100_fdiv" 20
-  (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "fdiv"))
-  "arcv_rmx100_FPU*20")
-
-(define_insn_reservation "arcv_rmx100_fsqrt" 25
-  (and (eq_attr "tune" "arcv_rmx100")
-       (eq_attr "type" "fsqrt"))
-  "arcv_rmx100_FPU*25")
 
 (define_bypass 1 "arcv_rmx100_mpy32_insn" "arcv_rmx100_*" "arcv_mpy_1c_bypass_p")
 (define_bypass 2 "arcv_rmx100_mpy32_insn" "arcv_rmx100_*" "arcv_mpy_2c_bypass_p")
