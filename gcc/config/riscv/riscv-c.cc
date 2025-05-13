@@ -378,7 +378,7 @@ struct riscv_intrinsic_info
    Perhaps it should be in c-pragma.cc? */
 
 static void
-riscv_pragma_luis (cpp_reader *)
+riscv_pragma_intrinsic_apex (cpp_reader *)
 {
 
   enum cpp_ttype token;
@@ -545,7 +545,7 @@ riscv_register_pragmas (void)
   targetm.resolve_overloaded_builtin = riscv_resolve_overloaded_builtin;
   targetm.check_builtin_call = riscv_check_builtin_call;
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
-  c_register_pragma ("riscv", "luis", riscv_pragma_luis);
+  c_register_pragma (0, "intrinsic", riscv_pragma_intrinsic_apex);
   c_register_pragma ("riscv", "luis_nop", riscv_pragma_luis_nop);
   c_register_pragma ("riscv", "luis_foo", riscv_pragma_luis_foo);
 }
