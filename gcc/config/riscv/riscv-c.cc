@@ -419,7 +419,7 @@ riscv_pragma_luis (cpp_reader *)
       error ("expected key (identifier)");
       return;
     }
-    const char *key = TREE_STRING_POINTER (x);
+    const char *key = IDENTIFIER_POINTER (x);
 
     /* Parse '=>' (as '=' followed by '>') */
     if (pragma_lex (&x) != CPP_EQ)
