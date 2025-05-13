@@ -440,36 +440,31 @@ riscv_pragma_luis (cpp_reader *)
     {
       case CPP_STRING:
       {
-      const char *str = TREE_STRING_POINTER (x);
-      /* TODO: Store string.  */
-/*      if (strcmp (key, "name"))
-      {
-        flags->name = str;
-      }
-      else if (strcmp (key, "opcode"))
-      {
-        flags->opcode = str;
-      }
-      else if (strcmp (key, "subcode"))
-      {
-        flags->sub_code = str;
-      }
-      else if (strcmp (key, "set_flags"))
-      {
-        flags->set_flags = str;
-      }
-      else if (strcmp (key, "flags"))
-      {
-        flags->flags = str;
-      }*/
-      break;
+        const char *str = TREE_STRING_POINTER(x);
+
+        if (strcmp(key, "name") == 0)
+          flags->name = str;
+        else if (strcmp(key, "flags") == 0)
+          flags->flags = str;
+        else
+          warning(0, "luis: unexpected string value for key '%s'", key);
+        
+        break;
       }
       case CPP_NUMBER:
       {
-      /* Extract integer value.  */
-      unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW (x);
-      /* TODO: Store numeric value (e.g., 0x07 for key "opcode")  */
-      break;
+        unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
+
+        if (strcmp(key, "opcode") == 0)
+          flags->opcode = num;
+        else if (strcmp(key, "sub_opcode") == 0)
+          flags->sub_code = num;
+        else if (strcmp(key, "set_flags") == 0)
+          flags->set_flags = num;
+        else
+          warning(0, "luis: unexpected numeric value for key '%s'", key);
+        
+        break;
       }
       default:
       error ("expected string, number or hex value");
