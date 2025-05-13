@@ -364,7 +364,7 @@ riscv_pragma_luis_foo (cpp_reader *)
 	warning(0, "LUIS: pragma riscv luis_foo triggered");
 }
 
-struct pragma_luis_flags
+struct riscv_intrinsic_info
 {
   const char *function_name;
   const char *name;
@@ -395,7 +395,7 @@ riscv_pragma_luis (cpp_reader *)
     return;
   }
 
-  struct pragma_luis_flags *flags;
+  struct riscv_intrinsic_info apex;
 //  const char *intrinsic_name = TREE_STRING_POINTER (x);
   const char *intrinsic_name = IDENTIFIER_POINTER (x);
 
@@ -443,9 +443,9 @@ riscv_pragma_luis (cpp_reader *)
         const char *str = TREE_STRING_POINTER(x);
 
         if (strcmp(key, "name") == 0)
-          flags->name = str;
+	  apex.name = str;
         else if (strcmp(key, "flags") == 0)
-          flags->flags = str;
+	  apex.flags = str;
         else
           warning(0, "luis: unexpected string value for key '%s'", key);
         
@@ -456,11 +456,11 @@ riscv_pragma_luis (cpp_reader *)
         unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
 
         if (strcmp(key, "opcode") == 0)
-          flags->opcode = num;
+	  apex.opcode = num;
         else if (strcmp(key, "sub_opcode") == 0)
-          flags->sub_code = num;
+	  apex.sub_code = num;
         else if (strcmp(key, "set_flags") == 0)
-          flags->set_flags = num;
+	  apex.set_flags = num;
         else
           warning(0, "luis: unexpected numeric value for key '%s'", key);
         
