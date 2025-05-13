@@ -364,16 +364,6 @@ riscv_pragma_luis_foo (cpp_reader *)
 	warning(0, "LUIS: pragma riscv luis_foo triggered");
 }
 
-struct riscv_intrinsic_info
-{
-  const char *function_name;
-  const char *name;
-  int opcode;
-  int sub_code;
-  int set_flags;
-  const char *flags;
-};
-
 /* Implement #prama intrinsic
    Perhaps it should be in c-pragma.cc? */
 
@@ -395,7 +385,6 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     return;
   }
 
-  struct riscv_intrinsic_info apex;
 //  const char *intrinsic_name = TREE_STRING_POINTER (x);
   const char *intrinsic_name = IDENTIFIER_POINTER (x);
 

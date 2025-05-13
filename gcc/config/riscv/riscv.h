@@ -46,6 +46,23 @@ along with GCC; see the file COPYING3.  If not see
 #define RISCV_TUNE_STRING_DEFAULT "rocket"
 #endif
 
+#ifndef RISCV_APEX
+#define RISCV_APEX
+
+struct riscv_intrinsic_info
+{
+  const char *function_name;
+  const char *name;
+  int opcode;
+  int sub_code;
+  int set_flags;
+  const char *flags;
+};
+
+extern struct riscv_intrinsic_info apex;
+
+#endif /* ! RISCV_APEX */
+
 extern const char *riscv_expand_arch (int argc, const char **argv);
 extern const char *riscv_expand_arch_from_cpu (int argc, const char **argv);
 extern const char *riscv_default_mtune (int argc, const char **argv);
