@@ -63,6 +63,14 @@ extern struct riscv_intrinsic_info apex;
 
 #endif /* ! RISCV_APEX */
 
+#ifndef RISCV_EMIT_INTRINSIC_INSTRUCTION
+#define RISCV_EMIT_INTRINSIC_INSTRUCTION
+
+/* Emit user-defined custom intrinsic instruction injected via pragma.  */
+extern void riscv_emit_intrinsic_instruction (void);
+
+#endif /* ! RISCV_EMIT_INTRINSIC_INSTRUCTION */
+
 extern const char *riscv_expand_arch (int argc, const char **argv);
 extern const char *riscv_expand_arch_from_cpu (int argc, const char **argv);
 extern const char *riscv_default_mtune (int argc, const char **argv);

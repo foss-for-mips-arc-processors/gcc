@@ -9719,6 +9719,28 @@ riscv_file_start (void)
     riscv_emit_attribute ();
 }
 
+struct riscv_intrinsic_info apex;
+
+/* Emit the final assembly intruction based on the data collected from the
+   `#pragma intrinsic(...)` directive.
+
+   This function is called during assembly output and prints a custom
+   `.extIntruction` line using the values stored in the `apex` struct,
+   such as opcode, subcode and flags.  These values are populated by the
+   pragma parser "riscv_pragma_intrinsic_apex" in riscv-c.cc.
+
+   The purpose is to allow user-defined custom instructions.  */
+
+void
+riscv_emit_intrinsic_instruction (void)
+{
+  warning (0, "luis: riscv_emit_intrinsic_function");
+
+  fprintf (asm_out_file, \
+	  "\t.extInstruction luis,0x%x,0x%x,SUFFIX_NONE, SYNTAX_2OP\n", \
+	  apex.opcode, apex.sub_code);
+}
+
 /* Implement TARGET_ASM_OUTPUT_MI_THUNK.  Generate rtl rather than asm text
    in order to avoid duplicating too much logic from elsewhere.  */
 

@@ -470,6 +470,7 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
 
   /* ... */
 
+  riscv_emit_intrinsic_instruction ();
 }
 
 
