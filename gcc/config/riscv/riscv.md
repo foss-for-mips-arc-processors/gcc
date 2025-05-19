@@ -668,6 +668,47 @@
     [(set_attr "type" "arith")]
 )
 
+
+;; luis_binop: 3 registers → `dest = lhs op rhs`
+(define_insn "riscv_binop"
+  [(set (match_operand:SI 0 "register_operand" "=r")       ; dest
+        (unspec:SI [(match_operand:SI 1 "register_operand" "r")  ; lhs
+                    (match_operand:SI 2 "register_operand" "r")] ; rhs
+                   UNSPEC_LUIS))]
+  ""
+  "binop\t%0, %1, %2"
+  [(set_attr "type" "arith")]
+)
+
+;; luis_unary: 2 registers → `dest = op(lhs)`
+(define_insn "riscv_unary"
+  [(set (match_operand:SI 0 "register_operand" "=r")       ; dest
+        (unspec:SI [(match_operand:SI 1 "register_operand" "r")] ; lhs
+                   UNSPEC_LUIS))]
+  ""
+  "unary\t%0, %1"
+  [(set_attr "type" "arith")]
+)
+
+;; luis_twoop: 2 registers → `side-effect op (no dest)`
+(define_insn "riscv_twoop"
+  [(unspec_volatile:SI [(match_operand:SI 0 "register_operand" "r") ; lhs
+                        (match_operand:SI 1 "register_operand" "r")] ; rhs
+                       UNSPEC_LUIS)]
+  ""
+  "twoop\t%0, %1"
+  [(set_attr "type" "arith")]
+)
+
+;; luis_oneop: 1 register → `side-effect op (no dest)`
+(define_insn "riscv_oneop"
+  [(unspec_volatile:SI [(match_operand:SI 0 "register_operand" "r")] ; lhs
+                       UNSPEC_LUIS)]
+  ""
+  "oneop\t%0"
+  [(set_attr "type" "arith")]
+)
+
 ;;
 ;;  ....................
 ;;

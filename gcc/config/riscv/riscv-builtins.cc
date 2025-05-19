@@ -219,6 +219,18 @@ static const struct riscv_builtin_description riscv_builtins[] = {
 
   /* "apex" string must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
   RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
+  
+  /* `binop destReg, lhsReg, rhsReg` */
+  RISCV_BUILTIN (binop, "apex_binop", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
+  
+  /* `unary destReg, lhsReg` */
+  RISCV_BUILTIN (unary, "apex_unary", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI, hint_pause),
+  
+  /* `twoop lhsReg, rhsReg` */
+  RISCV_BUILTIN (twoop, "apex_twoop", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_USI_USI, hint_pause),
+
+  /* `oneop lhsRe` */
+  RISCV_BUILTIN (oneop, "apex_oneop", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_USI, hint_pause),
 };
 
 /* Index I is the function declaration for riscv_builtins[I], or null if the
