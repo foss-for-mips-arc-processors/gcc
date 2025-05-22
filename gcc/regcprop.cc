@@ -1308,6 +1308,11 @@ public:
   {}
 
   /* opt_pass methods: */
+  opt_pass *clone () final override
+    {
+      return new pass_cprop_hardreg (m_ctxt);
+    }
+
   bool gate (function *) final override
     {
       return (optimize > 0 && (flag_cprop_registers));
