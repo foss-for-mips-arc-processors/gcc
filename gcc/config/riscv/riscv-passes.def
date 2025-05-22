@@ -25,3 +25,5 @@ INSERT_PASS_BEFORE (pass_shorten_branches, 1, pass_insert_landing_pad);
 INSERT_PASS_BEFORE (pass_shorten_branches, 1, pass_combine_popretz);
 INSERT_PASS_AFTER (pass_cse2, 1, pass_vector_permconst);
 
+
+INSERT_PASS_AFTER (pass_reorder_blocks, 1, pass_cprop_hardreg);
