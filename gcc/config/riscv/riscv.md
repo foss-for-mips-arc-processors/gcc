@@ -658,16 +658,36 @@
   "nothing")
 
 ;; luis
-(define_insn "riscv_apex"
+(define_insn "riscv_apex_insn"
     [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
-                    (match_operand:SI 2 "register_operand" "r")]
+                    (match_operand:SI 2 "register_operand" "r")
+                    (match_operand:SI 3 "" "")]
                 UNSPEC_LUIS))]
     ""
-    "luis\t%0, %1, %2"
+    {
+      const char *str = XSTR (operands[3], 0);
+      return xasprintf ("%s\t%s, %s, %s ; luis",
+                        str,
+                        reg_names[REGNO (operands[0])],
+                        reg_names[REGNO (operands[1])],
+                        reg_names[REGNO (operands[2])]);
+    }
     [(set_attr "type" "arith")]
 )
 
+(define_expand "riscv_apex"
+  [(set (match_operand:SI 0 "register_operand")
+        (unspec:SI [(match_operand:SI 1 "register_operand")
+                    (match_operand:SI 2 "register_operand")]
+                   UNSPEC_LUIS))]
+  ""
+  {
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
+    emit_insn (gen_riscv_apex_insn (operands[0], operands[1], operands[2], op));
+    DONE;
+  }
+)
 
 ;; luis_binop: 3 registers → `dest = lhs op rhs`
 (define_insn "riscv_binop"
