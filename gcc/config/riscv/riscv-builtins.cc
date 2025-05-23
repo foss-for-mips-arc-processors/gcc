@@ -42,6 +42,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple.h"
 #include "gimple-iterator.h"
 
+static tree riscv_string_type_node;
+
 /* Macros to create an enumeration identifier for a function prototype.  */
 #define RISCV_FTYPE_NAME0(A) RISCV_##A##_FTYPE
 #define RISCV_FTYPE_NAME1(A, B) RISCV_##A##_FTYPE_##B
@@ -184,6 +186,8 @@ AVAIL (cvsimd, TARGET_XCVSIMD && !TARGET_64BIT)
 
 /* Argument types.  */
 #define RISCV_ATYPE_VOID void_type_node
+#define RISCV_ATYPE_STR riscv_string_type_node
+//#define RISCV_ATYPE_STR char_type_node
 #define RISCV_ATYPE_UQI unsigned_intQI_type_node
 #define RISCV_ATYPE_UHI unsigned_intHI_type_node
 #define RISCV_ATYPE_USI unsigned_intSI_type_node
@@ -218,6 +222,7 @@ static const struct riscv_builtin_description riscv_builtins[] = {
   RISCV_BUILTIN (pause, "pause", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE, hint_pause),
 
   /* "apex" string must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
+//  RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI_STR, hint_pause),
   RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
   
   /* `binop destReg, lhsReg, rhsReg` */
@@ -289,6 +294,8 @@ riscv_init_builtin_types (void)
   if (!maybe_get_identifier ("_Float16"))
     lang_hooks.types.register_builtin_type (riscv_float16_type_node,
 					    "_Float16");
+
+  riscv_string_type_node = build_pointer_type (char_type_node);
 }
 
 /* Implement TARGET_INIT_BUILTINS.  */
@@ -445,6 +452,19 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 	  }
       }
     }
+
+//  if (fcode == CODE_FOR_riscv_apex)
+//  {
+//    tree arg0 = CALL_EXPR_ARG (exp, 0);
+//    tree arg1 = CALL_EXPR_ARG (exp, 1);
+//    tree arg2 = CALL_EXPR_ARG (exp, 2); /* string.  */
+//
+//    const char *str = TREE_STRING_POINTER (arg2);
+//    rtx op3 = gen_rtx_CONST_STRING (VOIDmode, ggc_strdup (str));
+//
+//    /* Emit the insn with the actual string as insn name.  */
+//    return emit_insn (gen_riscv_apex (target, expand_normal (arg0), expand_normal (arg1), op3));
+//  }
 
   gcc_unreachable ();
 }

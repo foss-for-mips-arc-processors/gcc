@@ -40,6 +40,11 @@
   (and (match_code "const_int")
        (match_test "SMALL_OPERAND (ival)")))
 
+;; luis
+(define_constraint "x1"
+  "String literal operand"
+  (and (match_code "const_string")))
+
 (define_constraint "J"
   "Integer zero."
   (and (match_code "const_int")

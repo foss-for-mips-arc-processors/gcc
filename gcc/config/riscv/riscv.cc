@@ -2235,6 +2235,17 @@ riscv_split_symbol (rtx temp, rtx addr, machine_mode mode, rtx *low_out)
   return true;
 }
 
+const char*
+riscv_print_apex_insn (rtx *operands)
+{
+//  char buffer[128];
+//  snprintf (buffer, sizeof (buffer), "luis %0, %1, %2");
+//  return buffer;
+
+//  const char *insn_name = XSTR (operands[3], 0);
+  return "%3 %0, %1, %2";
+}
+
 /* Return a legitimate address for REG + OFFSET.  TEMP is as for
    riscv_force_temporary; it is only needed when OFFSET is not a
    SMALL_OPERAND.  */

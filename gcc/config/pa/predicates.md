@@ -576,6 +576,12 @@
   (ior (match_operand 0 "register_operand")
        (match_operand 0 "const_0_operand")))
 
+
+;; True iff OP is a const string operand.
+
+(define_predicate "string_operand"
+  (match_code "const_string"))
+
 ;; True iff OP is either a register, zero, or a non-symbolic memory operand.
 
 (define_predicate "reg_or_0_or_nonsymb_mem_operand"
