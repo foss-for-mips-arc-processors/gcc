@@ -387,6 +387,7 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
 
 //  const char *intrinsic_name = TREE_STRING_POINTER (x);
   const char *intrinsic_name = IDENTIFIER_POINTER (x);
+  apex.function_name = intrinsic_name;
 
   /* Segmentation fault.  */
   //flags->function_name = intrinsic_name;
@@ -470,6 +471,7 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
 
   /* ... */
 
+  riscv_apex_init_builtins ();
   riscv_emit_intrinsic_instruction ();
 }
 

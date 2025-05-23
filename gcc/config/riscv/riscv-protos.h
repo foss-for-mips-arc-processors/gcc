@@ -144,6 +144,7 @@ extern rtx riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y);
 #endif
 //extern const char *riscv_print_apex_insn (rtx *operands, rtx_insn *insn);
 extern const char *riscv_print_apex_insn (rtx *operands);
+extern void riscv_apex_init_builtins (void);
 extern bool riscv_expand_conditional_move (rtx, rtx, rtx, rtx);
 extern rtx riscv_legitimize_call_address (rtx);
 extern void riscv_set_return_address (rtx, rtx);

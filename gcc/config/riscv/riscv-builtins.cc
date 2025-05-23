@@ -212,7 +212,7 @@ AVAIL (cvsimd, TARGET_XCVSIMD && !TARGET_64BIT)
   RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C, RISCV_ATYPE_##D, \
   RISCV_ATYPE_##E
 
-static const struct riscv_builtin_description riscv_builtins[] = {
+static struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-cmo.def"
   #include "riscv-scalar-crypto.def"
   #include "corev.def"
@@ -221,9 +221,9 @@ static const struct riscv_builtin_description riscv_builtins[] = {
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
   RISCV_BUILTIN (pause, "pause", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE, hint_pause),
 
-  /* "apex" string must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
+  /* apex (first argument) must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
 //  RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI_STR, hint_pause),
-  RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
+  //RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
   
   /* `binop destReg, lhsReg, rhsReg` */
   RISCV_BUILTIN (binop, "apex_binop", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
@@ -323,11 +323,34 @@ riscv_init_builtins (void)
     }
 }
 
+void
+riscv_apex_init_builtins (void)
+{
+  warning (0, "luis: riscv_apex_init_builtins");
+  int riscv_builtins_length = ARRAY_SIZE (riscv_builtins) - 1;
+  
+  riscv_builtins[riscv_builtins_length] = 
+    { CODE_FOR_riscv_apex, apex.function_name, RISCV_BUILTIN_DIRECT,
+      RISCV_USI_FTYPE_USI_USI, riscv_builtin_avail_hint_pause };
+
+  const struct riscv_builtin_description *d = &riscv_builtins[riscv_builtins_length];
+  if (d->avail ())
+  {
+    tree type = riscv_build_function_type (d->prototype);
+    riscv_builtin_decls[riscv_builtins_length]
+      = add_builtin_function (d->name, type,
+                              (riscv_builtins_length << RISCV_BUILTIN_SHIFT) +
+                              RISCV_BUILTIN_GENERAL, BUILT_IN_MD, NULL, NULL);
+    riscv_builtin_decl_index[d->icode] = riscv_builtins_length;
+  }
+}
+
 /* Implement TARGET_BUILTIN_DECL.  */
 
 tree
 riscv_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
 {
+  warning (0, "luis: riscv_builtin_decl");
   unsigned int subcode = code >> RISCV_BUILTIN_SHIFT;
   switch (code & RISCV_BUILTIN_CLASS)
     {
