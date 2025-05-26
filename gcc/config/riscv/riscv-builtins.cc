@@ -208,7 +208,7 @@ AVAIL (cvsimd, TARGET_XCVSIMD && !TARGET_64BIT)
   RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C, RISCV_ATYPE_##D, \
   RISCV_ATYPE_##E
 
-static const struct riscv_builtin_description riscv_builtins[] = {
+static struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-cmo.def"
   #include "riscv-scalar-crypto.def"
   #include "corev.def"
