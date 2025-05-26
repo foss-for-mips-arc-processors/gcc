@@ -9737,8 +9737,8 @@ riscv_emit_intrinsic_instruction (void)
   warning (0, "luis: riscv_emit_intrinsic_function");
 
   fprintf (asm_out_file, \
-	  "\t.extInstruction luis,0x%x,0x%x,SUFFIX_NONE, SYNTAX_2OP\n", \
-	  apex.opcode, apex.sub_code);
+	  "\t.extInstruction %s,0x%x,0x%x,SUFFIX_NONE, SYNTAX_2OP\n", \
+	  apex.name, apex.opcode, apex.sub_code);
 }
 
 /* Implement TARGET_ASM_OUTPUT_MI_THUNK.  Generate rtl rather than asm text
