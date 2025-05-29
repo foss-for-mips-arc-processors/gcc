@@ -8840,7 +8840,8 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
     {
       base0 = XEXP (reg0, 0);
       tmp = XEXP (reg0, 1);
-      gcc_assert (CONST_INT_P (tmp));
+      if (!CONST_INT_P (tmp))
+	return false;
       off0 = INTVAL (tmp);
     }
   else if (REG_P (reg0))
@@ -8852,7 +8853,8 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
     {
       base1 = XEXP (reg1, 0);
       tmp = XEXP (reg1, 1);
-      gcc_assert (CONST_INT_P (tmp));
+      if (!CONST_INT_P (tmp))
+	return false;
       off1 = INTVAL (tmp);
     }
   else if (REG_P (reg1))
