@@ -142,7 +142,7 @@ extern void riscv_expand_conditional_branch (rtx, enum rtx_code, rtx, rtx);
 extern rtx riscv_emit_unary (enum rtx_code code, rtx dest, rtx x);
 extern rtx riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y);
 #endif
-extern void riscv_apex_init_builtins (void);
+extern void riscv_apex_init_builtin (tree fndecl);
 extern bool riscv_expand_conditional_move (rtx, rtx, rtx, rtx);
 extern rtx riscv_legitimize_call_address (rtx);
 extern void riscv_set_return_address (rtx, rtx);
@@ -730,14 +730,18 @@ bool splat_to_scalar_move_p (rtx *);
 /* We classify builtin types into two classes:
    1. General builtin class which is defined in riscv_builtins.
    2. Vector builtin class which is a special builtin architecture
-      that implement intrinsic short into "pragma".  */
+      that implement intrinsic short into "pragma".
+   3. APEX builtin class for APEX-specific intrinsics.  */
 enum riscv_builtin_class
 {
   RISCV_BUILTIN_GENERAL,
-  RISCV_BUILTIN_VECTOR
+  RISCV_BUILTIN_VECTOR,
+  RISCV_BUILTIN_APEX
 };
 
-const unsigned int RISCV_BUILTIN_SHIFT = 1;
+void riscv_apex_add_builtin (void);
+
+const unsigned int RISCV_BUILTIN_SHIFT = 2;
 
 /* Mask that selects the riscv_builtin_class part of a function code.  */
 const unsigned int RISCV_BUILTIN_CLASS = (1 << RISCV_BUILTIN_SHIFT) - 1;
@@ -807,5 +811,8 @@ enum
   RISCV_MINOR_VERSION_BASE = 1000,
   RISCV_REVISION_VERSION_BASE = 1,
 };
+
+void riscv_apex_register_builtin (tree fndecl);
+const char* get_builtin_name (unsigned int subcode);
 
 #endif /* ! GCC_RISCV_PROTOS_H */

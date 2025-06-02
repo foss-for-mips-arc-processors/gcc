@@ -678,13 +678,17 @@
 
 (define_expand "riscv_apex"
   [(set (match_operand:SI 0 "register_operand")
-        (unspec:SI [(match_operand:SI 1 "register_operand")
-                    (match_operand:SI 2 "register_operand")]
+        (unspec:SI [(match_operand:SI 1 "")
+                    (match_operand:SI 2 "register_operand")
+                    (match_operand:SI 3 "register_operand")]
                    UNSPEC_LUIS))]
   ""
   {
-    rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
-    emit_insn (gen_riscv_apex_insn (operands[0], operands[1], operands[2], op));
+
+    unsigned int subcode = UINTVAL (operands[1]);
+
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, get_builtin_name(subcode));
+    emit_insn (gen_riscv_apex_insn (operands[0], operands[2], operands[3], op));
     DONE;
   }
 )

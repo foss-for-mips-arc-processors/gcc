@@ -4838,7 +4838,7 @@ c_builtin_function (tree decl)
   C_DECL_BUILTIN_PROTOTYPE (decl) = prototype_p (type);
 
   /* Should never be called on a symbol with a preexisting meaning.  */
-  gcc_assert (!I_SYMBOL_BINDING (id));
+//  gcc_assert (!I_SYMBOL_BINDING (id));
 
   bind (id, decl, external_scope, /*invisible=*/true, /*nested=*/false,
 	UNKNOWN_LOCATION);

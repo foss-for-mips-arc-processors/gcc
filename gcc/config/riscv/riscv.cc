@@ -9734,7 +9734,7 @@ struct riscv_intrinsic_info apex;
 void
 riscv_emit_intrinsic_instruction (void)
 {
-  warning (0, "luis: riscv_emit_intrinsic_function");
+//  warning (0, "luis: riscv_emit_intrinsic_function");
 
   fprintf (asm_out_file, \
 	  "\t.extInstruction %s,0x%x,0x%x,SUFFIX_NONE, SYNTAX_2OP\n", \

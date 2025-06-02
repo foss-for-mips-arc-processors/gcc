@@ -364,6 +364,15 @@ riscv_pragma_luis_foo (cpp_reader *)
 	warning(0, "LUIS: pragma riscv luis_foo triggered");
 }
 
+void
+riscv_lookup_apex (void)
+{
+  tree id = get_identifier (apex.function_name);
+  tree fndecl = lookup_name (id);
+ 
+  riscv_apex_init_builtin (fndecl);
+}
+
 /* Implement #prama intrinsic
    Perhaps it should be in c-pragma.cc? */
 
@@ -471,7 +480,8 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
 
   /* ... */
 
-  riscv_apex_init_builtins ();
+  //riscv_apex_init_builtins ();
+  riscv_lookup_apex ();
   riscv_emit_intrinsic_instruction ();
 }
 
@@ -491,6 +501,9 @@ riscv_check_builtin_call (location_t loc, vec<location_t> arg_loc, tree fndecl,
     case RISCV_BUILTIN_VECTOR:
       return riscv_vector::check_builtin_call (loc, arg_loc, subcode,
 					       fndecl, nargs, args);
+
+    case RISCV_BUILTIN_APEX:
+      return true;
     }
   gcc_unreachable ();
 }
@@ -517,6 +530,8 @@ riscv_resolve_overloaded_builtin (unsigned int uncast_location, tree fndecl,
     case RISCV_BUILTIN_VECTOR:
       new_fndecl = riscv_vector::resolve_overloaded_builtin (loc, subcode,
 							     fndecl, arglist);
+      break;
+    case RISCV_BUILTIN_APEX:
       break;
     default:
       gcc_unreachable ();

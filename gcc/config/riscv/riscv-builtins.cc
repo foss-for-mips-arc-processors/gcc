@@ -1,3 +1,5 @@
+// 20240527 3.36pm
+
 /* Subroutines used for expanding RISC-V builtins.
    Copyright (C) 2011-2024 Free Software Foundation, Inc.
    Contributed by Andrew Waterman (andrew@sifive.com).
@@ -92,6 +94,24 @@ struct riscv_builtin_description {
 
   /* Whether the function is available.  */
   unsigned int (*avail) (void);
+};
+
+struct riscv_builtin_description_apex {
+  /* The code of the main .md file instruction.  See riscv_builtin_type
+     for more information.  */
+  enum insn_code icode;
+
+  /* The name of the built-in function.  */
+  const char *name;
+
+  /* The name of the built-in instruction.  */
+  const char *insn_name;
+
+  /* Specifies how the function should be expanded.  */
+  enum riscv_builtin_type builtin_type;
+
+  /* The function's prototype.  */
+  enum riscv_function_type prototype;
 };
 
 AVAIL (hard_float, TARGET_HARD_FLOAT || TARGET_ZFINX)
@@ -216,26 +236,16 @@ static struct riscv_builtin_description riscv_builtins[] = {
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
   RISCV_BUILTIN (pause, "pause", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE, hint_pause),
-
-  /* apex (first argument) must be the same as defined in the md file. (e.g., define_insn "riscv_apex") */
-  //RISCV_BUILTIN (apex, "apex", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
-  
-  /* `binop destReg, lhsReg, rhsReg` */
-  RISCV_BUILTIN (binop, "apex_binop", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI_USI, hint_pause),
-  
-  /* `unary destReg, lhsReg` */
-  RISCV_BUILTIN (unary, "apex_unary", RISCV_BUILTIN_DIRECT, RISCV_USI_FTYPE_USI, hint_pause),
-  
-  /* `twoop lhsReg, rhsReg` */
-  RISCV_BUILTIN (twoop, "apex_twoop", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_USI_USI, hint_pause),
-
-  /* `oneop lhsRe` */
-  RISCV_BUILTIN (oneop, "apex_oneop", RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_USI, hint_pause),
 };
+
+static const int riscv_apex_limit = 2;
+static struct riscv_builtin_description_apex riscv_apex_builtins[riscv_apex_limit];
 
 /* Index I is the function declaration for riscv_builtins[I], or null if the
    function isn't defined on this target.  */
 static GTY(()) tree riscv_builtin_decls[ARRAY_SIZE (riscv_builtins)];
+
+static GTY(()) tree riscv_builtin_decls_apex[riscv_apex_limit];
 
 /* Get the index I of the function declaration for riscv_builtin_decls[I]
    using the instruction code or return null if not defined for the target.  */
@@ -246,12 +256,18 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 
 tree riscv_float16_type_node = NULL_TREE;
 
+const char*
+get_builtin_name (unsigned int subcode)
+{
+  return riscv_apex_builtins[subcode].insn_name;
+}
+
 /* Return the function type associated with function prototype TYPE.  */
 
 static tree
 riscv_build_function_type (enum riscv_function_type type)
 {
-  warning(0, "LUIS: riscv_build_function_type");
+//  warning(0, "LUIS: riscv_build_function_type");
   static tree types[(int) RISCV_MAX_FTYPE_MAX];
 
   if (types[(int) type] == NULL_TREE)
@@ -317,24 +333,26 @@ riscv_init_builtins (void)
 }
 
 void
-riscv_apex_init_builtins (void)
+riscv_apex_init_builtin (tree fndecl)
 {
-  warning (0, "luis: riscv_apex_init_builtins");
-  int riscv_builtins_length = ARRAY_SIZE (riscv_builtins) - 1;
-  
-  riscv_builtins[riscv_builtins_length] = 
-    { CODE_FOR_riscv_apex, apex.function_name, RISCV_BUILTIN_DIRECT,
-      RISCV_USI_FTYPE_USI_USI, riscv_builtin_avail_hint_pause };
-
-  const struct riscv_builtin_description *d = &riscv_builtins[riscv_builtins_length];
-  if (d->avail ())
+  if (fndecl)
   {
-    tree type = riscv_build_function_type (d->prototype);
-    riscv_builtin_decls[riscv_builtins_length]
-      = add_builtin_function (d->name, type,
-                              (riscv_builtins_length << RISCV_BUILTIN_SHIFT) +
-                              RISCV_BUILTIN_GENERAL, BUILT_IN_MD, NULL, NULL);
-    riscv_builtin_decl_index[d->icode] = riscv_builtins_length;
+    static int i = 0;
+    
+    const char *name = apex.function_name;
+    const char *insn_name = apex.name;
+    enum insn_code icode = CODE_FOR_riscv_apex;
+    enum riscv_function_type ftype = RISCV_USI_FTYPE_USI_USI;
+
+    riscv_apex_builtins[i] =  { icode, name, insn_name, RISCV_BUILTIN_DIRECT, ftype };
+    
+    tree type = riscv_build_function_type (ftype);
+    riscv_builtin_decls_apex[i] = add_builtin_function (name, type, (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX, BUILT_IN_MD, NULL, NULL);
+
+    fndecl->function_decl.built_in_class = BUILT_IN_MD;
+    fndecl->function_decl.function_code = (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+    i++;
   }
 }
 
@@ -354,6 +372,9 @@ riscv_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
 
     case RISCV_BUILTIN_VECTOR:
       return riscv_vector::builtin_decl (subcode, initialize_p);
+
+    case RISCV_BUILTIN_APEX:
+      return riscv_builtin_decls_apex[subcode];
     }
   return error_mark_node;
 }
@@ -394,7 +415,7 @@ riscv_expand_builtin_insn (enum insn_code icode, unsigned int n_ops,
    suggests a good place to put the result.  */
 
 static rtx
-riscv_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
+riscv_expand_builtin_direct (enum insn_code icode, unsigned int subcode, rtx target, tree exp,
 			     bool has_target_p)
 {
   struct expand_operand ops[MAX_RECOG_OPERANDS];
@@ -403,6 +424,9 @@ riscv_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
   int opno = 0;
   if (has_target_p)
     create_output_operand (&ops[opno++], target, TYPE_MODE (TREE_TYPE (exp)));
+
+  rtx const_rtx = GEN_INT (subcode);
+  create_input_operand (&ops[opno++], const_rtx, SImode);
 
   /* Map the arguments to the other operands.  */
   gcc_assert (opno + call_expr_nargs (exp)
@@ -451,7 +475,7 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
   tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
   unsigned int fcode = DECL_MD_FUNCTION_CODE (fndecl);
   unsigned int subcode = fcode >> RISCV_BUILTIN_SHIFT;
-  switch (fcode & RISCV_BUILTIN_CLASS)
+  switch (fcode & 0b11) //switch (fcode & RISCV_BUILTIN_CLASS)
     {
       case RISCV_BUILTIN_VECTOR:
 	return riscv_vector::expand_builtin (subcode, exp, target);
@@ -461,10 +485,22 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 	switch (d->builtin_type)
 	  {
 	  case RISCV_BUILTIN_DIRECT:
-	    return riscv_expand_builtin_direct (d->icode, target, exp, true);
+	    return riscv_expand_builtin_direct (d->icode, 0, target, exp, true);
 
 	  case RISCV_BUILTIN_DIRECT_NO_TARGET:
-	    return riscv_expand_builtin_direct (d->icode, target, exp, false);
+	    return riscv_expand_builtin_direct (d->icode, 0, target, exp, false);
+	  }
+      }
+      case RISCV_BUILTIN_APEX: {
+  const struct riscv_builtin_description_apex *d = &riscv_apex_builtins[subcode];
+
+	switch (d->builtin_type)
+	  {
+	  case RISCV_BUILTIN_DIRECT:
+	    return riscv_expand_builtin_direct (d->icode, subcode, target, exp, true);
+
+	  case RISCV_BUILTIN_DIRECT_NO_TARGET:
+	    return riscv_expand_builtin_direct (d->icode, subcode, target, exp, false);
 	  }
       }
     }
