@@ -1029,6 +1029,7 @@
 	(symbol_ref "riscv_vector::FRM_NONE")))
 
 (include "thead-vector.md")
+(include "arcv-vector.md")
 
 ;; -----------------------------------------------------------------
 ;; ---- Miscellaneous Operations

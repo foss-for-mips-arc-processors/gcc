@@ -246,6 +246,23 @@ int riscv_xarcv_subext
 
 Mask(XARCVUDSP) Var(riscv_xarcv_subext)
 
+Mask(XARCVBITREV) Var(riscv_xarcv_subext)
+
+Mask(XARCVBITSTREAM) Var(riscv_xarcv_subext)
+
+Mask(XARCVVDSP) Var(riscv_xarcv_subext)
+
+Mask(XARCVVCPLX) Var(riscv_xarcv_subext)
+
+Mask(XARCVVSAD) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMB) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMC) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMD) Var(riscv_xarcv_subext)
+
+
 Enum
 Name(isa_spec_class) Type(enum riscv_isa_spec_class)
 Supported ISA specs (for use with the -misa-spec= option):

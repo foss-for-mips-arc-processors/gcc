@@ -327,6 +327,42 @@ along with GCC; see the file COPYING3. If not see
 #define DEF_RVV_LMUL1_OPS(TYPE, REQUIRE)
 #endif
 
+/* Use "DEF_RVV_WRDOT_U_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_WRDOT_U_OPS
+#define DEF_RVV_WRDOT_U_OPS(TYPE, REQUIRE)
+#endif
+
+/* Use "DEF_RVV_WRDOT_I_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_WRDOT_I_OPS
+#define DEF_RVV_WRDOT_I_OPS(TYPE, REQUIRE)
+#endif
+
+/* Use "DEF_RVV_WRDOT_H_U_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_WRDOT_H_U_OPS
+#define DEF_RVV_WRDOT_H_U_OPS(TYPE, REQUIRE)
+#endif
+
+/* Use "DEF_RVV_WRDOT_H_I_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_WRDOT_H_I_OPS
+#define DEF_RVV_WRDOT_H_I_OPS(TYPE, REQUIRE)
+#endif
+
+/* Use "DEF_RVV_QRDOT_U_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_QRDOT_U_OPS
+#define DEF_RVV_QRDOT_U_OPS(TYPE, REQUIRE)
+#endif
+
+/* Use "DEF_RVV_QRDOT_I_OPS" macro include all types for LMUL1
+   which will be iterated and registered as intrinsic functions.  */
+#ifndef DEF_RVV_QRDOT_I_OPS
+#define DEF_RVV_QRDOT_I_OPS(TYPE, REQUIRE)
+#endif
+
 /* Use "DEF_RVV_LMUL2_OPS" macro include all types for LMUL2
    which will be iterated and registered as intrinsic functions.  */
 #ifndef DEF_RVV_LMUL2_OPS
@@ -1193,6 +1229,26 @@ DEF_RVV_LMUL1_OPS (vfloat16m1_t, RVV_REQUIRE_ELEN_FP_16)
 DEF_RVV_LMUL1_OPS (vfloat32m1_t, RVV_REQUIRE_ELEN_FP_32)
 DEF_RVV_LMUL1_OPS (vfloat64m1_t, RVV_REQUIRE_ELEN_FP_64)
 
+DEF_RVV_WRDOT_U_OPS (vuint8m1_t, 0)
+DEF_RVV_WRDOT_U_OPS (vuint16m1_t, 0)
+DEF_RVV_WRDOT_U_OPS (vuint32m1_t, 0)
+
+DEF_RVV_WRDOT_I_OPS (vint8m1_t, 0)
+DEF_RVV_WRDOT_I_OPS (vint16m1_t, 0)
+DEF_RVV_WRDOT_I_OPS (vint32m1_t, 0)
+
+DEF_RVV_WRDOT_H_U_OPS (vuint16m1_t, 0)
+DEF_RVV_WRDOT_H_U_OPS (vuint32m1_t, 0)
+
+DEF_RVV_WRDOT_H_I_OPS (vint16m1_t, 0)
+DEF_RVV_WRDOT_H_I_OPS (vint32m1_t, 0)
+
+DEF_RVV_QRDOT_U_OPS (vuint8m1_t, 0)
+DEF_RVV_QRDOT_U_OPS (vuint16m1_t, 0)
+
+DEF_RVV_QRDOT_I_OPS (vint8m1_t, 0)
+DEF_RVV_QRDOT_I_OPS (vint16m1_t, 0)
+
 DEF_RVV_LMUL2_OPS (vint8m2_t, 0)
 DEF_RVV_LMUL2_OPS (vint16m2_t, 0)
 DEF_RVV_LMUL2_OPS (vint32m2_t, 0)
@@ -1590,6 +1646,12 @@ DEF_RVV_F16_OPS (vfloat16m8_t, RVV_REQUIRE_ELEN_FP_16)
 #undef DEF_RVV_X32_VLMUL_EXT_OPS
 #undef DEF_RVV_X64_VLMUL_EXT_OPS
 #undef DEF_RVV_LMUL1_OPS
+#undef DEF_RVV_WRDOT_U_OPS
+#undef DEF_RVV_WRDOT_I_OPS
+#undef DEF_RVV_WRDOT_H_U_OPS
+#undef DEF_RVV_WRDOT_H_I_OPS
+#undef DEF_RVV_QRDOT_U_OPS
+#undef DEF_RVV_QRDOT_I_OPS
 #undef DEF_RVV_LMUL2_OPS
 #undef DEF_RVV_LMUL4_OPS
 #undef DEF_RVV_TUPLE_OPS

@@ -14591,6 +14591,104 @@ proc check_effective_target_arcv_udsp { } {
 }
 
 
+
+# Return 1 if the ARC-V BITREV extension is available.
+proc check_effective_target_arcv_bitrev { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_bitrev object {
+        void foo (void)
+          {
+            asm ("arcv.bitrev x0, x0, x0");
+          }
+  } "-march=rv32im_xarcvbitrev" ]
+}
+# Return 1 if the ARC-V BITSTREAM extension is available.
+proc check_effective_target_arcv_bitstream { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_bitstream object {
+        void foo (void)
+          {
+            asm ("arcv.bspeek x0, x0");
+          }
+  } "-march=rv32im_xarcvbitstream" ]
+}
+# Return 1 if the ARC-V VDSP extension is available.
+proc check_effective_target_arcv_vdsp { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_vdsp object {
+        void foo (void)
+          {
+            asm ("arcv.vmv.v.s v0, v0, x0");
+          }
+  } "-march=rv32im_xarcvvdsp" ]
+}
+# Return 1 if the ARC-V VCPLX extension is available.
+proc check_effective_target_arcv_vcplx { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_vcplx object {
+        void foo (void)
+          {
+            asm ("arcv.vconj.v v0, v0");
+          }
+  } "-march=rv32im_xarcvvcplx" ]
+}
+# Return 1 if the ARC-V VSAD extension is available.
+proc check_effective_target_arcv_vsad { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_vsad object {
+        void foo (void)
+          {
+            asm ("arcv.vwsad.vv v0, v0, v0");
+          }
+  } "-march=rv32im_xarcvvsad" ]
+}
+# Return 1 if the ARC-V MXMB extension is available.
+proc check_effective_target_arcv_mxmb { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_mxmb object {
+        void foo (void)
+          {
+            asm ("arcv.vqmxm4.vv v0, v0, v0");
+          }
+  } "-march=rv32im_xarcvmxmb" ]
+}
+# Return 1 if the ARC-V MXMC extension is available.
+proc check_effective_target_arcv_mxmc { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_mxmc object {
+        void foo (void)
+          {
+            asm ("arcv.vqmxm8.vv v0, v0, v0");
+          }
+  } "-march=rv32im_xarcvmxmc" ]
+}
+# Return 1 if the ARC-V MXMD extension is available.
+proc check_effective_target_arcv_mxmd { } {
+    if { !([istarget riscv*-*-*]) } {
+        return 0
+    }
+    return [check_no_compiler_messages arcv_mxmd object {
+        void foo (void)
+          {
+            asm ("arcv.vqmxm16.vv v0, v0, v0");
+          }
+  } "-march=rv32im_xarcvmxmd" ]
+}
+
 proc check_effective_target_loongarch_sx { } {
     return [check_no_compiler_messages loongarch_lsx assembly {
        #if !defined(__loongarch_sx)

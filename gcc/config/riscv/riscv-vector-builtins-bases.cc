@@ -2197,6 +2197,1272 @@ public:
   }
 };
 
+
+
+/* Implements arcv_vmv. */
+class arcv_vmv : public function_base
+{
+public:
+  bool use_mask_predication_p () const override { return false; }
+  bool has_merge_operand_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return false; }
+  bool apply_mask_policy_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+  machine_mode mode = e.vector_mode ();
+
+  /* Record the offset to get the argument.  */
+  int arg_offset = 0;
+  rtx vd = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+  rtx vs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+  rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+
+  e.add_input_operand (mode, vd);
+  e.add_input_operand (mode, vs2);
+  e.add_input_operand (Pmode, vs1);
+  for (int argno = arg_offset; argno < call_expr_nargs (e.exp); argno++)
+    {
+      e.add_input_operand (argno);
+    }
+
+  e.add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v_s:
+	return e.generate_insn (code_for_pred_arcv_vmv_v_s_scalar (e.vector_mode (), Pmode));
+      case OP_TYPE_s_v:
+	return e.generate_insn (code_for_pred_arcv_vmv_s_v_scalar (e.vector_mode (), Pmode));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vnorm. */
+class arcv_vnorm : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vnorm (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vssabs. */
+class arcv_vssabs : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vssabs (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsneg. */
+class arcv_vsneg : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vsneg (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vclr. */
+class arcv_vclr : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v_i:
+	return e.use_exact_insn (code_for_pred_arcv_vclr (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsra. */
+class arcv_vsra : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsra (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vsra_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsrat. */
+class arcv_vsrat : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsrat (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vsrat_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsra_s. */
+class arcv_vsra_s : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsra_s (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vsra_s_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsra_2s. */
+class arcv_vsra_2s : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsra_2s (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vsra_2s_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vnsra. */
+class arcv_vnsra : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_wv:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra (e.vector_mode ()));
+      case OP_TYPE_wx:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra_scalar (e.vector_mode ()));
+      case OP_TYPE_qv:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra (e.vector_mode ()));
+      case OP_TYPE_qx:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vnsra_s. */
+class arcv_vnsra_s : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_wv:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra_s (e.vector_mode ()));
+      case OP_TYPE_wx:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra_s_scalar (e.vector_mode ()));
+      case OP_TYPE_qv:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra_s (e.vector_mode ()));
+      case OP_TYPE_qx:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra_s_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vnsra_2s. */
+class arcv_vnsra_2s : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_wv:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra_2s (e.vector_mode ()));
+      case OP_TYPE_wx:
+	return e.use_exact_insn (code_for_pred_narrow_arcv_vnsra_2s_scalar (e.vector_mode ()));
+      case OP_TYPE_qv:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra_2s (e.vector_mode ()));
+      case OP_TYPE_qx:
+	return e.use_exact_insn (code_for_pred_quad_narrow_arcv_vnsra_2s_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsra. */
+class arcv_vwsra : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwsra (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwsra_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vaddsub. */
+class arcv_vaddsub : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vaddsub (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsaddsub. */
+class arcv_vsaddsub : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsaddsub (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsaaddsub. */
+class arcv_vsaaddsub : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vsaaddsub (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqrdot. */
+class arcv_vqrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqrdot_2s. */
+class arcv_vqrdot_2s : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqrdot_2s (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsrdot_2s. */
+class arcv_vwsrdot_2s : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsrdot_2s (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqrdotu. */
+class arcv_vqrdotu : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqrdotu (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqrdotsu. */
+class arcv_vqrdotsu : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqrdotsu (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwrdot. */
+class arcv_vwrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwrdot (e.vector_mode ()));
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsrdot. */
+class arcv_vwsrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwrdotu. */
+class arcv_vwrdotu : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwrdotu (e.vector_mode ()));
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwrdotu (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwrdotsu. */
+class arcv_vwrdotsu : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwrdotsu (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsmac. */
+class arcv_vwsmac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsmac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsmac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsnmsac. */
+class arcv_vwsnmsac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsnmsac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwsnmsac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwmul. */
+class arcv_vwmul : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmul (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmul_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwmac. */
+class arcv_vwmac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwmac (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwmac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwmulu. */
+class arcv_vwmulu : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmulu (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmulu_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwmacu. */
+class arcv_vwmacu : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwmacu (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwmacu_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vsmulf. */
+class arcv_vsmulf : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_exact_insn (code_for_pred_half_arcv_vsmulf (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_exact_insn (code_for_pred_half_arcv_vsmulf_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwmulf. */
+class arcv_vwmulf : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmulf (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_exact_insn (code_for_pred_widen_half_arcv_vwmulf_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsmacf. */
+class arcv_vwsmacf : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwsmacf (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwsmacf_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsnmsacf. */
+class arcv_vwsnmsacf : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwsnmsacf (e.vector_mode ()));
+      case OP_TYPE_hx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwsnmsacf_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsrdotf. */
+class arcv_vwsrdotf : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVDSP);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_hv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_half_arcv_vwsrdotf (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vconj. */
+class arcv_vconj : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vconj (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vcmuli. */
+class arcv_vcmuli : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vcmuli (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vcmulni. */
+class arcv_vcmulni : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vcmulni (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_veven. */
+class arcv_veven : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_veven (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vodd. */
+class arcv_vodd : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_v:
+	return e.use_exact_insn (code_for_pred_arcv_vodd (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vinterleave. */
+class arcv_vinterleave : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vinterleave (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vscredsum. */
+class arcv_vscredsum : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vscredsum (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwcredsum. */
+class arcv_vwcredsum : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwcredsum (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vscmul. */
+class arcv_vscmul : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vscmul (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vscmul_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vscjmul. */
+class arcv_vscjmul : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_arcv_vscjmul (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_arcv_vscjmul_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscmul. */
+class arcv_vwscmul : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwscmul (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwscmul_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscjmul. */
+class arcv_vwscjmul : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwscjmul (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwscjmul_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscmac. */
+class arcv_vwscmac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscmac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscmac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscnmsac. */
+class arcv_vwscnmsac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscnmsac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscnmsac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscjmac. */
+class arcv_vwscjmac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjmac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjmac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscjnmsac. */
+class arcv_vwscjnmsac : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjnmsac (e.vector_mode ()));
+      case OP_TYPE_vx:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjnmsac_scalar (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscrdot. */
+class arcv_vwscrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwscjrdot. */
+class arcv_vwscjrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqcrdot. */
+class arcv_vqcrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqcrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqcjrdot. */
+class arcv_vqcjrdot : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVCPLX);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqcjrdot (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsad. */
+class arcv_vwsad : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVSAD);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwsad (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vwsadu. */
+class arcv_vwsadu : public function_base
+{
+public:
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVVSAD);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_exact_insn (code_for_pred_widen_arcv_vwsadu (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm4. */
+class arcv_vqmxm4 : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMB);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm4 (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm4u. */
+class arcv_vqmxm4u : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMB);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm4u (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm4su. */
+class arcv_vqmxm4su : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMB);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm4su (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm8. */
+class arcv_vqmxm8 : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMC);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm8 (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm8u. */
+class arcv_vqmxm8u : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMC);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm8u (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm8su. */
+class arcv_vqmxm8su : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMC);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm8su (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm16. */
+class arcv_vqmxm16 : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMD);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm16 (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm16u. */
+class arcv_vqmxm16u : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMD);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm16u (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
+/* Implements arcv_vqmxm16su. */
+class arcv_vqmxm16su : public function_base
+{
+public:
+  bool has_merge_operand_p () const override { return false; }
+  rtx expand (function_expander &e) const override
+  {
+    gcc_assert (TARGET_XARCVMXMD);
+    switch (e.op_info->op)
+      {
+      case OP_TYPE_vv:
+	return e.use_widen_ternop_insn (code_for_pred_quad_widen_arcv_vqmxm16su (e.vector_mode ()));
+      default:
+	gcc_unreachable ();
+      }
+  }
+};
+
 /* Below implements are vector crypto */
 /* Implements vandn.[vv,vx] */
 class vandn : public function_base
@@ -2745,6 +4011,76 @@ static CONSTEXPR const th_loadstore_width<true, LST_INDEXED, UNSPEC_TH_VSUXH> vs
 static CONSTEXPR const th_loadstore_width<true, LST_INDEXED, UNSPEC_TH_VSUXW> vsuxw_obj;
 static CONSTEXPR const th_extract vext_x_v_obj;
 
+/* ARC-V DSP extensions */
+
+static CONSTEXPR const arcv_vmv arcv_vmv_obj;
+static CONSTEXPR const arcv_vnorm arcv_vnorm_obj;
+static CONSTEXPR const arcv_vssabs arcv_vssabs_obj;
+static CONSTEXPR const arcv_vsneg arcv_vsneg_obj;
+static CONSTEXPR const arcv_vclr arcv_vclr_obj;
+static CONSTEXPR const arcv_vsra arcv_vsra_obj;
+static CONSTEXPR const arcv_vsrat arcv_vsrat_obj;
+static CONSTEXPR const arcv_vsra_s arcv_vsra_s_obj;
+static CONSTEXPR const arcv_vsra_2s arcv_vsra_2s_obj;
+static CONSTEXPR const arcv_vnsra arcv_vnsra_obj;
+static CONSTEXPR const arcv_vnsra_s arcv_vnsra_s_obj;
+static CONSTEXPR const arcv_vnsra_2s arcv_vnsra_2s_obj;
+static CONSTEXPR const arcv_vwsra arcv_vwsra_obj;
+static CONSTEXPR const arcv_vaddsub arcv_vaddsub_obj;
+static CONSTEXPR const arcv_vsaddsub arcv_vsaddsub_obj;
+static CONSTEXPR const arcv_vsaaddsub arcv_vsaaddsub_obj;
+static CONSTEXPR const arcv_vqrdot arcv_vqrdot_obj;
+static CONSTEXPR const arcv_vqrdot_2s arcv_vqrdot_2s_obj;
+static CONSTEXPR const arcv_vwsrdot_2s arcv_vwsrdot_2s_obj;
+static CONSTEXPR const arcv_vqrdotu arcv_vqrdotu_obj;
+static CONSTEXPR const arcv_vqrdotsu arcv_vqrdotsu_obj;
+static CONSTEXPR const arcv_vwrdot arcv_vwrdot_obj;
+static CONSTEXPR const arcv_vwsrdot arcv_vwsrdot_obj;
+static CONSTEXPR const arcv_vwrdotu arcv_vwrdotu_obj;
+static CONSTEXPR const arcv_vwrdotsu arcv_vwrdotsu_obj;
+static CONSTEXPR const arcv_vwsmac arcv_vwsmac_obj;
+static CONSTEXPR const arcv_vwsnmsac arcv_vwsnmsac_obj;
+static CONSTEXPR const arcv_vwmul arcv_vwmul_obj;
+static CONSTEXPR const arcv_vwmac arcv_vwmac_obj;
+static CONSTEXPR const arcv_vwmulu arcv_vwmulu_obj;
+static CONSTEXPR const arcv_vwmacu arcv_vwmacu_obj;
+static CONSTEXPR const arcv_vsmulf arcv_vsmulf_obj;
+static CONSTEXPR const arcv_vwmulf arcv_vwmulf_obj;
+static CONSTEXPR const arcv_vwsmacf arcv_vwsmacf_obj;
+static CONSTEXPR const arcv_vwsnmsacf arcv_vwsnmsacf_obj;
+static CONSTEXPR const arcv_vwsrdotf arcv_vwsrdotf_obj;
+static CONSTEXPR const arcv_vconj arcv_vconj_obj;
+static CONSTEXPR const arcv_vcmuli arcv_vcmuli_obj;
+static CONSTEXPR const arcv_vcmulni arcv_vcmulni_obj;
+static CONSTEXPR const arcv_veven arcv_veven_obj;
+static CONSTEXPR const arcv_vodd arcv_vodd_obj;
+static CONSTEXPR const arcv_vinterleave arcv_vinterleave_obj;
+static CONSTEXPR const arcv_vscredsum arcv_vscredsum_obj;
+static CONSTEXPR const arcv_vwcredsum arcv_vwcredsum_obj;
+static CONSTEXPR const arcv_vscmul arcv_vscmul_obj;
+static CONSTEXPR const arcv_vscjmul arcv_vscjmul_obj;
+static CONSTEXPR const arcv_vwscmul arcv_vwscmul_obj;
+static CONSTEXPR const arcv_vwscjmul arcv_vwscjmul_obj;
+static CONSTEXPR const arcv_vwscmac arcv_vwscmac_obj;
+static CONSTEXPR const arcv_vwscnmsac arcv_vwscnmsac_obj;
+static CONSTEXPR const arcv_vwscjmac arcv_vwscjmac_obj;
+static CONSTEXPR const arcv_vwscjnmsac arcv_vwscjnmsac_obj;
+static CONSTEXPR const arcv_vwscrdot arcv_vwscrdot_obj;
+static CONSTEXPR const arcv_vwscjrdot arcv_vwscjrdot_obj;
+static CONSTEXPR const arcv_vqcrdot arcv_vqcrdot_obj;
+static CONSTEXPR const arcv_vqcjrdot arcv_vqcjrdot_obj;
+static CONSTEXPR const arcv_vwsad arcv_vwsad_obj;
+static CONSTEXPR const arcv_vwsadu arcv_vwsadu_obj;
+static CONSTEXPR const arcv_vqmxm4 arcv_vqmxm4_obj;
+static CONSTEXPR const arcv_vqmxm4u arcv_vqmxm4u_obj;
+static CONSTEXPR const arcv_vqmxm4su arcv_vqmxm4su_obj;
+static CONSTEXPR const arcv_vqmxm8 arcv_vqmxm8_obj;
+static CONSTEXPR const arcv_vqmxm8u arcv_vqmxm8u_obj;
+static CONSTEXPR const arcv_vqmxm8su arcv_vqmxm8su_obj;
+static CONSTEXPR const arcv_vqmxm16 arcv_vqmxm16_obj;
+static CONSTEXPR const arcv_vqmxm16u arcv_vqmxm16u_obj;
+static CONSTEXPR const arcv_vqmxm16su arcv_vqmxm16su_obj;
+
 /* Crypto Vector */
 static CONSTEXPR const vandn vandn_obj;
 static CONSTEXPR const bitmanip<ROTATE>   vrol_obj;
@@ -3109,4 +4445,72 @@ BASE (vfwcvtbf16_f)
 /* Zvfbfwma */
 BASE (vfwmaccbf16)
 BASE (vfwmaccbf16_frm)
+/* ARC-V DSP extensions */
+BASE (arcv_vmv)
+BASE (arcv_vnorm)
+BASE (arcv_vssabs)
+BASE (arcv_vsneg)
+BASE (arcv_vclr)
+BASE (arcv_vsra)
+BASE (arcv_vsrat)
+BASE (arcv_vsra_s)
+BASE (arcv_vsra_2s)
+BASE (arcv_vnsra)
+BASE (arcv_vnsra_s)
+BASE (arcv_vnsra_2s)
+BASE (arcv_vwsra)
+BASE (arcv_vaddsub)
+BASE (arcv_vsaddsub)
+BASE (arcv_vsaaddsub)
+BASE (arcv_vqrdot)
+BASE (arcv_vqrdot_2s)
+BASE (arcv_vwsrdot_2s)
+BASE (arcv_vqrdotu)
+BASE (arcv_vqrdotsu)
+BASE (arcv_vwrdot)
+BASE (arcv_vwsrdot)
+BASE (arcv_vwrdotu)
+BASE (arcv_vwrdotsu)
+BASE (arcv_vwsmac)
+BASE (arcv_vwsnmsac)
+BASE (arcv_vwmul)
+BASE (arcv_vwmac)
+BASE (arcv_vwmulu)
+BASE (arcv_vwmacu)
+BASE (arcv_vsmulf)
+BASE (arcv_vwmulf)
+BASE (arcv_vwsmacf)
+BASE (arcv_vwsnmsacf)
+BASE (arcv_vwsrdotf)
+BASE (arcv_vconj)
+BASE (arcv_vcmuli)
+BASE (arcv_vcmulni)
+BASE (arcv_veven)
+BASE (arcv_vodd)
+BASE (arcv_vinterleave)
+BASE (arcv_vscredsum)
+BASE (arcv_vwcredsum)
+BASE (arcv_vscmul)
+BASE (arcv_vscjmul)
+BASE (arcv_vwscmul)
+BASE (arcv_vwscjmul)
+BASE (arcv_vwscmac)
+BASE (arcv_vwscnmsac)
+BASE (arcv_vwscjmac)
+BASE (arcv_vwscjnmsac)
+BASE (arcv_vwscrdot)
+BASE (arcv_vwscjrdot)
+BASE (arcv_vqcrdot)
+BASE (arcv_vqcjrdot)
+BASE (arcv_vwsad)
+BASE (arcv_vwsadu)
+BASE (arcv_vqmxm4)
+BASE (arcv_vqmxm4u)
+BASE (arcv_vqmxm4su)
+BASE (arcv_vqmxm8)
+BASE (arcv_vqmxm8u)
+BASE (arcv_vqmxm8su)
+BASE (arcv_vqmxm16)
+BASE (arcv_vqmxm16u)
+BASE (arcv_vqmxm16su)
 } // end namespace riscv_vector

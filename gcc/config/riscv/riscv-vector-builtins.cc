@@ -514,6 +514,42 @@ static const rvv_type_info lmul1_ops[] = {
 #include "riscv-vector-builtins-types.def"
   {NUM_VECTOR_TYPES, 0}};
 
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_u_ops[] = {
+#define DEF_RVV_WRDOT_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_i_ops[] = {
+#define DEF_RVV_WRDOT_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_h_u_ops[] = {
+#define DEF_RVV_WRDOT_H_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_h_i_ops[] = {
+#define DEF_RVV_WRDOT_H_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info qrdot_u_ops[] = {
+#define DEF_RVV_QRDOT_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info qrdot_i_ops[] = {
+#define DEF_RVV_QRDOT_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
 /* A list of LMUL2 will be registered for intrinsic functions.  */
 static const rvv_type_info lmul2_ops[] = {
 #define DEF_RVV_LMUL2_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
@@ -1265,6 +1301,128 @@ static CONSTEXPR const rvv_arg_type_info void_const_ptr_args[]
 static CONSTEXPR const rvv_arg_type_info vw_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_float32), rvv_arg_type_info_end};
+
+/* ARC-V DSP extensions.  */
+
+static CONSTEXPR const rvv_arg_type_info signed_shift_vv_args[]
+ = { rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_vx_args[]
+ = { rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+    rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info hx_args[]
+ = { rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_scalar),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info wwvh_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info rwwvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info urqqvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info urwwvh_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_qx_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info surqqvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_unsigned_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info suqqvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_unsigned_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info hv_args[]
+ = { rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_wx_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info whx_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_scalar),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info wwxh_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_scalar),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info s_vx_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_size),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info urwwvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_wv_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_qv_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info qqvv_args_prime[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info uqqvv_args_prime[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info rwwvh_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info v_i_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_long),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info surwwvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_unsigned_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info whv_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info rqqvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info v_sx_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_size),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
 
 /* A list of none preds that will be registered for intrinsic functions.  */
 static CONSTEXPR const predication_type_index none_preds[]
@@ -3441,16 +3599,210 @@ static CONSTEXPR const rvv_op_info sf_vc_v_fvw_ops
      rvv_arg_type_info (RVV_BASE_x2_vector), /* Return type */
      sf_vc_fvw_args /* Args */};
 
+/* ARC-V DSP extensions.  */
+
+static CONSTEXPR const rvv_op_info iu_vhv_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    hv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_rqqvv_ops
+ = {qrdot_u_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),	/* Return type */
+    urqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vqv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_qv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_signed_shift_wvv_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    signed_shift_vv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_v_i_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_v_i,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    v_i_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_whv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    whv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_whx_ops
+ = {qextu_ops,			/* Types */
+    OP_TYPE_hx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    whx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_vhx_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_hx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    hx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vwv_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_wv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_vv_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_v,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    v_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vwx_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_wx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info wi_vv_ops
+ = {wi_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    wvs_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_wwxh_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_hx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    wwxh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_signed_shift_wvx_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_vx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    signed_shift_vx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_v_sx_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_v_s,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    v_sx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_whv_ops
+ = {qextu_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    whv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_rwwvv_ops
+ = {wrdot_u_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    urwwvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_wwvh_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    wwvh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_wwxh_ops
+ = {qextu_ops,			/* Types */
+    OP_TYPE_hx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    wwxh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info su_qqvv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    suqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_wwvh_ops
+ = {qextu_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    wwvh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_rwwvh_ops
+ = {wrdot_h_u_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    urwwvh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_rwwvh_ops
+ = {wrdot_h_i_ops,			/* Types */
+    OP_TYPE_hv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    rwwvh_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vqx_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_qx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_qqvv_ops_prime
+ = {qexti_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    qqvv_args_prime			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_rqqvv_ops
+ = {qrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),	/* Return type */
+    rqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_s_vx_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_s_v,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    s_vx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info su_rqqvv_ops
+ = {qrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),	/* Return type */
+    surqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_qqvv_ops_prime
+ = {qextu_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    uqqvv_args_prime			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_whx_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_hx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    whx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_rwwvv_ops
+ = {wrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    rwwvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info su_rwwvv_ops
+ = {wrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
+    surwwvv_args			/* Args */};
+
 /* A list of all RVV base function types.  */
 static CONSTEXPR const function_type_info function_types[] = {
 #define DEF_RVV_TYPE_INDEX(                                                    \
   VECTOR, MASK, SIGNED, UNSIGNED, SIGNED_EEW8_INDEX, EEW8_INDEX, EEW16_INDEX,  \
   EEW32_INDEX, EEW64_INDEX, SHIFT, DOUBLE_TRUNC, QUAD_TRUNC, QUAD_EMUL,        \
   QUAD_EMUL_SIGNED, QUAD_EMUL_UNSIGNED, QUAD_FIX, QUAD_FIX_SIGNED,             \
-  QUAD_FIX_UNSIGNED, OCT_TRUNC, DOUBLE_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED,      \
+  QUAD_FIX_UNSIGNED, OCT_TRUNC, DOUBLE_TRUNC_SCALAR, QUAD_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED,      \
   DOUBLE_TRUNC_UNSIGNED, DOUBLE_TRUNC_UNSIGNED_SCALAR,                         \
-  DOUBLE_TRUNC_BFLOAT_SCALAR, DOUBLE_TRUNC_BFLOAT, DOUBLE_TRUNC_FLOAT, FLOAT,  \
-  LMUL1, WLMUL1, QLMUL1, QLMUL1_SIGNED, QLMUL1_UNSIGNED, XFQF, EEW8_INTERPRET, \
+  DOUBLE_TRUNC_BFLOAT_SCALAR, DOUBLE_TRUNC_BFLOAT, DOUBLE_TRUNC_FLOAT, QUAD_TRUNC_UNSIGNED, FLOAT, \
+  LMUL1, WLMUL1, QWLMUL1, QLMUL1, QLMUL1_SIGNED, QLMUL1_UNSIGNED, XFQF, EEW8_INTERPRET, \
   EEW16_INTERPRET, EEW32_INTERPRET, EEW64_INTERPRET, BOOL1_INTERPRET,          \
   BOOL2_INTERPRET, BOOL4_INTERPRET, BOOL8_INTERPRET, BOOL16_INTERPRET,         \
   BOOL32_INTERPRET, BOOL64_INTERPRET, SIGNED_EEW8_LMUL1_INTERPRET,             \
@@ -3491,15 +3843,18 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_##QUAD_FIX_UNSIGNED,                                           \
     VECTOR_TYPE_##OCT_TRUNC,                                                   \
     VECTOR_TYPE_##DOUBLE_TRUNC_SCALAR,                                         \
+    VECTOR_TYPE_##QUAD_TRUNC_SCALAR,                                           \
     VECTOR_TYPE_##DOUBLE_TRUNC_SIGNED,                                         \
     VECTOR_TYPE_##DOUBLE_TRUNC_UNSIGNED,                                       \
     VECTOR_TYPE_##DOUBLE_TRUNC_UNSIGNED_SCALAR,                                \
     VECTOR_TYPE_##DOUBLE_TRUNC_BFLOAT_SCALAR,                                  \
     VECTOR_TYPE_##DOUBLE_TRUNC_BFLOAT,                                         \
     VECTOR_TYPE_##DOUBLE_TRUNC_FLOAT,                                          \
+    VECTOR_TYPE_##QUAD_TRUNC_UNSIGNED,                                         \
     VECTOR_TYPE_##FLOAT,                                                       \
     VECTOR_TYPE_##LMUL1,                                                       \
     VECTOR_TYPE_##WLMUL1,                                                      \
+    VECTOR_TYPE_##QWLMUL1,                                                      \
     VECTOR_TYPE_##QLMUL1,                                                      \
     VECTOR_TYPE_##QLMUL1_SIGNED,                                               \
     VECTOR_TYPE_##QLMUL1_UNSIGNED,                                             \
@@ -3551,7 +3906,9 @@ static function_group_info function_groups[] = {
 #define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)                         \
   {#NAME, &bases::NAME, &shapes::SHAPE, PREDS, OPS_INFO, REQUIRED_EXTENSIONS},
 #include "andes-vector-builtins-functions.def"
-
+#define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)                         \
+  {#NAME, &bases::NAME, &shapes::SHAPE, PREDS, OPS_INFO, REQUIRED_EXTENSIONS},
+#include "arcv-vector-builtins-functions.def"
 };
 
 /* The RVV types, with their built-in

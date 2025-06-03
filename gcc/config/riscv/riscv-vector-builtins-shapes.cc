@@ -608,6 +608,36 @@ struct reduc_alu_frm_def : public build_frm_base
   }
 };
 
+/* narrow_quad_alu_def class. Handle arcv.vnsra. Unlike
+   vadd.vx/vadd.vv/vwmul.vv/vwmul.vx, vwadd.vv/vwadd.vx/vwadd.wv/vwadd.wx has
+   'OP' suffix in overloaded API.  */
+struct narrow_quad_alu_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    b.append_base_name (instance.base_name);
+
+    /* vop --> vop_<op>.  */
+    b.append_name (operand_suffixes[instance.op_info->op]);
+
+    if (!overloaded_p)
+      {
+	/* vop_<op> --> vop_<op>_<type>.  */
+	vector_type_index ret_type_idx
+	  = instance.op_info->ret.get_function_type_index (instance.type.index);
+	b.append_name (type_suffixes[ret_type_idx].vector);
+      }
+
+    /* According to rvv-intrinsic-doc, it does not add "_m" suffix
+       for vop_m C++ overloaded API.  */
+    if (overloaded_p && instance.pred == PRED_TYPE_m)
+      return b.finish_name ();
+    b.append_name (predication_suffixes[instance.pred]);
+    return b.finish_name ();
+  }
+};
+
 /* widen_alu_def class. Handle vwadd/vwsub. Unlike
    vadd.vx/vadd.vv/vwmul.vv/vwmul.vx, vwadd.vv/vwadd.vx/vwadd.wv/vwadd.wx has
    'OP' suffix in overloaded API.  */
@@ -809,6 +839,68 @@ struct reduc_alu_def : public build_base
     return b.finish_name ();
   }
 };
+
+/* arcv_rdot_alu_def class.  */
+struct arcv_rdot_alu_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    b.append_base_name (instance.base_name);
+
+    /* vop_<op> --> vop<sew>_<op>_<type>.  */
+    if (!overloaded_p)
+      {
+	b.append_name (operand_suffixes[instance.op_info->op]);
+	b.append_name (type_suffixes[instance.type.index].vector);
+	vector_type_index ret_type_idx
+	  = instance.op_info->ret.get_function_type_index (instance.type.index);
+	b.append_name (type_suffixes[ret_type_idx].vector);
+      }
+
+    /* According to rvv-intrinsic-doc, it does not add "_m" suffix
+       for vop_m C++ overloaded API.  */
+    if (overloaded_p && instance.pred == PRED_TYPE_m)
+      return b.finish_name ();
+    b.append_name (predication_suffixes[instance.pred]);
+    return b.finish_name ();
+  }
+};
+
+/* arcv_vi_alu_def class.  */
+struct arcv_vi_alu_def : public alu_def
+{
+  bool check (function_checker &c) const override
+  {
+    return c.arg_num () >= 2
+	   && c.require_immediate (2, 0, 31);
+  }
+};
+
+/* arcv_vmv_def class. Handle vmv.v_s/vmv.s_v.  */
+struct arcv_vmv_def : public build_base
+{
+  char *get_name (function_builder &b, const function_instance &instance,
+		  bool overloaded_p) const override
+  {
+    b.append_base_name (instance.base_name);
+
+    b.append_name (operand_suffixes[instance.op_info->op]);
+
+    if (!overloaded_p)
+      {
+	b.append_name (type_suffixes[instance.type.index].vector);
+      }
+
+    /* According to rvv-intrinsic-doc, it does not add "_m" suffix
+       for vop_m C++ overloaded API.  */
+    if (overloaded_p && instance.pred == PRED_TYPE_m)
+      return b.finish_name ();
+    b.append_name (predication_suffixes[instance.pred]);
+    return b.finish_name ();
+  }
+};
+
 
 /* th_extract_def class.  */
 struct th_extract_def : public build_base
@@ -1403,6 +1495,8 @@ SHAPE(alu, alu)
 SHAPE(alu_frm, alu_frm)
 SHAPE(widen_alu, widen_alu)
 SHAPE(widen_alu_frm, widen_alu_frm)
+SHAPE(narrow_quad_alu, narrow_quad_alu)
+SHAPE(arcv_rdot_alu, arcv_rdot_alu)
 SHAPE(no_mask_policy, no_mask_policy)
 SHAPE(return_mask, return_mask)
 SHAPE(narrow_alu, narrow_alu)
@@ -1411,6 +1505,8 @@ SHAPE(move, move)
 SHAPE(mask_alu, mask_alu)
 SHAPE(reduc_alu, reduc_alu)
 SHAPE(reduc_alu_frm, reduc_alu_frm)
+SHAPE(arcv_vi_alu, arcv_vi_alu)
+SHAPE(arcv_vmv, arcv_vmv)
 SHAPE(th_extract, th_extract)
 SHAPE(scalar_move, scalar_move)
 SHAPE(vundefined, vundefined)
