@@ -506,6 +506,42 @@ static const rvv_type_info lmul1_ops[] = {
 #include "riscv-vector-builtins-types.def"
   {NUM_VECTOR_TYPES, 0}};
 
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_u_ops[] = {
+#define DEF_RVV_WRDOT_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_i_ops[] = {
+#define DEF_RVV_WRDOT_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_h_u_ops[] = {
+#define DEF_RVV_WRDOT_H_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info wrdot_h_i_ops[] = {
+#define DEF_RVV_WRDOT_H_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info qrdot_u_ops[] = {
+#define DEF_RVV_QRDOT_U_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
+/* A list of LMUL1 will be registered for intrinsic functions.  */
+static const rvv_type_info qrdot_i_ops[] = {
+#define DEF_RVV_QRDOT_I_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
+#include "riscv-vector-builtins-types.def"
+  {NUM_VECTOR_TYPES, 0}};
+
 /* A list of LMUL2 will be registered for intrinsic functions.  */
 static const rvv_type_info lmul2_ops[] = {
 #define DEF_RVV_LMUL2_OPS(TYPE, REQUIRE) {VECTOR_TYPE_##TYPE, REQUIRE},
@@ -2807,8 +2843,9 @@ static CONSTEXPR const function_type_info function_types[] = {
 #define DEF_RVV_TYPE_INDEX(                                                    \
   VECTOR, MASK, SIGNED, UNSIGNED, EEW8_INDEX, EEW16_INDEX, EEW32_INDEX,        \
   EEW64_INDEX, SHIFT, DOUBLE_TRUNC, QUAD_TRUNC, OCT_TRUNC,                     \
-  DOUBLE_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED, DOUBLE_TRUNC_UNSIGNED,             \
-  DOUBLE_TRUNC_UNSIGNED_SCALAR, DOUBLE_TRUNC_FLOAT, FLOAT, LMUL1, WLMUL1,      \
+  DOUBLE_TRUNC_SCALAR, QUAD_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED,		       \
+  DOUBLE_TRUNC_UNSIGNED, DOUBLE_TRUNC_UNSIGNED_SCALAR, DOUBLE_TRUNC_FLOAT,     \
+  QUAD_TRUNC_UNSIGNED, FLOAT, LMUL1, WLMUL1, QLMUL1,                           \
   EEW8_INTERPRET, EEW16_INTERPRET, EEW32_INTERPRET, EEW64_INTERPRET,           \
   BOOL1_INTERPRET, BOOL2_INTERPRET, BOOL4_INTERPRET, BOOL8_INTERPRET,          \
   BOOL16_INTERPRET, BOOL32_INTERPRET, BOOL64_INTERPRET,                        \
@@ -2833,6 +2870,7 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_##EEW8_INDEX,                                                  \
     VECTOR_TYPE_##EEW16_INDEX,                                                 \
     VECTOR_TYPE_##EEW32_INDEX,                                                 \
@@ -2842,13 +2880,16 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_##QUAD_TRUNC,                                                  \
     VECTOR_TYPE_##OCT_TRUNC,                                                   \
     VECTOR_TYPE_##DOUBLE_TRUNC_SCALAR,                                         \
+    VECTOR_TYPE_##QUAD_TRUNC_SCALAR,                                           \
     VECTOR_TYPE_##DOUBLE_TRUNC_SIGNED,                                         \
     VECTOR_TYPE_##DOUBLE_TRUNC_UNSIGNED,                                       \
     VECTOR_TYPE_##DOUBLE_TRUNC_UNSIGNED_SCALAR,                                \
     VECTOR_TYPE_##DOUBLE_TRUNC_FLOAT,                                          \
+    VECTOR_TYPE_##QUAD_TRUNC_UNSIGNED,                                         \
     VECTOR_TYPE_##FLOAT,                                                       \
     VECTOR_TYPE_##LMUL1,                                                       \
     VECTOR_TYPE_##WLMUL1,                                                      \
+    VECTOR_TYPE_##QLMUL1,                                                      \
     VECTOR_TYPE_##EEW8_INTERPRET,                                              \
     VECTOR_TYPE_##EEW16_INTERPRET,                                             \
     VECTOR_TYPE_##EEW32_INTERPRET,                                             \
