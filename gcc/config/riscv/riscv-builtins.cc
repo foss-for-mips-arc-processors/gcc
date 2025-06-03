@@ -138,6 +138,8 @@ AVAIL (andesbfhcvt, TARGET_XANDESBFHCVT)
 
 // ARC-V AVAIL
 AVAIL (xarcvudsp, TARGET_XARCVUDSP && !TARGET_64BIT)
+AVAIL (xarcvbitrev, TARGET_XARCVBITREV)
+AVAIL (xarcvbitstream, TARGET_XARCVBITSTREAM)
 
 /* Construct a riscv_builtin_description from the given arguments like RISCV_BUILTIN.
 
