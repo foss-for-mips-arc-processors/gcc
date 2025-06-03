@@ -382,103 +382,53 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
 
   enum cpp_ttype token;
   tree x;
+  /* Parse open Parenthesis '('.  */
   if (pragma_lex (&x) != CPP_OPEN_PAREN)
   {
     error ("missing %<(%< after %<#pragma intrinsic%<");
     return;
   }
 
+  /* Parse function name.  */
   if (pragma_lex (&x) != CPP_NAME)
   {
     error ("expected intrinsic name identifier");
     return;
   }
+  const char *fn_name = IDENTIFIER_POINTER (x);
+  apex.function_name = fn_name;
 
-//  const char *intrinsic_name = TREE_STRING_POINTER (x);
-  const char *intrinsic_name = IDENTIFIER_POINTER (x);
-  apex.function_name = intrinsic_name;
-
-  /* Segmentation fault.  */
-  //flags->function_name = intrinsic_name;
-
-  /* Parse key-value pairs.  */
-  while (1)
+  /* Parse comma ','  */
+  if (pragma_lex (&x) != CPP_COMMA)
   {
-    token = pragma_lex(&x);
-    if (token == CPP_CLOSE_PAREN) break;
-    if (token != CPP_COMMA)
-    {
-      error ("expected %<,%> or %<)%>");
-      return;
-    }
-
-    /* Parse key (e.g., "name")  */
-    if (pragma_lex (&x) != CPP_NAME)
-    {
-      error ("expected key (identifier)");
-      return;
-    }
-    const char *key = IDENTIFIER_POINTER (x);
-
-    /* Parse '=>' (as '=' followed by '>') */
-    if (pragma_lex (&x) != CPP_EQ)
-    {
-      error ("expected %<=%>");
-      return;
-    }
-
-    if (pragma_lex (&x) != CPP_GREATER)
-    {
-      error ("expected %<>%>");
-      return;
-    }
-
-    /* Parse value (string, number, or hex)  */
-    enum cpp_ttype val_type = pragma_lex (&x);
-    switch (val_type)
-    {
-      case CPP_STRING:
-      {
-        const char *str = TREE_STRING_POINTER(x);
-
-        if (strcmp(key, "name") == 0)
-	  apex.name = str;
-        else if (strcmp(key, "flags") == 0)
-	  apex.flags = str;
-        else
-          warning(0, "luis: unexpected string value for key '%s'", key);
-        
-        break;
-      }
-      case CPP_NUMBER:
-      {
-        unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
-
-        if (strcmp(key, "opcode") == 0)
-	  apex.opcode = num;
-        else if (strcmp(key, "sub_opcode") == 0)
-	  apex.sub_code = num;
-        else if (strcmp(key, "set_flags") == 0)
-	  apex.set_flags = num;
-        else
-          warning(0, "luis: unexpected numeric value for key '%s'", key);
-        
-        break;
-      }
-      default:
-      error ("expected string, number or hex value");
-      return;
-    }
-  }
-
-  /* Parse semicolon ';'  */
-  if (pragma_lex (&x) != CPP_SEMICOLON)
-  {
-    error ("expected %<;%> at end of pragma");
+    error ("expected %<,%> or %<)%>");
     return;
   }
 
-  /* ... */
+  /* Parse instruction name.  */
+  if (pragma_lex (&x) != CPP_STRING)
+  {
+    error ("expected instruction name identifier");
+    return;
+  }
+  const char *insn_name = TREE_STRING_POINTER(x);
+  apex.name = insn_name;
+
+  /* Parse comma ','  */
+  if (pragma_lex (&x) != CPP_COMMA)
+  {
+    error ("expected %<,%> or %<)%>");
+    return;
+  }
+
+  /* Parse opcode number.  */
+  if (pragma_lex (&x) != CPP_NUMBER)
+  {
+    error ("expected instruciton opcode value");
+    return;
+  }
+  unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
+	apex.opcode = num;
 
   //riscv_apex_init_builtins ();
   riscv_lookup_apex ();
