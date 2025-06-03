@@ -124,6 +124,14 @@ enum required_ext
   ZVKSED_EXT,  /* Crypto vector Zvksed sub-ext */
   ZVKSH_EXT,   /* Crypto vector Zvksh sub-ext */
   XTHEADVECTOR_EXT,   /* XTheadVector extension */
+  XARCVBITREV_EXT,	/* XArcvBitrev extension */
+  XARCVBITSTREAM_EXT,	/* XArcvBitstream extension */
+  XARCVVDSP_EXT,	/* XArcvVdsp extension */
+  XARCVVCPLX_EXT,	/* XArcvVcplx extension */
+  XARCVVSAD_EXT,	/* XArcvVsad extension */
+  XARCVMXMB_EXT,	/* XArcvMxmb extension */
+  XARCVMXMC_EXT,	/* XArcvMxmc extension */
+  XARCVMXMD_EXT,	/* XArcvMxmd extension */
   /* Please update below to isa_name func when add or remove enum type(s).  */
 };
 
@@ -153,6 +161,22 @@ static inline const char * reqired_ext_to_isa_name (enum required_ext required)
       return "zvksh";
     case XTHEADVECTOR_EXT:
       return "xthreadvector";
+    case XARCVBITREV_EXT:
+      return "xarcvbitrev";
+    case XARCVBITSTREAM_EXT:
+      return "xarcvbitstream";
+    case XARCVVDSP_EXT:
+      return "xarcvvdsp";
+    case XARCVVCPLX_EXT:
+      return "xarcvvcplx";
+    case XARCVVSAD_EXT:
+      return "xarcvvsad";
+    case XARCVMXMB_EXT:
+      return "xarcvmxmb";
+    case XARCVMXMC_EXT:
+      return "xarcvmxmc";
+    case XARCVMXMD_EXT:
+      return "xarcvmxmd";
     default:
       gcc_unreachable ();
   }
@@ -186,6 +210,22 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_ZVKSH;
     case XTHEADVECTOR_EXT:
       return TARGET_XTHEADVECTOR;
+    case XARCVBITREV_EXT:
+      return TARGET_XARCVBITREV;
+    case XARCVBITSTREAM_EXT:
+      return TARGET_XARCVBITSTREAM;
+    case XARCVVDSP_EXT:
+      return TARGET_XARCVVDSP;
+    case XARCVVCPLX_EXT:
+      return TARGET_XARCVVCPLX;
+    case XARCVVSAD_EXT:
+      return TARGET_XARCVVSAD;
+    case XARCVMXMB_EXT:
+      return TARGET_XARCVMXMB;
+    case XARCVMXMC_EXT:
+      return TARGET_XARCVMXMC;
+    case XARCVMXMD_EXT:
+      return TARGET_XARCVMXMD;
     default:
       gcc_unreachable ();
   }
