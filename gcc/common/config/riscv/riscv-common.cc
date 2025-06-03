@@ -261,6 +261,15 @@ static const riscv_implied_info_t riscv_implied_info[] =
 
   {"xsfvcp", "zve32x"},
 
+  {"xarcvbitrev", "v"},
+  {"xarcvbitstream", "v"},
+  {"xarcvvdsp", "v"},
+  {"xarcvvcplx", "v"},
+  {"xarcvvsad", "v"},
+  {"xarcvmxmb", "v"},
+  {"xarcvmxmc", "v"},
+  {"xarcvmxmd", "v"},
+
   {NULL, NULL}
 };
 
@@ -476,6 +485,15 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
   {"xsfvfnrclipxfqf", ISA_SPEC_CLASS_NONE, 1, 0},
 
   {"xarcvudsp", ISA_SPEC_CLASS_NONE, 1, 0},
+
+  {"xarcvbitrev", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvbitstream", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvdsp", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvcplx", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvsad", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmb", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmc", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmd", ISA_SPEC_CLASS_NONE, 1, 0},
 
   /* Terminate the list.  */
   {NULL, ISA_SPEC_CLASS_NONE, 0, 0}
@@ -1823,6 +1841,31 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   RISCV_EXT_FLAG_ENTRY ("xsfvfnrclipxfqf", x_riscv_sifive_subext, MASK_XSFVFNRCLIPXFQF),
 
   RISCV_EXT_FLAG_ENTRY ("xarcvudsp", x_riscv_xarcv_subext, MASK_XARCVUDSP),
+
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitrev", x_riscv_xarcv_subext, MASK_XARCVBITREV),
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitrev", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitrev", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitstream", x_riscv_xarcv_subext, MASK_XARCVBITSTREAM),
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitstream", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvbitstream", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvdsp", x_riscv_xarcv_subext, MASK_XARCVVDSP),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvdsp", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvdsp", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvcplx", x_riscv_xarcv_subext, MASK_XARCVVCPLX),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvcplx", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvcplx", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvsad", x_riscv_xarcv_subext, MASK_XARCVVSAD),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvsad", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvvsad", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmb", x_riscv_xarcv_subext, MASK_XARCVMXMB),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmb", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmb", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmc", x_riscv_xarcv_subext, MASK_XARCVMXMC),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmc", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmc", x_target_flags, MASK_VECTOR),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_riscv_xarcv_subext, MASK_XARCVMXMD),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_target_flags, MASK_FULL_V),
+  RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_target_flags, MASK_VECTOR),
 
   {NULL, NULL, NULL, 0}
 };

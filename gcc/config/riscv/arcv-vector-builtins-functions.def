@@ -1,0 +1,149 @@
+/* Intrinsic define macros for the ARC-V DSP extensions.
+   Copyright (C) 2025 Free Software Foundation, Inc.
+   Contributed by Artemiy Volkov (artemiy@synopsys.com), Synopsys Inc.
+
+   This file is part of GCC.
+
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3, or (at your
+   option) any later version.
+
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
+
+   Under Section 7 of GPL version 3, you are granted additional
+   permissions described in the GCC Runtime Library Exception, version
+   3.1, as published by the Free Software Foundation.
+
+   You should have received a copy of the GNU General Public License and
+   a copy of the GCC Runtime Library Exception along with this program;
+   see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+   <http://www.gnu.org/licenses/>.  */
+
+#ifndef DEF_RVV_FUNCTION
+#define DEF_RVV_FUNCTION(NAME, SHAPE, PREDS, OPS_INFO)
+#endif
+
+
+#define REQUIRED_EXTENSIONS XARCVVDSP_EXT
+DEF_RVV_FUNCTION (arcv_vmv, arcv_vmv, none_preds, iu_v_sx_ops)
+DEF_RVV_FUNCTION (arcv_vmv, arcv_vmv, none_preds, iu_s_vx_ops)
+DEF_RVV_FUNCTION (arcv_vnorm, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vssabs, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vsneg, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vclr, alu, none_m_preds, iu_v_i_ops)
+DEF_RVV_FUNCTION (arcv_vsra, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsra, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vsrat, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsrat, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vsra_s, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsra_s, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vsra_2s, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsra_2s, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vwx_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqv_ops)
+DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, none_m_preds, i_narrow_signed_shift_vqx_ops)
+DEF_RVV_FUNCTION (arcv_vwsra, widen_alu, none_m_preds, i_signed_shift_wvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsra, widen_alu, none_m_preds, i_signed_shift_wvx_ops)
+DEF_RVV_FUNCTION (arcv_vaddsub, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsaddsub, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vsaaddsub, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vqrdot, arcv_rdot_alu, none_m_preds, i_rqqvv_ops)
+DEF_RVV_FUNCTION (arcv_vqrdot_2s, arcv_rdot_alu, none_m_preds, i_rqqvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsrdot_2s, arcv_rdot_alu, none_m_preds, i_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vqrdotu, arcv_rdot_alu, none_m_preds, u_rqqvv_ops)
+DEF_RVV_FUNCTION (arcv_vqrdotsu, arcv_rdot_alu, none_m_preds, su_rqqvv_ops)
+DEF_RVV_FUNCTION (arcv_vwrdot, arcv_rdot_alu, none_m_preds, i_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwrdot, arcv_rdot_alu, none_m_preds, i_rwwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwsrdot, arcv_rdot_alu, none_m_preds, i_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwrdotu, arcv_rdot_alu, none_m_preds, u_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwrdotu, arcv_rdot_alu, none_m_preds, u_rwwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwrdotsu, arcv_rdot_alu, none_m_preds, su_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsmac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsmac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwsnmsac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsnmsac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwmul, alu, none_m_preds, i_whv_ops)
+DEF_RVV_FUNCTION (arcv_vwmul, alu, none_m_preds, i_whx_ops)
+DEF_RVV_FUNCTION (arcv_vwmac, alu, none_m_preds, i_wwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwmac, alu, none_m_preds, i_wwxh_ops)
+DEF_RVV_FUNCTION (arcv_vwmulu, alu, none_m_preds, u_whv_ops)
+DEF_RVV_FUNCTION (arcv_vwmulu, alu, none_m_preds, u_whx_ops)
+DEF_RVV_FUNCTION (arcv_vwmacu, alu, none_m_preds, u_wwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwmacu, alu, none_m_preds, u_wwxh_ops)
+DEF_RVV_FUNCTION (arcv_vsmulf, alu, none_m_preds, iu_vhv_ops)
+DEF_RVV_FUNCTION (arcv_vsmulf, alu, none_m_preds, iu_vhx_ops)
+DEF_RVV_FUNCTION (arcv_vwmulf, alu, none_m_preds, i_whv_ops)
+DEF_RVV_FUNCTION (arcv_vwmulf, alu, none_m_preds, i_whx_ops)
+DEF_RVV_FUNCTION (arcv_vwsmacf, alu, none_m_preds, i_wwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwsmacf, alu, none_m_preds, i_wwxh_ops)
+DEF_RVV_FUNCTION (arcv_vwsnmsacf, alu, none_m_preds, i_wwvh_ops)
+DEF_RVV_FUNCTION (arcv_vwsnmsacf, alu, none_m_preds, i_wwxh_ops)
+DEF_RVV_FUNCTION (arcv_vwsrdotf, arcv_rdot_alu, none_m_preds, i_rwwvh_ops)
+#undef REQUIRED_EXTENSIONS
+
+#define REQUIRED_EXTENSIONS XARCVVCPLX_EXT
+DEF_RVV_FUNCTION (arcv_vconj, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vcmuli, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vcmulni, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_veven, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vodd, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vinterleave, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vscredsum, reduc_alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vwcredsum, reduc_alu, none_m_preds, wi_vv_ops)
+DEF_RVV_FUNCTION (arcv_vscmul, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vscmul, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vscjmul, alu, none_m_preds, iu_vvv_ops)
+DEF_RVV_FUNCTION (arcv_vscjmul, alu, none_m_preds, iu_vvx_ops)
+DEF_RVV_FUNCTION (arcv_vwscmul, alu, none_m_preds, i_wvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscmul, alu, none_m_preds, i_wvx_ops)
+DEF_RVV_FUNCTION (arcv_vwscjmul, alu, none_m_preds, i_wvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjmul, alu, none_m_preds, i_wvx_ops)
+DEF_RVV_FUNCTION (arcv_vwscmac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscmac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwscnmsac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscnmsac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjmac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjmac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjnmsac, alu, none_m_preds, i_wwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjnmsac, alu, none_m_preds, i_wwxv_ops)
+DEF_RVV_FUNCTION (arcv_vwscrdot, arcv_rdot_alu, none_m_preds, i_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vwscjrdot, arcv_rdot_alu, none_m_preds, i_rwwvv_ops)
+DEF_RVV_FUNCTION (arcv_vqcrdot, arcv_rdot_alu, none_m_preds, i_rqqvv_ops)
+DEF_RVV_FUNCTION (arcv_vqcjrdot, arcv_rdot_alu, none_m_preds, i_rqqvv_ops)
+#undef REQUIRED_EXTENSIONS
+
+#define REQUIRED_EXTENSIONS XARCVVSAD_EXT
+DEF_RVV_FUNCTION (arcv_vwsad, alu, none_m_preds, i_wvv_ops)
+DEF_RVV_FUNCTION (arcv_vwsadu, alu, none_m_preds, u_wvv_ops)
+#undef REQUIRED_EXTENSIONS
+
+#define REQUIRED_EXTENSIONS XARCVMXMB_EXT
+DEF_RVV_FUNCTION (arcv_vqmxm4, alu, none_m_preds, i_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm4u, alu, none_m_preds, u_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm4su, alu, none_m_preds, su_qqvv_ops)
+#undef REQUIRED_EXTENSIONS
+
+#define REQUIRED_EXTENSIONS XARCVMXMC_EXT
+DEF_RVV_FUNCTION (arcv_vqmxm8, alu, none_m_preds, i_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm8u, alu, none_m_preds, u_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm8su, alu, none_m_preds, su_qqvv_ops)
+#undef REQUIRED_EXTENSIONS
+
+#define REQUIRED_EXTENSIONS XARCVMXMD_EXT
+DEF_RVV_FUNCTION (arcv_vqmxm16, alu, none_m_preds, i_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm16u, alu, none_m_preds, u_qqvv_ops_prime)
+DEF_RVV_FUNCTION (arcv_vqmxm16su, alu, none_m_preds, su_qqvv_ops)
+#undef REQUIRED_EXTENSIONS

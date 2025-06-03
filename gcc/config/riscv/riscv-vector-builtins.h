@@ -130,6 +130,14 @@ enum required_ext
   XSFVQMACCQOQ_EXT,	/* XSFVQMACCQOQ extension */
   XSFVQMACCDOD_EXT,	/* XSFVQMACCDOD extension */
   XSFVFNRCLIPXFQF_EXT,	/* XSFVFNRCLIPXFQF extension */
+  XARCVBITREV_EXT,	/* XArcvBitrev extension */
+  XARCVBITSTREAM_EXT,	/* XArcvBitstream extension */
+  XARCVVDSP_EXT,	/* XArcvVdsp extension */
+  XARCVVCPLX_EXT,	/* XArcvVcplx extension */
+  XARCVVSAD_EXT,	/* XArcvVsad extension */
+  XARCVMXMB_EXT,	/* XArcvMxmb extension */
+  XARCVMXMC_EXT,	/* XArcvMxmc extension */
+  XARCVMXMD_EXT,	/* XArcvMxmd extension */
   /* Please update below to isa_name func when add or remove enum type(s).  */
 };
 
@@ -169,6 +177,22 @@ static inline const char * required_ext_to_isa_name (enum required_ext required)
       return "xsfvqmaccdod";
     case XSFVFNRCLIPXFQF_EXT:
       return "xsfvfnrclipxfqf";
+    case XARCVBITREV_EXT:
+      return "xarcvbitrev";
+    case XARCVBITSTREAM_EXT:
+      return "xarcvbitstream";
+    case XARCVVDSP_EXT:
+      return "xarcvvdsp";
+    case XARCVVCPLX_EXT:
+      return "xarcvvcplx";
+    case XARCVVSAD_EXT:
+      return "xarcvvsad";
+    case XARCVMXMB_EXT:
+      return "xarcvmxmb";
+    case XARCVMXMC_EXT:
+      return "xarcvmxmc";
+    case XARCVMXMD_EXT:
+      return "xarcvmxmd";
     default:
       gcc_unreachable ();
   }
@@ -212,6 +236,22 @@ static inline bool required_extensions_specified (enum required_ext required)
       return TARGET_XSFVQMACCDOD;
     case XSFVFNRCLIPXFQF_EXT:
       return TARGET_XSFVFNRCLIPXFQF;
+    case XARCVBITREV_EXT:
+      return TARGET_XARCVBITREV;
+    case XARCVBITSTREAM_EXT:
+      return TARGET_XARCVBITSTREAM;
+    case XARCVVDSP_EXT:
+      return TARGET_XARCVVDSP;
+    case XARCVVCPLX_EXT:
+      return TARGET_XARCVVCPLX;
+    case XARCVVSAD_EXT:
+      return TARGET_XARCVVSAD;
+    case XARCVMXMB_EXT:
+      return TARGET_XARCVMXMB;
+    case XARCVMXMC_EXT:
+      return TARGET_XARCVMXMC;
+    case XARCVMXMD_EXT:
+      return TARGET_XARCVMXMD;
     default:
       gcc_unreachable ();
   }
@@ -359,6 +399,22 @@ struct function_group_info
 	return TARGET_XSFVQMACCDOD;
       case XSFVFNRCLIPXFQF_EXT:
 	return TARGET_XSFVFNRCLIPXFQF;
+    case XARCVBITREV_EXT:
+      return TARGET_XARCVBITREV;
+    case XARCVBITSTREAM_EXT:
+      return TARGET_XARCVBITSTREAM;
+    case XARCVVDSP_EXT:
+      return TARGET_XARCVVDSP;
+    case XARCVVCPLX_EXT:
+      return TARGET_XARCVVCPLX;
+    case XARCVVSAD_EXT:
+      return TARGET_XARCVVSAD;
+    case XARCVMXMB_EXT:
+      return TARGET_XARCVMXMB;
+    case XARCVMXMC_EXT:
+      return TARGET_XARCVMXMC;
+    case XARCVMXMD_EXT:
+      return TARGET_XARCVMXMD;
       default:
         gcc_unreachable ();
     }

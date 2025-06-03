@@ -19,3 +19,12 @@ RISCV_BUILTIN (arcv_udsp_xvwscjmul_vv_i16m1, "arcv_udsp_xvwscjmul_vv_i16m1", RIS
 RISCV_BUILTIN (arcv_udsp_xvwscrdot_vv_i16m1, "arcv_udsp_xvwscrdot_vv_i16m1", RISCV_BUILTIN_DIRECT, RISCV_DI_FTYPE_DI_SI_SI, xarcvudsp),
 RISCV_BUILTIN (arcv_udsp_xvwscjrdot_vv_i16m1, "arcv_udsp_xvwscjrdot_vv_i16m1", RISCV_BUILTIN_DIRECT, RISCV_DI_FTYPE_DI_SI_SI, xarcvudsp),
 RISCV_BUILTIN (arcv_udsp_bitrev, "arcv_udsp_bitrev", RISCV_BUILTIN_DIRECT, RISCV_SI_FTYPE_SI_SI, xarcvudsp),
+
+// ARC-V BITREV
+RISCV_BUILTIN (arcv_bitrev, "arcv_bitrev", RISCV_BUILTIN_DIRECT, RISCV_SI_FTYPE_SI_SI, xarcvbitrev),
+
+// ARC-V BITSTREAM
+RISCV_BUILTIN (arcv_bspeek, "arcv_bspeek", RISCV_BUILTIN_DIRECT, RISCV_SI_FTYPE_SI, xarcvbitstream),
+RISCV_BUILTIN (arcv_bspop, "arcv_bspop", RISCV_BUILTIN_DIRECT, RISCV_SI_FTYPE_SI, xarcvbitstream),
+RISCV_BUILTIN (arcv_bspush, "arcv_bspush", RISCV_BUILTIN_DIRECT, RISCV_SI_FTYPE_SI_SI, xarcvbitstream),
+
