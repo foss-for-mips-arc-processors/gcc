@@ -49,11 +49,20 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef RISCV_APEX
 #define RISCV_APEX
 
+enum riscv_apex_insn_format {
+  RISCV_APEX_ALL = 0,
+  RISCV_APEX_XD   = 1 << 0,
+  RISCV_APEX_XS   = 1 << 1,
+  RISCV_APEX_XI   = 1 << 2,
+  RISCV_APEX_XC   = 1 << 3
+};
+
 struct riscv_intrinsic_info
 {
   const char *fn_name;
   const char *insn_name;
   int opcode;
+  unsigned int insn_formats;
 };
 
 extern struct riscv_intrinsic_info apex;

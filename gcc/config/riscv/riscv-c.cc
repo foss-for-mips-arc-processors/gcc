@@ -430,6 +430,39 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
   unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
 	apex.opcode = num;
 
+  apex.insn_formats = 0;
+  apex.insn_formats |= RISCV_APEX_ALL;
+
+  /* Parse instruction formations.  */
+  while (1)
+  {
+    token = pragma_lex (&x);
+    if (token == CPP_CLOSE_PAREN)
+      break;
+    if (token != CPP_COMMA)
+    {
+      error ("expected %<,%> or %<)%>");
+      return;
+    }
+
+    token = pragma_lex (&x);
+    if (token != CPP_STRING)
+    {
+      error ("expected instruction format identifier");
+      return;
+    }
+    const char *insn_format = TREE_STRING_POINTER(x);
+
+    if (strcmp(insn_format, "XD") == 0)
+      apex.insn_formats |= RISCV_APEX_XD;
+    else if (strcmp(insn_format, "XS") == 0)
+      apex.insn_formats |= RISCV_APEX_XS;
+    else if (strcmp(insn_format, "XI") == 0)
+      apex.insn_formats |= RISCV_APEX_XI;
+    else if (strcmp(insn_format, "XC") == 0)
+      apex.insn_formats |= RISCV_APEX_XC;
+  }
+
   //riscv_apex_init_builtins ();
   riscv_lookup_apex ();
   riscv_emit_intrinsic_instruction ();
