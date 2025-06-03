@@ -110,8 +110,6 @@ struct riscv_builtin_description_apex {
   /* Specifies how the function should be expanded.  */
   enum riscv_builtin_type builtin_type;
 
-  /* The function's prototype.  */
-  enum riscv_function_type prototype;
 };
 
 AVAIL (hard_float, TARGET_HARD_FLOAT || TARGET_ZFINX)
@@ -342,17 +340,15 @@ riscv_apex_init_builtin (tree fndecl)
     const char *name = apex.function_name;
     const char *insn_name = apex.name;
     enum insn_code icode = CODE_FOR_riscv_apex;
-    enum riscv_function_type ftype = RISCV_USI_FTYPE_USI_USI;
 
-    riscv_apex_builtins[i] =  { icode, name, insn_name, RISCV_BUILTIN_DIRECT, ftype };
+    riscv_apex_builtins[i] =  { icode, name, insn_name, RISCV_BUILTIN_DIRECT };
     
-    tree type = riscv_build_function_type (ftype);
-    riscv_builtin_decls_apex[i] = add_builtin_function (name, type, (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX, BUILT_IN_MD, NULL, NULL);
-
     fndecl->function_decl.built_in_class = BUILT_IN_MD;
     fndecl->function_decl.function_code = (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
 
     i++;
+  } else {
+    error ("%s is not declared.", apex.function_name);
   }
 }
 
