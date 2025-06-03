@@ -51,12 +51,9 @@ along with GCC; see the file COPYING3.  If not see
 
 struct riscv_intrinsic_info
 {
-  const char *function_name;
-  const char *name;
+  const char *fn_name;
+  const char *insn_name;
   int opcode;
-  int sub_code;
-  int set_flags;
-  const char *flags;
 };
 
 extern struct riscv_intrinsic_info apex;

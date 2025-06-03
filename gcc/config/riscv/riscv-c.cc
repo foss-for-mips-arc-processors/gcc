@@ -367,7 +367,7 @@ riscv_pragma_luis_foo (cpp_reader *)
 void
 riscv_lookup_apex (void)
 {
-  tree id = get_identifier (apex.function_name);
+  tree id = get_identifier (apex.fn_name);
   tree fndecl = lookup_name (id);
  
   riscv_apex_init_builtin (fndecl);
@@ -396,7 +396,7 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     return;
   }
   const char *fn_name = IDENTIFIER_POINTER (x);
-  apex.function_name = fn_name;
+  apex.fn_name = fn_name;
 
   /* Parse comma ','  */
   if (pragma_lex (&x) != CPP_COMMA)
@@ -412,7 +412,7 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     return;
   }
   const char *insn_name = TREE_STRING_POINTER(x);
-  apex.name = insn_name;
+  apex.insn_name = insn_name;
 
   /* Parse comma ','  */
   if (pragma_lex (&x) != CPP_COMMA)

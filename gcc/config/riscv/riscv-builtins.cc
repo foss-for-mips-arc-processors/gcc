@@ -337,18 +337,23 @@ riscv_apex_init_builtin (tree fndecl)
   {
     static int i = 0;
     
-    const char *name = apex.function_name;
-    const char *insn_name = apex.name;
+    const char *fn_name = apex.fn_name;
+    const char *insn_name = apex.insn_name;
     enum insn_code icode = CODE_FOR_riscv_apex;
 
-    riscv_apex_builtins[i] =  { icode, name, insn_name, RISCV_BUILTIN_DIRECT };
-    
+    /* Store APEX insn information.  */
+    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT };
+
+    /* Modify the prototype type as built-in.  */
     fndecl->function_decl.built_in_class = BUILT_IN_MD;
+
+    /* Modify the prototype function code to match the index
+       in "riscv_apex_builtins" with a mask for APEX only insns.  */
     fndecl->function_decl.function_code = (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
 
     i++;
   } else {
-    error ("%s is not declared.", apex.function_name);
+    error ("%s is not declared.", apex.fn_name);
   }
 }
 
