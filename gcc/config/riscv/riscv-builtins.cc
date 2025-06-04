@@ -110,6 +110,7 @@ struct riscv_builtin_description_apex {
   /* Specifies how the function should be expanded.  */
   enum riscv_builtin_type builtin_type;
 
+  unsigned int insn_formats;
 };
 
 AVAIL (hard_float, TARGET_HARD_FLOAT || TARGET_ZFINX)
@@ -330,6 +331,16 @@ riscv_init_builtins (void)
     }
 }
 
+bool
+arcv_format_supports_p (unsigned int subcode, unsigned int insn_format)
+{
+  const struct riscv_builtin_description_apex *d = &riscv_apex_builtins[subcode];
+  if (d->insn_formats & insn_format)
+    return true;
+  else
+    return false;
+}
+
 void
 riscv_apex_init_builtin (tree fndecl)
 {
@@ -340,9 +351,10 @@ riscv_apex_init_builtin (tree fndecl)
     const char *fn_name = apex.fn_name;
     const char *insn_name = apex.insn_name;
     enum insn_code icode = CODE_FOR_riscv_apex;
+    unsigned int insn_formats = apex.insn_formats;
 
     /* Store APEX insn information.  */
-    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT };
+    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
 
     /* Modify the prototype type as built-in.  */
     fndecl->function_decl.built_in_class = BUILT_IN_MD;

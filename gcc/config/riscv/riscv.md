@@ -693,20 +693,6 @@
   }
 )
 
-;; works good.
-;;(define_insn "riscv_xd_xs_xc"
-;;    [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-;;          (unspec:SI [(match_operand:SI 1 "register_operand" "r,r,0")
-;;                    (match_operand:SI 2 "general_operand" "r,B8,I")]
-;;                UNSPEC_LUIS))]
-;;    ""
-;;    "@
-;;    xd\t%0, %1, %2  \t; riscv_xd
-;;    xsi\t%0, %1, %2 \t; riscv_xs
-;;    xc\t%0 %2 \t; riscv_xc"
-;;    [(set_attr "type" "arith,arith,arith")]
-;;)
-
 (define_insn "riscv_xd"
     [(set (match_operand:SI 0 "register_operand" "=r")
           (unspec:SI [(match_operand:SI 1 "register_operand" "r")
@@ -729,15 +715,23 @@
 
 (define_insn "riscv_xc"
     [(set (match_operand:SI 0 "register_operand" "=r")
-          (unspec:SI [(match_operand:SI 1 "register_operand" "0")
-                    (match_operand:SI 2 "general_operand" "I")]
+          (unspec:SI [(match_operand:SI 1 "general_operand" "") ; subcode
+                    (match_operand:SI 2 "register_operand" "0")
+                    (match_operand:SI 3 "general_operand" "I")]
                 UNSPEC_LUIS))]
-    ""
-    "xc\t%0 %2 \t; riscv_xc"
+    "arcv_format_supports_p (UINTVAL (operands[1]), RISCV_APEX_XC)"
+    {
+    unsigned int subcode = UINTVAL (operands[1]);
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, get_builtin_name (subcode));
+    const char *str = XSTR (op, 0);
+    return xasprintf ("%s\t%s, %d ; riscv_xc",
+                      str,
+                      reg_names[REGNO (operands[0])],
+                      INTVAL (operands[3]));
+    }
     [(set_attr "type" "arith")]
 )
 
-;; it works.
 (define_insn "riscv_xi"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "immediate_operand" "I")]
