@@ -695,21 +695,41 @@
 
 (define_insn "riscv_xd"
     [(set (match_operand:SI 0 "register_operand" "=r")
-          (unspec:SI [(match_operand:SI 1 "register_operand" "r")
-                    (match_operand:SI 2 "general_operand" "r")]
+          (unspec:SI [(match_operand:SI 1 "general_operand" "") ; subcode
+                    (match_operand:SI 2 "general_operand" "r")
+                    (match_operand:SI 3 "general_operand" "r")]
                 UNSPEC_LUIS))]
-    ""
-    "xd\t%0, %1, %2  \t; riscv_xd"
+    "arcv_format_supports_p (UINTVAL (operands[1]), RISCV_APEX_XD)"
+    {
+      unsigned int subcode = UINTVAL (operands[1]);
+      rtx op = gen_rtx_CONST_STRING (VOIDmode, get_builtin_name (subcode));
+      const char *str = XSTR (op, 0);
+      return xasprintf ("%s\t%s, %s, %s ; riscv_xd",
+                        str,
+                        reg_names[REGNO (operands[0])],
+                        reg_names[REGNO (operands[2])],
+                        reg_names[REGNO (operands[3])]);
+    }
     [(set_attr "type" "arith")]
 )
 
 (define_insn "riscv_xs"
     [(set (match_operand:SI 0 "register_operand" "=r")
-          (unspec:SI [(match_operand:SI 1 "register_operand" "r")
-                    (match_operand:SI 2 "general_operand" "B8")]
+          (unspec:SI [(match_operand:SI 1 "general_operand" "") ; subcode
+                    (match_operand:SI 2 "register_operand" "r")
+                    (match_operand:SI 3 "general_operand" "B8")]
                 UNSPEC_LUIS))]
-    ""
-    "xsi\t%0, %1, %2 \t; riscv_xs"
+    "arcv_format_supports_p (UINTVAL (operands[1]), RISCV_APEX_XS)"
+    {
+      unsigned int subcode = UINTVAL (operands[1]);
+      rtx op = gen_rtx_CONST_STRING (VOIDmode, get_builtin_name (subcode));
+      const char *str = XSTR (op, 0);
+      return xasprintf ("%s\t%s, %s, %d ; riscv_xs",
+                        str,
+                        reg_names[REGNO (operands[0])],
+                        reg_names[REGNO (operands[2])],
+                        INTVAL (operands[3]));
+    }
     [(set_attr "type" "arith")]
 )
 
@@ -734,10 +754,19 @@
 
 (define_insn "riscv_xi"
   [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec:SI [(match_operand:SI 1 "immediate_operand" "I")]
+        (unspec:SI [(match_operand:SI 1 "general_operand" "") ; subcode
+                    (match_operand:SI 2 "immediate_operand" "I")]
                    UNSPEC_LUIS))]
-  ""
-  "xii\t%0 %1 \t; riscv_xi"
+  "arcv_format_supports_p (UINTVAL (operands[1]), RISCV_APEX_XI)"
+  {
+    unsigned int subcode = UINTVAL (operands[1]);
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, get_builtin_name (subcode));
+    const char *str = XSTR (op, 0);
+    return xasprintf ("%s\t%s, %d ; riscv_xi",
+                      str,
+                      reg_names[REGNO (operands[0])],
+                      INTVAL (operands[2]));
+  }
   [(set_attr "type" "arith")]
 )
 
