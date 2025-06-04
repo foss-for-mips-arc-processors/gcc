@@ -693,28 +693,48 @@
   }
 )
 
-;; it works. Both read and write.
-(define_insn "riscv_xc"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec:SI [(match_operand:SI 1 "register_operand" "0")
-                    (match_operand:SI 2 "immediate_operand" "i")]
-                   UNSPEC_LUIS))]
-  ""
-  "xc\t%0 %2 \t; riscv_xc"
-  [(set_attr "type" "arith")]
-)
-
 ;; works good.
-(define_insn "riscv_xd_xs"
-    [(set (match_operand:SI 0 "register_operand" "=r,r")
-        (unspec:SI [(match_operand:SI 1 "register_operand" "r,r")
-                    (match_operand:SI 2 "general_operand" "r,B8")]
+;;(define_insn "riscv_xd_xs_xc"
+;;    [(set (match_operand:SI 0 "register_operand" "=r,r,r")
+;;          (unspec:SI [(match_operand:SI 1 "register_operand" "r,r,0")
+;;                    (match_operand:SI 2 "general_operand" "r,B8,I")]
+;;                UNSPEC_LUIS))]
+;;    ""
+;;    "@
+;;    xd\t%0, %1, %2  \t; riscv_xd
+;;    xsi\t%0, %1, %2 \t; riscv_xs
+;;    xc\t%0 %2 \t; riscv_xc"
+;;    [(set_attr "type" "arith,arith,arith")]
+;;)
+
+(define_insn "riscv_xd"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+          (unspec:SI [(match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "general_operand" "r")]
                 UNSPEC_LUIS))]
     ""
-    "@
-    xd\t%0, %1, %2  \t; riscv_xd_xs
-    xsi\t%0, %1, %2 \t; riscv_xd_xs"
-    [(set_attr "type" "arith,arith")]
+    "xd\t%0, %1, %2  \t; riscv_xd"
+    [(set_attr "type" "arith")]
+)
+
+(define_insn "riscv_xs"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+          (unspec:SI [(match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "general_operand" "B8")]
+                UNSPEC_LUIS))]
+    ""
+    "xsi\t%0, %1, %2 \t; riscv_xs"
+    [(set_attr "type" "arith")]
+)
+
+(define_insn "riscv_xc"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+          (unspec:SI [(match_operand:SI 1 "register_operand" "0")
+                    (match_operand:SI 2 "general_operand" "I")]
+                UNSPEC_LUIS))]
+    ""
+    "xc\t%0 %2 \t; riscv_xc"
+    [(set_attr "type" "arith")]
 )
 
 ;; it works.
