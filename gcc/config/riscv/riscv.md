@@ -661,7 +661,7 @@
 (define_insn "riscv_apex_insn"
     [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
-                    (match_operand:SI 2 "register_operand" "r")
+                    (match_operand:SI 2 "immediate_operand" "I")
                     (match_operand:SI 3 "" "")]
                 UNSPEC_LUIS))]
     ""
@@ -680,7 +680,7 @@
   [(set (match_operand:SI 0 "register_operand")
         (unspec:SI [(match_operand:SI 1 "")
                     (match_operand:SI 2 "register_operand")
-                    (match_operand:SI 3 "register_operand")]
+                    (match_operand:SI 3 "immediate_operand")]
                    UNSPEC_LUIS))]
   ""
   {
