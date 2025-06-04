@@ -693,6 +693,40 @@
   }
 )
 
+;; it works. Both read and write.
+(define_insn "riscv_xc"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (unspec:SI [(match_operand:SI 1 "register_operand" "0")
+                    (match_operand:SI 2 "immediate_operand" "i")]
+                   UNSPEC_LUIS))]
+  ""
+  "xc\t%0 %2 \t; riscv_xc"
+  [(set_attr "type" "arith")]
+)
+
+;; works good.
+(define_insn "riscv_xd_xs"
+    [(set (match_operand:SI 0 "register_operand" "=r,r")
+        (unspec:SI [(match_operand:SI 1 "register_operand" "r,r")
+                    (match_operand:SI 2 "general_operand" "r,B8")]
+                UNSPEC_LUIS))]
+    ""
+    "@
+    xd\t%0, %1, %2  \t; riscv_xd_xs
+    xsi\t%0, %1, %2 \t; riscv_xd_xs"
+    [(set_attr "type" "arith,arith")]
+)
+
+;; it works.
+(define_insn "riscv_xi"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (unspec:SI [(match_operand:SI 1 "immediate_operand" "I")]
+                   UNSPEC_LUIS))]
+  ""
+  "xii\t%0 %1 \t; riscv_xi"
+  [(set_attr "type" "arith")]
+)
+
 ;;
 ;;  ....................
 ;;
