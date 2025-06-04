@@ -350,8 +350,26 @@ riscv_apex_init_builtin (tree fndecl)
     
     const char *fn_name = apex.fn_name;
     const char *insn_name = apex.insn_name;
-    enum insn_code icode = CODE_FOR_riscv_apex;
     unsigned int insn_formats = apex.insn_formats;
+    enum insn_code icode;
+
+    /* FIXME: Each defined custom insn can only have one atribute.  */
+    switch (apex.insn_formats & (RISCV_APEX_XS | RISCV_APEX_XD |
+				RISCV_APEX_XI | RISCV_APEX_XC))
+    {
+      case RISCV_APEX_XI:
+	icode = CODE_FOR_riscv_xi;
+	break;
+      case RISCV_APEX_XC:
+	icode = CODE_FOR_riscv_xc;
+	break;
+      case RISCV_APEX_XS:
+	icode = CODE_FOR_riscv_xs;
+	break;
+      case RISCV_APEX_XD:
+	icode = CODE_FOR_riscv_xd;
+	break;
+    }
 
     /* Store APEX insn information.  */
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
