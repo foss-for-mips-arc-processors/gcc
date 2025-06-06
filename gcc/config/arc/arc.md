@@ -6293,7 +6293,7 @@ archs4x, archs4xd"
 		(optimize_insn_for_size_p () ? 28 : 30))"
   "#"
   "&& 1"
-[(set (match_dup 0) (and:SI (match_dup 0) (match_dup 3)))
+[(set (match_dup 0) (and:SI (match_dup 1) (match_dup 3)))
  (set (match_dup 0) (xor:SI (match_dup 0) (match_dup 4)))
  (set (match_dup 0) (minus:SI (match_dup 0) (match_dup 4)))]
 {
