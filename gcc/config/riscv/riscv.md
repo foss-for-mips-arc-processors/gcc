@@ -70,8 +70,8 @@
   UNSPEC_FMINM
   UNSPEC_FMAXM
 
-  ;; luis
-  UNSPEC_LUIS
+  ;; 
+  UNSPEC_APEX
 
   ;; Stack tie
   UNSPEC_TIE
@@ -657,17 +657,32 @@
   (eq_attr "type" "ghost")
   "nothing")
 
-;; luis
-(define_insn "riscv_apex_insn"
+;; BINARY
+
+(define_expand "riscv_apex_binary"
+  [(set (match_operand:SI 0 "register_operand")
+        (unspec:SI [(match_operand:SI 1 "register_operand")
+                    (match_operand:SI 2 "register_operand")]
+                   UNSPEC_APEX))]
+  ""
+  {
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
+    emit_insn (gen_riscv_apex_insn_2in_1out (operands[0], operands[1], operands[2], op));
+    DONE;
+  }
+)
+
+;; generic apex 2 inputs 1 output
+(define_insn "riscv_apex_insn_2in_1out"
     [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
                     (match_operand:SI 2 "register_operand" "r")
                     (match_operand:SI 3 "" "")]
-                UNSPEC_LUIS))]
+                UNSPEC_APEX))]
     ""
     {
       const char *str = XSTR (operands[3], 0);
-      return xasprintf ("%s\t%s, %s, %s ; luis",
+      return xasprintf ("%s\t%s, %s, %s",
                         str,
                         reg_names[REGNO (operands[0])],
                         reg_names[REGNO (operands[1])],
@@ -676,25 +691,44 @@
     [(set_attr "type" "arith")]
 )
 
-(define_expand "riscv_apex"
+;; UNARY
+
+(define_expand "riscv_apex_unary"
   [(set (match_operand:SI 0 "register_operand")
-        (unspec:SI [(match_operand:SI 1 "register_operand")
-                    (match_operand:SI 2 "register_operand")]
-                   UNSPEC_LUIS))]
+        (unspec:SI [(match_operand:SI 1 "register_operand")]
+                   UNSPEC_APEX))]
   ""
   {
     rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
-    emit_insn (gen_riscv_apex_insn (operands[0], operands[1], operands[2], op));
+    emit_insn (gen_riscv_apex_insn_1in_1out (operands[0], operands[1], op));
     DONE;
   }
 )
+
+;; generic apex 1 inputs 1 output
+(define_insn "riscv_apex_insn_1in_1out"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+        (unspec:SI [(match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "" "")]
+                UNSPEC_APEX))]
+    ""
+    {
+      const char *str = XSTR (operands[2], 0);
+      return xasprintf ("%s\t%s, %s, %s",
+                        str,
+                        reg_names[REGNO (operands[0])],
+                        reg_names[REGNO (operands[1])]);
+    }
+    [(set_attr "type" "arith")]
+)
+
 
 ;; luis_binop: 3 registers → `dest = lhs op rhs`
 (define_insn "riscv_binop"
   [(set (match_operand:SI 0 "register_operand" "=r")       ; dest
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")  ; lhs
                     (match_operand:SI 2 "register_operand" "r")] ; rhs
-                   UNSPEC_LUIS))]
+                   UNSPEC_APEX))]
   ""
   "binop\t%0, %1, %2"
   [(set_attr "type" "arith")]
@@ -704,7 +738,7 @@
 (define_insn "riscv_unary"
   [(set (match_operand:SI 0 "register_operand" "=r")       ; dest
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")] ; lhs
-                   UNSPEC_LUIS))]
+                   UNSPEC_APEX))]
   ""
   "unary\t%0, %1"
   [(set_attr "type" "arith")]
@@ -714,7 +748,7 @@
 (define_insn "riscv_twoop"
   [(unspec_volatile:SI [(match_operand:SI 0 "register_operand" "r") ; lhs
                         (match_operand:SI 1 "register_operand" "r")] ; rhs
-                       UNSPEC_LUIS)]
+                       UNSPEC_APEX)]
   ""
   "twoop\t%0, %1"
   [(set_attr "type" "arith")]
@@ -723,7 +757,7 @@
 ;; luis_oneop: 1 register → `side-effect op (no dest)`
 (define_insn "riscv_oneop"
   [(unspec_volatile:SI [(match_operand:SI 0 "register_operand" "r")] ; lhs
-                       UNSPEC_LUIS)]
+                       UNSPEC_APEX)]
   ""
   "oneop\t%0"
   [(set_attr "type" "arith")]
@@ -3467,10 +3501,15 @@
 	           ] UNSPEC_CALLEE_CC))])]
   ""
 {
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
+    emit_insn (gen_riscv_apex_insn_2in_1out (operands[0], operands[1], operands[2], op));
+    DONE;
+#if 0
   rtx target = riscv_legitimize_call_address (XEXP (operands[1], 0));
   emit_call_insn (gen_call_value_internal (operands[0], target, operands[2],
 					   operands[3]));
   DONE;
+#endif
 })
 
 (define_insn "call_value_internal"
@@ -3498,6 +3537,12 @@
   ""
 {
   int i;
+
+
+  rtx op = gen_rtx_CONST_STRING (VOIDmode, apex.name);
+    emit_insn (gen_riscv_apex_insn_2in_1out (operands[0], operands[1], operands[2], op));
+    DONE;
+
 
   /* Untyped calls always use the RISCV_CC_BASE calling convention.  */
   emit_call_insn (gen_call (operands[0], const0_rtx,

@@ -462,17 +462,34 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     }
   }
 
-  /* Parse semicolon ';'  */
-  if (pragma_lex (&x) != CPP_SEMICOLON)
-  {
-    error ("expected %<;%> at end of pragma");
-    return;
-  }
+   /* Parse semicolon ';'  */
+   if (pragma_lex (&x) != CPP_SEMICOLON)
+   {
+     error ("expected %<;%> at end of pragma");
+     return;
+   }
 
-  /* ... */
+   tree id = get_identifier(apex.function_name);
+   tree fndecl = lookup_name(id);  
 
-  riscv_apex_init_builtins ();
-  riscv_emit_intrinsic_instruction ();
+   int num_args = 0;
+   tree fntype = TREE_TYPE (fndecl);
+   tree args = TYPE_ARG_TYPES (fntype);
+
+   for (tree t = args; t && t != void_type_node; t = TREE_CHAIN (t))
+   {
+      num_args++;
+   }
+
+   fndecl->function_decl.built_in_class = BUILT_IN_MD;
+   if(num_args==3)
+	   fndecl->function_decl.function_code = (0 << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+   else
+           fndecl->function_decl.function_code = (1 << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+
+
+   riscv_emit_intrinsic_instruction ();
 }
 
 
@@ -486,6 +503,9 @@ riscv_check_builtin_call (location_t loc, vec<location_t> arg_loc, tree fndecl,
   switch (code & RISCV_BUILTIN_CLASS)
     {
     case RISCV_BUILTIN_GENERAL:
+      return true;
+
+    case RISCV_BUILTIN_APEX:
       return true;
 
     case RISCV_BUILTIN_VECTOR:
@@ -514,6 +534,8 @@ riscv_resolve_overloaded_builtin (unsigned int uncast_location, tree fndecl,
     {
     case RISCV_BUILTIN_GENERAL:
       break;
+    case RISCV_BUILTIN_APEX:
+      break;  
     case RISCV_BUILTIN_VECTOR:
       new_fndecl = riscv_vector::resolve_overloaded_builtin (loc, subcode,
 							     fndecl, arglist);
