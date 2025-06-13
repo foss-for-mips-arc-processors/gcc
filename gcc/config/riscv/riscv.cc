@@ -9721,23 +9721,30 @@ riscv_file_start (void)
 
 struct riscv_intrinsic_info apex;
 
-/* Emit the final assembly intruction based on the data collected from the
+/* Print a assembly section based on the data collected from the
    `#pragma intrinsic(...)` directive.
-
-   This function is called during assembly output and prints a custom
-   `.extIntruction` line using the values stored in the `apex` struct,
-   such as opcode, subcode and flags.  These values are populated by the
-   pragma parser "riscv_pragma_intrinsic_apex" in riscv-c.cc.
-
-   The purpose is to allow user-defined custom instructions.  */
+   TODO: improve comment.
+     */
 
 void
-riscv_emit_intrinsic_instruction (void)
+arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format)
 {
-//  warning (0, "luis: riscv_emit_intrinsic_function");
+  /* Print XD insn format if present.  */
+  if (insn_format & RISCV_APEX_XD)
+    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD\n", insn_name, opcode);
 
-  fprintf (asm_out_file, "\t.extInstruction %s,%d\n", \
-	  apex.insn_name, apex.opcode);
+  /* Print other insn formats in a single line if any.  */
+  if (insn_format & (RISCV_APEX_XS | RISCV_APEX_XC | RISCV_APEX_XI))
+  {
+    fprintf (asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
+    if (insn_format & RISCV_APEX_XS)
+      fputs (",XS", asm_out_file);
+    if (insn_format & RISCV_APEX_XC)
+      fputs (",XC", asm_out_file);
+    if (insn_format & RISCV_APEX_XI)
+      fputs (",XI", asm_out_file);
+    fputc ('\n', asm_out_file);
+  }
 }
 
 /* Implement TARGET_ASM_OUTPUT_MI_THUNK.  Generate rtl rather than asm text

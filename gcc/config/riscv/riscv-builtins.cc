@@ -500,6 +500,7 @@ riscv_apex_init_builtin (tree fndecl)
     int num_operands = arcv_get_operand_count (fndecl);
     insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands);
     arcv_validate_insn_format (insn_formats, opcode, num_operands);
+    arcv_print_insn_section (insn_name, opcode, insn_formats);
     icode = arcv_get_icode (insn_formats);
 
     /* Store APEX insn information.  */
