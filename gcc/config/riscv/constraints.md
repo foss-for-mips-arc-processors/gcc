@@ -45,6 +45,26 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE(ival, 0, 255)")))
 
+(define_constraint "xc"
+  "Validate support of RISCV_APEX_XC instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XC)")))
+
+(define_constraint "xs"
+  "Validate support of RISCV_APEX_XS instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS)")))
+
+(define_constraint "xd"
+  "Validate support of RISCV_APEX_XD instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD)")))
+
+(define_constraint "xi"
+  "Validate support of RISCV_APEX_XI instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI)")))
+
 (define_constraint "J"
   "Integer zero."
   (and (match_code "const_int")
