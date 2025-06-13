@@ -463,6 +463,27 @@ arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
 	return insn_format;
 }
 
+/* This function maps a provided instruction format bitmask to a specific
+   instruction code (insn_code) used in the RISC-V backend. It checks the
+   format flags and returns the appropriate code.  */
+
+static enum insn_code
+arcv_get_icode (unsigned insn_format)
+{
+	/* If the instruction format includes RISCV_APEX_XI,
+	   return CODE_FOR_riscv_xi.  */
+	if (insn_format & RISCV_APEX_XI)
+		return CODE_FOR_riscv_xi;
+
+	/* If the instruction format includes RISCV_APEX_XD, RISCV_APEX_XS
+	   or RISCV_APEX_XC, return CODE_FOR_riscv_xscd.  */
+	if (insn_format & (RISCV_APEX_XD | RISCV_APEX_XS | RISCV_APEX_XC))
+		return CODE_FOR_riscv_xscd;
+
+	/* Otherwise, return CODE_FOR_nothing.  */
+	return CODE_FOR_nothing;
+}
+
 void
 riscv_apex_init_builtin (tree fndecl)
 {
@@ -518,6 +539,7 @@ riscv_apex_init_builtin (tree fndecl)
     int num_operands = arcv_get_operand_count (fndecl);
     insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands);
     arcv_validate_insn_format (insn_formats, opcode, num_operands);
+    icode = arcv_get_icode (insn_formats);
 
     /* Store APEX insn information.  */
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
