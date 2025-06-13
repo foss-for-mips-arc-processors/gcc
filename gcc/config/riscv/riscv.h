@@ -49,6 +49,14 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef RISCV_APEX
 #define RISCV_APEX
 
+enum APEX_INSN_FORMAT_LIM
+{
+  APEX_INSN_FORMAT_XD = 0xFF,
+  APEX_INSN_FORMAT_XS = 0x3F,
+  APEX_INSN_FORMAT_XI = 0x1F,
+  APEX_INSN_FORMAT_XC = 0x1F,
+};
+
 enum riscv_apex_insn_format {
   RISCV_APEX_NONE = 0,
   RISCV_APEX_ALL = 1,

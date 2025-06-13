@@ -424,6 +424,44 @@ arcv_validate_insn_format (unsigned int insn_format,
 	}
 }
 
+/* This function modifies the given instruction format bitmask (`insn_format`)
+   by clearing all RISCV_APEX_ALL bits, then selectively setting specific
+   APEX instruction format flags depending on the provided opcode and the
+   number of operands.  The function is intended to ensure that the
+   instruction format accurately reflects the requirements for the
+   given opcode and operand count.  */
+
+static unsigned int
+arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
+						 unsigned num_operands)
+{
+	/* If any RISCV_APEX_ALL bits are set, adjust the format flags.  */
+	if (insn_format & RISCV_APEX_ALL)
+	{
+		/* Clear RISCV_APEX_ALL bit from the format.  */
+		insn_format &= ~RISCV_APEX_ALL;
+		/* Select format flags based on the number of operands.  */
+		switch (num_operands)
+		{
+			case 3:
+				/* For 3 operands, set XD, XS, or XC if opcode is in range.  */
+				if (opcode <= APEX_INSN_FORMAT_XD)
+					insn_format |= RISCV_APEX_XD;
+				if (opcode <= APEX_INSN_FORMAT_XS)
+					insn_format |= RISCV_APEX_XS;
+				if (opcode <= APEX_INSN_FORMAT_XC)
+					insn_format |= RISCV_APEX_XC;
+				break;
+			case 2:
+				/* For 2 operands, set XI if opcode is in range.  */
+				if (opcode <= APEX_INSN_FORMAT_XI)
+					insn_format |= RISCV_APEX_XI;
+				break;
+		}
+	}
+	/* Return the updated instruction format bitmask.  */
+	return insn_format;
+}
 
 void
 riscv_apex_init_builtin (tree fndecl)
@@ -456,6 +494,7 @@ riscv_apex_init_builtin (tree fndecl)
     const char *fn_name = apex.fn_name;
     const char *insn_name = apex.insn_name;
     unsigned int insn_formats = apex.insn_formats;
+    int opcode = apex.opcode;
     enum insn_code icode;
 
     /* FIXME: Each defined custom insn can only have one atribute.  */
@@ -477,6 +516,7 @@ riscv_apex_init_builtin (tree fndecl)
     }
 
     int num_operands = arcv_get_operand_count (fndecl);
+    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands);
     arcv_validate_insn_format (insn_formats, opcode, num_operands);
 
     /* Store APEX insn information.  */
