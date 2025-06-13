@@ -497,24 +497,6 @@ riscv_apex_init_builtin (tree fndecl)
     int opcode = apex.opcode;
     enum insn_code icode;
 
-    /* FIXME: Each defined custom insn can only have one atribute.  */
-    switch (apex.insn_formats & (RISCV_APEX_XS | RISCV_APEX_XD |
-				RISCV_APEX_XI | RISCV_APEX_XC))
-    {
-      case RISCV_APEX_XI:
-	icode = CODE_FOR_riscv_xi;
-	break;
-      case RISCV_APEX_XC:
-	icode = CODE_FOR_riscv_xc;
-	break;
-      case RISCV_APEX_XS:
-	icode = CODE_FOR_riscv_xs;
-	break;
-      case RISCV_APEX_XD:
-	icode = CODE_FOR_riscv_xd;
-	break;
-    }
-
     int num_operands = arcv_get_operand_count (fndecl);
     insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands);
     arcv_validate_insn_format (insn_formats, opcode, num_operands);
