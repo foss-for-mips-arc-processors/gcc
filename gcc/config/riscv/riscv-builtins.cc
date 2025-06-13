@@ -380,6 +380,51 @@ arcv_get_operand_count (tree fndecl)
 	return num_operands;
 }
 
+struct format_rule {
+    unsigned flag;
+    unsigned max_opcode;
+    unsigned num_operands;
+};
+
+const struct format_rule rules[] = {
+    { RISCV_APEX_XD, 0xFF, 3 },
+    { RISCV_APEX_XS, 0x3F, 3 },
+    { RISCV_APEX_XI, 0x1F, 2 },
+    { RISCV_APEX_XC, 0x1F, 3 },
+};
+
+/* This function checks whether the provided instruction format, opcode and
+   number of operands conform to the rules defined for APEX instructions.  */
+
+static void
+arcv_validate_insn_format (unsigned int insn_format,
+						   unsigned opcode, unsigned num_operands)
+{
+	/* If the instruction format is RISCV_APEX_NONE, report an error.  */
+	if (insn_format == RISCV_APEX_NONE)
+		error("APEX instruction not valid.\n");
+
+	/* Iterate over each rule in the rules array.  */
+	for (int i = 0; i < sizeof(rules)/sizeof(rules[0]); ++i)
+	{
+		/* If the instruction format matches the rule's flag.  */
+		if (insn_format & rules[i].flag)
+		{
+			/* Check if the opcode exceeds the rule's maximum
+			   allowed opcode.  */
+			if (opcode > rules[i].max_opcode)
+				error("APEX opcode must be in range 0x%X.\n",
+					   rules[i].max_opcode);
+			/* Check if the number of operands matches the rule's required
+			   operand count.  */
+			if (num_operands != rules[i].num_operands)
+				error("Function must have exactly %d operands.\n",
+					  rules[i].num_operands);
+		}
+	}
+}
+
+
 void
 riscv_apex_init_builtin (tree fndecl)
 {
@@ -432,6 +477,7 @@ riscv_apex_init_builtin (tree fndecl)
     }
 
     int num_operands = arcv_get_operand_count (fndecl);
+    arcv_validate_insn_format (insn_formats, opcode, num_operands);
 
     /* Store APEX insn information.  */
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };

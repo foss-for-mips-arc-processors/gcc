@@ -50,11 +50,12 @@ along with GCC; see the file COPYING3.  If not see
 #define RISCV_APEX
 
 enum riscv_apex_insn_format {
-  RISCV_APEX_ALL = 0,
-  RISCV_APEX_XD   = 1 << 0,
-  RISCV_APEX_XS   = 1 << 1,
-  RISCV_APEX_XI   = 1 << 2,
-  RISCV_APEX_XC   = 1 << 3
+  RISCV_APEX_NONE = 0,
+  RISCV_APEX_ALL = 1,
+  RISCV_APEX_XD   = 1 << 1,
+  RISCV_APEX_XS   = 1 << 2,
+  RISCV_APEX_XI   = 1 << 3,
+  RISCV_APEX_XC   = 1 << 4
 };
 
 struct riscv_intrinsic_info
