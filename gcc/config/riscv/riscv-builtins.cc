@@ -256,7 +256,7 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 tree riscv_float16_type_node = NULL_TREE;
 
 const char*
-get_builtin_name (unsigned int subcode)
+arcv_get_apex_insn_name (unsigned int subcode)
 {
   return riscv_apex_builtins[subcode].insn_name;
 }
