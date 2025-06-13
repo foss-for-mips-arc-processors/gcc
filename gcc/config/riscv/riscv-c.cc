@@ -382,14 +382,24 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     const char *insn_format = TREE_STRING_POINTER(x);
 
     if (strcmp(insn_format, "XD") == 0)
+    {
+      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
       apex.insn_formats |= RISCV_APEX_XD;
-    else if (strcmp(insn_format, "XS") == 0)
+    } else if (strcmp(insn_format, "XS") == 0)
+    {
+      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
       apex.insn_formats |= RISCV_APEX_XS;
+    }
     else if (strcmp(insn_format, "XI") == 0)
+    {
+      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
       apex.insn_formats |= RISCV_APEX_XI;
-    else if (strcmp(insn_format, "XC") == 0)
+    } else if (strcmp(insn_format, "XC") == 0)
+    {
+      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
       apex.insn_formats |= RISCV_APEX_XC;
-  }
+    }
+   }
 
   //riscv_apex_init_builtins ();
   riscv_lookup_apex ();
