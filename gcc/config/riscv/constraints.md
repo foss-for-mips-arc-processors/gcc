@@ -40,7 +40,7 @@
   (and (match_code "const_int")
        (match_test "SMALL_OPERAND (ival)")))
 
-(define_constraint "B8"
+(define_constraint "B08"
   "An 8-bit unsigned immediate (0 to 255)."
   (and (match_code "const_int")
        (match_test "IN_RANGE(ival, 0, 255)")))
