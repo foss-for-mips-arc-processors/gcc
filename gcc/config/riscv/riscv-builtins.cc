@@ -490,28 +490,7 @@ riscv_apex_init_builtin (tree fndecl)
   if (fndecl)
   {
     static int i = 0;
-
-    int num_args = 0;
-    tree fntype = TREE_TYPE (fndecl);
-    tree args = TYPE_ARG_TYPES (fntype);
-    for (tree t = args; t && t != void_type_node; t = TREE_CHAIN (t))
-    {
-      num_args++;
-      if (num_args > 3)
-      {
-	  /* TOOD: stop the program..  */
-	  error_at (DECL_SOURCE_LOCATION (fndecl),
-		"too many operands for APEX built-in function %qE",
-		fndecl);
-      }
-      tree type = TREE_VALUE (t);
-      /* "code" corresponds to the current datatype.
-	The return datatype (either VOID, INT, etc) is
-	the last one from the for.  */
-      enum tree_code code = TREE_CODE (type);
-      warning (0, "");
-    }
-
+    
     const char *fn_name = apex.fn_name;
     const char *insn_name = apex.insn_name;
     unsigned int insn_formats = apex.insn_formats;
