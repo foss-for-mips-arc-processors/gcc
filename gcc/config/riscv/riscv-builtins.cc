@@ -341,6 +341,45 @@ arcv_format_supports_p (unsigned int subcode, unsigned int insn_format)
     return false;
 }
 
+/* Counts the number of operands for an APEX built-in function.
+  This function analyzes the given function declaration and determines
+  the number of operands, including the return type as the first operand.
+  It iterates through the argument types of the function and increments
+  the operand count for each argument. If the number of operands exceeds
+  three, it reports an error.  */
+static int
+arcv_get_operand_count (tree fndecl)
+{
+	/* Get the function type from the function declaration
+	   and the list of argument types for the function.  */
+	tree fntype = TREE_TYPE (fndecl);
+	tree operands = TYPE_ARG_TYPES (fntype);
+
+	/* Start with 1 for the return type.  */
+	int num_operands = 1;
+	/* Get the return type of the function.  */
+	tree return_type = TREE_TYPE (fntype);
+
+	/* Iterate through the argument types.  */
+	for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
+		 t = TREE_CHAIN (t))
+	{
+		/* Increment the operand count for each argument.  */
+		num_operands++;
+		/* If more than 3 operands, report an error.  */
+		if (num_operands > 3)
+		{
+			error_at (DECL_SOURCE_LOCATION (fndecl),
+				"too many operands for APEX built-in function %qE",
+				fndecl);
+			/* FIXME: terminate program.  */
+		}
+	}
+
+	/* Return the total number of operands (including return type). */
+	return num_operands;
+}
+
 void
 riscv_apex_init_builtin (tree fndecl)
 {
@@ -391,6 +430,8 @@ riscv_apex_init_builtin (tree fndecl)
 	icode = CODE_FOR_riscv_xd;
 	break;
     }
+
+    int num_operands = arcv_get_operand_count (fndecl);
 
     /* Store APEX insn information.  */
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
