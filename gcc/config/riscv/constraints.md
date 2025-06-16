@@ -80,6 +80,11 @@
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI)")))
 
+(define_constraint "xin"
+  "Validate support of RISCV_APEX_XI_NO_TARGET instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI_NO_TARGET)")))
+
 (define_constraint "J"
   "Integer zero."
   (and (match_code "const_int")

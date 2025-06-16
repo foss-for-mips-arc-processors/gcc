@@ -9751,6 +9751,10 @@ arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_fo
 
   if (insn_format & RISCV_APEX_XS_NO_TARGET)
     fprintf (asm_out_file, "\t.extInstruction %si,%d,XS,void\n", insn_name, opcode);
+
+  if (insn_format & RISCV_APEX_XI_NO_TARGET)
+    fprintf (asm_out_file, "\t.extInstruction %si,%d,XI,void\n", insn_name, opcode);
+
 }
 
 /* Implement TARGET_ASM_OUTPUT_MI_THUNK.  Generate rtl rather than asm text

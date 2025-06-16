@@ -719,6 +719,22 @@
     [(set_attr "type" "arith,arith,arith")]
 )
 
+(define_insn "riscv_xi_no_target"
+  [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xin") ; subcode
+                    (match_operand:SI 1 "immediate_operand" "B12")]
+                   UNSPEC_LUIS)]
+  ""
+  {
+    unsigned int subcode = UINTVAL (operands[0]);
+    rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
+    const char *str = XSTR (op, 0);
+    return xasprintf ("%si\t%d ; riscv_xi",
+                      str,
+                      INTVAL (operands[1]));
+  }
+  [(set_attr "type" "arith")]
+)
+
 (define_insn "riscv_xi"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "const_int_operand" "xiw") ; subcode
