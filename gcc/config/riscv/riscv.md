@@ -657,27 +657,36 @@
   (eq_attr "type" "ghost")
   "nothing")
 
-(define_insn "riscv_xd_no_target"
-    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "") ; subcode
-                    (match_operand:SI 1 "register_operand" "r")
-                    (match_operand:SI 2 "register_operand" "r")]
+(define_insn "riscv_xsd_no_target"
+    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xsn,xdn") ; subcode
+                    (match_operand:SI 1 "register_operand" "r,r")
+                    (match_operand:SI 2 "nonmemory_operand" "B08,r")]
                 UNSPEC_LUIS)]
     ""
     {
 		unsigned int subcode = UINTVAL (operands[0]);
 		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
 		const char *str = XSTR (op, 0);
-    return xasprintf ("%s\t%s, %s ; riscv_xd_nodest",
-		        str,
-			      reg_names[REGNO (operands[1])],
-						reg_names[REGNO (operands[2])]);
+    switch (which_alternative)
+    {
+      case 0:
+        return xasprintf ("%si\t%s, %d ; riscv_xs_nodest",
+                str,
+                reg_names[REGNO (operands[1])],
+                INTVAL (operands[2]));
+      case 1:
+        return xasprintf ("%s\t%s, %s ; riscv_xd_nodest",
+                str,
+                reg_names[REGNO (operands[1])],
+                reg_names[REGNO (operands[2])]);
+      }
     }
     [(set_attr "type" "arith")]
 )
 
 (define_insn "riscv_xscd"
     [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xs,xc,xd") ; subcode
+          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xsw,xcw,xdw") ; subcode
                     (match_operand:SI 2 "register_operand" "r,0,r")
                     (match_operand:SI 3 "nonmemory_operand" "B08,B12,r")]
                 UNSPEC_LUIS))]
@@ -712,7 +721,7 @@
 
 (define_insn "riscv_xi"
   [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec:SI [(match_operand:SI 1 "const_int_operand" "xi") ; subcode
+        (unspec:SI [(match_operand:SI 1 "const_int_operand" "xiw") ; subcode
                     (match_operand:SI 2 "immediate_operand" "B12")]
                    UNSPEC_LUIS))]
   ""

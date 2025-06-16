@@ -50,22 +50,32 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE(ival, 0, 4095)")))
 
-(define_constraint "xc"
+(define_constraint "xcw"
   "Validate support of RISCV_APEX_XC instruction format."
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XC)")))
 
-(define_constraint "xs"
+(define_constraint "xsw"
   "Validate support of RISCV_APEX_XS instruction format."
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS)")))
 
-(define_constraint "xd"
+(define_constraint "xsn"
+  "Validate support of RISCV_APEX_XS_NO_TARGET instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS_NO_TARGET)")))
+
+(define_constraint "xdw"
   "Validate support of RISCV_APEX_XD instruction format."
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD)")))
 
-(define_constraint "xi"
+(define_constraint "xdn"
+  "Validate support of RISCV_APEX_XD_NO_TARGET instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_NO_TARGET)")))
+
+(define_constraint "xiw"
   "Validate support of RISCV_APEX_XI instruction format."
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI)")))
