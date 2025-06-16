@@ -341,6 +341,15 @@ arcv_format_supports_p (unsigned int subcode, unsigned int insn_format)
     return false;
 }
 
+
+static bool
+arcv_get_return_type (tree fndecl)
+{
+  tree fntype = TREE_TYPE (fndecl);
+  tree return_type = TREE_TYPE (fntype);
+  return return_type == void_type_node;
+}
+
 /* Counts the number of operands for an APEX built-in function.
   This function analyzes the given function declaration and determines
   the number of operands, including the return type as the first operand.
@@ -355,10 +364,11 @@ arcv_get_operand_count (tree fndecl)
 	tree fntype = TREE_TYPE (fndecl);
 	tree operands = TYPE_ARG_TYPES (fntype);
 
-	/* Start with 1 for the return type.  */
-	int num_operands = 1;
 	/* Get the return type of the function.  */
 	tree return_type = TREE_TYPE (fntype);
+
+  /* Count as 0 if return type is void.  */
+  int num_operands = return_type == void_type_node ? 0 : 1;
 
 	/* Iterate through the argument types.  */
 	for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
@@ -388,6 +398,7 @@ struct format_rule {
 
 const struct format_rule rules[] = {
     { RISCV_APEX_XD, 0xFF, 3 },
+    { RISCV_APEX_XD_NO_TARGET, 0xFF, 2 },
     { RISCV_APEX_XS, 0x3F, 3 },
     { RISCV_APEX_XI, 0x1F, 2 },
     { RISCV_APEX_XC, 0x1F, 3 },
@@ -433,13 +444,20 @@ arcv_validate_insn_format (unsigned int insn_format,
 
 static unsigned int
 arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
-						 unsigned num_operands)
+						 unsigned num_operands, bool is_return_void)
 {
 	/* If any RISCV_APEX_ALL bits are set, adjust the format flags.  */
 	if (insn_format & RISCV_APEX_ALL)
 	{
 		/* Clear RISCV_APEX_ALL bit from the format.  */
 		insn_format &= ~RISCV_APEX_ALL;
+
+    if (is_return_void)
+    {
+      insn_format |= RISCV_APEX_XD_NO_TARGET;
+      return insn_format;
+    }
+
 		/* Select format flags based on the number of operands.  */
 		switch (num_operands)
 		{
@@ -480,6 +498,9 @@ arcv_get_icode (unsigned insn_format)
 	if (insn_format & (RISCV_APEX_XD | RISCV_APEX_XS | RISCV_APEX_XC))
 		return CODE_FOR_riscv_xscd;
 
+  if (insn_format & RISCV_APEX_XD_NO_TARGET)
+    return CODE_FOR_riscv_xd_no_target;
+
 	/* Otherwise, return CODE_FOR_nothing.  */
 	return CODE_FOR_nothing;
 }
@@ -498,13 +519,16 @@ riscv_apex_init_builtin (tree fndecl)
     enum insn_code icode;
 
     int num_operands = arcv_get_operand_count (fndecl);
-    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands);
+    bool is_return_void = (arcv_get_return_type (fndecl));
+    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands, is_return_void);
     arcv_validate_insn_format (insn_formats, opcode, num_operands);
     arcv_print_insn_section (insn_name, opcode, insn_formats);
     icode = arcv_get_icode (insn_formats);
 
     /* Store APEX insn information.  */
-    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
+//    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
+    enum riscv_builtin_type builtin_type = is_return_void ? RISCV_BUILTIN_DIRECT_NO_TARGET : RISCV_BUILTIN_DIRECT;
+    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, builtin_type, insn_formats };
 
     /* Modify the prototype type as built-in.  */
     fndecl->function_decl.built_in_class = BUILT_IN_MD;
