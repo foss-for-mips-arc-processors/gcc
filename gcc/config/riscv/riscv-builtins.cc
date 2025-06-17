@@ -516,7 +516,20 @@ arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
        format is valid for the given opcode and number of operands.  */
     if (insn_format & RISCV_APEX_XD)
 	{
-	  if (num_operands == 2 && is_return_void)
+      if (num_operands == 0 && is_return_void)
+      {
+	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+	insn_format |= RISCV_APEX_XD_NO_OPERANDS;
+      } if (num_operands == 1 && is_return_void)
+	  {
+	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+	insn_format |= RISCV_APEX_XD_1OP_NO_TARGET;
+	  }
+      else if (num_operands == 1 && !is_return_void)
+      {
+	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+	insn_format |= RISCV_APEX_XD_1OP;
+      } else if (num_operands == 2 && is_return_void)
 	  {
 	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
 	insn_format |= RISCV_APEX_XD_NO_TARGET;
