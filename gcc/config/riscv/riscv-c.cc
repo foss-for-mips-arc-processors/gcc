@@ -340,7 +340,13 @@ riscv_pragma_intrinsic_apex (cpp_reader *)
     return;
   }
   const char *insn_name = TREE_STRING_POINTER(x);
-  apex.insn_name = insn_name;
+
+  /* Convert instruction name to lower case.  */
+  char *tmp = xstrdup(insn_name);
+  for (char *p = tmp; *p; p++)
+    *p = TOLOWER (*p);
+
+  apex.insn_name = tmp;
 
   /* Parse comma ','  */
   if (pragma_lex (&x) != CPP_COMMA)
