@@ -511,7 +511,16 @@ arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
 					insn_format |= RISCV_APEX_XI;
 				break;
 		}
-	}
+	} else {
+    /* If RISCV_APEX_ALL is not set, ensure that the instruction
+       format is valid for the given opcode and number of operands.  */
+    if (opcode & RISCV_APEX_XD)
+      if (num_operands == 2)
+      {
+	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+	insn_format |= RISCV_APEX_XD_2OP;
+      }
+  }
 	/* Return the updated instruction format bitmask.  */
 	return insn_format;
 }
