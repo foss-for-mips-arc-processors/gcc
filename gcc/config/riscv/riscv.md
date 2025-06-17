@@ -697,6 +697,22 @@
     [(set_attr "type" "arith")]
 )
 
+(define_insn "riscv_xd_1op"
+    [(set (match_operand:SI 0 "register_operand" "=r")
+          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xd1")] ; subcode
+                UNSPEC_LUIS))]
+    ""
+    {
+		unsigned int subcode = UINTVAL (operands[1]);
+		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
+		const char *str = XSTR (op, 0);
+    return xasprintf ("%s\t%s ; riscv_xd_1op",
+						str,
+						reg_names[REGNO (operands[0])]);
+    }
+    [(set_attr "type" "arith")]
+)
+
 (define_insn "riscv_xscd"
     [(set (match_operand:SI 0 "register_operand" "=r,r,r")
           (unspec:SI [(match_operand:SI 1 "const_int_operand" "xsw,xcw,xdw") ; subcode

@@ -400,6 +400,7 @@ const struct format_rule rules[] = {
     { RISCV_APEX_XD, 0xFF, 3 },
     { RISCV_APEX_XD_NO_TARGET, 0xFF, 2 },
     { RISCV_APEX_XD_NO_OPERANDS, 0xFF, 0 },
+    { RISCV_APEX_XD_1OP, 0xFF, 1 },
     { RISCV_APEX_XS, 0x3F, 3 },
     { RISCV_APEX_XS_NO_TARGET, 0x3F, 2 },
     { RISCV_APEX_XI, 0x1F, 2 },
@@ -477,6 +478,13 @@ arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
 	    insn_format |= RISCV_APEX_XS_NO_TARGET;
       return insn_format;
       }
+    } else
+    {
+      if (num_operands == 1)
+      {
+  if (opcode <= APEX_INSN_FORMAT_XD)
+    insn_format |= RISCV_APEX_XD_1OP;
+      }
     }
 
 		/* Select format flags based on the number of operands.  */
@@ -527,6 +535,9 @@ arcv_get_icode (unsigned insn_format)
 
   if (insn_format & RISCV_APEX_XD_NO_OPERANDS)
     return CODE_FOR_riscv_xd_no_operands;
+
+  if (insn_format & RISCV_APEX_XD_1OP)
+    return CODE_FOR_riscv_xd_1op;
 
 	/* Otherwise, return CODE_FOR_nothing.  */
 	return CODE_FOR_nothing;
