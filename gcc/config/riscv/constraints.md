@@ -85,6 +85,11 @@
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP)")))
 
+(define_constraint "xd2"
+  "Validate support of RISCV_APEX_XD_2OP instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_2OP)")))
+
 (define_constraint "xiw"
   "Validate support of RISCV_APEX_XI instruction format."
   (and (match_code "const_int")
