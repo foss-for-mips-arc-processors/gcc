@@ -90,6 +90,11 @@
   (and (match_code "const_int")
        (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_2OP)")))
 
+(define_constraint "xd4" ;; Well. you will need to change all of them...
+  "Validate support of RISCV_APEX_XD_1OP_NO_TARGET instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP_NO_TARGET)")))
+
 (define_constraint "xiw"
   "Validate support of RISCV_APEX_XI instruction format."
   (and (match_code "const_int")
