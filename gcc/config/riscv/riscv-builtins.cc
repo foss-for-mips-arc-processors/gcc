@@ -546,6 +546,13 @@ arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
 	insn_format = insn_format & ~RISCV_APEX_XS; /* temporay fix.  */
 	insn_format |= RISCV_APEX_XS_NO_TARGET;
 	  }
+	} else if (insn_format & RISCV_APEX_XI)
+	{
+	  if (num_operands == 1 && is_return_void)
+	  {
+	insn_format = insn_format & ~RISCV_APEX_XI; /* temporay fix.  */
+	insn_format |= RISCV_APEX_XI_NO_TARGET;
+	  }
 	}
   }
 	/* Return the updated instruction format bitmask.  */
