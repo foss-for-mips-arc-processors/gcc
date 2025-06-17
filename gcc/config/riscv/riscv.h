@@ -67,6 +67,7 @@ enum riscv_apex_insn_format {
   RISCV_APEX_XD_NO_TARGET   = 1 << 5,
   RISCV_APEX_XS_NO_TARGET   = 1 << 6,
   RISCV_APEX_XI_NO_TARGET   = 1 << 7,
+  RISCV_APEX_XD_NO_OPERANDS = 1 << 8,
 };
 
 struct riscv_intrinsic_info
