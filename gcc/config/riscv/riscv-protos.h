@@ -814,7 +814,7 @@ enum
 
 void riscv_apex_register_builtin (tree fndecl);
 const char* arcv_get_apex_insn_name (unsigned int subcode);
-extern void arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format);
+extern void arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format, unsigned int insn_operands);
 extern bool arcv_format_supports_p (unsigned int subcode, unsigned int insn_format);
 
 #endif /* ! GCC_RISCV_PROTOS_H */

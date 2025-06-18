@@ -604,18 +604,18 @@ arcv_validate_insn_format (unsigned int insn_format,
       (num_args) == 2 ? APEX_VOID_FTYPE_SRC0_SRC1 : 0) )
 
 static unsigned int
-arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
+arcv_get_insn_format (unsigned int insn_format, unsigned int opcode, unsigned int insn_operands)
 {
     if (insn_format & APEX_ANY)
  	{
   		insn_format &= ~APEX_ANY;
-    	if (opcode <= APEX_INSN_FORMAT_XD)
+    	if (opcode <= APEX_INSN_FORMAT_XD && insn_operands & 0x7E)
      		insn_format |= APEX_XD;
-       	if (opcode <= APEX_INSN_FORMAT_XS)
+		if (opcode <= APEX_INSN_FORMAT_XS && insn_operands & 0x48)
         	insn_format |= APEX_XS;
-        if (opcode <= APEX_INSN_FORMAT_XI)
+        if (opcode <= APEX_INSN_FORMAT_XI && insn_operands & 0x24)
         	insn_format |= APEX_XI;
-        if (opcode <= APEX_INSN_FORMAT_XC)
+        if (opcode <= APEX_INSN_FORMAT_XC && insn_operands & 0x40)
         	insn_format |= APEX_XC;
     }
     return insn_format;
@@ -696,12 +696,12 @@ riscv_apex_init_builtin (tree fndecl)
     int num_arguments = arcv_get_operand_count (fndecl);
     bool has_return = (arcv_get_return_p (fndecl));
 //    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands, has_return);
-	insn_formats = arcv_get_insn_format (insn_formats, opcode);
+	unsigned int insn_operands = arcv_get_insn_opearnds (num_arguments, has_return);
+	insn_formats = arcv_get_insn_format (insn_formats, opcode, insn_operands);
 
 //	arcv_validate_insn_format (insn_formats, opcode, num_operands);
-	unsigned int insn_operands = arcv_get_insn_opearnds (num_arguments, has_return);
 
-////	arcv_print_insn_section (insn_name, opcode, insn_formats);
+	arcv_print_insn_section (insn_name, opcode, insn_formats, insn_operands);
     icode = arcv_get_icode (insn_formats, insn_operands);
 
     /* Store APEX insn information.  */
