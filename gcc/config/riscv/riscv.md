@@ -658,7 +658,7 @@
   "nothing")
 
 (define_insn "riscv_xsd_no_target"
-    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xsn,xdn") ; subcode
+    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xs,xd") ; subcode
                     (match_operand:SI 1 "register_operand" "r,r")
                     (match_operand:SI 2 "nonmemory_operand" "B08,r")]
                 UNSPEC_LUIS)]
@@ -685,7 +685,7 @@
 )
 
 (define_insn "riscv_xd_no_operands"
-    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xd0")] ; subcode
+    [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xd")] ; subcode
                 UNSPEC_LUIS)]
     ""
     {
@@ -699,7 +699,7 @@
 
 (define_insn "riscv_xd_1op"
     [(set (match_operand:SI 0 "register_operand" "=r")
-          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xd1")] ; subcode
+          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xd")] ; subcode
                 UNSPEC_LUIS))]
     ""
     {
@@ -715,7 +715,7 @@
 
 (define_insn "riscv_xscd"
     [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xsw,xcw,xdw") ; subcode
+          (unspec:SI [(match_operand:SI 1 "const_int_operand" "xs,xc,xd") ; subcode
                     (match_operand:SI 2 "register_operand" "r,0,r")
                     (match_operand:SI 3 "nonmemory_operand" "B08,B12,r")]
                 UNSPEC_LUIS))]
@@ -749,7 +749,7 @@
 )
 
 (define_insn "riscv_xi_xd_1op_no_target"
-  [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xin,xd4") ; subcode
+  [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xi,xd") ; subcode
                     (match_operand:SI 1 "nonmemory_operand" "B12,r")]
                    UNSPEC_LUIS)]
   ""
@@ -774,7 +774,7 @@
 
 (define_insn "riscv_xi_xd2"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
-        (unspec:SI [(match_operand:SI 1 "const_int_operand" "xiw,xd2") ; subcode
+        (unspec:SI [(match_operand:SI 1 "const_int_operand" "xi,xd") ; subcode
                     (match_operand:SI 2 "nonmemory_operand" "B12,r")]
                    UNSPEC_LUIS))]
   ""

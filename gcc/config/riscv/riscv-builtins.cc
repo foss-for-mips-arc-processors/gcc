@@ -343,11 +343,11 @@ arcv_format_supports_p (unsigned int subcode, unsigned int insn_format)
 
 
 static bool
-arcv_get_return_type (tree fndecl)
+arcv_get_return_p (tree fndecl)
 {
   tree fntype = TREE_TYPE (fndecl);
   tree return_type = TREE_TYPE (fntype);
-  return return_type == void_type_node;
+  return return_type != void_type_node;
 }
 
 /* Counts the number of operands for an APEX built-in function.
@@ -368,16 +368,17 @@ arcv_get_operand_count (tree fndecl)
 	tree return_type = TREE_TYPE (fntype);
 
   /* Count as 0 if return type is void.  */
-  int num_operands = return_type == void_type_node ? 0 : 1;
+//  int num_operands = return_type == void_type_node ? 0 : 1;
+    int num_arguments = 0;
 
 	/* Iterate through the argument types.  */
 	for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
 		 t = TREE_CHAIN (t))
 	{
 		/* Increment the operand count for each argument.  */
-		num_operands++;
+		num_arguments++;
 		/* If more than 3 operands, report an error.  */
-		if (num_operands > 3)
+		if (num_arguments > 3)
 		{
 			error_at (DECL_SOURCE_LOCATION (fndecl),
 				"too many operands for APEX built-in function %qE",
@@ -387,7 +388,7 @@ arcv_get_operand_count (tree fndecl)
 	}
 
 	/* Return the total number of operands (including return type). */
-	return num_operands;
+	return num_arguments;
 }
 
 struct format_rule {
@@ -448,148 +449,235 @@ arcv_validate_insn_format (unsigned int insn_format,
    instruction format accurately reflects the requirements for the
    given opcode and operand count.  */
 
-static unsigned int
-arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
-						 unsigned num_operands, bool is_return_void)
-{
-	/* If any RISCV_APEX_ALL bits are set, adjust the format flags.  */
-	if (insn_format & RISCV_APEX_ALL)
-	{
-		/* Clear RISCV_APEX_ALL bit from the format.  */
-		insn_format &= ~RISCV_APEX_ALL;
-
-    if (is_return_void)
-    {
-      if (num_operands == 0)
-      {
-	if (opcode <= APEX_INSN_FORMAT_XC)
-	  insn_format |= RISCV_APEX_XD_NO_OPERANDS;
-	else
-	  error("FIXME.\n");
-      }
-      else if (num_operands == 1)
-      {
-  if (opcode <= APEX_INSN_FORMAT_XD)
-	  insn_format |= RISCV_APEX_XD_1OP_NO_TARGET;
-	if (opcode <= APEX_INSN_FORMAT_XI)
-	  insn_format |= RISCV_APEX_XI_NO_TARGET;
-	return insn_format;
-      } else
-      {
-	if (opcode <= APEX_INSN_FORMAT_XD)
-	    insn_format |= RISCV_APEX_XD_NO_TARGET;
-	if (opcode <= APEX_INSN_FORMAT_XS)
-	    insn_format |= RISCV_APEX_XS_NO_TARGET;
-      return insn_format;
-      }
-    } else
-    {
-      if (num_operands == 1)
-      {
-  if (opcode <= APEX_INSN_FORMAT_XD)
-    insn_format |= RISCV_APEX_XD_1OP;
-      }
-    }
-
-		/* Select format flags based on the number of operands.  */
-		switch (num_operands)
-		{
-			case 3:
-				/* For 3 operands, set XD, XS, or XC if opcode is in range.  */
-				if (opcode <= APEX_INSN_FORMAT_XD)
-					insn_format |= RISCV_APEX_XD;
-				if (opcode <= APEX_INSN_FORMAT_XS)
-					insn_format |= RISCV_APEX_XS;
-				if (opcode <= APEX_INSN_FORMAT_XC)
-					insn_format |= RISCV_APEX_XC;
-				break;
-			case 2:
-        if (opcode <= APEX_INSN_FORMAT_XD)
-          insn_format |= RISCV_APEX_XD_2OP;
-				/* For 2 operands, set XI if opcode is in range.  */
-				if (opcode <= APEX_INSN_FORMAT_XI)
-					insn_format |= RISCV_APEX_XI;
-				break;
-		}
-	} else {
-    /* If RISCV_APEX_ALL is not set, ensure that the instruction
-       format is valid for the given opcode and number of operands.  */
-    if (insn_format & RISCV_APEX_XD)
-	{
-      if (num_operands == 0 && is_return_void)
-      {
-	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XD_NO_OPERANDS;
-      } if (num_operands == 1 && is_return_void)
-	  {
-	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XD_1OP_NO_TARGET;
-	  }
-      else if (num_operands == 1 && !is_return_void)
-      {
-	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XD_1OP;
-      } else if (num_operands == 2 && is_return_void)
-	  {
-	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XD_NO_TARGET;
-	  }
-      else if (num_operands == 2 && !is_return_void)
-      {
-	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XD_2OP;
-      }
-	} else if (insn_format & RISCV_APEX_XS)
-	{
-	  if (num_operands == 2 && is_return_void)
-	  {
-	insn_format = insn_format & ~RISCV_APEX_XS; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XS_NO_TARGET;
-	  }
-	} else if (insn_format & RISCV_APEX_XI)
-	{
-	  if (num_operands == 1 && is_return_void)
-	  {
-	insn_format = insn_format & ~RISCV_APEX_XI; /* temporay fix.  */
-	insn_format |= RISCV_APEX_XI_NO_TARGET;
-	  }
-	}
-  }
-	/* Return the updated instruction format bitmask.  */
-	return insn_format;
-}
+//static unsigned int
+//arcv_adjust_insn_format (unsigned int insn_format, unsigned opcode,
+//						 unsigned num_operands, bool is_return_void)
+//{
+//	/* If any RISCV_APEX_ALL bits are set, adjust the format flags.  */
+//	if (insn_format & RISCV_APEX_ALL)
+//	{
+//		/* Clear RISCV_APEX_ALL bit from the format.  */
+//		insn_format &= ~RISCV_APEX_ALL;
+//
+//    if (is_return_void)
+//    {
+//      if (num_operands == 0)
+//      {
+//	if (opcode <= APEX_INSN_FORMAT_XC)
+//	  insn_format |= RISCV_APEX_XD_NO_OPERANDS;
+//	else
+//	  error("FIXME.\n");
+//      }
+//      else if (num_operands == 1)
+//      {
+//  if (opcode <= APEX_INSN_FORMAT_XD)
+//	  insn_format |= RISCV_APEX_XD_1OP_NO_TARGET;
+//	if (opcode <= APEX_INSN_FORMAT_XI)
+//	  insn_format |= RISCV_APEX_XI_NO_TARGET;
+//	return insn_format;
+//      } else
+//      {
+//	if (opcode <= APEX_INSN_FORMAT_XD)
+//	    insn_format |= RISCV_APEX_XD_NO_TARGET;
+//	if (opcode <= APEX_INSN_FORMAT_XS)
+//	    insn_format |= RISCV_APEX_XS_NO_TARGET;
+//      return insn_format;
+//      }
+//    } else
+//    {
+//      if (num_operands == 1)
+//      {
+//  if (opcode <= APEX_INSN_FORMAT_XD)
+//    insn_format |= RISCV_APEX_XD_1OP;
+//      }
+//    }
+//
+//		/* Select format flags based on the number of operands.  */
+//		switch (num_operands)
+//		{
+//			case 3:
+//				/* For 3 operands, set XD, XS, or XC if opcode is in range.  */
+//				if (opcode <= APEX_INSN_FORMAT_XD)
+//					insn_format |= RISCV_APEX_XD;
+//				if (opcode <= APEX_INSN_FORMAT_XS)
+//					insn_format |= RISCV_APEX_XS;
+//				if (opcode <= APEX_INSN_FORMAT_XC)
+//					insn_format |= RISCV_APEX_XC;
+//				break;
+//			case 2:
+//        if (opcode <= APEX_INSN_FORMAT_XD)
+//          insn_format |= RISCV_APEX_XD_2OP;
+//				/* For 2 operands, set XI if opcode is in range.  */
+//				if (opcode <= APEX_INSN_FORMAT_XI)
+//					insn_format |= RISCV_APEX_XI;
+//				break;
+//		}
+//	} else {
+//    /* If RISCV_APEX_ALL is not set, ensure that the instruction
+//       format is valid for the given opcode and number of operands.  */
+//    if (insn_format & RISCV_APEX_XD)
+//	{
+//      if (num_operands == 0 && is_return_void)
+//      {
+//	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XD_NO_OPERANDS;
+//      } if (num_operands == 1 && is_return_void)
+//	  {
+//	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XD_1OP_NO_TARGET;
+//	  }
+//      else if (num_operands == 1 && !is_return_void)
+//      {
+//	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XD_1OP;
+//      } else if (num_operands == 2 && is_return_void)
+//	  {
+//	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XD_NO_TARGET;
+//	  }
+//      else if (num_operands == 2 && !is_return_void)
+//      {
+//	insn_format = insn_format & ~RISCV_APEX_XD; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XD_2OP;
+//      }
+//	} else if (insn_format & RISCV_APEX_XS)
+//	{
+//	  if (num_operands == 2 && is_return_void)
+//	  {
+//	insn_format = insn_format & ~RISCV_APEX_XS; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XS_NO_TARGET;
+//	  }
+//	} else if (insn_format & RISCV_APEX_XI)
+//	{
+//	  if (num_operands == 1 && is_return_void)
+//	  {
+//	insn_format = insn_format & ~RISCV_APEX_XI; /* temporay fix.  */
+//	insn_format |= RISCV_APEX_XI_NO_TARGET;
+//	  }
+//	}
+//  }
+//	/* Return the updated instruction format bitmask.  */
+//	return insn_format;
+//}
 
 /* This function maps a provided instruction format bitmask to a specific
    instruction code (insn_code) used in the RISC-V backend. It checks the
    format flags and returns the appropriate code.  */
 
-static enum insn_code
-arcv_get_icode (unsigned insn_format)
+//static enum insn_code
+//arcv_get_icode (unsigned insn_format)
+//{
+//	/* If the instruction format includes RISCV_APEX_XI,
+//	   return CODE_FOR_riscv_xi.  */
+//	if (insn_format & (RISCV_APEX_XI | RISCV_APEX_XD_2OP))
+//		return CODE_FOR_riscv_xi_xd2;
+//
+//	/* If the instruction format includes RISCV_APEX_XD, RISCV_APEX_XS
+//	   or RISCV_APEX_XC, return CODE_FOR_riscv_xscd.  */
+//	if (insn_format & (RISCV_APEX_XD | RISCV_APEX_XS | RISCV_APEX_XC))
+//		return CODE_FOR_riscv_xscd;
+//
+//  if (insn_format & (RISCV_APEX_XD_NO_TARGET | RISCV_APEX_XS_NO_TARGET))
+//    return CODE_FOR_riscv_xsd_no_target;
+//
+//  if (insn_format & (RISCV_APEX_XI_NO_TARGET | RISCV_APEX_XD_1OP_NO_TARGET))
+//    return CODE_FOR_riscv_xi_xd_1op_no_target;
+//
+//  if (insn_format & RISCV_APEX_XD_NO_OPERANDS)
+//    return CODE_FOR_riscv_xd_no_operands;
+//
+//  if (insn_format & RISCV_APEX_XD_1OP)
+//    return CODE_FOR_riscv_xd_1op;
+//
+//	/* Otherwise, return CODE_FOR_nothing.  */
+//	return CODE_FOR_nothing;
+//}
+
+// Macro to get insn_format based on has_return and num_arguments
+#define GET_INSN_OPERANDS(has_return, num_args) \
+    ( ((has_return) ? ( \
+        (num_args) == 0 ? APEX_DEST_FTYPE : \
+        (num_args) == 1 ? APEX_DEST_FTYPE_SRC0 : \
+        (num_args) == 2 ? APEX_DEST_FTYPE_SRC0_SRC1 : 0) : \
+      (num_args) == 0 ? APEX_VOID_FTYPE : \
+      (num_args) == 1 ? APEX_VOID_FTYPE_SRC0 : \
+      (num_args) == 2 ? APEX_VOID_FTYPE_SRC0_SRC1 : 0) )
+
+static unsigned int
+arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
 {
-	/* If the instruction format includes RISCV_APEX_XI,
-	   return CODE_FOR_riscv_xi.  */
-	if (insn_format & (RISCV_APEX_XI | RISCV_APEX_XD_2OP))
+    if (insn_format & APEX_ANY)
+ 	{
+  		insn_format &= ~APEX_ANY;
+    	if (opcode <= APEX_INSN_FORMAT_XD)
+     		insn_format |= APEX_XD;
+       	if (opcode <= APEX_INSN_FORMAT_XS)
+        	insn_format |= APEX_XS;
+        if (opcode <= APEX_INSN_FORMAT_XI)
+        	insn_format |= APEX_XI;
+        if (opcode <= APEX_INSN_FORMAT_XC)
+        	insn_format |= APEX_XC;
+    }
+    return insn_format;
+}
+
+static unsigned int
+arcv_get_insn_opearnds (unsigned num_arguments, int has_return)
+{
+    //unsigned int insn_operands = GET_INSN_OPERANDS (has_return, num_arguments);
+
+	if (has_return)
+	{
+		switch (num_arguments)
+		{
+			case 0:
+				return APEX_DEST_FTYPE;
+			case 1:
+				return APEX_DEST_FTYPE_SRC0;
+			case 2:
+				return APEX_DEST_FTYPE_SRC0_SRC1;
+			default:
+				error("Invalid number of arguments for APEX built-in function.");
+				break;
+		}
+	}
+	else {
+		switch (num_arguments)
+		{
+			case 0:
+				return APEX_VOID_FTYPE;
+			case 1:
+				return APEX_VOID_FTYPE_SRC0;
+			case 2:
+				return APEX_VOID_FTYPE_SRC0_SRC1;
+			default:
+				error("Invalid number of arguments for APEX built-in function.");
+				break;
+		}
+	}
+    return APEX_INVALID;
+}
+
+static enum insn_code
+arcv_get_icode (unsigned insn_format, unsigned int insn_operands)
+{
+    if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_DEST_FTYPE_SRC0)
 		return CODE_FOR_riscv_xi_xd2;
 
-	/* If the instruction format includes RISCV_APEX_XD, RISCV_APEX_XS
-	   or RISCV_APEX_XC, return CODE_FOR_riscv_xscd.  */
-	if (insn_format & (RISCV_APEX_XD | RISCV_APEX_XS | RISCV_APEX_XC))
-		return CODE_FOR_riscv_xscd;
+	if (insn_format & (APEX_XD | APEX_XS | APEX_XC) && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+ 		return CODE_FOR_riscv_xscd;
 
-  if (insn_format & (RISCV_APEX_XD_NO_TARGET | RISCV_APEX_XS_NO_TARGET))
-    return CODE_FOR_riscv_xsd_no_target;
+	if (insn_format & (APEX_XD | APEX_XS) && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+		return CODE_FOR_riscv_xsd_no_target;
 
-  if (insn_format & (RISCV_APEX_XI_NO_TARGET | RISCV_APEX_XD_1OP_NO_TARGET))
-    return CODE_FOR_riscv_xi_xd_1op_no_target;
+	if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_VOID_FTYPE_SRC0)
+ 		return CODE_FOR_riscv_xi_xd_1op_no_target;
 
-  if (insn_format & RISCV_APEX_XD_NO_OPERANDS)
-    return CODE_FOR_riscv_xd_no_operands;
+	if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE)
+ 		return CODE_FOR_riscv_xd_no_operands;
 
-  if (insn_format & RISCV_APEX_XD_1OP)
-    return CODE_FOR_riscv_xd_1op;
-
-	/* Otherwise, return CODE_FOR_nothing.  */
-	return CODE_FOR_nothing;
+	if (insn_format & APEX_XD && insn_format == APEX_DEST_FTYPE)
+ 		return CODE_FOR_riscv_xd_1op;
 }
 
 void
@@ -605,16 +693,20 @@ riscv_apex_init_builtin (tree fndecl)
     int opcode = apex.opcode;
     enum insn_code icode;
 
-    int num_operands = arcv_get_operand_count (fndecl);
-    bool is_return_void = (arcv_get_return_type (fndecl));
-    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands, is_return_void);
-    arcv_validate_insn_format (insn_formats, opcode, num_operands);
-    arcv_print_insn_section (insn_name, opcode, insn_formats);
-    icode = arcv_get_icode (insn_formats);
+    int num_arguments = arcv_get_operand_count (fndecl);
+    bool has_return = (arcv_get_return_p (fndecl));
+//    insn_formats = arcv_adjust_insn_format (insn_formats, opcode, num_operands, has_return);
+	insn_formats = arcv_get_insn_format (insn_formats, opcode);
+
+//	arcv_validate_insn_format (insn_formats, opcode, num_operands);
+	unsigned int insn_operands = arcv_get_insn_opearnds (num_arguments, has_return);
+
+////	arcv_print_insn_section (insn_name, opcode, insn_formats);
+    icode = arcv_get_icode (insn_formats, insn_operands);
 
     /* Store APEX insn information.  */
 //    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, RISCV_BUILTIN_DIRECT, insn_formats };
-    enum riscv_builtin_type builtin_type = is_return_void ? RISCV_BUILTIN_DIRECT_NO_TARGET : RISCV_BUILTIN_DIRECT;
+    enum riscv_builtin_type builtin_type = has_return ? RISCV_BUILTIN_DIRECT : RISCV_BUILTIN_DIRECT_NO_TARGET;
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, builtin_type, insn_formats };
 
     /* Modify the prototype type as built-in.  */

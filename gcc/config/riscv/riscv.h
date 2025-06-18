@@ -73,6 +73,24 @@ enum riscv_apex_insn_format {
   RISCV_APEX_XD_1OP_NO_TARGET = 1 << 11,
 };
 
+enum apex_insn_operands {
+		APEX_INVALID,
+        APEX_VOID_FTYPE,
+        APEX_VOID_FTYPE_SRC0,
+        APEX_VOID_FTYPE_SRC0_SRC1,
+        APEX_DEST_FTYPE,
+        APEX_DEST_FTYPE_SRC0,
+        APEX_DEST_FTYPE_SRC0_SRC1,
+};
+
+enum apex_insn_format {
+        APEX_ANY = 1 << 0,
+        APEX_XD  = 1 << 1,
+        APEX_XS  = 1 << 2,
+        APEX_XI  = 1 << 3,
+        APEX_XC  = 1 << 4,
+};
+
 struct riscv_intrinsic_info
 {
   const char *fn_name;

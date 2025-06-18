@@ -50,60 +50,80 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE(ival, 0, 4095)")))
 
-(define_constraint "xcw"
-  "Validate support of RISCV_APEX_XC instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XC)")))
+;;(define_constraint "xcw"
+;;  "Validate support of RISCV_APEX_XC instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XC)")))
+;;
+;;(define_constraint "xsw"
+;;  "Validate support of RISCV_APEX_XS instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS)")))
+;;
+;;(define_constraint "xsn"
+;;  "Validate support of RISCV_APEX_XS_NO_TARGET instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS_NO_TARGET)")))
+;;
+;;(define_constraint "xdw"
+;;  "Validate support of RISCV_APEX_XD instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD)")))
+;;
+;;(define_constraint "xdn"
+;;  "Validate support of RISCV_APEX_XD_NO_TARGET instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_NO_TARGET)")))
+;;
+;;(define_constraint "xd0"
+;;  "Validate support of RISCV_APEX_XD_NO_OPERANDS instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_NO_OPERANDS)")))
+;;
+;;(define_constraint "xd1"
+;;  "Validate support of RISCV_APEX_XD_1OP instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP)")))
+;;
+;;(define_constraint "xd2"
+;;  "Validate support of RISCV_APEX_XD_2OP instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_2OP)")))
+;;
+;;(define_constraint "xd4" ;; Well. you will need to change all of them...
+;;  "Validate support of RISCV_APEX_XD_1OP_NO_TARGET instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP_NO_TARGET)")))
+;;
+;;(define_constraint "xiw"
+;;  "Validate support of RISCV_APEX_XI instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI)")))
+;;
+;;(define_constraint "xin"
+;;  "Validate support of RISCV_APEX_XI_NO_TARGET instruction format."
+;;  (and (match_code "const_int")
+;;       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI_NO_TARGET)")))
 
-(define_constraint "xsw"
-  "Validate support of RISCV_APEX_XS instruction format."
+(define_constraint "xd"
+  "Validate support of APEX_XD instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS)")))
+       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XD)")))
 
-(define_constraint "xsn"
-  "Validate support of RISCV_APEX_XS_NO_TARGET instruction format."
+(define_constraint "xs"
+  "Validate support of APEX_XS instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XS_NO_TARGET)")))
+       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XS)")))
 
-(define_constraint "xdw"
-  "Validate support of RISCV_APEX_XD instruction format."
+(define_constraint "xi"
+  "Validate support of APEX_XI instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD)")))
+       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XI)")))
 
-(define_constraint "xdn"
-  "Validate support of RISCV_APEX_XD_NO_TARGET instruction format."
+(define_constraint "xc"
+  "Validate support of APEX_XC instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_NO_TARGET)")))
-
-(define_constraint "xd0"
-  "Validate support of RISCV_APEX_XD_NO_OPERANDS instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_NO_OPERANDS)")))
-
-(define_constraint "xd1"
-  "Validate support of RISCV_APEX_XD_1OP instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP)")))
-
-(define_constraint "xd2"
-  "Validate support of RISCV_APEX_XD_2OP instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_2OP)")))
-
-(define_constraint "xd4" ;; Well. you will need to change all of them...
-  "Validate support of RISCV_APEX_XD_1OP_NO_TARGET instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XD_1OP_NO_TARGET)")))
-
-(define_constraint "xiw"
-  "Validate support of RISCV_APEX_XI instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI)")))
-
-(define_constraint "xin"
-  "Validate support of RISCV_APEX_XI_NO_TARGET instruction format."
-  (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), RISCV_APEX_XI_NO_TARGET)")))
+       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XC)")))
 
 (define_constraint "J"
   "Integer zero."
