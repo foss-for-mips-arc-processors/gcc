@@ -9770,14 +9770,14 @@ struct riscv_intrinsic_info apex;
 
 
 void
-arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format, unsigned int insn_operands)
+arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format)
 {
   /* Print XD insn format if present.  */
-  if (insn_format & APEX_XD && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE_SRC0_SRC1)
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD\n", insn_name, opcode);
 
   /* Print other insn formats in a single line if any.  */
-  if (insn_format & (APEX_XS | APEX_XC) && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+  if (insn_format & (APEX_XS | APEX_XC) && insn_format & APEX_DEST_FTYPE_SRC0_SRC1)
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
     if (insn_format & APEX_XS)
@@ -9789,42 +9789,42 @@ arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_fo
     fputc ('\n', asm_out_file);
   }
 
-  if (insn_format & APEX_XI && insn_operands == APEX_DEST_FTYPE_SRC0)
+  if (insn_format & APEX_XI && insn_format & APEX_DEST_FTYPE_SRC0)
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d,XI\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE_SRC0_SRC1)
   {
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XS && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+  if (insn_format & APEX_XS && insn_format & APEX_VOID_FTYPE_SRC0_SRC1)
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d,XS,void\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XI && insn_operands == APEX_VOID_FTYPE_SRC0)
+  if (insn_format & APEX_XI && insn_format & APEX_VOID_FTYPE_SRC0)
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d,XI,void\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE)
+  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE)
   {
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void,no_src0,no_src1\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE)
   {
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,no_src0,no_src1\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XD && insn_operands == APEX_DEST_FTYPE_SRC0)
+  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE_SRC0)
   {
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,no_src1\n", insn_name, opcode);
   }
 
-  if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE_SRC0)
+  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE_SRC0)
     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void,no_src1\n", insn_name, opcode);
 }
 

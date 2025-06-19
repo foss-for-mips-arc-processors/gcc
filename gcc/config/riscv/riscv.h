@@ -73,14 +73,13 @@ enum riscv_apex_insn_format {
   RISCV_APEX_XD_1OP_NO_TARGET = 1 << 11,
 };
 
-enum apex_insn_operands {
-	APEX_INVALID              = 1 << 0,
-  APEX_VOID_FTYPE           = 1 << 1,
-  APEX_VOID_FTYPE_SRC0      = 1 << 2,
-  APEX_VOID_FTYPE_SRC0_SRC1 = 1 << 3,
-  APEX_DEST_FTYPE           = 1 << 4,
-  APEX_DEST_FTYPE_SRC0      = 1 << 5,
-  APEX_DEST_FTYPE_SRC0_SRC1 = 1 << 6,
+enum apex_signature_mask  {
+  APEX_VOID_FTYPE           = 0b111,
+  APEX_VOID_FTYPE_SRC0      = 0b101,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b001,
+  APEX_DEST_FTYPE           = 0b110,
+  APEX_DEST_FTYPE_SRC0      = 0b100,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b000,
 };
 
 enum apex_insn_format {
@@ -89,6 +88,9 @@ enum apex_insn_format {
   APEX_XS  = 1 << 2,
   APEX_XI  = 1 << 3,
   APEX_XC  = 1 << 4,
+  APEX_VOID = 1 << 5,
+  APEX_NO_SRC0 = 1 << 6,
+  APEX_NO_SRC1 = 1 << 7,
 };
 
 struct riscv_intrinsic_info
