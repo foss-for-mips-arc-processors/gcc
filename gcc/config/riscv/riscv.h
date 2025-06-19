@@ -74,12 +74,12 @@ enum riscv_apex_insn_format {
 };
 
 enum apex_signature_mask  {
-  APEX_VOID_FTYPE           = 0b111,
-  APEX_VOID_FTYPE_SRC0      = 0b101,
-  APEX_VOID_FTYPE_SRC0_SRC1 = 0b001,
-  APEX_DEST_FTYPE           = 0b110,
-  APEX_DEST_FTYPE_SRC0      = 0b100,
-  APEX_DEST_FTYPE_SRC0_SRC1 = 0b000,
+  APEX_VOID_FTYPE           = 0b000,
+  APEX_VOID_FTYPE_SRC0      = 0b010,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b110,
+  APEX_DEST_FTYPE           = 0b001,
+  APEX_DEST_FTYPE_SRC0      = 0b011,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b111,
 };
 
 enum apex_insn_format {
@@ -88,9 +88,9 @@ enum apex_insn_format {
   APEX_XS  = 1 << 2,
   APEX_XI  = 1 << 3,
   APEX_XC  = 1 << 4,
-  APEX_VOID = 1 << 5,
-  APEX_NO_SRC0 = 1 << 6,
-  APEX_NO_SRC1 = 1 << 7,
+  APEX_DEST = 1 << 5,
+  APEX_SRC0 = 1 << 6,
+  APEX_SRC1 = 1 << 7,
 };
 
 struct riscv_intrinsic_info

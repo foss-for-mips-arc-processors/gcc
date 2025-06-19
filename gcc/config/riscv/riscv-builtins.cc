@@ -398,26 +398,27 @@ arcv_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
   tree operands = TYPE_ARG_TYPES (fntype);
 	tree return_type = TREE_TYPE (fntype);
 
-  if (return_type == void_type_node)
-    insn_format |= APEX_VOID;
+  /* Set DEST flag if function return type is not void.  */
+  if (return_type != void_type_node)
+    insn_format |= APEX_DEST;
 
   int num_arguments = 0;
+  /* Count arguments, stopping early on error if more than 2  */
   for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
        t = TREE_CHAIN (t))
   {
-    if (++num_arguments > 3)
+    num_arguments++;
+    if (num_arguments == 1)
+      insn_format |= APEX_SRC0;
+    else if (num_arguments == 2)
+      insn_format |= APEX_SRC1;
+    else
     {
       error_at (DECL_SOURCE_LOCATION (fndecl),
                 "too many operands for APEX built-in function %qE", fndecl);
       break;
     }
   }
-
-  // Set NO_SRC flags based on number of arguments.
-  if (num_arguments < 1)
-    insn_format |= APEX_NO_SRC0;
-  if (num_arguments < 2)
-    insn_format |= APEX_NO_SRC1;
 
   return insn_format;
 }
@@ -441,12 +442,15 @@ const struct format_rule rules[] = {
    number of operands conform to the rules defined for APEX instructions.  */
 
 static void
-arcv_validate_insn_format (unsigned int insn_format,
-						   unsigned opcode, bool has_return, int num_arguments)
+arcv_validate_insn_format (unsigned int insn_format, unsigned opcode)
 {
 	/* If the instruction format is RISCV_APEX_NONE, report an error.  */
 	if (insn_format == RISCV_APEX_NONE)
 		error("APEX instruction not valid.\n");
+
+  bool has_return = (insn_format & APEX_DEST) >> 5;
+  int num_arguments = ((insn_format & APEX_SRC0) >> 6) +
+                      ((insn_format & APEX_SRC1) >> 7);
 
 	/* Iterate over each rule in the rules array.  */
 	for (int i = 0; i < sizeof(rules)/sizeof(rules[0]); ++i)
@@ -476,61 +480,6 @@ arcv_validate_insn_format (unsigned int insn_format,
 	}
 }
 
-// // Macro to get insn_format based on has_return and num_arguments
-// #define GET_INSN_OPERANDS(has_return, num_args) \
-//     ( ((has_return) ? ( \
-//         (num_args) == 0 ? APEX_DEST_FTYPE : \
-//         (num_args) == 1 ? APEX_DEST_FTYPE_SRC0 : \
-//         (num_args) == 2 ? APEX_DEST_FTYPE_SRC0_SRC1 : 0) : \
-//       (num_args) == 0 ? APEX_VOID_FTYPE : \
-//       (num_args) == 1 ? APEX_VOID_FTYPE_SRC0 : \
-//       (num_args) == 2 ? APEX_VOID_FTYPE_SRC0_SRC1 : 0) )
-
-// static unsigned int
-// arcv_get_insn_format (unsigned int insn_format, unsigned int opcode, unsigned int insn_operands)
-// {
-//     if (insn_format & APEX_ANY)
-//  	{
-//   		insn_format &= ~APEX_ANY;
-//     	if (opcode <= APEX_INSN_FORMAT_XD && insn_operands & 0x7E)
-//      		insn_format |= APEX_XD;
-// 		if (opcode <= APEX_INSN_FORMAT_XS && insn_operands & 0x48)
-//         	insn_format |= APEX_XS;
-//         if (opcode <= APEX_INSN_FORMAT_XI && insn_operands & 0x24)
-//         	insn_format |= APEX_XI;
-//         if (opcode <= APEX_INSN_FORMAT_XC && insn_operands & 0x40)
-//         	insn_format |= APEX_XC;
-//     }
-//     return insn_format;
-// }
-
-// static unsigned int
-// arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
-// {
-//   if (insn_format & APEX_ANY)
-//   {
-//   	insn_format &= ~APEX_ANY;
-
-//     if (opcode <= APEX_INSN_FORMAT_XD) /* Any operands.  */
-//       insn_format |= APEX_XD;
-
-// 		if (opcode <= APEX_INSN_FORMAT_XS &&
-//         ((insn_format & APEX_VOID_FTYPE_SRC0_SRC1) == APEX_VOID_FTYPE_SRC0_SRC1 ||
-//          (insn_format & APEX_DEST_FTYPE_SRC0_SRC1) == APEX_DEST_FTYPE_SRC0_SRC1))
-//       insn_format |= APEX_XS;
-
-//     if (opcode <= APEX_INSN_FORMAT_XI &&
-//         ((insn_format & APEX_VOID_FTYPE_SRC0) == APEX_VOID_FTYPE_SRC0 ||
-//          (insn_format & APEX_DEST_FTYPE_SRC0) == APEX_DEST_FTYPE_SRC0))
-//       insn_format |= APEX_XI;
-
-//     if (opcode <= APEX_INSN_FORMAT_XC &&
-//         ((insn_format & APEX_DEST_FTYPE_SRC0_SRC1) == APEX_DEST_FTYPE_SRC0_SRC1))
-//       insn_format |= APEX_XC;
-//   }
-//     return insn_format;
-// }
-
 static unsigned int
 arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
 {
@@ -552,28 +501,6 @@ arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
     }
     return insn_format;
 }
-
-// static enum insn_code
-// arcv_get_icode (unsigned insn_format)
-// {
-//     if (insn_format & (APEX_XI | APEX_XD) && insn_format & APEX_DEST_FTYPE_SRC0)
-// 		return CODE_FOR_riscv_arcv_apex_dest_src0; /* Used by "XI","XD" insn. format: `insn dest, src0`  */
-
-// 	if (insn_format & (APEX_XD | APEX_XS | APEX_XC) && insn_format & APEX_DEST_FTYPE_SRC0_SRC1)
-// 		return CODE_FOR_riscv_arcv_apex_dest_src0_src1; /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
-
-// 	if (insn_format & (APEX_XD | APEX_XS) && insn_format & APEX_VOID_FTYPE_SRC0_SRC1)
-// 		return CODE_FOR_riscv_arcv_apex_void_src0_src1; /* Used by "XS","XD" insn. format: `insn src0, src1`  */
-
-// 	if (insn_format & (APEX_XI | APEX_XD) && insn_format & APEX_VOID_FTYPE_SRC0)
-// 		return CODE_FOR_riscv_arcv_apex_void_src0; /* Used by "XI","XD" insn. format: `insn src0`  */
-
-// 	if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE)
-// 		return CODE_FOR_riscv_arcv_apex_void; // riscv_xd_no_operand
-
-// 	if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE)
-// 		return CODE_FOR_riscv_arcv_apex_dest; // riscv_xd_1op;
-// }
 
 static enum insn_code
 arcv_get_icode (unsigned insn_format)
@@ -612,23 +539,18 @@ riscv_apex_init_builtin (tree fndecl)
     int opcode = apex.opcode;
     enum insn_code icode;
 
-    // int num_arguments = arcv_get_operand_count (fndecl);
-    // bool has_return = (arcv_get_return_p (fndecl));
-	// unsigned int insn_operands = GET_INSN_OPERANDS (has_return, num_arguments);
-
   insn_formats = arcv_set_insn_operand_flags (insn_formats, fndecl);
 
 	/* Get the instruction format.  */
 	insn_formats = arcv_get_insn_format (insn_formats, opcode);
 
-//	arcv_validate_insn_format (insn_formats, opcode, has_return, num_arguments);
+	arcv_validate_insn_format (insn_formats, opcode);
 
 	arcv_print_insn_section (insn_name, opcode, insn_formats);
     icode = arcv_get_icode (insn_formats);
 
     /* Store APEX insn information.  */
-    // enum riscv_builtin_type builtin_type = insn_format & 0x0 ? RISCV_BUILTIN_DIRECT : RISCV_BUILTIN_DIRECT_NO_TARGET;
-    enum riscv_builtin_type builtin_type = insn_formats & 0b00100000 ? RISCV_BUILTIN_DIRECT_NO_TARGET : RISCV_BUILTIN_DIRECT;
+    enum riscv_builtin_type builtin_type = insn_formats & APEX_DEST ? RISCV_BUILTIN_DIRECT : RISCV_BUILTIN_DIRECT_NO_TARGET;
     riscv_apex_builtins[i] =  { icode, fn_name, insn_name, builtin_type, insn_formats };
 
     /* Modify the prototype type as built-in.  */
