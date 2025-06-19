@@ -657,7 +657,8 @@
   (eq_attr "type" "ghost")
   "nothing")
 
-(define_insn "riscv_xsd_no_target"
+;; Used by "XS","XD" insn. format: `insn src0, src1`
+(define_insn "riscv_arcv_apex_void_src0_src1"
     [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xs,xd") ; subcode
                     (match_operand:SI 1 "register_operand" "r,r")
                     (match_operand:SI 2 "nonmemory_operand" "B08,r")]
@@ -684,7 +685,8 @@
     [(set_attr "type" "arith")]
 )
 
-(define_insn "riscv_xd_no_operands"
+;; Used by "XD" insn. format: `insn`
+(define_insn "riscv_arcv_apex_void"
     [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xd")] ; subcode
                 UNSPEC_LUIS)]
     ""
@@ -692,12 +694,13 @@
 		unsigned int subcode = UINTVAL (operands[0]);
 		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
 		const char *str = XSTR (op, 0);
-    return xasprintf ("%s ; riscv_xd_no_operands", str);
+    return xasprintf ("%s ; 'XD' `insn`", str);
     }
     [(set_attr "type" "arith")]
 )
 
-(define_insn "riscv_xd_1op"
+;; Used by "XD" insn. format: `insn dest`
+(define_insn "riscv_arcv_apex_dest"
     [(set (match_operand:SI 0 "register_operand" "=r")
           (unspec:SI [(match_operand:SI 1 "const_int_operand" "xd")] ; subcode
                 UNSPEC_LUIS))]
@@ -706,14 +709,15 @@
 		unsigned int subcode = UINTVAL (operands[1]);
 		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
 		const char *str = XSTR (op, 0);
-    return xasprintf ("%s\t%s ; riscv_xd_1op",
+    return xasprintf ("%s\t%s ; 'XD' `insn dest`",
 						str,
 						reg_names[REGNO (operands[0])]);
     }
     [(set_attr "type" "arith")]
 )
 
-(define_insn "riscv_xscd"
+;; Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`
+(define_insn "riscv_arcv_apex_dest_src0_src1"
     [(set (match_operand:SI 0 "register_operand" "=r,r,r")
           (unspec:SI [(match_operand:SI 1 "const_int_operand" "xs,xc,xd") ; subcode
                     (match_operand:SI 2 "register_operand" "r,0,r")
@@ -727,18 +731,18 @@
 		switch (which_alternative)
 		{
 			case 0:
-				return xasprintf ("%si\t%s, %s, %d ; riscv_xs",
+				return xasprintf ("%si\t%s, %s, %d ; 'XS' `insn dest, src0, imm/src1`",
 								str,
 								reg_names[REGNO (operands[0])],
 								reg_names[REGNO (operands[2])],
 								INTVAL (operands[3]));
 			case 1:
-				return xasprintf ("%si\t%s, %d ; riscv_xc",
+				return xasprintf ("%si\t%s, %d ; 'XC' `insn dest, src0, imm/src1`",
 								str,
 								reg_names[REGNO (operands[0])],
 								INTVAL (operands[3]));
 			case 2:
-				return xasprintf ("%s\t%s, %s, %s ; riscv_xd",
+				return xasprintf ("%s\t%s, %s, %s ; 'XD' `insn dest, src0, imm/src1`",
 								str,
 								reg_names[REGNO (operands[0])],
 								reg_names[REGNO (operands[2])],
@@ -748,7 +752,8 @@
     [(set_attr "type" "arith,arith,arith")]
 )
 
-(define_insn "riscv_xi_xd_1op_no_target"
+;; Used by "XI","XD" insn. format: `insn src0`
+(define_insn "riscv_arcv_apex_void_src0"
   [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xi,xd") ; subcode
                     (match_operand:SI 1 "nonmemory_operand" "B12,r")]
                    UNSPEC_LUIS)]
@@ -760,11 +765,11 @@
     switch (which_alternative)
     {
       case 0:
-        return xasprintf ("%si\t%d ; riscv_xi_no_target",
+        return xasprintf ("%si\t%d ; 'XI' `insn src0`",
                 str,
                 INTVAL (operands[1]));
       case 1:
-        return xasprintf ("%s\t%s ; riscv_xd_1op_no_target",
+        return xasprintf ("%s\t%s ; 'XD' `insn src0`",
                 str,
                 reg_names[REGNO (operands[1])]);
     }
@@ -772,7 +777,8 @@
   [(set_attr "type" "arith,arith")]
 )
 
-(define_insn "riscv_xi_xd2"
+;; Used by "XI","XD" insn. format: `insn dest, src0`
+(define_insn "riscv_arcv_apex_dest_src0"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
         (unspec:SI [(match_operand:SI 1 "const_int_operand" "xi,xd") ; subcode
                     (match_operand:SI 2 "nonmemory_operand" "B12,r")]
@@ -785,12 +791,12 @@
     switch (which_alternative)
     {
       case 0:
-        return xasprintf ("%si\t%s, %d ; riscv_xi",
+        return xasprintf ("%si\t%s, %d ; 'XD' `insn des, src0`",
                 str,
                 reg_names[REGNO (operands[0])],
                 INTVAL (operands[2]));
       case 1:
-        return xasprintf ("%s\t%s, %s ; riscv_xd_2op",
+        return xasprintf ("%s\t%s, %s ; 'XD' `insn des, src0`",
                 str,
                 reg_names[REGNO (operands[0])],
                 reg_names[REGNO (operands[2])]);

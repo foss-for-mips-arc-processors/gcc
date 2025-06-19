@@ -477,22 +477,22 @@ static enum insn_code
 arcv_get_icode (unsigned insn_format, unsigned int insn_operands)
 {
     if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_DEST_FTYPE_SRC0)
-		return CODE_FOR_riscv_xi_xd2;
+		return CODE_FOR_riscv_arcv_apex_dest_src0; // riscv_xi_xd2;
 
 	if (insn_format & (APEX_XD | APEX_XS | APEX_XC) && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
- 		return CODE_FOR_riscv_xscd;
+		return CODE_FOR_riscv_arcv_apex_dest_src0_src1; // riscv_xscd;
 
 	if (insn_format & (APEX_XD | APEX_XS) && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
-		return CODE_FOR_riscv_xsd_no_target;
+		return CODE_FOR_riscv_arcv_apex_void_src0_src1; //riscv_xsd_no_target;
 
 	if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_VOID_FTYPE_SRC0)
- 		return CODE_FOR_riscv_xi_xd_1op_no_target;
+		return CODE_FOR_riscv_arcv_apex_void_src0; // riscv_xi_xd_1op_no_target
 
 	if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE)
- 		return CODE_FOR_riscv_xd_no_operands;
+		return CODE_FOR_riscv_arcv_apex_void; // riscv_xd_no_operand
 
-	if (insn_format & APEX_XD && insn_format == APEX_DEST_FTYPE)
- 		return CODE_FOR_riscv_xd_1op;
+	if (insn_format & APEX_XD && insn_operands == APEX_DEST_FTYPE)
+		return CODE_FOR_riscv_arcv_apex_dest; // riscv_xd_1op;
 }
 
 void
