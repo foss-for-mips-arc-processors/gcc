@@ -9768,64 +9768,64 @@ struct riscv_intrinsic_info apex;
 //     fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void,no_src1\n", insn_name, opcode);
 // }
 
+/*
+  Print the ".extInstruction" section for the given APEX instruction formats.
 
+  This function takes the instruction name, opcode, and a bitmask representing
+  the active APEX instruction formats and operand signatures. It prints one or
+  more `.extInstruction` lines into the assembly output file, allowing the
+  assembler and disassembler to recognize the instruction variants.
+
+  The operand signature is encoded in bits 4–6 of `insn_format` and indicates
+  the presence and types of operands such as destination, source0, and source1.
+*/
 void
-arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format)
+arcv_apex_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format)
 {
-  /* Print XD insn format if present.  */
-  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE_SRC0_SRC1)
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD\n", insn_name, opcode);
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+     These bits encode the operand signature used for format selection. */
+  unsigned int insn_operands = insn_format >> 4;
 
-  /* Print other insn formats in a single line if any.  */
-  if (insn_format & (APEX_XS | APEX_XC) && insn_format & APEX_DEST_FTYPE_SRC0_SRC1)
+  /* Print XD format line, adding operand info flags if absent */
+  if (insn_format & APEX_XD)
   {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
+    fprintf(asm_out_file, "\t.extInstruction %s,%d,XD", insn_name, opcode);
+    if ((insn_format & APEX_DEST) == 0)
+      fputs(",void", asm_out_file);
+    if ((insn_format & APEX_SRC0) == 0)
+      fputs(",no_src0", asm_out_file);
+    if ((insn_format & APEX_SRC1) == 0)
+      fputs(",no_src1", asm_out_file);
+    fputc('\n', asm_out_file);
+  }
+
+  /* Print XS and XC formats combined in a single line with dest, src0, src1 */
+  if ((insn_format & (APEX_XS | APEX_XC)) &&
+      (insn_operands & APEX_DEST_FTYPE_SRC0_SRC1))
+  {
+    fprintf(asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
     if (insn_format & APEX_XS)
-      fputs (",XS", asm_out_file);
+      fputs(",XS", asm_out_file);
     if (insn_format & APEX_XC)
-      fputs (",XC", asm_out_file);
-    if (insn_format & APEX_XI)
-      fputs (",XI", asm_out_file);
-    fputc ('\n', asm_out_file);
+      fputs(",XC", asm_out_file);
+    fputc('\n', asm_out_file);
   }
 
-  if (insn_format & APEX_XI && insn_format & APEX_DEST_FTYPE_SRC0)
+  /* Print XI format with dest, src0 operands; append ',void' if no dest */
+  if (insn_format & APEX_XI)
   {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d,XI\n", insn_name, opcode);
+    fprintf(asm_out_file, "\t.extInstruction %si,%d,XI", insn_name, opcode);
+    if ((insn_format & APEX_DEST) == 0)
+      fputs(",void", asm_out_file);
+    fputc('\n', asm_out_file);
   }
 
-  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE_SRC0_SRC1)
+  /* Print XS format with void return and src0, src1 operands */
+  if ((insn_format & APEX_XS) &&
+      (insn_operands & APEX_VOID_FTYPE_SRC0_SRC1))
   {
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void\n", insn_name, opcode);
+    fprintf(asm_out_file, "\t.extInstruction %si,%d,XS,void\n", insn_name, opcode);
   }
-
-  if (insn_format & APEX_XS && insn_format & APEX_VOID_FTYPE_SRC0_SRC1)
-  {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d,XS,void\n", insn_name, opcode);
-  }
-
-  if (insn_format & APEX_XI && insn_format & APEX_VOID_FTYPE_SRC0)
-  {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d,XI,void\n", insn_name, opcode);
-  }
-
-  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE)
-  {
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void,no_src0,no_src1\n", insn_name, opcode);
-  }
-
-  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE)
-  {
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,no_src0,no_src1\n", insn_name, opcode);
-  }
-
-  if (insn_format & APEX_XD && insn_format & APEX_DEST_FTYPE_SRC0)
-  {
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,no_src1\n", insn_name, opcode);
-  }
-
-  if (insn_format & APEX_XD && insn_format & APEX_VOID_FTYPE_SRC0)
-    fprintf (asm_out_file, "\t.extInstruction %s,%d,XD,void,no_src1\n", insn_name, opcode);
 }
 
 /* Implement TARGET_ASM_OUTPUT_MI_THUNK.  Generate rtl rather than asm text

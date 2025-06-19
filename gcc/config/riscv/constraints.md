@@ -46,29 +46,29 @@
        (match_test "IN_RANGE(ival, 0, 255)")))
 
 (define_constraint "B12"
-  "An 12-bit unsigned immediate (0 to 4095)."
+  "An 12-bit signed immediate (-2048 to 2048)."
   (and (match_code "const_int")
-       (match_test "IN_RANGE(ival, 0, 4095)")))
+       (match_test "IN_RANGE(ival, -2048, 2048)")))
 
 (define_constraint "xd"
   "Validate support of APEX_XD instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XD)")))
+       (match_test "arcv_apex_format_supports_p(INTVAL(op), APEX_XD)")))
 
 (define_constraint "xs"
   "Validate support of APEX_XS instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XS)")))
+       (match_test "arcv_apex_format_supports_p(INTVAL(op), APEX_XS)")))
 
 (define_constraint "xi"
   "Validate support of APEX_XI instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XI)")))
+       (match_test "arcv_apex_format_supports_p(INTVAL(op), APEX_XI)")))
 
 (define_constraint "xc"
   "Validate support of APEX_XC instruction format."
   (and (match_code "const_int")
-       (match_test "arcv_format_supports_p(INTVAL(op), APEX_XC)")))
+       (match_test "arcv_apex_format_supports_p(INTVAL(op), APEX_XC)")))
 
 (define_constraint "J"
   "Integer zero."

@@ -255,12 +255,13 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 
 tree riscv_float16_type_node = NULL_TREE;
 
+/* move to riscv.cc  */
 const char*
-arcv_get_apex_insn_name (unsigned int subcode)
+arcv_apex_get_insn_name (rtx op)
 {
-  return riscv_apex_builtins[subcode].insn_name;
+	unsigned int subcode = UINTVAL (op);
+  	return riscv_apex_builtins[subcode].insn_name;
 }
-
 /* Return the function type associated with function prototype TYPE.  */
 
 static tree
@@ -331,126 +332,98 @@ riscv_init_builtins (void)
     }
 }
 
+/* Checks if the APEX builtin instruction identified by SUBCODE
+   supports the given instruction format (INSN_FORMAT).
+
+   Returns true if the instruction format is included in the builtin's
+   supported formats; otherwise, returns false. */
+
 bool
-arcv_format_supports_p (unsigned int subcode, unsigned int insn_format)
+arcv_apex_format_supports_p (unsigned int subcode, unsigned int insn_format)
 {
-  const struct riscv_builtin_description_apex *d = &riscv_apex_builtins[subcode];
-  if (d->insn_formats & insn_format)
-    return true;
-  else
-    return false;
+	const struct riscv_builtin_description_apex *d =
+		&riscv_apex_builtins[subcode];
+	return (d->insn_formats & insn_format);
 }
 
+/* Set APEX operand flags for a built-in function.
+   This function inspects the function prototype in FNDECL and sets the
+   appropriate operand flags in INSN_FORMAT:
+     - APEX_DEST if the return type is not void.
+     - APEX_SRC0 and/or APEX_SRC1 depending on the number of arguments.
+   Emits an error if more than 2 arguments are present.  */
 
-static bool
-arcv_get_return_p (tree fndecl)
-{
-  tree fntype = TREE_TYPE (fndecl);
-  tree return_type = TREE_TYPE (fntype);
-  return return_type != void_type_node;
-}
-
-/* Counts the number of operands for an APEX built-in function.
-  This function analyzes the given function declaration and determines
-  the number of operands, including the return type as the first operand.
-  It iterates through the argument types of the function and increments
-  the operand count for each argument. If the number of operands exceeds
-  three, it reports an error.  */
 static int
-arcv_get_operand_count (tree fndecl)
+arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
 {
-	/* Get the function type from the function declaration
-	   and the list of argument types for the function.  */
 	tree fntype = TREE_TYPE (fndecl);
 	tree operands = TYPE_ARG_TYPES (fntype);
-
-	/* Get the return type of the function.  */
 	tree return_type = TREE_TYPE (fntype);
 
-  /* Count as 0 if return type is void.  */
-//  int num_operands = return_type == void_type_node ? 0 : 1;
-    int num_arguments = 0;
+	/* Set DEST flag if function return type is not void.  */
+	if (return_type != void_type_node)
+		insn_format |= APEX_DEST;
 
-	/* Iterate through the argument types.  */
+	int num_arguments = 0;
+	/* Count arguments, stopping early on error if more than 2  */
 	for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
 		 t = TREE_CHAIN (t))
 	{
-		/* Increment the operand count for each argument.  */
 		num_arguments++;
-		/* If more than 3 operands, report an error.  */
-		if (num_arguments > 3)
+		if (num_arguments == 1)
+			insn_format |= APEX_SRC0;
+		else if (num_arguments == 2)
+			insn_format |= APEX_SRC1;
+		else
 		{
 			error_at (DECL_SOURCE_LOCATION (fndecl),
-				"too many operands for APEX built-in function %qE",
-				fndecl);
-			/* FIXME: terminate program.  */
+				"too many operands for APEX built-in function %qE", fndecl);
+		break;
 		}
 	}
 
-	/* Return the total number of operands (including return type). */
-	return num_arguments;
+	return insn_format;
 }
 
-static int
-arcv_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
-{
-  tree fntype = TREE_TYPE (fndecl);
-  tree operands = TYPE_ARG_TYPES (fntype);
-	tree return_type = TREE_TYPE (fntype);
-
-  /* Set DEST flag if function return type is not void.  */
-  if (return_type != void_type_node)
-    insn_format |= APEX_DEST;
-
-  int num_arguments = 0;
-  /* Count arguments, stopping early on error if more than 2  */
-  for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
-       t = TREE_CHAIN (t))
-  {
-    num_arguments++;
-    if (num_arguments == 1)
-      insn_format |= APEX_SRC0;
-    else if (num_arguments == 2)
-      insn_format |= APEX_SRC1;
-    else
-    {
-      error_at (DECL_SOURCE_LOCATION (fndecl),
-                "too many operands for APEX built-in function %qE", fndecl);
-      break;
-    }
-  }
-
-  return insn_format;
-}
-
+/* Represents a validation rule for an APEX instruction format.  */
 struct format_rule {
-    unsigned insn_format;
-	const char *insn_format_str;
-    unsigned max_opcode;
-    unsigned int required_args;
+    unsigned insn_format; 		 /* The instruction format bitmask.  */
+	const char *insn_format_str; /* The string name for diagnostics. */
+    unsigned max_opcode; 		 /* The maximum allowed opcode value.  */
+    unsigned int required_args;  /* Number of required scalar arguments. */
+	bool required_dest;	 		 /* Whether a destination is required.  */
 };
 
 /* insn_format, string, max_opcode, has_return, max_args. */
 const struct format_rule rules[] = {
-	{ APEX_XD, "XD", 0xFF, /* Not taking into account. */ 0 },
-	{ APEX_XS, "XS", 0x3F, 2 },
-	{ APEX_XI, "XI", 0x1F, 1 },
-	{ APEX_XC, "XC", 0x1F, 2 },
+	{ APEX_XD, "XD", 0xFF, /* Not taking into account. */ 0, false },
+	{ APEX_XS, "XS", 0x3F, 2, false },
+	{ APEX_XI, "XI", 0x1F, 1, false },
+	{ APEX_XC, "XC", 0x1F, 2, false },
 };
 
-/* This function checks whether the provided instruction format, opcode and
-   number of operands conform to the rules defined for APEX instructions.  */
+/* Validate that the given instruction format, opcode and operand count
+   comply with the predefined APEX instruction format rules.
+
+   This function checks the instruction format against a set of rules that
+   define valid combinations of instruction formats, maximum allowed opcode
+   values, and required number of operands. It reports errors if:
+   - The instruction format is invalid or not supported.
+   - The opcode exceeds the maximum allowed for the given format.
+   - The operand count does not match the expected count for the format.
+   - Certain format-specific constraints are violated (e.g., return type
+     requirements or invalid argument usage).  */
 
 static void
-arcv_validate_insn_format (unsigned int insn_format, unsigned opcode)
+arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
 {
-	/* If the instruction format is RISCV_APEX_NONE, report an error.  */
-	if (insn_format == RISCV_APEX_NONE)
+	/* If the instruction format is APEX_NONE, report an error.  */
+	if (insn_format == APEX_NONE)
 		error("APEX instruction not valid.\n");
 
-  bool has_return = (insn_format & APEX_DEST) >> 5;
-  int num_arguments = ((insn_format & APEX_SRC0) >> 6) +
-                      ((insn_format & APEX_SRC1) >> 7);
+	bool has_dest = (insn_format & APEX_DEST) >> 4;
+	int num_arguments = ((insn_format & APEX_SRC0) >> 5) +
+						((insn_format & APEX_SRC1) >> 6);
 
 	/* Iterate over each rule in the rules array.  */
 	for (int i = 0; i < sizeof(rules)/sizeof(rules[0]); ++i)
@@ -461,109 +434,173 @@ arcv_validate_insn_format (unsigned int insn_format, unsigned opcode)
 			/* Check if the opcode exceeds the rule's maximum
 			   allowed opcode.  */
 			if (opcode > rules[i].max_opcode)
-				error ("APEX opcode value \"%d\" must be an integer constant in the range 0 to 0x%d, inclusive.\n", opcode, rules[i].max_opcode);
+				error ("APEX opcode value \"%d\" must be an integer constant "
+			"in the range 0 to 0x%d, inclusive.", opcode, rules[i].max_opcode);
+
 			/* Check if the number of operands matches the rule's required
 			   operand count.  */
 			if (!(insn_format & APEX_XD) &&
 				num_arguments != rules[i].required_args)
-				error("APEX Function must have %d scalar parameter(s) for the format class %s.\n",
+				error("APEX Function must have %d scalar parameter(s) for "
+					  "the format class %s.\n",
 					  rules[i].required_args, rules[i].insn_format_str);
 
 			if (insn_format & APEX_XI && num_arguments == 0)
 				error ("argument 1 is not valid in \"constant\" designation");
 
-			/* FIXME: Same behavior as CCAC, but shouldnt it we actually validate both datatypes? */
-			if (insn_format & APEX_XC && !has_return)
+			/* FIXME: Same behavior as CCAC, but shouldnt it we actually
+					  validate both datatypes? */
+			if (insn_format & APEX_XC && has_dest != rules[i].required_dest)
 				error ("APEX function must return the same type as the first "
 			"parameter for the format class %s.\n", rules[i].insn_format_str);
 		}
 	}
 }
 
+/* Infer APEX instruction format if none was explicitly specified.
+
+   This function is only used when the user has not specified a concrete
+   instruction format (i.e., INSN_FORMAT is APEX_NONE). It determines the
+   actual format tag (APEX_XD, APEX_XS, APEX_XI, APEX_XC) based on
+   the opcode and operand layout.
+
+   The operand configuration is extracted by right-shifting out the
+   APEX_DEST and APEX_SRC flags (bits 4–6). The opcode is then used to
+   select the most specific format that matches.
+
+   Returns the updated instruction format with a resolved concrete type.  */
+
 static unsigned int
-arcv_get_insn_format (unsigned int insn_format, unsigned int opcode)
+arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
 {
-  if (insn_format & APEX_ANY)
- 	{
-    unsigned int insn_operands = insn_format >> 5;
+	if (insn_format == APEX_NONE)
+		return insn_format;
 
-  	insn_format &= ~APEX_ANY;
-    if (opcode <= APEX_INSN_FORMAT_XD) /* Any operands.. */
-     		insn_format |= APEX_XD;
-		if (opcode <= APEX_INSN_FORMAT_XS && (insn_operands == APEX_VOID_FTYPE_SRC0_SRC1 || insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
-     	insn_format |= APEX_XS;
+	/* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+       These bits encode the operand signature used for format selection. */
+	unsigned int insn_operands = insn_format >> 4;
 
-    if (opcode <= APEX_INSN_FORMAT_XI && (insn_operands == APEX_VOID_FTYPE_SRC0 || insn_operands == APEX_DEST_FTYPE_SRC0))
-     	insn_format |= APEX_XI;
+	/* Assign the most general format APEX_XD if opcode permits. */
+    if (opcode <= APEX_INSN_FORMAT_XD) /* Any operands allowed.  */
+		insn_format |= APEX_XD;
 
-    if (opcode <= APEX_INSN_FORMAT_XC && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
-     	insn_format |= APEX_XC;
-    }
-    return insn_format;
+	/* Assign APEX_XS format for two source operands patterns.  */
+	if (opcode <= APEX_INSN_FORMAT_XS &&
+		(insn_operands == APEX_VOID_FTYPE_SRC0_SRC1 ||
+		 insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
+    	insn_format |= APEX_XS;
+
+	/* Assign APEX_XI format for one source operand patterns.  */
+    if (opcode <= APEX_INSN_FORMAT_XI &&
+		(insn_operands == APEX_VOID_FTYPE_SRC0 ||
+		 insn_operands == APEX_DEST_FTYPE_SRC0))
+    	insn_format |= APEX_XI;
+
+	/* Assign APEX_XC format for one destination and two source operands.  */
+    if (opcode <= APEX_INSN_FORMAT_XC &&
+		insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+    	insn_format |= APEX_XC;
+
+	return insn_format;
 }
+
+/*	Determine the appropriate GCC instruction code (insn_code)
+	based on the given APEX instruction format flags.
+
+	This function decodes the instruction operand pattern encoded
+	in `insn_format` and returns the matching internal GCC insn_code
+	that corresponds to the instruction variant used during RTL generation.
+
+	The operand layout is extracted by right-shifting out APEX_DEST and
+	APEX_SRC flags (bits 4–6). The function matches the operand pattern
+	against predefined instruction codes for different instruction formats
+	such as XI, XS, XC, and XD.
+
+	Returns the corresponding insn_code enum for the given operand pattern.  */
 
 static enum insn_code
-arcv_get_icode (unsigned insn_format)
+arcv_apex_get_icode (unsigned insn_format)
 {
-  unsigned int insn_operands = insn_format >> 5;
+	unsigned int insn_operands = insn_format >> 4;
+	/* Used by "XI","XD" insn. format: `insn dest, src0`  */
+	if (insn_format & (APEX_XI | APEX_XD) &&
+		insn_operands == APEX_DEST_FTYPE_SRC0)
+		return CODE_FOR_riscv_arcv_apex_dest_src0;
 
-  if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_DEST_FTYPE_SRC0)
-		return CODE_FOR_riscv_arcv_apex_dest_src0; /* Used by "XI","XD" insn. format: `insn dest, src0`  */
+	/* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
+	if (insn_format & (APEX_XD | APEX_XS | APEX_XC) &&
+		insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+		return CODE_FOR_riscv_arcv_apex_dest_src0_src1;
 
-	if (insn_format & (APEX_XD | APEX_XS | APEX_XC) && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
-		return CODE_FOR_riscv_arcv_apex_dest_src0_src1; /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
+	/* Used by "XS","XD" insn. format: `insn src0, src1`  */
+	if (insn_format & (APEX_XD | APEX_XS) &&
+		insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+		return CODE_FOR_riscv_arcv_apex_void_src0_src1;
 
-	if (insn_format & (APEX_XD | APEX_XS) && insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
-		return CODE_FOR_riscv_arcv_apex_void_src0_src1; /* Used by "XS","XD" insn. format: `insn src0, src1`  */
+	/* Used by "XI","XD" insn. format: `insn src0`  */
+	if (insn_format & (APEX_XI | APEX_XD) &&
+		insn_operands == APEX_VOID_FTYPE_SRC0)
+		return CODE_FOR_riscv_arcv_apex_void_src0;
 
-	if (insn_format & (APEX_XI | APEX_XD) && insn_operands == APEX_VOID_FTYPE_SRC0)
-		return CODE_FOR_riscv_arcv_apex_void_src0; /* Used by "XI","XD" insn. format: `insn src0`  */
+	/* Used by "XD" insn. format: `insn`  */
+	if (insn_format & APEX_XD &&
+		insn_operands == APEX_VOID_FTYPE)
+		return CODE_FOR_riscv_arcv_apex_void;
 
-	if (insn_format & APEX_XD && insn_operands == APEX_VOID_FTYPE)
-		return CODE_FOR_riscv_arcv_apex_void; // riscv_xd_no_operand
-
-	if (insn_format & APEX_XD && insn_operands == APEX_DEST_FTYPE)
-		return CODE_FOR_riscv_arcv_apex_dest; // riscv_xd_1op;
+	/* Used by "XD" insn. format: `insn dest`  */
+	if (insn_format & APEX_XD &&
+		insn_operands == APEX_DEST_FTYPE)
+		return CODE_FOR_riscv_arcv_apex_dest;
 }
 
+static int arcv_apex_builtin_index = 0;
+
 void
-riscv_apex_init_builtin (tree fndecl)
+arcv_apex_init_builtin (tree fndecl)
 {
-  if (fndecl)
-  {
-    static int i = 0;
+	/* Extract metadata from the current APEX definition.  */
+	const char *fn_name = apex.fn_name;
+	const char *insn_name = apex.insn_name;
+	unsigned int insn_formats = apex.insn_formats;
+	int opcode = apex.opcode;
+	enum insn_code icode;
 
-    const char *fn_name = apex.fn_name;
-    const char *insn_name = apex.insn_name;
-    unsigned int insn_formats = apex.insn_formats;
-    int opcode = apex.opcode;
-    enum insn_code icode;
+	/* Update operand flags based on the function declaration.  */
+	insn_formats = arcv_apex_set_insn_operand_flags (insn_formats, fndecl);
 
-  insn_formats = arcv_set_insn_operand_flags (insn_formats, fndecl);
+	/* Resolve the instruction format:
+	   If the user did not specify an instruction format at pragma level,
+	   infer the concrete format based on opcode and operand flags; otherwise,
+	   leave it as is.  */
+	insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
 
-	/* Get the instruction format.  */
-	insn_formats = arcv_get_insn_format (insn_formats, opcode);
+	/* Validate the format is allowed for this instruction.  */
+	arcv_apex_validate_insn_format (insn_formats, opcode);
 
-	arcv_validate_insn_format (insn_formats, opcode);
+	/* Print .extInstruction section about APEX instruction.  */
+	arcv_apex_print_insn_section (insn_name, opcode, insn_formats);
 
-	arcv_print_insn_section (insn_name, opcode, insn_formats);
-    icode = arcv_get_icode (insn_formats);
+	/* Determine the internal instruction code (icode).  */
+	icode = arcv_apex_get_icode (insn_formats);
+
+	/* Determine whether this builtin has a destination operand.  */
+	enum riscv_builtin_type builtin_type =
+			(insn_formats & APEX_DEST) ? RISCV_BUILTIN_DIRECT :
+										 RISCV_BUILTIN_DIRECT_NO_TARGET;
 
     /* Store APEX insn information.  */
-    enum riscv_builtin_type builtin_type = insn_formats & APEX_DEST ? RISCV_BUILTIN_DIRECT : RISCV_BUILTIN_DIRECT_NO_TARGET;
-    riscv_apex_builtins[i] =  { icode, fn_name, insn_name, builtin_type, insn_formats };
+    riscv_apex_builtins[arcv_apex_builtin_index] =
+			{ icode, fn_name, insn_name, builtin_type, insn_formats };
 
     /* Modify the prototype type as built-in.  */
     fndecl->function_decl.built_in_class = BUILT_IN_MD;
 
     /* Modify the prototype function code to match the index
        in "riscv_apex_builtins" with a mask for APEX only insns.  */
-    fndecl->function_decl.function_code = (i << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+    fndecl->function_decl.function_code =
+      (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
 
-    i++;
-  } else {
-    error ("%s is not declared.", apex.fn_name);
-  }
+    arcv_apex_builtin_index++;
 }
 
 /* Implement TARGET_BUILTIN_DECL.  */

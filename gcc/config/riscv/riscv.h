@@ -57,21 +57,21 @@ enum APEX_INSN_FORMAT_LIM
   APEX_INSN_FORMAT_XC = 0x1F,
 };
 
-enum riscv_apex_insn_format {
-  RISCV_APEX_NONE = 0,
-  RISCV_APEX_ALL = 1,
-  RISCV_APEX_XD   = 1 << 1,
-  RISCV_APEX_XS   = 1 << 2,
-  RISCV_APEX_XI   = 1 << 3,
-  RISCV_APEX_XC   = 1 << 4,
-  RISCV_APEX_XD_NO_TARGET   = 1 << 5,
-  RISCV_APEX_XS_NO_TARGET   = 1 << 6,
-  RISCV_APEX_XI_NO_TARGET   = 1 << 7,
-  RISCV_APEX_XD_NO_OPERANDS = 1 << 8,
-  RISCV_APEX_XD_1OP = 1 << 9,
-  RISCV_APEX_XD_2OP = 1 << 10,
-  RISCV_APEX_XD_1OP_NO_TARGET = 1 << 11,
-};
+// enum riscv_apex_insn_format {
+//   RISCV_APEX_NONE = 0,
+//   RISCV_APEX_ALL = 1,
+//   RISCV_APEX_XD   = 1 << 1,
+//   RISCV_APEX_XS   = 1 << 2,
+//   RISCV_APEX_XI   = 1 << 3,
+//   RISCV_APEX_XC   = 1 << 4,
+//   RISCV_APEX_XD_NO_TARGET   = 1 << 5,
+//   RISCV_APEX_XS_NO_TARGET   = 1 << 6,
+//   RISCV_APEX_XI_NO_TARGET   = 1 << 7,
+//   RISCV_APEX_XD_NO_OPERANDS = 1 << 8,
+//   RISCV_APEX_XD_1OP = 1 << 9,
+//   RISCV_APEX_XD_2OP = 1 << 10,
+//   RISCV_APEX_XD_1OP_NO_TARGET = 1 << 11,
+// };
 
 enum apex_signature_mask  {
   APEX_VOID_FTYPE           = 0b000,
@@ -83,14 +83,14 @@ enum apex_signature_mask  {
 };
 
 enum apex_insn_format {
-  APEX_ANY = 1 << 0,
-  APEX_XD  = 1 << 1,
-  APEX_XS  = 1 << 2,
-  APEX_XI  = 1 << 3,
-  APEX_XC  = 1 << 4,
-  APEX_DEST = 1 << 5,
-  APEX_SRC0 = 1 << 6,
-  APEX_SRC1 = 1 << 7,
+  APEX_NONE = 0,
+  APEX_XD   = 1 << 0,
+  APEX_XS   = 1 << 1,
+  APEX_XI   = 1 << 2,
+  APEX_XC   = 1 << 3,
+  APEX_DEST = 1 << 4,
+  APEX_SRC0 = 1 << 5,
+  APEX_SRC1 = 1 << 6,
 };
 
 struct riscv_intrinsic_info

@@ -289,126 +289,144 @@ riscv_pragma_intrinsic (cpp_reader *)
     error ("unknown %<#pragma riscv intrinsic%> option %qs", name);
 }
 
-#include "stringpool.h"
-#include "gimplify.h"
+#include "stringpool.h" /* Used for "get_identifier ()"  */
+
+/* Looks up a previously declared function by name and initializes
+   it as an APEX builtin.
+
+   This function uses the provided function name to locate the
+   corresponding declaration. If the function is found in the symbol
+   table, it is passed to `arcv_apex_init_builtin` for registration
+   as an APEX builtin. Otherwise, an error is reported. */
 
 void
-riscv_lookup_apex (void)
+arcv_apex_lookup_function (const char *fn_name)
 {
-  tree id = get_identifier (apex.fn_name);
+  tree id = get_identifier (fn_name);
   tree fndecl = lookup_name (id);
- 
-  riscv_apex_init_builtin (fndecl);
+  if (!fndecl)
+    error ("%s is not declared.", fn_name);
+
+  arcv_apex_init_builtin (fndecl);
 }
 
-/* Implement #prama intrinsic
-   Perhaps it should be in c-pragma.cc? */
+/* Parses and handles `#pragma intrinsic` for APEX instructions.
+
+   This pragma takes the form:
+	#pragma intrinsic(fn_name, "insn_name", opcode, "format"...)
+
+	- `fn_name` is the name of the C function to be marked as intrinsic.
+	- `insn_name` is the string representation of the assembly instruction.
+	- `opcode` is the instruction's unique opcode value.
+	- `format` strings specify one or more allowed instruction formats
+		("XD", "XS", "XI", "XC").
+
+   The pragma handler parses and stores this metadata into the global `apex`
+   structure and then invokes `arcv_apex_lookup_function()` to complete
+   registration of the function as a built-in. */
 
 static void
 riscv_pragma_intrinsic_apex (cpp_reader *)
 {
 
-  enum cpp_ttype token;
-  tree x;
-  /* Parse open Parenthesis '('.  */
-  if (pragma_lex (&x) != CPP_OPEN_PAREN)
-  {
-    error ("missing %<(%< after %<#pragma intrinsic%<");
-    return;
-  }
+	enum cpp_ttype token;
+	tree x;
 
-  /* Parse function name.  */
-  if (pragma_lex (&x) != CPP_NAME)
-  {
-    error ("expected intrinsic name identifier");
-    return;
-  }
-  const char *fn_name = IDENTIFIER_POINTER (x);
-  apex.fn_name = fn_name;
+	/* Parse open Parenthesis '('  */
+	if (pragma_lex (&x) != CPP_OPEN_PAREN)
+	{
+		error ("missing %<(%< after %<#pragma intrinsic%<");
+		return;
+	}
 
-  /* Parse comma ','  */
-  if (pragma_lex (&x) != CPP_COMMA)
-  {
-    error ("expected %<,%> or %<)%>");
-    return;
-  }
+	/* Parse the function identifier to be marked as intrinsic. */
+	if (pragma_lex (&x) != CPP_NAME)
+	{
+		error ("expected intrinsic name identifier");
+		return;
+	}
+	const char *fn_name = IDENTIFIER_POINTER (x);
+	apex.fn_name = fn_name;
 
-  /* Parse instruction name.  */
-  if (pragma_lex (&x) != CPP_STRING)
-  {
-    error ("expected instruction name identifier");
-    return;
-  }
-  const char *insn_name = TREE_STRING_POINTER(x);
+	/* Expect a comma separating the next argument. */
+	if (pragma_lex (&x) != CPP_COMMA)
+	{
+		error ("expected %<,%> or %<)%>");
+		return;
+	}
 
-  /* Convert instruction name to lower case.  */
-  char *tmp = xstrdup(insn_name);
-  for (char *p = tmp; *p; p++)
-    *p = TOLOWER (*p);
+	/* Parse the instruction name string, e.g., "add", "mul". */
+	if (pragma_lex (&x) != CPP_STRING)
+	{
+		error ("expected instruction name identifier");
+		return;
+	}
+	const char *insn_name = TREE_STRING_POINTER(x);
 
-  apex.insn_name = tmp;
+	/* Convert instruction name to lowercase to normalize it for the assembler. */
+	char *tmp = xstrdup(insn_name);
+	for (char *p = tmp; *p; p++)
+		*p = TOLOWER (*p);
 
-  /* Parse comma ','  */
-  if (pragma_lex (&x) != CPP_COMMA)
-  {
-    error ("expected %<,%> or %<)%>");
-    return;
-  }
+	apex.insn_name = tmp;
 
-  /* Parse opcode number.  */
-  if (pragma_lex (&x) != CPP_NUMBER)
-  {
-    error ("expected instruciton opcode value");
-    return;
-  }
-  unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
+	/* Expect another comma before parsing the opcode. */
+	if (pragma_lex (&x) != CPP_COMMA)
+	{
+		error ("expected %<,%> or %<)%>");
+		return;
+	}
+
+	/* Parse the opcode value (must be an integer). */
+	if (pragma_lex (&x) != CPP_NUMBER)
+	{
+		error ("expected instruciton opcode value");
+		return;
+	}
+	unsigned HOST_WIDE_INT num = TREE_INT_CST_LOW(x);
 	apex.opcode = num;
 
-  apex.insn_formats = 0;
-  apex.insn_formats |= RISCV_APEX_ALL;
+	/* Start with no formats selected. If none are explicitly provided,
+	   formats will be determined later at `arcv_resolve_insn_format ()`  */
+	apex.insn_formats = APEX_NONE;
 
-  /* Parse instruction formations.  */
-  while (1)
-  {
-    token = pragma_lex (&x);
-    if (token == CPP_CLOSE_PAREN)
-      break;
-    if (token != CPP_COMMA)
-    {
-      error ("expected %<,%> or %<)%>");
-      return;
-    }
+	/* Parse zero or more instruction format specifiers. */
+	while (1)
+	{
+		token = pragma_lex (&x);
 
-    token = pragma_lex (&x);
-    if (token != CPP_STRING)
-    {
-      error ("expected instruction format identifier");
-      return;
-    }
-    const char *insn_format = TREE_STRING_POINTER(x);
+		/* Break if end of argument list reached. */
+		if (token == CPP_CLOSE_PAREN)
+			break;
 
-    if (strcmp(insn_format, "XD") == 0)
-    {
-      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
-      apex.insn_formats |= RISCV_APEX_XD;
-    } else if (strcmp(insn_format, "XS") == 0)
-    {
-      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
-      apex.insn_formats |= RISCV_APEX_XS;
-    }
-    else if (strcmp(insn_format, "XI") == 0)
-    {
-      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
-      apex.insn_formats |= RISCV_APEX_XI;
-    } else if (strcmp(insn_format, "XC") == 0)
-    {
-      apex.insn_formats = apex.insn_formats & ~RISCV_APEX_ALL;
-      apex.insn_formats |= RISCV_APEX_XC;
-    }
-   }
+		/* Expect comma before each format string. */
+		if (token != CPP_COMMA)
+		{
+			error ("expected %<,%> or %<)%>");
+			return;
+		}
 
-  //riscv_apex_init_builtins ();
-  riscv_lookup_apex ();
+		token = pragma_lex (&x);
+		if (token != CPP_STRING)
+		{
+			error ("expected instruction format identifier");
+			return;
+		}
+		const char *insn_format = TREE_STRING_POINTER(x);
+
+		/* On first valid format specifier, override the default (ALL). */
+		if (strcmp(insn_format, "XD") == 0)
+			apex.insn_formats |= APEX_XD;
+		else if (strcmp(insn_format, "XS") == 0)
+			apex.insn_formats |= APEX_XS;
+		else if (strcmp(insn_format, "XI") == 0)
+			apex.insn_formats |= APEX_XI;
+		else if (strcmp(insn_format, "XC") == 0)
+			apex.insn_formats |= APEX_XC;
+	}
+
+	/* Lookup and register the specified function as an APEX intrinsic. */
+	arcv_apex_lookup_function (apex.fn_name);
 }
 
 

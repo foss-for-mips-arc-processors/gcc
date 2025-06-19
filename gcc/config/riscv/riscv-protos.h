@@ -142,7 +142,6 @@ extern void riscv_expand_conditional_branch (rtx, enum rtx_code, rtx, rtx);
 extern rtx riscv_emit_unary (enum rtx_code code, rtx dest, rtx x);
 extern rtx riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y);
 #endif
-extern void riscv_apex_init_builtin (tree fndecl);
 extern bool riscv_expand_conditional_move (rtx, rtx, rtx, rtx);
 extern rtx riscv_legitimize_call_address (rtx);
 extern void riscv_set_return_address (rtx, rtx);
@@ -812,9 +811,10 @@ enum
   RISCV_REVISION_VERSION_BASE = 1,
 };
 
+extern void arcv_apex_init_builtin (tree fndecl);
 void riscv_apex_register_builtin (tree fndecl);
-const char* arcv_get_apex_insn_name (unsigned int subcode);
-extern void arcv_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format);
-extern bool arcv_format_supports_p (unsigned int subcode, unsigned int insn_format);
+const char* arcv_apex_get_insn_name (rtx op);
+extern void arcv_apex_print_insn_section (const char *insn_name, int opcode, unsigned int insn_format);
+extern bool arcv_apex_format_supports_p (unsigned int subcode, unsigned int insn_format);
 
 #endif /* ! GCC_RISCV_PROTOS_H */

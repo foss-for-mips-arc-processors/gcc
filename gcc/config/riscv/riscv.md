@@ -665,9 +665,7 @@
                 UNSPEC_LUIS)]
     ""
     {
-		unsigned int subcode = UINTVAL (operands[0]);
-		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-		const char *str = XSTR (op, 0);
+    const char *str = arcv_apex_get_insn_name (operands[0]);
     switch (which_alternative)
     {
       case 0:
@@ -691,9 +689,7 @@
                 UNSPEC_LUIS)]
     ""
     {
-		unsigned int subcode = UINTVAL (operands[0]);
-		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-		const char *str = XSTR (op, 0);
+		const char *str = arcv_apex_get_insn_name (operands[0]);
     return xasprintf ("%s ; 'XD' `insn`", str);
     }
     [(set_attr "type" "arith")]
@@ -706,9 +702,7 @@
                 UNSPEC_LUIS))]
     ""
     {
-		unsigned int subcode = UINTVAL (operands[1]);
-		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-		const char *str = XSTR (op, 0);
+    const char *str = arcv_apex_get_insn_name (operands[1]);
     return xasprintf ("%s\t%s ; 'XD' `insn dest`",
 						str,
 						reg_names[REGNO (operands[0])]);
@@ -725,9 +719,7 @@
                 UNSPEC_LUIS))]
     ""
     {
-		unsigned int subcode = UINTVAL (operands[1]);
-		rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-		const char *str = XSTR (op, 0);
+    const char *str = arcv_apex_get_insn_name (operands[1]);
 		switch (which_alternative)
 		{
 			case 0:
@@ -759,9 +751,7 @@
                    UNSPEC_LUIS)]
   ""
   {
-    unsigned int subcode = UINTVAL (operands[0]);
-    rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-    const char *str = XSTR (op, 0);
+    const char *str = arcv_apex_get_insn_name (operands[0]);
     switch (which_alternative)
     {
       case 0:
@@ -785,9 +775,7 @@
                    UNSPEC_LUIS))]
   ""
   {
-    unsigned int subcode = UINTVAL (operands[1]);
-    rtx op = gen_rtx_CONST_STRING (VOIDmode, arcv_get_apex_insn_name (subcode));
-    const char *str = XSTR (op, 0);
+    const char *str = arcv_apex_get_insn_name (operands[1]);
     switch (which_alternative)
     {
       case 0:
