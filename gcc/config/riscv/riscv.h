@@ -46,6 +46,23 @@ along with GCC; see the file COPYING3.  If not see
 #define RISCV_TUNE_STRING_DEFAULT "generic"
 #endif
 
+#ifndef RISCV_APEX
+#define RISCV_APEX
+
+enum apex_insn_format {
+  APEX_NONE	= 0,
+  APEX_XD	= 1 << 0,
+  APEX_XS	= 1 << 1,
+  APEX_XI	= 1 << 2,
+  APEX_XC	= 1 << 3,
+  APEX_VOLATILE	= 1 << 4,
+  APEX_DEST	= 1 << 5,
+  APEX_SRC0	= 1 << 6,
+  APEX_SRC1	= 1 << 7,
+};
+
+#endif /* ! RISCV_APEX */
+
 extern const char *riscv_expand_arch (int argc, const char **argv);
 extern const char *riscv_expand_arch_from_cpu (int argc, const char **argv);
 extern const char *riscv_default_mtune (int argc, const char **argv);
