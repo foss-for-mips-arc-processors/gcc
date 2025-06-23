@@ -539,3 +539,86 @@ arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
 
   return insn_format;
 }
+
+/* Represents a validation rule for an APEX instruction format.  */
+struct format_rule {
+  /* The instruction format bitmask.  */
+  unsigned insn_format;
+
+  /* The string name for diagnostics.  */
+  const char *insn_format_str;
+
+  /* The maximum allowed opcode value.  */
+  unsigned max_opcode;
+
+  /* Number of required scalar arguments.  */
+  unsigned int required_args;
+
+  /* Whether a destination is required.  */
+  bool required_dest;
+};
+
+/* insn_format, string, max_opcode, has_return, max_args.  */
+const struct format_rule rules[] = {
+  { APEX_XD, "XD", 0xFF, /* Not taking into account.  */ 0, false },
+  { APEX_XS, "XS", 0x3F, 2, false },
+  { APEX_XI, "XI", 0x1F, 1, false },
+  { APEX_XC, "XC", 0x1F, 2, false },
+};
+
+/* Validate that the given instruction format, opcode and operand count
+   comply with the predefined APEX instruction format rules.
+
+   This function checks the instruction format against a set of rules that
+   define valid combinations of instruction formats, maximum allowed opcode
+   values, and required number of operands.  It reports errors if:
+   - The instruction format is invalid or not supported.
+   - The opcode exceeds the maximum allowed for the given format.
+   - The operand count does not match the expected count for the format.
+   - Certain format-specific constraints are violated (e.g., return type
+     requirements or invalid argument usage).  */
+
+static void
+arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
+{
+  /* If the instruction format is APEX_NONE, report an error.  */
+  if (insn_format == APEX_NONE)
+    error ("APEX instruction not valid.\n");
+
+  bool has_dest = (insn_format & APEX_DEST) >> 4;
+  int num_arguments = ((insn_format & APEX_SRC0) >> 5)
+			+ ((insn_format & APEX_SRC1) >> 6);
+
+  /* Iterate over each rule in the rules array.  */
+  for (int i = 0; i < sizeof (rules)/sizeof (rules[0]); ++i)
+  {
+    /* If the instruction format matches the rule's insn_format.  */
+    if (insn_format & rules[i].insn_format)
+    {
+      /* Check if the opcode exceeds the rule's maximum
+	 allowed opcode.  */
+      if (opcode > rules[i].max_opcode)
+	error ("APEX opcode value \"%d\" must be an integer constant "
+		"in the range 0 to 0x%d, inclusive.",
+		opcode, rules[i].max_opcode);
+
+      /* Check if the number of operands matches the rule's required
+	 operand count.  */
+      if (!(insn_format & APEX_XD)
+	  && num_arguments != rules[i].required_args)
+	error ("APEX Function must have %d scalar parameter(s) for "
+		"the format class %s.\n",
+		rules[i].required_args, rules[i].insn_format_str);
+
+      if (insn_format & APEX_XI && num_arguments == 0)
+	error ("argument 1 is not valid in \"constant\" designation");
+
+      /* FIXME: Same behavior as CCAC, but shouldnt it we actually
+	 validate both datatypes? */
+      if (insn_format & APEX_XC && has_dest != rules[i].required_dest)
+	error ("APEX function must return the same type as the first "
+		"parameter for the format class %s.\n",
+		rules[i].insn_format_str);
+    }
+  }
+}
