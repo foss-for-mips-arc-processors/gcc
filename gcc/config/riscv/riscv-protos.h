@@ -827,6 +827,8 @@ extern unsigned int th_int_get_mask (unsigned int);
 extern unsigned int th_int_get_save_adjustment (void);
 extern rtx th_int_adjust_cfi_prologue (unsigned int);
 extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
+extern bool arcv_micro_arch_supports_fusion_p (void);
+extern void arcv_apex_print_insn_section (const char *, int, unsigned int);
 #ifdef RTX_CODE
 extern const char*
 th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);
