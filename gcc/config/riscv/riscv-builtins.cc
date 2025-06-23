@@ -569,3 +569,51 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
 
   return insn_format;
 }
+
+/* Infer APEX instruction format if none was explicitly specified.
+
+   This function is only used when the user has not specified a concrete
+   instruction format (i.e., INSN_FORMAT is APEX_NONE). It determines the
+   actual format tag (APEX_XD, APEX_XS, APEX_XI, APEX_XC) based on
+   the opcode and operand layout.
+
+   The operand configuration is extracted by right-shifting out the
+   APEX_DEST and APEX_SRC flags (bits 4–6).  The opcode is then used to
+   select the most specific format that matches.
+
+   Returns the updated instruction format with a resolved concrete type.  */
+
+static unsigned int
+arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
+{
+  /* Return early if a instruction format was defined by the used.  */
+  if ((insn_format & 0xF) != APEX_NONE)
+    return insn_format;
+
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+     These bits encode the operand signature used for format selection.  */
+  unsigned int insn_operands = insn_format >> 4;
+
+  /* Assign the most general format APEX_XD.  If opcode does not permit,
+     it will report an error at "arcv_apex_validate_insn_format".  */
+  insn_format |= APEX_XD; /* Any operands allowed.  */
+
+  /* Assign APEX_XS format for two source operands patterns.  */
+  if (opcode <= APEX_OP_MAX_XS
+	&& (insn_operands == APEX_VOID_FTYPE_SRC0_SRC1
+	|| insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
+    insn_format |= APEX_XS;
+
+  /* Assign APEX_XI format for one source operand patterns.  */
+  if (opcode <= APEX_OP_MAX_XI
+	&& (insn_operands == APEX_VOID_FTYPE_SRC0
+	|| insn_operands == APEX_DEST_FTYPE_SRC0))
+    insn_format |= APEX_XI;
+
+  /* Assign APEX_XC format for one destination and two source operands.  */
+  if (opcode <= APEX_OP_MAX_XC
+	&& insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+    insn_format |= APEX_XC;
+
+  return insn_format;
+}
