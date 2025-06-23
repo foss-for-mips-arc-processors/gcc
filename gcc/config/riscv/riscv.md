@@ -3957,3 +3957,4 @@
 (include "arcv-rhx100.md")
 (include "arcv-rpx100.md")
 (include "arcv-udsp.md")
+(include "arcv-apex.md")
