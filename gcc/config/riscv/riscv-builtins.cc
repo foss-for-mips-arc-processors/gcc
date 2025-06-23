@@ -513,6 +513,23 @@ riscv_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
   *update = NULL_TREE;
 }
 
+/* Return the APEX instruction name associated with a given subcode operand.
+
+   The subcode is an unsigned integer extracted from `op` that indexes into
+   the `arcv_apex_builtins` array, which holds metadata about APEX builtin
+   instructions.
+
+   This function retrieves the instruction name string corresponding to the
+   specified subcode, allowing the backend code to reference the mnemonic
+   of the builtin instruction during assembly emission.  */
+
+const char*
+arcv_apex_get_insn_name (rtx op)
+{
+  unsigned int subcode = UINTVAL (op);
+  return arcv_apex_builtins[subcode].insn_name;
+}
+
 /* Checks if the APEX builtin instruction identified by the subcode
    supports the given instruction format.
 
