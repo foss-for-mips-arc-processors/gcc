@@ -46,6 +46,39 @@ along with GCC; see the file COPYING3.  If not see
 #define RISCV_TUNE_STRING_DEFAULT "rocket"
 #endif
 
+#ifndef RISCV_APEX
+#define RISCV_APEX
+
+enum APEX_OPCODE_FIELD_MAX
+{
+  APEX_OP_MAX_XD = 0xFF,
+  APEX_OP_MAX_XS = 0x3F,
+  APEX_OP_MAX_XI = 0x1F,
+  APEX_OP_MAX_XC = 0x1F,
+};
+
+enum apex_signature_mask  {
+  APEX_VOID_FTYPE	    = 0b000,
+  APEX_VOID_FTYPE_SRC0	    = 0b010,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b110,
+  APEX_DEST_FTYPE	    = 0b001,
+  APEX_DEST_FTYPE_SRC0	    = 0b011,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b111,
+};
+
+enum apex_insn_format {
+  APEX_NONE = 0,
+  APEX_XD   = 1 << 0,
+  APEX_XS   = 1 << 1,
+  APEX_XI   = 1 << 2,
+  APEX_XC   = 1 << 3,
+  APEX_DEST = 1 << 4,
+  APEX_SRC0 = 1 << 5,
+  APEX_SRC1 = 1 << 6,
+};
+
+#endif /* ! RISCV_APEX */
+
 extern const char *riscv_expand_arch (int argc, const char **argv);
 extern const char *riscv_expand_arch_from_cpu (int argc, const char **argv);
 extern const char *riscv_default_mtune (int argc, const char **argv);
