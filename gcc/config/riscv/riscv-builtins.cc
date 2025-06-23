@@ -454,3 +454,42 @@ riscv_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
   *clear = build_call_expr (fsflags, 1, old_flags);
   *update = NULL_TREE;
 }
+
+/* Set APEX operand flags for a built-in function.
+   This function inspects the function prototype in FNDECL and sets the
+   appropriate operand flags in INSN_FORMAT:
+     - APEX_DEST if the return type is not void.
+     - APEX_SRC0 and/or APEX_SRC1 depending on the number of arguments.
+   Emits an error if more than 2 arguments are present.  */
+
+static int
+arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
+{
+  tree fntype = TREE_TYPE (fndecl);
+  tree operands = TYPE_ARG_TYPES (fntype);
+  tree return_type = TREE_TYPE (fntype);
+
+  /* Set DEST flag if function return type is not void.  */
+  if (return_type != void_type_node)
+    insn_format |= APEX_DEST;
+
+  int num_arguments = 0;
+  /* Count arguments, stopping early on error if more than 2.  */
+  for (tree t = operands; t && TREE_CODE (TREE_VALUE (t)) != VOID_TYPE;
+		t = TREE_CHAIN (t))
+  {
+    num_arguments++;
+    if (num_arguments == 1)
+      insn_format |= APEX_SRC0;
+    else if (num_arguments == 2)
+      insn_format |= APEX_SRC1;
+    else
+    {
+      error_at (DECL_SOURCE_LOCATION (fndecl),
+	"too many operands for APEX built-in function %qE", fndecl);
+      break;
+    }
+  }
+
+  return insn_format;
+}
