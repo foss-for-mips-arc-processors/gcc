@@ -61,6 +61,23 @@ enum apex_insn_format {
   APEX_SRC1	= 1 << 7,
 };
 
+enum APEX_OPCODE_FIELD_MAX
+{
+  APEX_OP_MAX_XD = 0xFF,
+  APEX_OP_MAX_XS = 0x3F,
+  APEX_OP_MAX_XI = 0x1F,
+  APEX_OP_MAX_XC = 0x1F,
+};
+
+enum apex_signature_mask  {
+  APEX_VOID_FTYPE	    = 0b000,
+  APEX_VOID_FTYPE_SRC0	    = 0b010,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b110,
+  APEX_DEST_FTYPE	    = 0b001,
+  APEX_DEST_FTYPE_SRC0	    = 0b011,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b111,
+};
+
 #endif /* ! RISCV_APEX */
 
 extern const char *riscv_expand_arch (int argc, const char **argv);
