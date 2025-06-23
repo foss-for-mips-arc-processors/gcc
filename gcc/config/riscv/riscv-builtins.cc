@@ -513,6 +513,19 @@ riscv_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
   *update = NULL_TREE;
 }
 
+/* Checks if the APEX builtin instruction identified by the subcode
+   supports the given instruction format.
+
+   Returns true if the instruction format is included in the builtin's
+   supported formats; otherwise, returns false.  */
+
+bool
+arcv_apex_format_supports_p (unsigned int subcode, unsigned int insn_format)
+{
+  const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[subcode];
+  return (d->insn_formats & insn_format);
+}
+
 /* Set APEX operand flags for a built-in function.
    This function inspects the function prototype in FNDECL and sets the
    appropriate operand flags in INSN_FORMAT:
