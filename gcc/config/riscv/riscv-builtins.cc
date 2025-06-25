@@ -224,6 +224,14 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 tree riscv_float16_type_node = NULL_TREE;
 tree riscv_bfloat16_type_node = NULL_TREE;
 
+enum riscv_builtin_type {
+  /* The function corresponds directly to an .md pattern.  */
+  RISCV_BUILTIN_DIRECT,
+
+  /* Likewise, but with return type VOID.  */
+  RISCV_BUILTIN_DIRECT_NO_TARGET
+};
+
 struct arcv_apex_builtin_description {
   /* The code of the main .md file instruction.  See riscv_builtin_type
      for more information.  */
@@ -399,7 +407,8 @@ riscv_expand_builtin_insn (enum insn_code icode, unsigned int n_ops,
 
 static rtx
 riscv_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
-			     bool has_target_p)
+			     bool has_target_p, unsigned int subcode,
+			     bool has_subcode_p)
 {
   struct expand_operand ops[MAX_RECOG_OPERANDS];
 
@@ -407,6 +416,14 @@ riscv_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
   int opno = 0;
   if (has_target_p)
     create_output_operand (&ops[opno++], target, TYPE_MODE (TREE_TYPE (exp)));
+
+  if (has_subcode_p)
+  {
+    /* Create an RTL constant for the APEX subcode.  */
+    rtx const_rtx = GEN_INT (subcode);
+    /* Add the subcode as an additional input operand to the RTL expression.  */
+    create_input_operand (&ops[opno++], const_rtx, SImode);
+  }
 
   /* Map the arguments to the other operands.  */
   gcc_assert (opno + call_expr_nargs (exp)
@@ -459,10 +476,27 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
       case RISCV_BUILTIN_VECTOR:
 	return riscv_vector::expand_builtin (subcode, exp, target);
+      case RISCV_BUILTIN_APEX: {
+	const struct arcv_apex_builtin_description *d
+		= &arcv_apex_builtins[subcode];
+
+	switch (d->builtin_type)
+	  {
+	  case RISCV_BUILTIN_DIRECT:
+	    return riscv_expand_builtin_direct (d->icode, target, exp, true,
+						subcode, true);
+
+	  case RISCV_BUILTIN_DIRECT_NO_TARGET:
+	    return riscv_expand_builtin_direct (d->icode, target, exp, false,
+						subcode, true);
+	  }
+	break;
+      }
       case RISCV_BUILTIN_GENERAL: {
 	const struct riscv_builtin_description *d = &riscv_builtins[subcode];
 
-	return riscv_expand_builtin_direct (d->icode, target, exp, !d->no_target);
+	return riscv_expand_builtin_direct (d->icode, target, exp, !d->no_target,
+					    subcode, false);
       }
     }
 
