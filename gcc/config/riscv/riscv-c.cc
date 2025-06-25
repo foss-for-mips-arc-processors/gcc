@@ -31,6 +31,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 #include "tm_p.h"
 #include "riscv-subset.h"
+#include "stringpool.h" /* Used for "get_identifier ()"  */
 
 #define builtin_define(TXT) cpp_define (pfile, TXT)
 
@@ -103,6 +104,30 @@ riscv_pragma_intrinsic_flags_restore (struct pragma_intrinsic_flags *flags)
   riscv_zvl_flags = flags->intrinsic_riscv_zvl_flags;
   riscv_zvb_subext = flags->intrinsic_riscv_zvb_subext;
   riscv_zvk_subext = flags->intrinsic_riscv_zvk_subext;
+}
+
+/* Look up the user-defined function declaration by name.
+
+   Given a function name as a string, this function returns the corresponding
+   tree node for its declaration, if it exists.  If the function is not declared
+   in the current scope, an error is reported.  */
+
+tree
+arcv_apex_lookup_function (const char *fn_name)
+{
+  /* Convert the raw string to an interned IDENTIFIER_NODE.  */
+  tree id = get_identifier (fn_name);
+
+  /* Try the current scope (and outer scopes) for a matching declaration.  */
+  tree fndecl = lookup_name (id);
+
+  /* Verify that we really found a function.  */
+  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
+  {
+    error_at (input_location, "%qs is not declared as a function", fn_name);
+  }
+
+  return fndecl;
 }
 
 /* Return true if S is a valid APEX-intrinsic identifier.
@@ -299,6 +324,9 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
       return;
     }
   }
+
+  /* Lookup the user-defined function declaration of the APEX intrinsic.  */
+  tree fndecl = arcv_apex_lookup_function (fn_name);
 }
 
 static int
