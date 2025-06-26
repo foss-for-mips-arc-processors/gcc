@@ -777,3 +777,54 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
     }
   }
 }
+
+/* Determine the appropriate GCC instruction code (insn_code)
+   based on the given APEX instruction format flags.
+
+   This function decodes the instruction operand pattern encoded
+   in `insn_format` and returns the matching internal GCC insn_code
+   that corresponds to the instruction variant used during RTL generation.
+
+   The operand layout is extracted by right-shifting out APEX_DEST and
+   APEX_SRC flags (bits 4–6).  The function matches the operand pattern
+   against predefined instruction codes for different instruction formats
+   such as XI, XS, XC, and XD.
+
+   Returns the corresponding insn_code enum for the given operand pattern.  */
+
+static enum insn_code
+arcv_apex_get_icode (unsigned insn_format)
+{
+  unsigned int insn_operands = insn_format >> 4;
+
+  switch (insn_operands)
+  {
+    /* Used by "XD" insn. format: `insn`  */
+    case APEX_VOID_FTYPE:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_v;
+
+    /* Used by "XI","XD" insn. format: `insn src0`  */
+    case APEX_VOID_FTYPE_SRC0:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_v;
+
+    /* Used by "XS","XD" insn. format: `insn src0, src1`  */
+    case APEX_VOID_FTYPE_SRC0_SRC1:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_src1_v;
+
+    /* Used by "XD" insn. format: `insn dest`  */
+    case APEX_DEST_FTYPE:
+     return CODE_FOR_riscv_arcv_apex_dest_ftype;
+
+    /* Used by "XI","XD" insn. format: `insn dest, src0`  */
+    case APEX_DEST_FTYPE_SRC0:
+      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
+
+    /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
+    case APEX_DEST_FTYPE_SRC0_SRC1:
+      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
+
+    default:
+      /* If none is selected, the default is "CODE_FOR_nothing".  */
+      return CODE_FOR_nothing;
+   }
+}
