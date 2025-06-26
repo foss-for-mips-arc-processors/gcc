@@ -236,6 +236,35 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 
 tree riscv_float16_type_node = NULL_TREE;
 
+struct arcv_apex_builtin_description {
+  /* The code of the main .md file instruction.  See riscv_builtin_type
+     for more information.  */
+  enum insn_code icode;
+
+  /* The name of the built-in function.  */
+  const char *name;
+
+  /* The name of the built-in instruction.  */
+  const char *insn_name;
+
+  /* Specifies how the function should be expanded.  */
+  enum riscv_builtin_type builtin_type;
+
+  /* Specifies the instruction format.  See "apex_insn_format" enum
+    for more details.  */
+  unsigned int insn_formats;
+};
+
+/* The XD-type has 8 function bits encoding up to 256 instructions.
+   The XS-type has 6 function bits encoding up to 64 instructions.
+   Both the XI-type and the XC-type have 5 function bits each encoding up
+   to 32 instructions respectively.  Thus giving a total of 384 possible
+   different instructions.  */
+static const int arcv_apex_builtins_limit = 384;
+static struct arcv_apex_builtin_description
+arcv_apex_builtins[arcv_apex_builtins_limit];
+static int arcv_apex_builtin_index = 0;
+
 /* Return the function type associated with function prototype TYPE.  */
 
 static tree
@@ -704,4 +733,64 @@ arcv_apex_get_icode (unsigned insn_format)
     return CODE_FOR_riscv_arcv_apex_dest;
 
   /* If none is returned, the default is "CODE_FOR_nothing".  */
+}
+
+/* Initialize a RISC-V APEX built-in function.
+
+   This function is invoked for each user-defined APEX intrinsic declared via
+   a pragma.  It processes metadata stored in the global `apex` structure,
+   resolves the appropriate instruction format, validates it and prints the
+   corresponding .extInstruction section for the assembler.
+
+   It then determines the internal instruction code (icode) and categorizes the
+   built-in as either with or without a destination operand.  The function
+   stores the resulting instruction metadata into the "arcv_apex_builtins"
+   array, modifies the function declaration `fndecl` to be recognized as a
+   machine description (BUILT_IN_MD) built-in, and encodes a custom function
+   code for use during later compiler stages.
+
+   Each call increments the global built-in index to allow defining multiple
+   intrinsics in sequence.  */
+
+void
+arcv_apex_init_builtin (tree fndecl, const char *fn_name,
+			const char *insn_name, unsigned int insn_formats,
+			int opcode)
+{
+  /* Update operand flags based on the function declaration.  */
+  insn_formats = arcv_apex_set_insn_operand_flags (insn_formats, fndecl);
+
+  /* Resolve the instruction format:
+     If the user did not specify an instruction format at pragma level,
+     infer the concrete format based on opcode and operand flags; otherwise,
+     leave it as is.  */
+  insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
+
+  /* Validate the format is allowed for this instruction.  */
+  arcv_apex_validate_insn_format (insn_formats, opcode);
+
+  /* Print .extInstruction section about APEX instruction.  */
+  arcv_apex_print_insn_section (insn_name, opcode, insn_formats);
+
+  /* Determine the internal instruction code (icode).  */
+  enum insn_code icode = arcv_apex_get_icode (insn_formats);
+
+  /* Determine whether this builtin has a destination operand.  */
+  enum riscv_builtin_type builtin_type
+	= (insn_formats & APEX_DEST) ? RISCV_BUILTIN_DIRECT :
+				       RISCV_BUILTIN_DIRECT_NO_TARGET;
+
+  /* Store APEX insn information.  */
+  arcv_apex_builtins[arcv_apex_builtin_index]
+	= { icode, fn_name, insn_name, builtin_type, insn_formats };
+
+  /* Modify the prototype type as built-in.  */
+  fndecl->function_decl.built_in_class = BUILT_IN_MD;
+
+  /* Modify the prototype function code to match the index
+     in "riscv_apex_builtins" with a mask for APEX only insns.  */
+  fndecl->function_decl.function_code
+	= (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+  arcv_apex_builtin_index++;
 }
