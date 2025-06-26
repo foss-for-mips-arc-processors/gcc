@@ -9716,7 +9716,7 @@ arcv_apex_print_insn_section (const char *insn_name, int opcode,
   /* Print XS and XC formats combined in a single line
      with dest, src0, src1.  */
   if ((insn_format & (APEX_XS | APEX_XC))
-	&& (insn_operands & APEX_DEST_FTYPE_SRC0_SRC1))
+	&& (insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
     if (insn_format & APEX_XS)
@@ -9737,7 +9737,7 @@ arcv_apex_print_insn_section (const char *insn_name, int opcode,
 
   /* Print XS format with void return and src0, src1 operands.  */
   if ((insn_format & APEX_XS)
-	&& (insn_operands & APEX_VOID_FTYPE_SRC0_SRC1))
+	&& (insn_operands == APEX_VOID_FTYPE_SRC0_SRC1))
   {
     fprintf (asm_out_file, "\t.extInstruction %si,%d,XS,void\n",
 			insn_name, opcode);
