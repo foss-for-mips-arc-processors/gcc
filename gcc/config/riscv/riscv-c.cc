@@ -256,6 +256,9 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
 
   /* Lookup the user-defined function declaration of the APEX intrinsic.  */
   tree fndecl = arcv_apex_lookup_function (fn_name);
+
+  /* Register the specified function as an APEX intrinsic.  */
+  arcv_apex_init_builtin (fndecl, fn_name, insn_name, insn_formats, opcode);
 }
 
 static int

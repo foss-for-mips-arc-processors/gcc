@@ -798,14 +798,17 @@ rtx get_fp_rounding_coefficient (machine_mode);
 /* We classify builtin types into two classes:
    1. General builtin class which is defined in riscv_builtins.
    2. Vector builtin class which is a special builtin architecture
-      that implement intrinsic short into "pragma".  */
+      that implement intrinsic short into "pragma".
+   3. Apex builtin class which is user-defined custom instruction
+      via "pragma intrinsic()".  */
 enum riscv_builtin_class
 {
   RISCV_BUILTIN_GENERAL,
-  RISCV_BUILTIN_VECTOR
+  RISCV_BUILTIN_VECTOR,
+  RISCV_BUILTIN_APEX
 };
 
-const unsigned int RISCV_BUILTIN_SHIFT = 1;
+const unsigned int RISCV_BUILTIN_SHIFT = 2;
 
 /* Mask that selects the riscv_builtin_class part of a function code.  */
 const unsigned int RISCV_BUILTIN_CLASS = (1 << RISCV_BUILTIN_SHIFT) - 1;
@@ -831,6 +834,8 @@ extern bool arcv_micro_arch_supports_fusion_p (void);
 extern void arcv_apex_print_insn_section (const char *, int, unsigned int);
 extern const char* arcv_apex_get_insn_name (rtx);
 extern bool arcv_apex_format_supports_p (unsigned int, unsigned int);
+extern void arcv_apex_init_builtin (tree, const char *, const char *,
+				    unsigned int, unsigned int);
 #ifdef RTX_CODE
 extern const char*
 th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);
