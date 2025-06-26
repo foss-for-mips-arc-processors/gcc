@@ -653,3 +653,55 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
     }
   }
 }
+
+/* Determine the appropriate GCC instruction code (insn_code)
+   based on the given APEX instruction format flags.
+
+   This function decodes the instruction operand pattern encoded
+   in `insn_format` and returns the matching internal GCC insn_code
+   that corresponds to the instruction variant used during RTL generation.
+
+   The operand layout is extracted by right-shifting out APEX_DEST and
+   APEX_SRC flags (bits 4–6). The function matches the operand pattern
+   against predefined instruction codes for different instruction formats
+   such as XI, XS, XC, and XD.
+
+   Returns the corresponding insn_code enum for the given operand pattern.  */
+
+static enum insn_code
+arcv_apex_get_icode (unsigned insn_format)
+{
+  unsigned int insn_operands = insn_format >> 4;
+
+  /* Used by "XI","XD" insn. format: `insn dest, src0`  */
+  if (insn_format & (APEX_XI | APEX_XD)
+	&& insn_operands == APEX_DEST_FTYPE_SRC0)
+    return CODE_FOR_riscv_arcv_apex_dest_src0;
+
+  /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
+  if (insn_format & (APEX_XD | APEX_XS | APEX_XC)
+	&& insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+    return CODE_FOR_riscv_arcv_apex_dest_src0_src1;
+
+  /* Used by "XS","XD" insn. format: `insn src0, src1`  */
+  if (insn_format & (APEX_XD | APEX_XS)
+	&& insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
+    return CODE_FOR_riscv_arcv_apex_void_src0_src1;
+
+  /* Used by "XI","XD" insn. format: `insn src0`  */
+  if (insn_format & (APEX_XI | APEX_XD)
+	&& insn_operands == APEX_VOID_FTYPE_SRC0)
+    return CODE_FOR_riscv_arcv_apex_void_src0;
+
+  /* Used by "XD" insn. format: `insn`  */
+  if (insn_format & APEX_XD
+	&& insn_operands == APEX_VOID_FTYPE)
+    return CODE_FOR_riscv_arcv_apex_void;
+
+  /* Used by "XD" insn. format: `insn dest`  */
+  if (insn_format & APEX_XD
+	&& insn_operands == APEX_DEST_FTYPE)
+    return CODE_FOR_riscv_arcv_apex_dest;
+
+  /* If none is returned, the default is "CODE_FOR_nothing".  */
+}
