@@ -648,7 +648,7 @@ const struct format_rule rules[] = {
   { APEX_XD, "XD", 0xFF, /* Not taking into account.  */ 0, false },
   { APEX_XS, "XS", 0x3F, 2, false },
   { APEX_XI, "XI", 0x1F, 1, false },
-  { APEX_XC, "XC", 0x1F, 2, false },
+  { APEX_XC, "XC", 0x1F, 2, true },
 };
 
 /* Validate that the given instruction format, opcode and operand count
@@ -680,30 +680,37 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
     /* If the instruction format matches the rule's insn_format.  */
     if (insn_format & rules[i].insn_format)
     {
+      const struct format_rule *rule = &rules[i];
+
+      /* If the instruction format does not match the rule's insn_format,
+	 skip to the next rule.  */
+      if (!(insn_format & rule->insn_format))
+	continue;
+
       /* Check if the opcode exceeds the rule's maximum
 	 allowed opcode.  */
-      if (opcode > rules[i].max_opcode)
+      if (opcode > rules->max_opcode)
 	error ("APEX opcode value \"%d\" must be an integer constant "
 		"in the range 0 to 0x%d, inclusive.",
-		opcode, rules[i].max_opcode);
+		opcode, rules->max_opcode);
 
       /* Check if the number of operands matches the rule's required
 	 operand count.  */
-      if (!(insn_format & APEX_XD)
-	  && num_arguments != rules[i].required_args)
+      if (rules->insn_format != APEX_XD
+	  && num_arguments != rules->required_args)
 	error ("APEX Function must have %d scalar parameter(s) for "
 		"the format class %s.\n",
-		rules[i].required_args, rules[i].insn_format_str);
+		rules->required_args, rules->insn_format_str);
 
-      if (insn_format & APEX_XI && num_arguments == 0)
+      if (rules->insn_format == APEX_XI && num_arguments == 0)
 	error ("argument 1 is not valid in \"constant\" designation");
 
       /* FIXME: Same behavior as CCAC, but shouldnt it we actually
 	 validate both datatypes? */
-      if (insn_format & APEX_XC && has_dest != rules[i].required_dest)
+      if (rules->insn_format == APEX_XC && has_dest != rules->required_dest)
 	error ("APEX function must return the same type as the first "
 		"parameter for the format class %s.\n",
-		rules[i].insn_format_str);
+		rules->insn_format_str);
     }
   }
 }
