@@ -75,12 +75,12 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s, %d ; riscv_xs_nodest",
+      return xasprintf ("%si\t%s, %d ; 'XS' `insn src0, src1`",
 			str,
 			reg_names[REGNO (operands[1])],
 			INTVAL (operands[2]));
     case 1:
-      return xasprintf ("%s\t%s, %s ; riscv_xd_nodest",
+      return xasprintf ("%s\t%s, %s ; 'XD' `insn src0, src1` ",
 			str,
 			reg_names[REGNO (operands[1])],
 			reg_names[REGNO (operands[2])]);
@@ -135,7 +135,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r,r,r")
 	(unspec:SI [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
 		    (match_operand:SI 2 "register_operand" "r,0,r")
-		    (match_operand:SI 3 "nonmemory_operand" "i,I,r")]
+		    (match_operand:SI 3 "nonmemory_operand" "B8,I,r")]
 	UNSPEC_ARCV_APEX_DEST_SRC0_SRC1))]
   ""
 {
