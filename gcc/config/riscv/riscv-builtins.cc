@@ -508,7 +508,8 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
 static unsigned int
 arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
 {
-  if (insn_format == APEX_NONE)
+  /* Return early if a instruction format was defined by the used.  */
+  if ((insn_format & 0xF) != APEX_NONE)
     return insn_format;
 
   /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
