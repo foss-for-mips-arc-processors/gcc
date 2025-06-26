@@ -239,6 +239,15 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"ssstateen", "zicsr"},
   {"sstc", "zicsr"},
 
+  {"xarcvbitrev", "v"},
+  {"xarcvbitstream", "v"},
+  {"xarcvvdsp", "v"},
+  {"xarcvvcplx", "v"},
+  {"xarcvvsad", "v"},
+  {"xarcvmxmb", "v"},
+  {"xarcvmxmc", "v"},
+  {"xarcvmxmd", "v"},
+
   {NULL, NULL}
 };
 
@@ -435,6 +444,15 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
   {"xventanacondops", ISA_SPEC_CLASS_NONE, 1, 0},
 
   {"xarcvudsp", ISA_SPEC_CLASS_NONE, 1, 0},
+
+  {"xarcvbitrev", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvbitstream", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvdsp", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvcplx", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvvsad", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmb", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmc", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xarcvmxmd", ISA_SPEC_CLASS_NONE, 1, 0},
 
   /* Terminate the list.  */
   {NULL, ISA_SPEC_CLASS_NONE, 0, 0}
@@ -1736,6 +1754,31 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   {"xventanacondops", &gcc_options::x_riscv_xventana_subext, MASK_XVENTANACONDOPS},
 
   {"xarcvudsp", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVUDSP},
+
+  {"xarcvbitrev", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVBITREV},
+  {"xarcvbitrev", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvbitrev", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvbitstream", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVBITSTREAM},
+  {"xarcvbitstream", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvbitstream", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvvdsp", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVVDSP},
+  {"xarcvvdsp", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvvdsp", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvvcplx", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVVCPLX},
+  {"xarcvvcplx", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvvcplx", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvvsad", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVVSAD},
+  {"xarcvvsad", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvvsad", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvmxmb", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVMXMB},
+  {"xarcvmxmb", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvmxmb", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvmxmc", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVMXMC},
+  {"xarcvmxmc", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvmxmc", &gcc_options::x_target_flags, MASK_VECTOR},
+  {"xarcvmxmd", &gcc_options::x_riscv_xarcv_subext, MASK_XARCVMXMD},
+  {"xarcvmxmd", &gcc_options::x_target_flags, MASK_FULL_V},
+  {"xarcvmxmd", &gcc_options::x_target_flags, MASK_VECTOR},
 
   {NULL, NULL, 0}
 };
