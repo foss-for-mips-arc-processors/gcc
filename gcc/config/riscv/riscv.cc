@@ -12148,7 +12148,7 @@ riscv_asm_output_variant_cc (FILE *stream, const tree decl, const char *name)
   more `.extInstruction` lines into the assembly output file, allowing the
   assembler and disassembler to recognize the instruction variants.
 
-  The operand signature is encoded in bits 4–6 of `insn_format` and indicates
+  The operand signature is encoded in bits 5–7 of `insn_format` and indicates
   the presence and types of operands such as destination, source0
   and source1.  */
 
@@ -12156,9 +12156,9 @@ void
 arcv_apex_print_insn_section (const char *insn_name, int opcode,
 			      unsigned int insn_format)
 {
-  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
   /* Print XD format line, adding operand info flags if absent.  */
   if (insn_format & APEX_XD)

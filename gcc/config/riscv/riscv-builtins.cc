@@ -679,9 +679,9 @@ arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
   if ((insn_format & 0xF) != APEX_NONE)
     return insn_format;
 
-  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
   /* Assign the most general format APEX_XD.  If opcode does not permit,
      it will report an error at "arcv_apex_validate_insn_format".  */
@@ -813,7 +813,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
    that corresponds to the instruction variant used during RTL generation.
 
    The operand layout is extracted by right-shifting out APEX_DEST and
-   APEX_SRC flags (bits 4–6).  The function matches the operand pattern
+   APEX_SRC flags (bits 5–7).  The function matches the operand pattern
    against predefined instruction codes for different instruction formats
    such as XI, XS, XC, and XD.
 
@@ -822,7 +822,8 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 static enum insn_code
 arcv_apex_get_icode (unsigned insn_format)
 {
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
+  bool is_volatile = insn_format & APEX_VOLATILE;
 
   switch (insn_operands)
   {
@@ -840,15 +841,21 @@ arcv_apex_get_icode (unsigned insn_format)
 
     /* Used by "XD" insn. format: `insn dest`  */
     case APEX_DEST_FTYPE:
-     return CODE_FOR_riscv_arcv_apex_dest_ftype;
+     return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype;
 
     /* Used by "XI","XD" insn. format: `insn dest, src0`  */
     case APEX_DEST_FTYPE_SRC0:
-      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
+      return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
 
     /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
     case APEX_DEST_FTYPE_SRC0_SRC1:
-      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
+      return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
 
     default:
       /* If none is selected, the default is "CODE_FOR_nothing".  */

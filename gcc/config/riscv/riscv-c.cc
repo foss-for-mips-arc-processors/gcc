@@ -208,6 +208,8 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
       insn_formats |= APEX_XI;
     else if (strcmp (attribute, "XC") == 0)
       insn_formats |= APEX_XC;
+    else if (strcmp (attribute, "side_effect") == 0)
+      insn_formats |= APEX_VOLATILE;
     else if (strcmp (attribute, "opcode") == 0)
     {
       if (pragma_lex (&x) != CPP_EQ || pragma_lex (&x) != CPP_GREATER)
