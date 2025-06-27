@@ -215,22 +215,29 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
     }
 
     token = pragma_lex (&x);
-    if (token != CPP_STRING)
+
+    const char *attribute;
+    if (token == CPP_STRING)
+      attribute = TREE_STRING_POINTER (x);
+    else if (token == CPP_NAME)
+      attribute = IDENTIFIER_POINTER (x);
+    else
     {
-      error ("expected instruction format identifier");
+      error ("expected attribute identifier");
       return;
     }
-    const char *insn_format = TREE_STRING_POINTER (x);
 
     /* On first valid format specifier, override the default (NONE).  */
-    if (strcmp (insn_format, "XD") == 0)
+    if (strcmp (attribute, "XD") == 0)
       insn_formats |= APEX_XD;
-    else if (strcmp (insn_format, "XS") == 0)
+    else if (strcmp (attribute, "XS") == 0)
       insn_formats |= APEX_XS;
-    else if (strcmp (insn_format, "XI") == 0)
+    else if (strcmp (attribute, "XI") == 0)
       insn_formats |= APEX_XI;
-    else if (strcmp (insn_format, "XC") == 0)
+    else if (strcmp (attribute, "XC") == 0)
       insn_formats |= APEX_XC;
+    else if (strcmp (attribute, "side_effect") == 0)
+      insn_formats |= APEX_VOLATILE;
   }
 
   /* Lookup the user-defined function declaration of the APEX intrinsic.  */

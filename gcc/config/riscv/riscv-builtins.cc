@@ -598,9 +598,9 @@ arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
   if ((insn_format & 0xF) != APEX_NONE)
     return insn_format;
 
-  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
   /* Assign the most general format APEX_XD if opcode permits.  */
   if (opcode <= APEX_OP_MAX_XD) /* Any operands allowed.  */
@@ -733,17 +733,27 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
 static enum insn_code
 arcv_apex_get_icode (unsigned insn_format)
 {
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
   /* Used by "XI","XD" insn. format: `insn dest, src0`  */
   if (insn_format & (APEX_XI | APEX_XD)
 	&& insn_operands == APEX_DEST_FTYPE_SRC0)
-    return CODE_FOR_riscv_arcv_apex_dest_src0;
+  {
+    if (insn_format & APEX_VOLATILE)
+      return CODE_FOR_riscv_arcv_apex_dest_src0_volatile;
+    else
+      return CODE_FOR_riscv_arcv_apex_dest_src0;
+  }
 
   /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
   if (insn_format & (APEX_XD | APEX_XS | APEX_XC)
 	&& insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
-    return CODE_FOR_riscv_arcv_apex_dest_src0_src1;
+  {
+    if (insn_format & APEX_VOLATILE)
+      return CODE_FOR_riscv_arcv_apex_dest_src0_src1_volatile;
+    else
+      return CODE_FOR_riscv_arcv_apex_dest_src0_src1;
+  }
 
   /* Used by "XS","XD" insn. format: `insn src0, src1`  */
   if (insn_format & (APEX_XD | APEX_XS)
@@ -763,7 +773,13 @@ arcv_apex_get_icode (unsigned insn_format)
   /* Used by "XD" insn. format: `insn dest`  */
   if (insn_format & APEX_XD
 	&& insn_operands == APEX_DEST_FTYPE)
-    return CODE_FOR_riscv_arcv_apex_dest;
+  {
+    if (insn_format & APEX_VOLATILE)
+      return CODE_FOR_riscv_arcv_apex_dest_volatile;
+    else
+      return CODE_FOR_riscv_arcv_apex_dest;
+  }
+
 
   /* If none is returned, the default is "CODE_FOR_nothing".  */
 }
