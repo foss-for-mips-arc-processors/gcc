@@ -597,5 +597,5 @@ riscv_register_pragmas (void)
   targetm.resolve_overloaded_builtin = riscv_resolve_overloaded_builtin;
   targetm.check_builtin_call = riscv_check_builtin_call;
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
-  c_register_pragma (0, "intrinsic", arcv_apex_pragma_intrinsic);
+  c_register_pragma_with_expansion (0, "intrinsic", arcv_apex_pragma_intrinsic);
 }
