@@ -24,8 +24,11 @@
   UNSPEC_ARCV_APEX_VOID_SRC0_V
   UNSPEC_ARCV_APEX_VOID_SRC0_SRC1_V
   UNSPEC_ARCV_APEX_DEST
+  UNSPEC_ARCV_APEX_DEST_V
   UNSPEC_ARCV_APEX_DEST_SRC0
+  UNSPEC_ARCV_APEX_DEST_SRC0_V
   UNSPEC_ARCV_APEX_DEST_SRC0_SRC1
+  UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V
 ])
 
 ;; Used by "XD" insn. format: `insn` volatile
@@ -93,6 +96,21 @@
   [(set_attr "type" "arith,arith")]
 )
 
+;; Used by "XD" insn. format: `insn dest` volatile
+(define_insn "riscv_arcv_apex_dest_ftype_v"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
+	UNSPEC_ARCV_APEX_DEST_V))]
+  ""
+{
+  const char *str = arcv_apex_get_insn_name (operands[1]);
+  return xasprintf ("%s\t%s # 'XD' `insn dest` volatile",
+		    str,
+		    reg_names[REGNO (operands[0])]);
+}
+  [(set_attr "type" "arith")]
+)
+
 ;; Used by "XD" insn. format: `insn dest`
 (define_insn "riscv_arcv_apex_dest_ftype"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -106,6 +124,34 @@
 		    reg_names[REGNO (operands[0])]);
 }
   [(set_attr "type" "arith")]
+)
+
+;; Used by "XI","XD" insn. format: `insn dest, src0` volatile
+(define_insn "riscv_arcv_apex_dest_ftype_src0_v"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXI,xAVpXD")
+		    (match_operand:SI 2 "nonmemory_operand" "I,r")]
+	UNSPEC_ARCV_APEX_DEST_SRC0_V))]
+  ""
+{
+  const char *str = arcv_apex_get_insn_name (operands[1]);
+  switch (which_alternative)
+  {
+    case 0:
+      return xasprintf ("%si\t%s,%d # 'XI' `insn des, src0` volatile",
+			str,
+			reg_names[REGNO (operands[0])],
+			(int) INTVAL (operands[2]));
+    case 1:
+      return xasprintf ("%s\t%s,%s # 'XD' `insn des, src0` volatile",
+			str,
+			reg_names[REGNO (operands[0])],
+			reg_names[REGNO (operands[2])]);
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "arith,arith")]
 )
 
 ;; Used by "XI","XD" insn. format: `insn dest, src0`
@@ -134,6 +180,43 @@
   }
 }
   [(set_attr "type" "arith,arith")]
+)
+
+;; Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1` volatile
+(define_insn "riscv_arcv_apex_dest_ftype_src0_src1_v"
+  [(set (match_operand:SI 0 "register_operand" "=r,r,r")
+	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
+		    (match_operand:SI 2 "register_operand" "r,0,r")
+		    (match_operand:SI 3 "nonmemory_operand" "B8,I,r")]
+	UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V))]
+  ""
+{
+  const char *str = arcv_apex_get_insn_name (operands[1]);
+  switch (which_alternative)
+  {
+    case 0:
+      return xasprintf ("%si\t%s,%s,%d # 'XS' `insn dest, src0, imm/src1` volatile",
+			str,
+			reg_names[REGNO (operands[0])],
+			reg_names[REGNO (operands[2])],
+			(int) INTVAL (operands[3]));
+    case 1:
+      return xasprintf ("%si\t%s,%s,%d # 'XC' `insn dest/src0, imm` volatile",
+			str,
+			reg_names[REGNO (operands[0])],
+			reg_names[REGNO (operands[2])],
+			(int) INTVAL (operands[3]));
+    case 2:
+      return xasprintf ("%s\t%s,%s,%s # 'XD' `insn dest, src0, imm/src1` volatile",
+			str,
+			reg_names[REGNO (operands[0])],
+			reg_names[REGNO (operands[2])],
+			reg_names[REGNO (operands[3])]);
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "arith,arith,arith")]
 )
 
 ;; Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`
