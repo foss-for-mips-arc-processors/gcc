@@ -133,12 +133,8 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
   }
   const char *fn_name = IDENTIFIER_POINTER (x);
 
-  /* Expect a comma separating the next argument.  */
-  if (pragma_lex (&x) != CPP_COMMA)
-  {
-    error ("expected %<,%> or %<)%>");
-    return;
-  }
+  /* Consume the comma.  */
+  pragma_lex (&x);
 
   /* Parse the instruction name string, e.g., "add", "mul".  */
   token = pragma_lex (&x);
@@ -152,8 +148,7 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
       insn_name_raw = IDENTIFIER_POINTER (x);
       break;
     default:
-      error ("expected instruction name");
-      return;
+      error ("pragma intrinsic: APEX attribute 'name' is missing");
   }
 
   /* Convert instruction name to lowercase to normalize it
@@ -162,17 +157,13 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
   for (char *p = insn_name; *p; p++)
     *p = TOLOWER (*p);
 
-  /* Expect another comma before parsing the opcode.  */
-  if (pragma_lex (&x) != CPP_COMMA)
-  {
-    error ("expected %<,%> or %<)%>");
-    return;
-  }
+  /* Consume the comma.  */
+  pragma_lex (&x);
 
   /* Parse the opcode value (must be an integer).  */
   if (pragma_lex (&x) != CPP_NUMBER)
   {
-    error ("operand of an unexpected type in '#pragma intrinsic' - ignoring");
+    error ("pragma intrinsic: APEX attribute 'opcode' is missing");
     return;
   }
   unsigned HOST_WIDE_INT opcode = TREE_INT_CST_LOW (x);
