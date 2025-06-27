@@ -596,9 +596,9 @@ arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
   if ((insn_format & 0xF) != APEX_NONE)
     return insn_format;
 
-  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 4–6.
+  /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
   /* Assign the most general format APEX_XD if opcode permits.  */
   if (opcode <= APEX_OP_MAX_XD) /* Any operands allowed.  */
@@ -748,6 +748,7 @@ static enum insn_code
 arcv_apex_get_icode (unsigned insn_format)
 {
   unsigned int insn_operands = insn_format >> 5;
+  bool is_volatile = insn_format & APEX_VOLATILE;
 
   switch (insn_operands)
   {
@@ -765,15 +766,21 @@ arcv_apex_get_icode (unsigned insn_format)
 
     /* Used by "XD" insn. format: `insn dest`  */
     case APEX_DEST_FTYPE:
-     return CODE_FOR_riscv_arcv_apex_dest_ftype;
+     return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype;
 
     /* Used by "XI","XD" insn. format: `insn dest, src0`  */
     case APEX_DEST_FTYPE_SRC0:
-      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
+      return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
 
     /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
     case APEX_DEST_FTYPE_SRC0_SRC1:
-      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
+      return is_volatile
+      ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1_v
+      : CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
 
     default:
       /* If none is selected, the default is "CODE_FOR_nothing".  */

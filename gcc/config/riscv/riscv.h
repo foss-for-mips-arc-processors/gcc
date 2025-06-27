@@ -72,9 +72,10 @@ enum apex_insn_format {
   APEX_XS   = 1 << 1,
   APEX_XI   = 1 << 2,
   APEX_XC   = 1 << 3,
-  APEX_DEST = 1 << 4,
-  APEX_SRC0 = 1 << 5,
-  APEX_SRC1 = 1 << 6,
+  APEX_VOLATILE = 1 << 4,
+  APEX_DEST = 1 << 5,
+  APEX_SRC0 = 1 << 6,
+  APEX_SRC1 = 1 << 7,
 };
 
 #endif /* ! RISCV_APEX */

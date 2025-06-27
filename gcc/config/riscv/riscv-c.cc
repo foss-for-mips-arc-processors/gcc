@@ -260,17 +260,18 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
 	error ("expected attribute");
 	return;
     }
-    const char *insn_format = TREE_STRING_POINTER (x);
 
     /* On first valid format specifier, override the default (NONE).  */
-    if (strcmp (insn_format, "XD") == 0)
+    if (strcmp (attribute, "XD") == 0)
       insn_formats |= APEX_XD;
-    else if (strcmp (insn_format, "XS") == 0)
+    else if (strcmp (attribute, "XS") == 0)
       insn_formats |= APEX_XS;
-    else if (strcmp (insn_format, "XI") == 0)
+    else if (strcmp (attribute, "XI") == 0)
       insn_formats |= APEX_XI;
-    else if (strcmp (insn_format, "XC") == 0)
+    else if (strcmp (attribute, "XC") == 0)
       insn_formats |= APEX_XC;
+    else if (strcmp (attribute, "side_effect") == 0)
+      insn_formats |= APEX_VOLATILE;
     else if (strcmp (attribute, "opcode") == 0)
     {
       if (pragma_lex (&x) != CPP_EQ || pragma_lex (&x) != CPP_GREATER)
