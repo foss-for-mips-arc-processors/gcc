@@ -75,12 +75,12 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s, %d ; 'XS' `insn src0, src1`",
+      return xasprintf ("%si\t%s,%d ; 'XS' `insn src0, src1`",
 			str,
 			reg_names[REGNO (operands[1])],
 			INTVAL (operands[2]));
     case 1:
-      return xasprintf ("%s\t%s, %s ; 'XD' `insn src0, src1` ",
+      return xasprintf ("%s\t%s,%s ; 'XD' `insn src0, src1` ",
 			str,
 			reg_names[REGNO (operands[1])],
 			reg_names[REGNO (operands[2])]);
@@ -157,12 +157,12 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s, %d ; 'XD' `insn des, src0`",
+      return xasprintf ("%si\t%s,%d ; 'XD' `insn des, src0`",
 			str,
 			reg_names[REGNO (operands[0])],
 			INTVAL (operands[2]));
     case 1:
-      return xasprintf ("%s\t%s, %s ; 'XD' `insn des, src0`",
+      return xasprintf ("%s\t%s,%s ; 'XD' `insn des, src0`",
 			str,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])]);
@@ -218,18 +218,18 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s, %s, %d ; 'XS' `insn dest, src0, imm/src1`",
+      return xasprintf ("%si\t%s,%s,%d ; 'XS' `insn dest, src0, imm/src1`",
 			str,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
 			INTVAL (operands[3]));
     case 1:
-      return xasprintf ("%si\t%s, %d ; 'XC' `insn dest/src0, imm`",
+      return xasprintf ("%si\t%s,%d ; 'XC' `insn dest/src0, imm`",
 			str,
 			reg_names[REGNO (operands[0])],
 			INTVAL (operands[3]));
     case 2:
-      return xasprintf ("%s\t%s, %s, %s ; 'XD' `insn dest, src0, imm/src1`",
+      return xasprintf ("%s\t%s,%s,%s ; 'XD' `insn dest, src0, imm/src1`",
 			str,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
