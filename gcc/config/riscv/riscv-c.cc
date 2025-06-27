@@ -239,6 +239,26 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
 	"not recognized", attribute);
       return;
     }
+
+  }
+
+  if (insn_formats & APEX_XI && insn_formats & APEX_XD)
+  {
+    error ("pragma intrinsic: APEX formats \"XI\" and \"XD\" are "
+	"not compatible");
+    return;
+  }
+  else if (insn_formats & APEX_XI && insn_formats & APEX_XS)
+  {
+    error ("pragma intrinsic: APEX formats \"XI\" and \"XS\" are "
+	"not compatible");
+    return;
+  }
+  else if (insn_formats & APEX_XI && insn_formats & APEX_XC)
+  {
+    error ("pragma intrinsic: APEX formats \"XI\" and \"XC\" are "
+	"not compatible");
+    return;
   }
 }
 
