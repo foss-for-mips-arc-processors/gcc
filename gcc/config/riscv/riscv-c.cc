@@ -141,12 +141,20 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
   }
 
   /* Parse the instruction name string, e.g., "add", "mul".  */
-  if (pragma_lex (&x) != CPP_STRING)
+  token = pragma_lex (&x);
+  const char *insn_name_raw;
+  switch (token)
   {
-    error ("expected instruction name identifier");
-    return;
+    case CPP_STRING:
+      insn_name_raw = TREE_STRING_POINTER (x);
+      break;
+    case CPP_NAME:
+      insn_name_raw = IDENTIFIER_POINTER (x);
+      break;
+    default:
+      error ("expected instruction name");
+      return;
   }
-  const char *insn_name_raw = TREE_STRING_POINTER (x);
 
   /* Convert instruction name to lowercase to normalize it
      for the assembler.  */
@@ -190,10 +198,19 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
     }
 
     token = pragma_lex (&x);
-    if (token != CPP_STRING)
+
+    const char *attribute;
+    switch (token)
     {
-      error ("expected instruction format identifier");
-      return;
+      case CPP_STRING:
+	attribute = TREE_STRING_POINTER (x);
+	break;
+      case CPP_NAME:
+	attribute = IDENTIFIER_POINTER (x);
+	break;
+      default:
+	error ("expected attribute");
+	return;
     }
     const char *insn_format = TREE_STRING_POINTER (x);
 
