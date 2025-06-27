@@ -149,7 +149,7 @@
 			reg_names[REGNO (operands[2])],
 			INTVAL (operands[3]));
     case 1:
-      return xasprintf ("%si\t%s, %d ; 'XC' `insn dest, src0, imm/src1`",
+      return xasprintf ("%si\t%s, %d ; 'XC' `insn dest/src0, imm`",
 			str,
 			reg_names[REGNO (operands[0])],
 			INTVAL (operands[3]));
