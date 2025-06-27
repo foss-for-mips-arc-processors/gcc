@@ -249,6 +249,16 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
       insn_formats |= APEX_XC;
     else if (strcmp (attribute, "side_effect") == 0)
       insn_formats |= APEX_VOLATILE;
+    else if (strcmp (attribute, "opcode") == 0)
+    {
+      if (pragma_lex (&x) != CPP_EQ || pragma_lex (&x) != CPP_GREATER)
+      {
+	warning (0, "expected %<=>%> in '#pragma intrinsic' - ignoring");
+	return;
+      }
+      error ("pragma intrinsic: APEX attribute 'opcode' is redundant");
+      return;
+    }
     else
     {
       error ("pragma intrinsic: APEX attribute %qs is "
