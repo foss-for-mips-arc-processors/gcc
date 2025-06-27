@@ -197,7 +197,7 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
   /* Parse the opcode value (must be an integer).  */
   if (pragma_lex (&x) != CPP_NUMBER)
   {
-    error ("expected instruciton opcode value");
+    error ("operand of an unexpected type in '#pragma intrinsic' - ignoring");
     return;
   }
   unsigned HOST_WIDE_INT opcode = TREE_INT_CST_LOW (x);
