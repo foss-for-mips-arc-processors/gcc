@@ -605,8 +605,8 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
       /* Check if the opcode exceeds the rule's maximum
 	 allowed opcode.  */
       if (opcode > rules->max_opcode)
-	error ("APEX opcode value \"%d\" must be an integer constant "
-		"in the range 0 to 0x%d, inclusive.",
+	error ("pragma intrinsic: APEX opcode value %qd must be an integer "
+		"constant in the range 0 to 0x%x, inclusive.",
 		opcode, rules->max_opcode);
 
       /* Check if the number of operands matches the rule's required
