@@ -585,9 +585,9 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
   if (insn_format == APEX_NONE)
     error ("APEX instruction not valid.\n");
 
-  bool has_dest = (insn_format & APEX_DEST) >> 4;
-  int num_arguments = ((insn_format & APEX_SRC0) >> 5)
-			+ ((insn_format & APEX_SRC1) >> 6);
+  bool has_dest = (insn_format & APEX_DEST) >> APEX_DEST;
+  int num_arguments = ((insn_format & APEX_SRC0) >> APEX_SRC0)
+			+ ((insn_format & APEX_SRC1) >> APEX_SRC1);
 
   /* Iterate over each rule in the rules array.  */
   for (int i = 0; i < sizeof (rules)/sizeof (rules[0]); ++i)
@@ -604,28 +604,28 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
 
       /* Check if the opcode exceeds the rule's maximum
 	 allowed opcode.  */
-      if (opcode > rules->max_opcode)
+      if (opcode > rule->max_opcode)
 	error ("pragma intrinsic: APEX opcode value %qd must be an integer "
 		"constant in the range 0 to 0x%x, inclusive.",
-		opcode, rules->max_opcode);
+		opcode, rule->max_opcode);
 
       /* Check if the number of operands matches the rule's required
 	 operand count.  */
-      if (rules->insn_format != APEX_XD
-	  && num_arguments != rules->required_args)
-	error ("APEX Function must have %d scalar parameter(s) for "
-		"the format class %s.\n",
-		rules->required_args, rules->insn_format_str);
+      if (rule->insn_format != APEX_XD
+	  && num_arguments != rule->required_args)
+	error ("pragma intrinsic: APEX Function must have %d scalar "
+		"parameter(s) for the format class %qs.\n",
+		rule->required_args, rule->insn_format_str);
 
-      if (rules->insn_format == APEX_XI && num_arguments == 0)
+      if (rule->insn_format == APEX_XI && num_arguments == 0)
 	error ("argument 1 is not valid in \"constant\" designation");
 
       /* FIXME: Same behavior as CCAC, but shouldnt it we actually
 	 validate both datatypes? */
-      if (rules->insn_format == APEX_XC && has_dest != rules->required_dest)
+      if (rule->insn_format == APEX_XC && has_dest != rule->required_dest)
 	error ("APEX function must return the same type as the first "
 		"parameter for the format class %s.\n",
-		rules->insn_format_str);
+		rule->insn_format_str);
     }
   }
 }
