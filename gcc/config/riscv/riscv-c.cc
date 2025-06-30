@@ -125,6 +125,30 @@ arcv_apex_lookup_function (const char *fn_name)
   return fndecl;
 }
 
+/* Return true if S is a valid APEX-intrinsic identifier.
+   Rules:
+     - The identifier must begin with an ASCII letter (A–Z or a–z).
+     - All remaining characters must be ASCII letters or digits (0–9).
+     - Underscores and other symbols are not allowed.
+   Examples of valid identifiers:    "add", "Mul3", "op123".
+   Examples of invalid identifiers:  "1foo", "_bar", "baz.qux", "foo%".  */
+
+static bool
+arcv_apex_valid_identifier_p (const char *s)
+{
+  if (!s || !s[0])
+    return false;
+
+  if (!ISALPHA (s[0]))
+    return false;
+
+  for (const char *p = s + 1; *p; ++p)
+    if (!ISALNUM (*p))
+      return false;
+
+  return true;
+}
+
 /* Parses and handles `#pragma intrinsic` for APEX instructions.
 
    This pragma takes the form:
@@ -174,6 +198,14 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
       break;
     default:
       error ("pragma intrinsic: APEX attribute 'name' is missing");
+  }
+
+  /* Reject instruction names that do not follow APEX identifier rules.  */
+  if (!arcv_apex_valid_identifier_p (insn_name_raw))
+  {
+    error ("pragma intrinsic: APEX name %qs is not lexically valid",
+	    insn_name_raw);
+    return;
   }
 
   /* Convert instruction name to lowercase to normalize it
