@@ -485,9 +485,9 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
       insn_format |= APEX_SRC1;
     else
     {
-      error_at (DECL_SOURCE_LOCATION (fndecl),
-	"too many operands for APEX built-in function %qE", fndecl);
-      break;
+      warning (0, "pragma intrinsic: Associated function can have "
+		"no more than 2 parameters");
+      return APEX_NONE;
     }
   }
 
