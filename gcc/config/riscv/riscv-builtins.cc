@@ -675,9 +675,9 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
     return;
   }
 
-  bool has_dest = (insn_format & APEX_DEST) >> APEX_DEST;
-  int num_arguments = ((insn_format & APEX_SRC0) >> APEX_SRC0)
-			+ ((insn_format & APEX_SRC1) >> APEX_SRC1);
+  bool has_dest = (insn_format & APEX_DEST) >> 5;
+  int num_arguments = ((insn_format & APEX_SRC0) >> 6)
+			+ ((insn_format & APEX_SRC1) >> 7);
 
   /* Iterate over each rule in the rules array.  */
   for (int i = 0; i < sizeof (rules)/sizeof (rules[0]); ++i)
