@@ -622,7 +622,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 	  && num_arguments != rule->required_args)
       {
 	error ("pragma intrinsic: APEX function %qs must have %d scalar "
-		"parameter(s) for the %qs format.\n",
+		"parameter(s) for the %qs format class",
 		fn_name, rule->required_args, rule->insn_format_str);
 	return;
       }
