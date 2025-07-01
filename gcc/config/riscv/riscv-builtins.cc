@@ -723,9 +723,9 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 	 validate both datatypes? */
       if (rule->insn_format == APEX_XC && has_dest != rule->required_dest)
       {
-	error ("APEX function must return the same type as the first "
-		"parameter for the format class %s.\n",
-		rule->insn_format_str);
+	error ("pragma intrinsic: APEX function %qs must return the same "
+		"type as the first parameter for the %qs format class",
+		fn_name, rule->insn_format_str);
 	return;
       }
     }
