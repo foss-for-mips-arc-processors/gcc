@@ -780,6 +780,8 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 {
   /* Update operand flags based on the function declaration.  */
   insn_formats = arcv_apex_set_insn_operand_flags (insn_formats, fndecl);
+  if (insn_formats == APEX_NONE)
+    return;
 
   /* Resolve the instruction format:
      If the user did not specify an instruction format at pragma level,
