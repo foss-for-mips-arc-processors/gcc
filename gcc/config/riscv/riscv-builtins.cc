@@ -664,12 +664,16 @@ const struct format_rule rules[] = {
    - Certain format-specific constraints are violated (e.g., return type
      requirements or invalid argument usage).  */
 
-static void
-arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
+static bool
+arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
+				unsigned opcode)
 {
   /* If the instruction format is APEX_NONE, report an error.  */
   if (insn_format == APEX_NONE)
+  {
     error ("APEX instruction not valid.\n");
+    return false;
+  }
 
   bool has_dest = (insn_format & APEX_DEST) >> APEX_DEST;
   int num_arguments = ((insn_format & APEX_SRC0) >> APEX_SRC0)
@@ -691,29 +695,43 @@ arcv_apex_validate_insn_format (unsigned int insn_format, unsigned opcode)
       /* Check if the opcode exceeds the rule's maximum
 	 allowed opcode.  */
       if (opcode > rule->max_opcode)
+      {
 	error ("pragma intrinsic: APEX opcode value %qd must be an integer "
 		"constant in the range 0 to 0x%x, inclusive.",
 		opcode, rule->max_opcode);
+	return false;
+      }
 
       /* Check if the number of operands matches the rule's required
 	 operand count.  */
       if (rule->insn_format != APEX_XD
 	  && num_arguments != rule->required_args)
-	error ("pragma intrinsic: APEX Function must have %d scalar "
-		"parameter(s) for the format class %qs.\n",
-		rule->required_args, rule->insn_format_str);
+      {
+	error ("pragma intrinsic: APEX function %qs must have %d scalar "
+		"parameter(s) for the %qs format.\n",
+		fn_name, rule->required_args, rule->insn_format_str);
+	return false;
+      }
 
       if (rule->insn_format == APEX_XI && num_arguments == 0)
+      {
 	error ("argument 1 is not valid in \"constant\" designation");
+        return false;
+      }
 
       /* FIXME: Same behavior as CCAC, but shouldnt it we actually
 	 validate both datatypes? */
       if (rule->insn_format == APEX_XC && has_dest != rule->required_dest)
+      {
 	error ("APEX function must return the same type as the first "
 		"parameter for the format class %s.\n",
 		rule->insn_format_str);
+	return false;
+      }
     }
   }
+
+  return true;
 }
 
 /* Determine the appropriate GCC instruction code (insn_code)
