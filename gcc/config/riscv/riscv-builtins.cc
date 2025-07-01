@@ -834,7 +834,8 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
   insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
 
   /* Validate the format is allowed for this instruction.  */
-  arcv_apex_validate_insn_format (insn_formats, opcode);
+  if (!arcv_apex_validate_insn_format (fn_name, insn_formats, opcode))
+    return;
 
   /* Print .extInstruction section about APEX instruction.  */
   arcv_apex_print_insn_section (insn_name, opcode, insn_formats);
