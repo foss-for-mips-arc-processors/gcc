@@ -578,7 +578,7 @@ const struct format_rule rules[] = {
    - Certain format-specific constraints are violated (e.g., return type
      requirements or invalid argument usage).  */
 
-static bool
+static void
 arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 				unsigned opcode)
 {
@@ -586,7 +586,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
   if (insn_format == APEX_NONE)
   {
     error ("APEX instruction not valid.\n");
-    return false;
+    return;
   }
 
   bool has_dest = (insn_format & APEX_DEST) >> APEX_DEST;
@@ -613,7 +613,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 	error ("pragma intrinsic: APEX opcode value %qd must be an integer "
 		"constant in the range 0 to 0x%x, inclusive.",
 		opcode, rule->max_opcode);
-	return false;
+	return;
       }
 
       /* Check if the number of operands matches the rule's required
@@ -624,13 +624,13 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 	error ("pragma intrinsic: APEX function %qs must have %d scalar "
 		"parameter(s) for the %qs format.\n",
 		fn_name, rule->required_args, rule->insn_format_str);
-	return false;
+	return;
       }
 
       if (rule->insn_format == APEX_XI && num_arguments == 0)
       {
 	error ("argument 1 is not valid in \"constant\" designation");
-        return false;
+	return;
       }
 
       /* FIXME: Same behavior as CCAC, but shouldnt it we actually
@@ -640,10 +640,8 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 	error ("APEX function must return the same type as the first "
 		"parameter for the format class %s.\n",
 		rule->insn_format_str);
-	return false;
+	return;
       }
     }
   }
-
-  return true;
 }
