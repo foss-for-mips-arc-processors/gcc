@@ -143,7 +143,7 @@
 [(set_attr "type" "arith")])
 
 (define_insn "riscv_arcv_udsp_xvwmul_vv_i16mf2"
-  [(set (match_operand:SI 0 "register_operand" "=r")
+  [(set (match_operand:SI 0 "register_operand" "=&r")
 	(unspec:SI [(match_operand:HI 1 "register_operand" "%r")
 	      (match_operand:HI 2 "register_operand" "r")]
   UNSPEC_ARCV_UDSP_VWMUL_VV_I16MF2))]
