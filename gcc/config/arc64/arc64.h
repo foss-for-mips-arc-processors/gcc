@@ -473,6 +473,7 @@ extern const enum reg_class arc64_regno_to_regclass[];
 #define UNSIGNED_INT8(X) (UNSIGNED(X,8))
 #define UNSIGNED_INT9(X) (UNSIGNED(X,9))
 #define UNSIGNED_INT10(X) (UNSIGNED(X,10))
+#define UNSIGNED_INT11(X) (UNSIGNED(X,11))
 #define UNSIGNED_INT12(X) (UNSIGNED(X,12))
 #define UNSIGNED_INT16(X) (UNSIGNED(X,16))
 // TODO: Fix for 32 bit compiler host architecture.

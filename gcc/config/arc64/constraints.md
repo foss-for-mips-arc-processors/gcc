@@ -355,6 +355,12 @@
     (match_code "const_int")
     (match_test "UNSIGNED_INT10 (ival)")))
 
+(define_constraint "U11S0" "@internal
+  A 11-bit unsigned integer constant"
+  (and
+    (match_code "const_int")
+    (match_test "UNSIGNED_INT11 (ival)")))
+
 (define_constraint "U08S0" "@internal
   A 8-bit unsigned integer constant"
   (and
