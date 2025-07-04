@@ -280,6 +280,10 @@
   (and (match_code "const_int")
        (match_test "UNSIGNED_INT16 (INTVAL (op))")))
 
+(define_predicate "s12_immediate_operand"
+  (and (match_code "const_int")
+       (match_test "SIGNED_INT12 (INTVAL (op))")))
+
 (define_predicate "usigned32b_operand"
   (and (match_code "const_int")
        (match_test "INTVAL (op) > 0")
