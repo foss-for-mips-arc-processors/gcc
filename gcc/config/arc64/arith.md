@@ -757,7 +757,7 @@
 	(mult:SI
 	 (zero_extend:SI
 	  (match_operand:HI 1 "register_operand"           "%0,    r,    0,    0,    r,r"))
-	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,U12S0,U16S0,U16S0,U16S0")))]
+	 (match_operand:HI 2 "unsign_immediate_operand" "U06S0,U06S0,U11S0,U16S0,U16S0,U16S0")))]
   ""
   "@
    mpyuw%?\\t%0,%1,%2
@@ -769,6 +769,20 @@
   [(set_attr "length" "4,4,4,8,8,8")
    (set_attr "type" "mpy")
    (set_attr "predicable" "yes,no,no,yes,no,no")])
+
+(define_insn "mpyuws12"
+  [(set (match_operand:SI 0 "register_operand"            "=r")
+	(mult:SI
+	 (zero_extend:SI
+	  (match_operand:HI 1 "register_operand"           "%0"))
+	 (zero_extend:SI
+          (sign_extend:HI
+           (match_operand:HI 2 "s12_immediate_operand" "S12S0")))))]
+  ""
+  "mpyuw%?\\t%0,%1,%2"
+  [(set_attr "length" "4")
+   (set_attr "type" "mpy")
+   (set_attr "predicable" "no")])
 
 ;faulty;(define_insn "<ANY_EXTEND:su_optab>mulhisi3ize"
 ;faulty;  [(set (match_operand:DI 0 "register_operand"              "=r,    r,    r,r,r")
