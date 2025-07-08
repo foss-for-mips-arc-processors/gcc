@@ -411,6 +411,73 @@ riscv_expand_builtin_insn (enum insn_code icode, unsigned int n_ops,
   return has_target_p ? ops[0].value : const0_rtx;
 }
 
+/* Validate the immediate argument passed to an APEX intrinsic.
+
+   This function checks if the argument to the intrinsic call is a constant
+   integer and fits within the required immediate range depending on the
+   format supported by the given SUBCODE.  Only instructions that do not
+   support APEX_XD are validated here.
+
+   - For APEX_XI and APEX_XC formats: the argument must be a
+     signed 12-bit integer.
+   - For APEX_XS format: the argument must be a signed 8-bit integer.
+
+   Returns false and reports an error if the argument is invalid; true
+   otherwise.  */
+
+static bool
+arcv_apex_immediate_argument_valid_p (unsigned int subcode, tree exp)
+{
+  if (!arcv_apex_format_supports_p (subcode, APEX_XD))
+  {
+    tree arg;
+    /* Get the first (and only) argument passed to the intrinsic call.  */
+    if (arcv_apex_format_supports_p (subcode, APEX_XI))
+      arg = CALL_EXPR_ARG (exp, 0);
+    else if (arcv_apex_format_supports_p (subcode, APEX_XC)
+	     || arcv_apex_format_supports_p (subcode, APEX_XS))
+      arg = CALL_EXPR_ARG (exp, 1);
+
+    /* If the argument is NOT a constant integer.  */
+    if (!TREE_CONSTANT (arg) || TREE_CODE (arg) != INTEGER_CST)
+    {
+      error ("argument to %qs must be a constant integer",
+	     arcv_apex_builtins[subcode].name);
+      return false;
+    }
+
+    /* If the current subcode supports the APEX_XI or APEX_XC format, then
+       the operand must fit within a signed 12-bit immediate.  */
+    if (arcv_apex_format_supports_p (subcode, APEX_XI)
+	|| arcv_apex_format_supports_p (subcode, APEX_XC))
+    {
+      HOST_WIDE_INT val = tree_to_shwi (arg);
+      /* Check if the value fits within a signed 12-bit immediate.  */
+      if ((val < -2048 || val > 2047))
+      {
+	error ("argument value %d is outside the valid range [-2048, 2047]",
+		val);
+	return false;
+      }
+    }
+
+    /* If the current subcode supports the APEX_XS format, then
+      the operand must fit within a signed 8-bit immediate.  */
+    if (arcv_apex_format_supports_p (subcode, APEX_XS))
+    {
+      HOST_WIDE_INT val = tree_to_shwi (arg);
+      /* Check if the value fits within a signed 8-bit immediate.  */
+      if ((val < -128 || val > 127))
+      {
+	error ("argument value %d is outside the valid range [-128, 127]",
+		val);
+	return false;
+      }
+    }
+  }
+  return true;
+}
+
 /* Expand a RISCV_BUILTIN_DIRECT or RISCV_BUILTIN_DIRECT_NO_TARGET function;
    HAS_TARGET_P says which.  EXP is the CALL_EXPR that calls the function
    and ICODE is the code of the associated .md pattern.  TARGET, if nonnull,
@@ -434,6 +501,9 @@ riscv_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
     rtx const_rtx = GEN_INT (subcode);
     /* Add the subcode as an additional input operand to the RTL expression.  */
     create_input_operand (&ops[opno++], const_rtx, SImode);
+    /* Validate the immediate argument passed to the APEX intrinsic.  */
+    if (!arcv_apex_immediate_argument_valid_p (subcode, exp))
+      return const0_rtx;
   }
 
   /* Map the arguments to the other operands.  */
