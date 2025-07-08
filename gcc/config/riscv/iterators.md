@@ -22,6 +22,12 @@
 ;; Mode Iterators
 ;; -------------------------------------------------------------------
 
+;; These mode iterators are used by ARCV APEX to generate
+;; all valid combinations of operand types.
+(define_mode_iterator DM  [SI DI SF DF])   ;; dest
+(define_mode_iterator S0M [SI DI SF DF])   ;; src0
+(define_mode_iterator S1M [SI DI SF DF])   ;; src1
+
 ;; This mode iterator allows 32-bit and 64-bit GPR patterns to be generated
 ;; from the same template.
 (define_mode_iterator GPR [SI (DI "TARGET_64BIT")])
