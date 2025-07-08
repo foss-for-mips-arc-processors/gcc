@@ -78,6 +78,8 @@ enum apex_insn_format {
   APEX_SRC1 = 1 << 7,
 };
 
+#define APEX_ERROR 0xFFFFFFFF
+
 #endif /* ! RISCV_APEX */
 
 extern const char *riscv_expand_arch (int argc, const char **argv);
