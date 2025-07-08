@@ -32,7 +32,7 @@
 ])
 
 ;; Used by "XD" insn. format: `insn`
-(define_insn "riscv_arcv_apex_void_v"
+(define_insn "riscv_arcv_apex_void_ftype_v"
   [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xAVpXD")]
 	UNSPEC_ARCV_APEX_VOID_V)]
   ""
@@ -44,7 +44,7 @@
 )
 
 ;; Used by "XI","XD" insn. format: `insn src0`
-(define_insn "riscv_arcv_apex_void_<S0M:mode>"
+(define_insn "riscv_arcv_apex_void_ftype_<S0M:mode>"
   [(unspec_volatile [(match_operand:SI 0 "const_int_operand" "xAVpXI,xAVpXD")
 			(match_operand:S0M 1 "nonmemory_operand" "I,r")]
 	UNSPEC_ARCV_APEX_VOID_SRC0_V)]
@@ -133,7 +133,7 @@
 })
 
 ;; Used by "XD" insn. format: `insn dest` volatile
-(define_insn "riscv_arcv_apex_<DM:mode>_v"
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_v"
   [(set (match_operand:DM 0 "register_operand" "=r")
 	(unspec_volatile:DM [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
 	UNSPEC_ARCV_APEX_DEST_V))]
@@ -147,7 +147,7 @@
   [(set_attr "type" "arith")]
 )
 
-(define_expand "riscv_arcv_apex_dest_v"
+(define_expand "riscv_arcv_apex_dest_ftype_v"
   [(set (match_operand 0 "register_operand")
 	(unspec [(match_operand:SI 1 "const_int_operand")]
 	UNSPEC_ARCV_APEX_DEST_V))]
@@ -167,7 +167,7 @@
 })
 
 ;; Used by "XD" insn. format: `insn dest`
-(define_insn "riscv_arcv_apex_<DM:mode>"
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype"
   [(set (match_operand:DM 0 "register_operand" "=r")
 	(unspec:DM [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
 	UNSPEC_ARCV_APEX_DEST))]
@@ -181,7 +181,7 @@
   [(set_attr "type" "arith")]
 )
 
-(define_expand "riscv_arcv_apex_dest"
+(define_expand "riscv_arcv_apex_dest_ftype"
   [(set (match_operand 0 "register_operand")
 	(unspec [(match_operand:SI 1 "const_int_operand")]
 	UNSPEC_ARCV_APEX_DEST))]
