@@ -693,37 +693,36 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 static enum insn_code
 arcv_apex_get_icode (unsigned insn_format)
 {
-  unsigned int insn_operands = insn_format >> 4;
+  unsigned int insn_operands = insn_format >> 5;
 
-  /* Used by "XI","XD" insn. format: `insn dest, src0`  */
-  if (insn_format & (APEX_XI | APEX_XD)
-	&& insn_operands == APEX_DEST_FTYPE_SRC0)
-    return CODE_FOR_riscv_arcv_apex_dest_src0;
+  switch (insn_operands)
+  {
+    /* Used by "XD" insn. format: `insn`  */
+    case APEX_VOID_FTYPE:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_v;
 
-  /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
-  if (insn_format & (APEX_XD | APEX_XS | APEX_XC)
-	&& insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
-    return CODE_FOR_riscv_arcv_apex_dest_src0_src1;
+    /* Used by "XI","XD" insn. format: `insn src0`  */
+    case APEX_VOID_FTYPE_SRC0:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_v;
 
-  /* Used by "XS","XD" insn. format: `insn src0, src1`  */
-  if (insn_format & (APEX_XD | APEX_XS)
-	&& insn_operands == APEX_VOID_FTYPE_SRC0_SRC1)
-    return CODE_FOR_riscv_arcv_apex_void_src0_src1;
+    /* Used by "XS","XD" insn. format: `insn src0, src1`  */
+    case APEX_VOID_FTYPE_SRC0_SRC1:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_src1_v;
 
-  /* Used by "XI","XD" insn. format: `insn src0`  */
-  if (insn_format & (APEX_XI | APEX_XD)
-	&& insn_operands == APEX_VOID_FTYPE_SRC0)
-    return CODE_FOR_riscv_arcv_apex_void_src0;
+    /* Used by "XD" insn. format: `insn dest`  */
+    case APEX_DEST_FTYPE:
+     return CODE_FOR_riscv_arcv_apex_dest_ftype;
 
-  /* Used by "XD" insn. format: `insn`  */
-  if (insn_format & APEX_XD
-	&& insn_operands == APEX_VOID_FTYPE)
-    return CODE_FOR_riscv_arcv_apex_void;
+    /* Used by "XI","XD" insn. format: `insn dest, src0`  */
+    case APEX_DEST_FTYPE_SRC0:
+      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
 
-  /* Used by "XD" insn. format: `insn dest`  */
-  if (insn_format & APEX_XD
-	&& insn_operands == APEX_DEST_FTYPE)
-    return CODE_FOR_riscv_arcv_apex_dest;
+    /* Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`  */
+    case APEX_DEST_FTYPE_SRC0_SRC1:
+      return CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
 
-  /* If none is returned, the default is "CODE_FOR_nothing".  */
+    default:
+      /* If none is selected, the default is "CODE_FOR_nothing".  */
+      return CODE_FOR_nothing;
+   }
 }
