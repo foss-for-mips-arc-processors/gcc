@@ -253,6 +253,8 @@ struct arcv_apex_builtin_description {
   /* Specifies the instruction format.  See "apex_insn_format" enum
     for more details.  */
   unsigned int insn_formats;
+
+  const char *insn_suffix;
 };
 
 /* The XD-type has 8 function bits encoding up to 256 instructions.
@@ -596,6 +598,13 @@ arcv_apex_get_insn_name (rtx op)
   return arcv_apex_builtins[subcode].insn_name;
 }
 
+const char*
+arcv_apex_get_insn_suffix (rtx op)
+{
+  unsigned int subcode = UINTVAL (op);
+  return arcv_apex_builtins[subcode].insn_suffix;
+}
+
 /* Checks if the APEX builtin instruction identified by the subcode
    supports the given instruction format.
 
@@ -885,17 +894,21 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
   if (insn_formats == APEX_ERROR)
     return;
 
+
+  unsigned int tmp = insn_formats;
   /* Resolve the instruction format:
      If the user did not specify an instruction format at pragma level,
      infer the concrete format based on opcode and operand flags; otherwise,
      leave it as is.  */
   insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
 
+  const char *insn_suffix = (tmp != insn_formats) ? "i" : "";
+
   /* Validate the format is allowed for this instruction.  */
   arcv_apex_validate_insn_format (fn_name, insn_formats, opcode);
 
   /* Print .extInstruction section about APEX instruction.  */
-  arcv_apex_print_insn_section (insn_name, opcode, insn_formats);
+  arcv_apex_print_insn_section (insn_name, insn_suffix, opcode, insn_formats);
 
   /* Determine the internal instruction code (icode).  */
   enum insn_code icode = arcv_apex_get_icode (insn_formats);
@@ -907,7 +920,7 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 
   /* Store APEX insn information.  */
   arcv_apex_builtins[arcv_apex_builtin_index]
-	= { icode, fn_name, insn_name, builtin_type, insn_formats };
+    = { icode, fn_name, insn_name, builtin_type, insn_formats, insn_suffix };
 
   /* Modify the prototype type as built-in.  */
   fndecl->function_decl.built_in_class = BUILT_IN_MD;
