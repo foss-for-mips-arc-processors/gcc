@@ -24,8 +24,11 @@
   UNSPEC_ARCV_APEX_VOID_SRC0_V
   UNSPEC_ARCV_APEX_VOID_SRC0_SRC1_V
   UNSPEC_ARCV_APEX_DEST
+  UNSPEC_ARCV_APEX_DEST_V
   UNSPEC_ARCV_APEX_DEST_SRC0
+  UNSPEC_ARCV_APEX_DEST_SRC0_V
   UNSPEC_ARCV_APEX_DEST_SRC0_SRC1
+  UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V
 ])
 
 ;; Used by "XD" insn. format: `insn`
@@ -41,9 +44,9 @@
 )
 
 ;; Used by "XI","XD" insn. format: `insn src0`
-(define_insn "riscv_arcv_apex_void_ftype_src0"
-  [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xAVpXI,xAVpXD")
-			(match_operand:SI 1 "nonmemory_operand" "I,r")]
+(define_insn "riscv_arcv_apex_void_ftype_<S0M:mode>"
+  [(unspec_volatile [(match_operand:SI 0 "const_int_operand" "xAVpXI,xAVpXD")
+			(match_operand:S0M 1 "nonmemory_operand" "I,r")]
 	UNSPEC_ARCV_APEX_VOID_SRC0_V)]
   ""
 {
@@ -63,11 +66,30 @@
   [(set_attr "type" "arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_void_ftype_src0_v"
+  [(unspec_volatile [(match_operand:SI 0 "const_int_operand")
+    (match_operand 1 "nonmemory_operand")]
+	UNSPEC_ARCV_APEX_VOID_SRC0_V)]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_UNSPEC_VOLATILE (VOIDmode,
+                                 gen_rtvec (2, operands[0],
+                                               operands[1]),
+                                 UNSPEC_ARCV_APEX_VOID_SRC0_V));
+  DONE;
+})
+
 ;; Used by "XS","XD" insn. format: `insn src0, src1`
-(define_insn "riscv_arcv_apex_void_ftype_src0_src1"
-  [(unspec_volatile:SI [(match_operand:SI 0 "const_int_operand" "xAVpXS,xAVpXD")
-			(match_operand:SI 1 "register_operand" "r,r")
-			(match_operand:SI 2 "nonmemory_operand" "B8,r")]
+(define_insn "riscv_arcv_apex_void_ftype_<S0M:mode>_<S1M:mode>_v"
+  [(unspec_volatile [(match_operand:SI 0 "const_int_operand" "xAVpXS,xAVpXD")
+			(match_operand:S0M 1 "register_operand" "r,r")
+			(match_operand:S1M 2 "nonmemory_operand" "B8,r")]
 	UNSPEC_ARCV_APEX_VOID_SRC0_SRC1_V)]
   ""
 {
@@ -89,11 +111,32 @@
   [(set_attr "type" "arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_void_ftype_src0_src1_v"
+  [(unspec_volatile [(match_operand:SI 0 "const_int_operand")
+    (match_operand 1 "register_operand")
+    (match_operand 2 "nonmemory_operand")]
+	UNSPEC_ARCV_APEX_VOID_SRC0_SRC1_V)]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_UNSPEC_VOLATILE (VOIDmode,
+                                 gen_rtvec (3, operands[0],
+                                               operands[1],
+                                               operands[2]),
+                                 UNSPEC_ARCV_APEX_VOID_SRC0_SRC1_V));
+  DONE;
+})
+
 ;; Used by "XD" insn. format: `insn dest` volatile
-(define_insn "riscv_arcv_apex_dest_volatile"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
-	UNSPEC_ARCV_APEX_DEST))]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_v"
+  [(set (match_operand:DM 0 "register_operand" "=r")
+	(unspec_volatile:DM [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
+	UNSPEC_ARCV_APEX_DEST_V))]
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
@@ -104,10 +147,29 @@
   [(set_attr "type" "arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype_v"
+  [(set (match_operand 0 "register_operand")
+	(unspec [(match_operand:SI 1 "const_int_operand")]
+	UNSPEC_ARCV_APEX_DEST_V))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC_VOLATILE (GET_MODE (operands[0]),
+                                 gen_rtvec (1, operands[1]),
+                                 UNSPEC_ARCV_APEX_DEST_V)));
+  DONE;
+})
+
 ;; Used by "XD" insn. format: `insn dest`
-(define_insn "riscv_arcv_apex_dest_ftype"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(unspec:SI [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype"
+  [(set (match_operand:DM 0 "register_operand" "=r")
+	(unspec:DM [(match_operand:SI 1 "const_int_operand" "xAVpXD")]
 	UNSPEC_ARCV_APEX_DEST))]
   ""
 {
@@ -119,12 +181,31 @@
   [(set_attr "type" "arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype"
+  [(set (match_operand 0 "register_operand")
+	(unspec [(match_operand:SI 1 "const_int_operand")]
+	UNSPEC_ARCV_APEX_DEST))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC (GET_MODE (operands[0]),
+                                 gen_rtvec (1, operands[1]),
+                                 UNSPEC_ARCV_APEX_DEST)));
+  DONE;
+})
+
 ;; Used by "XI","XD" insn. format: `insn dest, src0` volatile
-(define_insn "riscv_arcv_apex_dest_src0_volatile"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXI,xAVpXD")
-		    (match_operand:SI 2 "nonmemory_operand" "I,r")]
-	UNSPEC_ARCV_APEX_DEST_SRC0))]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_<S0M:mode>_v"
+  [(set (match_operand:DM 0 "register_operand" "=r,r")
+	(unspec_volatile:DM [(match_operand:SI 1 "const_int_operand" "xAVpXI,xAVpXD")
+		    (match_operand:S0M 2 "nonmemory_operand" "I,r")]
+	UNSPEC_ARCV_APEX_DEST_SRC0_V))]
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
@@ -145,11 +226,32 @@
   [(set_attr "type" "arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype_src0_v"
+  [(set (match_operand 0 "register_operand")
+	(unspec_volatile [(match_operand:SI 1 "const_int_operand")
+		    (match_operand 2 "nonmemory_operand")]
+	UNSPEC_ARCV_APEX_DEST_SRC0_V))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC_VOLATILE (GET_MODE (operands[0]),
+                                 gen_rtvec (2, operands[1],
+                                               operands[2]),
+                                 UNSPEC_ARCV_APEX_DEST_SRC0_V)));
+  DONE;
+})
+
 ;; Used by "XI","XD" insn. format: `insn dest, src0`
-(define_insn "riscv_arcv_apex_dest_ftype_src0"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:SI 1 "const_int_operand" "xAVpXI,xAVpXD")
-		    (match_operand:SI 2 "nonmemory_operand" "I,r")]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_<S0M:mode>"
+  [(set (match_operand:DM 0 "register_operand" "=r,r")
+	(unspec:DM [(match_operand:SI 1 "const_int_operand" "xAVpXI,xAVpXD")
+		    (match_operand:S0M 2 "nonmemory_operand" "I,r")]
 	UNSPEC_ARCV_APEX_DEST_SRC0))]
   ""
 {
@@ -171,13 +273,34 @@
   [(set_attr "type" "arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype_src0"
+  [(set (match_operand 0 "register_operand")
+        (unspec [(match_operand:SI 1 "const_int_operand")
+                 (match_operand 2 "nonmemory_operand")]
+                UNSPEC_ARCV_APEX_DEST_SRC0))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC (GET_MODE (operands[0]),
+                                 gen_rtvec (2, operands[1],
+                                               operands[2]),
+                                 UNSPEC_ARCV_APEX_DEST_SRC0)));
+  DONE;
+})
+
 ;; Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1` volatile
-(define_insn "riscv_arcv_apex_dest_src0_src1_volatile"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-	(unspec_volatile:SI [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
-		    (match_operand:SI 2 "register_operand" "r,0,r")
-		    (match_operand:SI 3 "nonmemory_operand" "B8,I,r")]
-	UNSPEC_ARCV_APEX_DEST_SRC0_SRC1))]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_<S0M:mode>_<S1M:mode>_v"
+  [(set (match_operand:DM 0 "register_operand" "=r,r,r")
+	(unspec_volatile:DM [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
+		    (match_operand:S0M 2 "register_operand" "r,0,r")
+		    (match_operand:S1M 3 "nonmemory_operand" "B8,I,r")]
+	UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V))]
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
@@ -205,12 +328,35 @@
   [(set_attr "type" "arith,arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype_src0_src1_v"
+  [(set (match_operand 0 "register_operand")
+        (unspec [(match_operand:SI 1 "const_int_operand")
+                 (match_operand 2 "register_operand")
+                 (match_operand 3 "nonmemory_operand")]
+                UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC_VOLATILE (GET_MODE (operands[0]),
+                                 gen_rtvec (3, operands[1],
+                                               operands[2],
+                                               operands[3]),
+                                 UNSPEC_ARCV_APEX_DEST_SRC0_SRC1_V)));
+  DONE;
+})
+
 ;; Used by "XS","XC","XD" insn. format: `insn dest, src0, imm/src1`
-(define_insn "riscv_arcv_apex_dest_ftype_src0_src1"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-	(unspec:SI [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
-		    (match_operand:SI 2 "register_operand" "r,0,r")
-		    (match_operand:SI 3 "nonmemory_operand" "B8,I,r")]
+(define_insn "riscv_arcv_apex_<DM:mode>_ftype_<S0M:mode>_<S1M:mode>"
+  [(set (match_operand:DM 0 "register_operand" "=r,r,r")
+	(unspec:DM [(match_operand:SI 1 "const_int_operand" "xAVpXS,xAVpXC,xAVpXD")
+		    (match_operand:S0M 2 "register_operand" "r,0,r")
+		    (match_operand:S1M 3 "nonmemory_operand" "B8,I,r")]
 	UNSPEC_ARCV_APEX_DEST_SRC0_SRC1))]
   ""
 {
@@ -239,3 +385,25 @@
   [(set_attr "type" "arith,arith,arith")]
 )
 
+(define_expand "riscv_arcv_apex_dest_ftype_src0_src1"
+  [(set (match_operand 0 "register_operand")
+        (unspec [(match_operand:SI 1 "const_int_operand")
+                 (match_operand 2 "register_operand")
+                 (match_operand 3 "nonmemory_operand")]
+                UNSPEC_ARCV_APEX_DEST_SRC0_SRC1))]
+  ""
+{
+  /* Build the SET exactly as it appears above, but with the
+     real RTX objects.  Every operand already carries its mode,
+     so nothing needs to be guessed.  The UNSPEC code is
+     essential as it tags this RTL with a unique ID, so the
+     recognizer can match it to the correct mode-specific
+     define_insn  */
+  emit_insn (gen_rtx_SET (operands[0],
+                 gen_rtx_UNSPEC (GET_MODE (operands[0]),
+                                 gen_rtvec (3, operands[1],
+                                               operands[2],
+                                               operands[3]),
+                                 UNSPEC_ARCV_APEX_DEST_SRC0_SRC1)));
+  DONE;
+})
