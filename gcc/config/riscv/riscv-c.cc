@@ -139,11 +139,11 @@ arcv_apex_valid_identifier_p (const char *s)
   if (!s || !s[0])
     return false;
 
-  if (!ISALPHA (s[0]))
+  if (!(ISALPHA (s[0]) || s[0] == '_'))
     return false;
 
   for (const char *p = s + 1; *p; ++p)
-    if (!ISALNUM (*p))
+    if (!ISALNUM (*p) && *p != '_')
       return false;
 
   return true;
