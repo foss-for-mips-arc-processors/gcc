@@ -267,6 +267,10 @@ struct arcv_apex_builtin_description {
   /* Specifies the instruction format.  See "apex_insn_format" enum
     for more details.  */
   unsigned int insn_formats;
+
+  /* Suffix added to the instruction name when the format is resolved
+      (e.g., XS, XI, or XC); set to "i" if resolved, otherwise "".  */
+  const char *insn_suffix;
 };
 
 /* The XD-type has 8 function bits encoding up to 256 instructions.
@@ -627,6 +631,18 @@ arcv_apex_get_insn_name (rtx op)
   return arcv_apex_builtins[subcode].insn_name;
 }
 
+/* Return the instruction suffix for an APEX subcode operand.
+
+   This suffix is used to mark instructions whose format was resolved
+   (e.g., XS, XI, or XC) rather than explicitly specified via pragma.  */
+
+const char*
+arcv_apex_get_insn_suffix (rtx op)
+{
+  unsigned int subcode = UINTVAL (op);
+  return arcv_apex_builtins[subcode].insn_suffix;
+}
+
 /* Checks if the APEX builtin instruction identified by the subcode
    supports the given instruction format.
 
@@ -745,10 +761,6 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
 static unsigned int
 arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
 {
-  /* Return early if a instruction format was defined by the used.  */
-  if ((insn_format & 0xF) != APEX_NONE)
-    return insn_format;
-
   /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
   unsigned int insn_operands = insn_format >> 5;
@@ -962,15 +974,21 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 
   /* Resolve the instruction format:
      If the user did not specify an instruction format at pragma level,
-     infer the concrete format based on opcode and operand flags; otherwise,
-     leave it as is.  */
-  insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
+     infer the concrete format based on opcode and operand flags.  Mark
+     the insn. name with an "i" suffix for resolved XS/XI/XC formats;
+     otherwise, leave it as is.  */
+  const char *insn_suffix = "";
+  if ((insn_formats & 0xF) == APEX_NONE)
+  {
+    insn_formats = arcv_apex_resolve_insn_format (insn_formats, opcode);
+    insn_suffix = "i";
+  }
 
   /* Validate the format is allowed for this instruction.  */
   arcv_apex_validate_insn_format (fn_name, insn_formats, opcode);
 
   /* Print .extInstruction section about APEX instruction.  */
-  arcv_apex_print_insn_section (insn_name, opcode, insn_formats);
+  arcv_apex_print_insn_section (insn_name, insn_suffix, opcode, insn_formats);
 
   /* Determine the internal instruction code (icode).  */
   enum insn_code icode = arcv_apex_get_icode (insn_formats);
@@ -982,7 +1000,7 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 
   /* Store APEX insn information.  */
   arcv_apex_builtins[arcv_apex_builtin_index]
-	= { icode, fn_name, insn_name, builtin_type, insn_formats };
+    = { icode, fn_name, insn_name, builtin_type, insn_formats, insn_suffix };
 
   /* Modify the prototype type as built-in.  */
   fndecl->function_decl.built_in_class = BUILT_IN_MD;

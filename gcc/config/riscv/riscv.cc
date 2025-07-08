@@ -12153,8 +12153,8 @@ riscv_asm_output_variant_cc (FILE *stream, const tree decl, const char *name)
   and source1.  */
 
 void
-arcv_apex_print_insn_section (const char *insn_name, int opcode,
-			      unsigned int insn_format)
+arcv_apex_print_insn_section (const char *insn_name, const char *insn_suffix,
+			      int opcode, unsigned int insn_format)
 {
   /* Extract the operand flags (DEST, SRC0, SRC1) from bits 5–7.
      These bits encode the operand signature used for format selection.  */
@@ -12178,7 +12178,8 @@ arcv_apex_print_insn_section (const char *insn_name, int opcode,
   if ((insn_format & (APEX_XS | APEX_XC))
 	&& (insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
   {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d", insn_name, opcode);
+    fprintf (asm_out_file, "\t.extInstruction %s%s,%d",
+	     insn_name, insn_suffix, opcode);
     if (insn_format & APEX_XS)
       fputs (",XS", asm_out_file);
     if (insn_format & APEX_XC)
@@ -12189,7 +12190,8 @@ arcv_apex_print_insn_section (const char *insn_name, int opcode,
   /* Print XI format with dest, src0 operands; append ",void" if no dest.  */
   if (insn_format & APEX_XI)
   {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d,XI", insn_name, opcode);
+    fprintf (asm_out_file, "\t.extInstruction %s%s,%d,XI",
+	     insn_name, insn_suffix, opcode);
     if ((insn_format & APEX_DEST) == 0)
       fputs (",void", asm_out_file);
     fputc ('\n', asm_out_file);
@@ -12199,8 +12201,8 @@ arcv_apex_print_insn_section (const char *insn_name, int opcode,
   if ((insn_format & APEX_XS)
 	&& (insn_operands == APEX_VOID_FTYPE_SRC0_SRC1))
   {
-    fprintf (asm_out_file, "\t.extInstruction %si,%d,XS,void\n",
-			insn_name, opcode);
+    fprintf (asm_out_file, "\t.extInstruction %s%s,%d,XS,void\n",
+			insn_name, insn_suffix, opcode);
   }
 }
 

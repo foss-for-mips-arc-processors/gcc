@@ -51,11 +51,13 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[0]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[0]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%d # 'XI' `insn src0` volatile",
+      return xasprintf ("%s%s\t%d # 'XI' `insn src0` volatile",
 			str,
+			suffix,
 			(int) INTVAL (operands[1]));
     case 1:
       return xasprintf ("%s\t%s # 'XD' `insn src0` volatile",
@@ -96,11 +98,13 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[0]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[0]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%d # 'XS' `insn src0, src1` volatile",
+      return xasprintf ("%s%s\t%s,%d # 'XS' `insn src0, src1` volatile",
 			str,
+			suffix,
 			reg_names[REGNO (operands[1])],
 			(int) INTVAL (operands[2]));
     case 1:
@@ -213,11 +217,13 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%d # 'XI' `insn des, src0` volatile",
+      return xasprintf ("%s%s\t%s,%d # 'XI' `insn des, src0` volatile",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			(int) INTVAL (operands[2]));
     case 1:
@@ -262,11 +268,13 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%d # 'XI' `insn des, src0`",
+      return xasprintf ("%s%s\t%s,%d # 'XI' `insn des, src0`",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			(int) INTVAL (operands[2]));
     case 1:
@@ -312,17 +320,20 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%s,%d # 'XS' `insn dest, src0, imm/src1` volatile",
+      return xasprintf ("%s%s\t%s,%s,%d # 'XS' `insn dest, src0, imm/src1` volatile",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
 			(int) INTVAL (operands[3]));
     case 1:
-      return xasprintf ("%si\t%s,%s,%d # 'XC' `insn dest/src0, imm` volatile",
+      return xasprintf ("%s%s\t%s,%s,%d # 'XC' `insn dest/src0, imm` volatile",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
 			(int) INTVAL (operands[3]));
@@ -372,17 +383,20 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%s,%d # 'XS' `insn dest, src0, imm/src1`",
+      return xasprintf ("%s%s\t%s,%s,%d # 'XS' `insn dest, src0, imm/src1`",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
 			(int) INTVAL (operands[3]));
     case 1:
-      return xasprintf ("%si\t%s,%s,%d # 'XC' `insn dest/src0, imm`",
+      return xasprintf ("%s%s\t%s,%s,%d # 'XC' `insn dest/src0, imm`",
 			str,
+			suffix,
 			reg_names[REGNO (operands[0])],
 			reg_names[REGNO (operands[2])],
 			(int) INTVAL (operands[3]));
