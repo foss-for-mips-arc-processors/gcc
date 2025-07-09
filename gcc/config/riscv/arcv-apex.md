@@ -131,7 +131,7 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%d ; 'XD' `insn des, src0` volatile",
+      return xasprintf ("%si\t%s,%d ; 'XI' `insn des, src0` volatile",
 			str,
 			reg_names[REGNO (operands[0])],
 			INTVAL (operands[2]));
@@ -157,7 +157,7 @@
   switch (which_alternative)
   {
     case 0:
-      return xasprintf ("%si\t%s,%d ; 'XD' `insn des, src0`",
+      return xasprintf ("%si\t%s,%d ; 'XI' `insn des, src0`",
 			str,
 			reg_names[REGNO (operands[0])],
 			INTVAL (operands[2]));
