@@ -51,7 +51,7 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[0]);
-  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[0]);
   switch (which_alternative)
   {
     case 0:
@@ -96,7 +96,7 @@
   ""
 {
   const char *str = arcv_apex_get_insn_name (operands[0]);
-  const char *suffix = arcv_apex_get_insn_suffix (operands[1]);
+  const char *suffix = arcv_apex_get_insn_suffix (operands[0]);
   switch (which_alternative)
   {
     case 0:
