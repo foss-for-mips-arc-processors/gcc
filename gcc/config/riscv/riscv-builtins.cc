@@ -424,7 +424,7 @@ arcv_apex_immediate_argument_valid_p (unsigned int subcode, tree exp)
     /* If the current subcode supports the APEX_XI or APEX_XC format, then
        the operand must fit within a signed 12-bit immediate.  */
     if (arcv_apex_format_supports_p (subcode, APEX_XI)
-	&& arcv_apex_format_supports_p (subcode, APEX_XC))
+	|| arcv_apex_format_supports_p (subcode, APEX_XC))
     {
       HOST_WIDE_INT val = tree_to_shwi (arg);
       /* Check if the value fits within a signed 12-bit immediate.  */
