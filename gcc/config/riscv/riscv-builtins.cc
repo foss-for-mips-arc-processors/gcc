@@ -749,11 +749,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
 				unsigned opcode)
 {
   /* If the instruction format is APEX_NONE, report an error.  */
-  if (insn_format == APEX_NONE)
-  {
-    error ("APEX instruction not valid.\n");
-    return;
-  }
+  gcc_assert (insn_format != APEX_NONE);
 
   bool has_dest = (insn_format & APEX_DEST) >> 5;
   int num_arguments = ((insn_format & APEX_SRC0) >> 6)
@@ -762,52 +758,48 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
   /* Iterate over each rule in the rules array.  */
   for (int i = 0; i < sizeof (rules)/sizeof (rules[0]); ++i)
   {
-    /* If the instruction format matches the rule's insn_format.  */
-    if (insn_format & rules[i].insn_format)
-    {
-      const struct format_rule *rule = &rules[i];
+    /* If the instruction format does not matche the
+       rule's insn_format, skip to the next rule.  */
+    if (!(insn_format & rules[i].insn_format))
+      continue;
 
-      /* If the instruction format does not match the rule's insn_format,
-	 skip to the next rule.  */
-      if (!(insn_format & rule->insn_format))
-	continue;
+    const struct format_rule *rule = &rules[i];
 
-      /* Check if the opcode exceeds the rule's maximum
+    /* Check if the opcode exceeds the rule's maximum
 	 allowed opcode.  */
-      if (opcode > rule->max_opcode)
-      {
-	error ("pragma intrinsic: APEX opcode value %qd must be an integer "
+    if (opcode > rule->max_opcode)
+    {
+      error ("pragma intrinsic: APEX opcode value %qd must be an integer "
 		"constant in the range 0 to 0x%x, inclusive.",
 		opcode, rule->max_opcode);
-	return;
-      }
+      return;
+    }
 
-      /* Check if the number of operands matches the rule's required
+    /* Check if the number of operands matches the rule's required
 	 operand count.  */
-      if (rule->insn_format != APEX_XD
-	  && num_arguments != rule->required_args)
-      {
-	error ("pragma intrinsic: APEX function %qs must have %d scalar "
+    if (rule->insn_format != APEX_XD
+	&& num_arguments != rule->required_args)
+    {
+      error ("pragma intrinsic: APEX function %qs must have %d scalar "
 		"parameter(s) for the %qs format class",
 		fn_name, rule->required_args, rule->insn_format_str);
-	return;
-      }
+      return;
+    }
 
-      if (rule->insn_format == APEX_XI && num_arguments == 0)
-      {
-	error ("argument 1 is not valid in \"constant\" designation");
-	return;
-      }
+    if (rule->insn_format == APEX_XI && num_arguments == 0)
+    {
+      error ("argument 1 is not valid in \"constant\" designation");
+      return;
+    }
 
-      /* FIXME: Same behavior as CCAC, but shouldnt it we actually
+    /* FIXME: Same behavior as CCAC, but shouldnt it we actually
 	 validate both datatypes? */
-      if (rule->insn_format == APEX_XC && has_dest != rule->required_dest)
-      {
-	error ("pragma intrinsic: APEX function %qs must return the same "
+    if (rule->insn_format == APEX_XC && has_dest != rule->required_dest)
+    {
+      error ("pragma intrinsic: APEX function %qs must return the same "
 		"type as the first parameter for the %qs format class",
 		fn_name, rule->insn_format_str);
-	return;
-      }
+      return;
     }
   }
 }
