@@ -682,9 +682,9 @@ arcv_apex_resolve_insn_format (unsigned int insn_format, unsigned int opcode)
      These bits encode the operand signature used for format selection.  */
   unsigned int insn_operands = insn_format >> 5;
 
-  /* Assign the most general format APEX_XD if opcode permits.  */
-  if (opcode <= APEX_OP_MAX_XD) /* Any operands allowed.  */
-    insn_format |= APEX_XD;
+  /* Assign the most general format APEX_XD.  If opcode does not permit,
+     it will report an error at "arcv_apex_validate_insn_format".  */
+  insn_format |= APEX_XD; /* Any operands allowed.  */
 
   /* Assign APEX_XS format for two source operands patterns.  */
   if (opcode <= APEX_OP_MAX_XS
