@@ -187,7 +187,7 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
 
   /* Parse the instruction name string, e.g., "add", "mul".  */
   token = pragma_lex (&x);
-  const char *insn_name_raw;
+  const char *insn_name_raw = "";
   switch (token)
   {
     case CPP_STRING:
@@ -201,7 +201,8 @@ arcv_apex_pragma_intrinsic (cpp_reader *)
   }
 
   /* Reject instruction names that do not follow APEX identifier rules.  */
-  if (!arcv_apex_valid_identifier_p (insn_name_raw))
+  if (insn_name_raw[0] != '\0'
+      && !arcv_apex_valid_identifier_p (insn_name_raw))
   {
     error ("pragma intrinsic: APEX name %qs is not lexically valid",
 	    insn_name_raw);
