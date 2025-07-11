@@ -384,10 +384,11 @@
 			reg_names[REGNO (operands[2])],
 			INTVAL (operands[3]));
     case 1:
-      return xasprintf ("%s%s\t%s,%d ; 'XC' `insn dest/src0, imm`",
+      return xasprintf ("%s%s\t%s,%s,%d ; 'XC' `insn dest/src0, imm`",
 			str,
 			suffix,
 			reg_names[REGNO (operands[0])],
+			reg_names[REGNO (operands[2])],
 			INTVAL (operands[3]));
     case 2:
       return xasprintf ("%s\t%s,%s,%s ; 'XD' `insn dest, src0, imm/src1`",
