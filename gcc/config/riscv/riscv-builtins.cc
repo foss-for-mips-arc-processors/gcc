@@ -825,7 +825,7 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
     if (opcode > rule->max_opcode)
     {
       error ("pragma intrinsic: APEX opcode value %qd must be an integer "
-		"constant in the range 0 to 0x%x, inclusive.",
+		"constant in the range 0 to 0x%x, inclusive",
 		opcode, rule->max_opcode);
       return;
     }
