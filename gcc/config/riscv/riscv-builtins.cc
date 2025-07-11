@@ -636,8 +636,12 @@ static unsigned int
 arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
 {
   /* Set DEST flag if the function does not return void.  */
-  if (TREE_TYPE (TREE_TYPE (fndecl)) != void_type_node)
+  tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
+  if (return_type != void_type_node)
     insn_format |= APEX_DEST;
+
+  // Return type
+  enum tree_code return_code = TREE_CODE(return_type);
 
   /* Count non‑void parameters, aborting if there are more than two.  */
   unsigned int nargs = 0;
@@ -650,6 +654,44 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
       warning (0, "pragma intrinsic: Associated function can have "
         "no more than 2 parameters");
       return 0xFFFFFFFF;
+    }
+
+    /* Only perform size checks on 32-bit architectures. */
+    if (POINTER_SIZE != 32)
+      continue;
+
+    /* We want to check the size of the value represented by the argument.
+       - If it's a pointer, we check the size of the pointed-to type.
+       - If it's a scalar or aggregate type, we check its own size. */
+    tree argtype = TREE_VALUE (arg);
+    tree type_to_check = argtype;
+    if (TREE_CODE (argtype) == POINTER_TYPE)
+    {
+      /* If the return type is void, than there is no need to check
+	 the size of the argument.  */
+      if (return_type == void_type_node)
+	continue;
+      type_to_check = TREE_TYPE (argtype);
+    }
+
+    /* If TYPE_SIZE_UNIT exists and represents a constant integer value,
+       retrieve its size in bytes as a HOST_WIDE_INT. */
+    if (TYPE_SIZE_UNIT (type_to_check)
+	&& tree_fits_uhwi_p (TYPE_SIZE_UNIT (type_to_check)))
+    {
+      HOST_WIDE_INT bytes = tree_to_uhwi (TYPE_SIZE_UNIT (type_to_check));
+
+      /* If the type’s size is greater than 4 bytes, emit an error.
+	 This applies to both pointed-to types and scalar types
+	 larger than 4 bytes.  */
+      if (bytes > 4)
+      {
+	const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+	error ("pragma intrinsic: APEX function %qs must return "
+		"void or a scalar type that does not exceed 4 bytes",
+		fn_name);
+	return 0xFFFFFFFF;
+      }
     }
   }
 
