@@ -834,6 +834,24 @@ arcv_apex_validate_insn_format (const char* fn_name, unsigned int insn_format,
   /* If the instruction format is APEX_NONE, report an error.  */
   gcc_assert (insn_format != APEX_NONE);
 
+  /* Check for opcode duplication:
+     Emit an error if a previously registered APEX instruction has both:
+     - At least one matching insn format bit (among XD, XS, XI, XC).
+     - The same opcode value.
+
+     This prevents defining two intrinsics with overlapping formats
+     that would conflict in opcode decoding.  */
+  for (int i = 0; i < arcv_apex_builtin_index; i++)
+  {
+    if ((arcv_apex_builtins[i].insn_formats & 0xF) & insn_format
+      && arcv_apex_builtins[i].opcode == opcode)
+    {
+      error ("pragma intrinsic: this specification defines an "
+		"opcode that duplicates a previous one", fn_name, opcode);
+      return;
+    }
+  }
+
   bool has_dest = (insn_format & APEX_DEST) >> 5;
   unsigned int num_arguments = ((insn_format & APEX_SRC0) >> 6)
 			+ ((insn_format & APEX_SRC1) >> 7);
@@ -1000,7 +1018,8 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 
   /* Store APEX insn information.  */
   arcv_apex_builtins[arcv_apex_builtin_index]
-    = { icode, fn_name, insn_name, builtin_type, insn_formats, insn_suffix };
+    = { icode, fn_name, insn_name, opcode,
+	builtin_type, insn_formats, insn_suffix };
 
   /* Modify the prototype type as built-in.  */
   fndecl->function_decl.built_in_class = BUILT_IN_MD;
