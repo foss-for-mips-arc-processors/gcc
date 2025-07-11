@@ -667,32 +667,45 @@ arcv_apex_set_insn_operand_flags (unsigned int insn_format, tree fndecl)
     tree type_to_check = argtype;
     if (TREE_CODE (argtype) == POINTER_TYPE)
     {
-      /* If the return type is void, than there is no need to check
-	 the size of the argument.  */
+      /* Skip size check if return type is void. */
       if (return_type == void_type_node)
 	continue;
+
       type_to_check = TREE_TYPE (argtype);
     }
+    else
+      type_to_check = argtype;
 
     /* If TYPE_SIZE_UNIT exists and represents a constant integer value,
        retrieve its size in bytes as a HOST_WIDE_INT. */
-    if (TYPE_SIZE_UNIT (type_to_check)
-	&& tree_fits_uhwi_p (TYPE_SIZE_UNIT (type_to_check)))
-    {
-      HOST_WIDE_INT bytes = tree_to_uhwi (TYPE_SIZE_UNIT (type_to_check));
+    if (! (TYPE_SIZE_UNIT (type_to_check)
+	&& tree_fits_uhwi_p (TYPE_SIZE_UNIT (type_to_check))))
+      continue;
 
-      /* If the type’s size is greater than 4 bytes, emit an error.
-	 This applies to both pointed-to types and scalar types
-	 larger than 4 bytes.  */
-      if (bytes > 4)
-      {
-	const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
-	error ("pragma intrinsic: APEX function %qs must return "
+    HOST_WIDE_INT bytes = tree_to_uhwi (TYPE_SIZE_UNIT (type_to_check));
+
+    /* If the type’s size is greater than 4 bytes, emit an error.
+       This applies to both pointed-to types and scalar types
+       larger than 4 bytes.  */
+    if (bytes <= 4)
+      continue;
+
+    const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+    if (TREE_CODE (argtype) == POINTER_TYPE)
+    {
+      /* Specific error for pointer parameters when return type is not void. */
+      error ("pragma intrinsic: APEX function %qs must return "
 		"void or a scalar type that does not exceed 4 bytes",
 		fn_name);
-	return 0xFFFFFFFF;
-      }
     }
+    else
+    {
+      /* General error for large or non-scalar parameter types. */
+      error ("pragma intrinsic: APEX function %qs contains a parameter "
+		"of a non-scalar type, or one that exceeds 4 bytes",
+		fn_name);
+    }
+    return 0xFFFFFFFF;
   }
 
   /* Source‑operand flags.  */
