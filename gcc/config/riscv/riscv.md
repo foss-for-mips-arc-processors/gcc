@@ -3052,6 +3052,7 @@
 ;; * Single-bit extraction (SFB)
 ;; * Extraction instruction th.ext(u) (XTheadBb)
 ;; * lshrsi3_extend_2 (see above)
+;; * Zero extraction fusion (ARC-V)
 (define_insn_and_split "*<any_extract:optab><GPR:mode>3"
   [(set (match_operand:GPR 0 "register_operand" "=r")
 	 (any_extract:GPR
@@ -3063,6 +3064,8 @@
       || TARGET_XVENTANACONDOPS || TARGET_SFB_ALU)
      && (INTVAL (operands[2]) == 1))
    && !TARGET_XTHEADBB
+   && !(arcv_micro_arch_supports_fusion_p ()
+        && <any_extract:is_zero_extract>)
    && !(TARGET_64BIT
         && (INTVAL (operands[3]) > 0)
         && (INTVAL (operands[2]) + INTVAL (operands[3]) == 32))"
