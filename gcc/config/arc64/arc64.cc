@@ -1671,6 +1671,11 @@ arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
 {
   if (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2))
     {
+      /* ARC HS5x does not support 64-bit load and stores,
+	 thus returning current mode.  */
+      if (!TARGET_64BIT && !TARGET_LL64)
+	return mode;
+
       gcc_assert (DOUBLE_LOAD_STORE);
       return Pmode;
     }
