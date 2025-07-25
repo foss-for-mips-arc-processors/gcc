@@ -930,7 +930,7 @@ xorl"
 (define_insn "*mov<mode>_hardfp"
   [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*Ustor")
 	(match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G,*m,    *r"))]
-  "ARC64_HAS_FP_BASE
+  "ARC64_HAS_FP_BASE && (!TARGET_64BIT && TARGET_LL64)
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
   "@
@@ -945,6 +945,56 @@ xorl"
    st<slfp>%U0\\t%1,%0"
   [(set_attr "type" "fmov,ld,st,move,move,move,move,ld,st")
    (set_attr "length" "4,*,*,4,4,4,8,*,*")])
+
+;;(define_insn "*mov<mode>_hardfp_no_ll64"
+;;  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r")
+;;        (match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G"))]
+;;  "ARC64_HAS_FP_BASE && (!TARGET_64BIT && !TARGET_LL64)
+;;   && (register_operand (operands[0], <MODE>mode)
+;;       || register_operand (operands[1], <MODE>mode))"
+;;  "@
+;;   f<sfxtab>mov\\t%0,%1
+;;   fld<sizef>%U1\\t%0,%1
+;;   fst<sizef>%U0\\t%1,%0
+;;   fmv<fmvftab>2<fmvitab>\\t%0,%1
+;;   fmv<fmvitab>2<fmvftab>\\t%0,%1
+;;   mov<mcctab>\\t%0,%1
+;;   mov<mcctab>\\t%0,%1"
+;;  [(set_attr "type" "fmov,ld,st,move,move,move,move")
+;;   (set_attr "length" "4,*,*,4,4,4,8")])
+;;
+
+(define_insn "*mov<mode>_hardfp_no_ll64"
+  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*x,*w,*r,*r")
+        (match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G"))]
+  "ARC64_HAS_FP_BASE && (!TARGET_64BIT && !TARGET_LL64)
+   && (register_operand (operands[0], <MODE>mode)
+       || register_operand (operands[1], <MODE>mode))"
+  "@
+   f<sfxtab>mov\\t%0,%1
+   fld<sizef>%U1\\t%0,%1
+   fst<sizef>%U0\\t%1,%0
+   fmv<fmvftab>2<fmvitab>\\t%0,%1
+   fmv<fmvitab>2<fmvftab>\\t%0,%1
+   mov<mcctab>\\t%0,%1
+   mov<mcctab>\\t%0,%1"
+  [(set_attr "type" "fmov,ld,st,move,move,move,move")
+   (set_attr "length" "4,*,*,4,4,4,8")])
+
+
+
+;;(define_insn "*mov<mode>_hardfp_no_ll64"
+;;  [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=*r,*w")
+;;        (match_operand:GPF_HF 1 "arc64_movf_operand"  "*w,*r"))]
+;;  "ARC64_HAS_FP_BASE && (!TARGET_64BIT && !TARGET_LL64)
+;;   && (register_operand (operands[0], <MODE>mode)
+;;       || register_operand (operands[1], <MODE>mode))"
+;;  "@
+;;   fmv<fmvftab>2<fmvitab>\\t%0,%1
+;;   fmv<fmvitab>2<fmvftab>\\t%0,%1"
+;;  [(set_attr "type" "move,move")
+;;   (set_attr "length" "4,4")])
+
 
 ;; move 128bit
 (define_insn_and_split "*mov<mode>_insn"

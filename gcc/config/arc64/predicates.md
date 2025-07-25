@@ -228,6 +228,19 @@
    return nonimmediate_operand (op, mode);
   })
 
+;;(define_predicate "arc64_even_reg_operand"
+;;  (match_code "reg")
+;;  {
+;;    if ((mode == DFmode || mode == DImode)
+;;        && !TARGET_LL64)
+;;      {
+;;        if (REGNO (op) % 2 != 0)
+;;          return false;
+;;      }
+;;    return register_operand (op, mode);
+;;  })
+
+
 (define_predicate "mem_noofs_operand"
   (and (match_code "mem")
        (match_code "reg" "0")))

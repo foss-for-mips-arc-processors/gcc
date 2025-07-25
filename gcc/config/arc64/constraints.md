@@ -19,6 +19,21 @@
 
 ;; Register constraints
 
+;;(define_constraint "x"
+;;  ""
+;;  (and (match_test "!TARGET_LL64")
+;;       (match_test "REGNO (op) % 2 == 0")))
+
+(define_register_constraint "x" "GENERAL_REGS"
+  "Even-numbered general-purpose registers for !TARGET_LL64"
+  "!TARGET_LL64 && REGNO (op) % 2 == 0")
+
+;;(define_register_constraint "x" "GENERAL_REGS"
+;;  "Even-numbered general-purpose registers."
+;;  {
+;;    return REGNO (op) % 2 == 0;
+;;  })
+
 ;; Register suited for short instructions.
 (define_register_constraint "q" "AC16_REGS"
   "Registers usable in short 16-bit like instructions: @code{r0}-@code{r3},
