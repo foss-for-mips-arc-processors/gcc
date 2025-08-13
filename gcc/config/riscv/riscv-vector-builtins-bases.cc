@@ -3282,7 +3282,8 @@ public:
     switch (e.op_info->op)
       {
       case OP_TYPE_vv:
-	return e.use_exact_insn (code_for_pred_widen_arcv_vwsad (e.vector_mode ()));
+	return e.use_widen_ternop_insn (
+	    code_for_pred_widen_arcv_vwsad (e.vector_mode ()));
       default:
 	gcc_unreachable ();
       }
@@ -3299,7 +3300,8 @@ public:
     switch (e.op_info->op)
       {
       case OP_TYPE_vv:
-	return e.use_exact_insn (code_for_pred_widen_arcv_vwsadu (e.vector_mode ()));
+	return e.use_widen_ternop_insn (
+	    code_for_pred_widen_arcv_vwsadu (e.vector_mode ()));
       default:
 	gcc_unreachable ();
       }
