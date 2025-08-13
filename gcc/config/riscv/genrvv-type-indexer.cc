@@ -384,7 +384,9 @@ main (int argc, const char **argv)
 		     same_ratio_eew_type (sew, lmul_log2, sew / 4, unsigned_p,
 					  false)
 		       .c_str ());
-	    fprintf (fp, "  /*DOUBLE_TRUNC_SIGNED*/ INVALID,\n");
+	    fprintf (fp, "  /*DOUBLE_TRUNC_SIGNED*/ %s,\n",
+		     same_ratio_eew_type (sew, lmul_log2, sew / 2, false, false)
+		       .c_str ());
 	    fprintf (fp, "  /*DOUBLE_TRUNC_UNSIGNED*/ %s,\n",
 		     same_ratio_eew_type (sew, lmul_log2, sew / 2, true, false)
 		       .c_str ());

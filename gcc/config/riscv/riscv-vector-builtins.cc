@@ -1423,6 +1423,12 @@ static CONSTEXPR const rvv_arg_type_info v_sx_args[]
      rvv_arg_type_info (RVV_BASE_size),
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info ss_wwvv_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_signed_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_signed_vector),
+     rvv_arg_type_info_end};
+
 
 /* A list of none preds that will be registered for intrinsic functions.  */
 static CONSTEXPR const predication_type_index none_preds[]
@@ -3792,6 +3798,13 @@ static CONSTEXPR const rvv_op_info su_rwwvv_ops
     OP_TYPE_vv,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
     surwwvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info u_ss_wwvv_ops
+  = {wextu_ops,				  /* Types */
+     OP_TYPE_vv,			  /* Suffix */
+     rvv_arg_type_info (RVV_BASE_vector), /* Return type */
+     ss_wwvv_args /* Args */};
+
 
 /* A list of all RVV base function types.  */
 static CONSTEXPR const function_type_info function_types[] = {
