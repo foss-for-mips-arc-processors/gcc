@@ -9988,6 +9988,9 @@ riscv_override_options_internal (struct gcc_options *opts)
 
   /* Convert -march and -mrvv-vector-bits to a chunks count.  */
   riscv_vector_chunks = riscv_convert_vector_chunks (opts);
+
+  if (opts->x_riscv_mno_compress)
+    opts->x_riscv_zc_subext = 0;
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */
