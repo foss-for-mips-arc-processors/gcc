@@ -11404,6 +11404,9 @@ riscv_override_options_internal (struct gcc_options *opts)
       opts->x_flag_cf_protection
       = (cf_protection_level) (opts->x_flag_cf_protection | CF_SET);
     }
+
+  if (opts->x_riscv_mno_compress)
+    opts->x_riscv_zc_subext = 0;
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */
