@@ -4432,10 +4432,10 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC || (arcv_micro_arch_supports_fusion_p ()
+  "TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
 			&& (TARGET_ZMMUL || TARGET_MUL))"
   {
-    if (arcv_micro_arch_supports_fusion_p ())
+    if (TARGET_ARCV_ADVANCED_FUSION)
       {
 	rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
 	emit_insn (gen_extendhisi2 (tmp0, operands[1]));
@@ -4466,7 +4466,7 @@
 	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
 		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "arcv_micro_arch_supports_fusion_p ()
+  "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   {
     rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
@@ -4507,7 +4507,7 @@
 		 (match_operand:SI 2 "register_operand" "r,r"))
 	(match_operand:SI 3 "register_operand" "r,?0")))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "arcv_micro_arch_supports_fusion_p ()
+  "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   {
      if (REGNO (operands[0]) == REGNO (operands[3]))
@@ -4530,7 +4530,7 @@
 		 (match_operand:SI 2 "register_operand" "r,r"))
 	(match_operand:SI 3 "register_operand" "r,?0"))))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "arcv_micro_arch_supports_fusion_p ()
+  "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   {
      if (REGNO (operands[0]) == REGNO (operands[3]))

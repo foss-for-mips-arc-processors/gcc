@@ -736,3 +736,7 @@ Use 128-bit long double.
 mno-compress
 Target RejectNegative Var(riscv_mno_compress) Init(0)
 Don't emit compressed instructions even if the extensions are enabled.
+
+marc-v-rmx-500-series-advanced-fusion
+Target Mask(ARCV_ADVANCED_FUSION)
+Explicitly disable or enable advanced fusion for the RMX-500 core.
