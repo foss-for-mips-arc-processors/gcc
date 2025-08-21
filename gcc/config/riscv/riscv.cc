@@ -12550,6 +12550,20 @@ riscv_override_options_internal (struct gcc_options *opts)
       opts->x_flag_cf_protection
       = (cf_protection_level) (opts->x_flag_cf_protection | CF_SET);
     }
+
+  /* Enable advanced fusion for the ARC-V cores that support it unless
+     explicitly disabled.
+     TODO Add arcv_rmx500 once it supports fusion.  */
+  if ((riscv_microarchitecture == arcv_rhx100
+  	|| riscv_microarchitecture == arcv_rpx100)
+      && (target_flags_explicit & MASK_ARCV_ADVANCED_FUSION) == 0)
+    {
+      opts->x_target_flags |= MASK_ARCV_ADVANCED_FUSION;
+    }
+  else if ((target_flags_explicit & MASK_ARCV_ADVANCED_FUSION) == 0)
+    {
+      opts->x_target_flags &= ~MASK_ARCV_ADVANCED_FUSION;
+    }
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */

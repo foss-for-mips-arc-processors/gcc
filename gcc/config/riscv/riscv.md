@@ -4546,10 +4546,10 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC || (TARGET_ARCV_RHX100
-			&& !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
+  "TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
+			&& (TARGET_ZMMUL || TARGET_MUL))"
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_ADVANCED_FUSION)
     {
       rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
       emit_insn (gen_extendhisi2 (tmp0, operands[1]));
@@ -4579,8 +4579,8 @@
 	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
 		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_ARCV_RHX100
-   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "TARGET_ARCV_ADVANCED_FUSION
+   && (TARGET_ZMMUL || TARGET_MUL)"
 {
   rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
   emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
@@ -4619,8 +4619,8 @@
 		 (match_operand:SI 2 "register_operand" "r,r"))
 	(match_operand:SI 3 "register_operand" "r,?0")))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "TARGET_ARCV_RHX100
-   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "TARGET_ARCV_ADVANCED_FUSION
+   && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
   "&& reload_completed"
   [(const_int 0)]
@@ -4647,7 +4647,7 @@
 		 (match_operand:SI 2 "register_operand" "r,r"))
 	(match_operand:SI 3 "register_operand" "r,?0"))))
     (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "TARGET_ARCV_RHX100
+  "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
   "&& reload_completed"
