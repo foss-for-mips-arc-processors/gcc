@@ -4717,9 +4717,11 @@
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
   "TARGET_XTHEADMAC || (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+			&& TARGET_ARCV_ADVANCED_FUSION
 			&& (TARGET_ZMMUL || TARGET_MUL))"
 {
   if (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+      && TARGET_ARCV_ADVANCED_FUSION
       && !TARGET_XTHEADMAC)
     {
       rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
@@ -4751,6 +4753,7 @@
 		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
   "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
 {
   if (TARGET_64BIT)
@@ -4796,6 +4799,7 @@
 		 (match_operand:SI 2 "register_operand" "r"))
 	(match_operand:SI 3 "register_operand" "r")))]
   "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && TARGET_ARCV_ADVANCED_FUSION
    && !TARGET_XTHEADMAC
    && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
@@ -4824,6 +4828,7 @@
 		 (match_operand:SI 2 "register_operand" "r"))
 	(match_operand:SI 3 "register_operand" "r"))))]
   "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && TARGET_ARCV_ADVANCED_FUSION
    && !TARGET_XTHEADMAC
    && TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
