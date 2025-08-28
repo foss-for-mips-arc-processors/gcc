@@ -247,6 +247,38 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
 tree riscv_float16_type_node = NULL_TREE;
 tree riscv_bfloat16_type_node = NULL_TREE;
 
+struct arcv_apex_builtin_description {
+  /* The code of the main .md file instruction.  See riscv_builtin_type
+     for more information.  */
+  enum insn_code icode;
+
+  /* The name of the built-in function.  */
+  const char *name;
+
+  /* The name of the built-in instruction.  */
+  const char *insn_name;
+
+  /* The opcode of the built-in instruction.  */
+  unsigned int opcode;
+
+  /* Specifies how the function should be expanded.  */
+  enum riscv_builtin_type builtin_type;
+
+  /* Specifies the instruction format.  See "apex_insn_format" enum
+    for more details.  */
+  unsigned int insn_formats;
+};
+
+/* The XD-type has 8 function bits encoding up to 256 instructions.
+   The XS-type has 6 function bits encoding up to 64 instructions.
+   Both the XI-type and the XC-type have 5 function bits each encoding up
+   to 32 instructions respectively.  Thus giving a total of 384 possible
+   different instructions.  */
+static const int arcv_apex_builtins_limit = 384;
+static struct arcv_apex_builtin_description
+arcv_apex_builtins[arcv_apex_builtins_limit];
+static int arcv_apex_builtin_index = 0;
+
 /* Return the function type associated with function prototype TYPE.  */
 
 static tree
