@@ -7,7 +7,9 @@ struct s {
   int a;
 } _nl_C_locobj;
 
-extern int f();
+extern int f1();
+extern int f2(int,int,int,void*);
+extern int f3(int,int,int,struct s);
 
 int b;
 int c()
@@ -18,8 +20,8 @@ int c()
       if (c < '9')
 	{
 	  char e = ({ (&_nl_C_locobj)->a; });
-	  if (e == 'i' && f())
-	    f(0, 0, 0, &_nl_C_locobj);
-	  e == 'n' && f(0, 0, 0, _nl_C_locobj);
+	  if (e == 'i' && f1())
+	    f2(0, 0, 0, &_nl_C_locobj);
+	  e == 'n' && f3(0, 0, 0, _nl_C_locobj);
 	}
 }
