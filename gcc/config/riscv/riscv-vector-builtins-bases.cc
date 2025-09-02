@@ -2218,7 +2218,7 @@ public:
   rtx vs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
   rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
 
-  e.add_input_operand (mode, vd);
+  e.add_input_operand (e.op_info->op == OP_TYPE_s_v ? e.arg_mode (0) : mode, vd);
   e.add_input_operand (mode, vs2);
   e.add_input_operand (Pmode, vs1);
   for (int argno = arg_offset; argno < call_expr_nargs (e.exp); argno++)

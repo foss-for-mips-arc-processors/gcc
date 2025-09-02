@@ -1368,7 +1368,7 @@ static CONSTEXPR const rvv_arg_type_info wwxh_args[]
      rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info s_vx_args[]
- = { rvv_arg_type_info (RVV_BASE_vector),
+ = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_size),
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info_end};
@@ -3766,7 +3766,7 @@ static CONSTEXPR const rvv_op_info i_rqqvv_ops
 static CONSTEXPR const rvv_op_info iu_s_vx_ops
  = {iu_ops,			/* Types */
     OP_TYPE_s_v,			/* Suffix */
-    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    rvv_arg_type_info (RVV_BASE_lmul1_vector),	/* Return type */
     s_vx_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info su_rqqvv_ops

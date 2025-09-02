@@ -890,6 +890,12 @@ struct arcv_vmv_def : public build_base
     if (!overloaded_p)
       {
 	b.append_name (type_suffixes[instance.type.index].vector);
+	if (instance.op_info->op == OP_TYPE_s_v)
+	  {
+	    vector_type_index ret_type_idx
+	      = instance.op_info->ret.get_function_type_index (instance.type.index);
+	    b.append_name (type_suffixes[ret_type_idx].vector);
+	  }
       }
 
     /* According to rvv-intrinsic-doc, it does not add "_m" suffix
