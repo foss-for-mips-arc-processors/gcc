@@ -156,13 +156,13 @@
    (set (attr "avl_type_idx") (const_int 5))])
 
 (define_insn "@pred_arcv_vmv_s_v_scalar<V_VLSI:mode><P:mode>"
-  [(set (match_operand:<V_VLSI:MODE> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(unspec:<V_VLSI:MODE>
+  [(set (match_operand:<V_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(unspec:<V_LMUL1>
 	  [(match_operand:V_VLSI 2 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:P 3 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")
 	  (match_operand 4 "vector_length_operand" " rK, rK, rK, rK, rK, rK, rK, rK, rK, rK, rK, rK")
 	  (match_operand 5 "const_int_operand" " i,i,i,i,i,i,i,i,i,i,i,i")
-	  (match_operand:<V_VLSI:MODE> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")]
+	  (match_operand:<V_LMUL1> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")]
 	  UNSPEC_ARCV_VMV_S_V))]
   "TARGET_XARCVVDSP"
   { return which_alternative < 6 ? "arcv.vmv.s.v\t%0,%2,%3" : "arcv.vmvi.s.v\t%0,%2,%3"; }
