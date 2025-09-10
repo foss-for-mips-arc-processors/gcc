@@ -1,0 +1,30 @@
+if ![istarget riscv*-*-*] then {
+  return
+}
+
+load_lib gcc-dg.exp
+
+dg-init
+
+set CFLAGS ""
+
+set TEST_NUMBERS [list 1 2]
+
+foreach n $TEST_NUMBERS {
+    set apex_lib_test "$srcdir/$subdir/apex-$n-lib.c"
+    set apex_lib_src "$srcdir/$subdir/apex-$n-lib.c"
+    set apex_lib_bin "$tmpdir/apex-$n-lib.o"
+
+    restore_ld_library_path_env_vars
+    set status [remote_exec host "$HOSTCC $HOSTCFLAGS -c $apex_lib_src -o $apex_lib_bin"]
+    set status [lindex $status 0]
+    set_ld_library_path_env_vars
+
+    if { $status == 0 } then {
+        dg-runtest $apex_lib_test "" $CFLAGS
+    } else {
+        warning "Cannot compile an APEX library"
+    }
+}
+
+dg-finish
