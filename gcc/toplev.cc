@@ -1517,14 +1517,6 @@ process_options ()
     dwarf2out_as_loc_support = dwarf2out_default_as_loc_support ();
   if (!OPTION_SET_P (dwarf2out_as_locview_support))
     dwarf2out_as_locview_support = dwarf2out_default_as_locview_support ();
-  if (dwarf2out_as_locview_support && !dwarf2out_as_loc_support)
-    {
-      if (OPTION_SET_P (dwarf2out_as_locview_support))
-	warning_at (UNKNOWN_LOCATION, 0,
-		    "%<-gas-locview-support%> is forced disabled "
-		    "without %<-gas-loc-support%>");
-      dwarf2out_as_locview_support = false;
-    }
 
   if (!OPTION_SET_P (debug_variable_location_views))
     {
@@ -1532,7 +1524,9 @@ process_options ()
 	= (flag_var_tracking
 	   && debug_info_level >= DINFO_LEVEL_NORMAL
 	   && dwarf_debuginfo_p ()
-	   && !dwarf_strict);
+	   && !dwarf_strict
+	   && dwarf2out_as_loc_support
+	   && dwarf2out_as_locview_support);
     }
   else if (debug_variable_location_views == -1 && dwarf_version != 5)
     {
