@@ -464,21 +464,13 @@ c_build_function_type (tree type, tree args, bool no)
   return c_set_type_bits (ret, type);
 }
 
-/* Build an array type.  This sets typeless storage as required
-   by C2Y and C_TYPE_VARIABLY_MODIFIED and C_TYPE_VARIABLE_SIZE
-   based on the element type and domain.  */
+/* Build an array type.  This sets C_TYPE_VARIABLY_MODIFIED and
+   C_TYPE_VARIABLE_SIZE based on the element type and domain.  */
 
 tree
 c_build_array_type (tree type, tree domain)
 {
-  int type_quals = TYPE_QUALS (type);
-
-  /* Identify typeless storage as introduced in C2Y
-     and supported also in earlier language modes.  */
-  bool typeless = (char_type_p (type) && !(type_quals & TYPE_QUAL_ATOMIC))
-		  || (AGGREGATE_TYPE_P (type) && TYPE_TYPELESS_STORAGE (type));
-
-  tree ret = build_array_type (type, domain, typeless);
+  tree ret = build_array_type (type, domain);
 
   if (domain && TYPE_MAX_VALUE (domain)
       && TREE_CODE (TYPE_MAX_VALUE (domain)) != INTEGER_CST)

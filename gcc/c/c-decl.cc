@@ -9690,10 +9690,6 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
       if (DECL_NAME (x)
 	  || RECORD_OR_UNION_TYPE_P (TREE_TYPE (x)))
 	saw_named_field = true;
-
-      if (AGGREGATE_TYPE_P (TREE_TYPE (x))
-	  && TYPE_TYPELESS_STORAGE (TREE_TYPE (x)))
-	TYPE_TYPELESS_STORAGE (t) = true;
     }
 
   detect_field_duplicates (fieldlist);
@@ -9905,7 +9901,6 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
       TYPE_FIELDS (x) = TYPE_FIELDS (t);
       TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (t);
       TYPE_TRANSPARENT_AGGR (x) = TYPE_TRANSPARENT_AGGR (t);
-      TYPE_TYPELESS_STORAGE (x) = TYPE_TYPELESS_STORAGE (t);
       C_TYPE_FIELDS_READONLY (x) = C_TYPE_FIELDS_READONLY (t);
       C_TYPE_FIELDS_VOLATILE (x) = C_TYPE_FIELDS_VOLATILE (t);
       C_TYPE_FIELDS_NON_CONSTEXPR (x) = C_TYPE_FIELDS_NON_CONSTEXPR (t);
