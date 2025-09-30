@@ -933,7 +933,6 @@ riscv_subset_list::to_string (bool version_p) const
   bool skip_zicsr = false;
   bool skip_b = false;
   bool i2p0 = false;
-  bool skip_zc = false;
 
   /* For RISC-V ISA version 2.2 or earlier version, zicsr and zifencei is
      included in the base ISA.  */
@@ -970,9 +969,6 @@ riscv_subset_list::to_string (bool version_p) const
   skip_b = true;
 #endif
 
-  if (riscv_mno_compress)
-    skip_zc = true;
-
   for (subset = m_head; subset != NULL; subset = subset->next)
     {
       if (((subset->implied_p && skip_zifencei) || i2p0) &&
@@ -990,9 +986,6 @@ riscv_subset_list::to_string (bool version_p) const
 	continue;
 
       if (skip_b && subset->name == "b")
-	continue;
-      if (skip_zc
-	  && (subset->name.find ("zc") == 0 || subset->name.find ("c") == 0))
 	continue;
 
       /* For !version_p, we only separate extension with underline for

@@ -733,10 +733,6 @@ mlong-double-128
 Target RejectNegative Negative(mlong-double-64) InverseMask(LONG_DOUBLE_64)
 Use 128-bit long double.
 
-mno-compress
-Target RejectNegative Var(riscv_mno_compress) Init(0)
-Don't emit compressed instructions even if the extensions are enabled.
-
 marc-v-rmx-500-series-advanced-fusion
 Target Mask(ARCV_ADVANCED_FUSION)
 Explicitly disable or enable advanced fusion for the RMX-500 core.

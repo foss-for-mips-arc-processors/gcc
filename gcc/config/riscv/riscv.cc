@@ -11470,9 +11470,6 @@ riscv_override_options_internal (struct gcc_options *opts)
       = (cf_protection_level) (opts->x_flag_cf_protection | CF_SET);
     }
 
-  if (opts->x_riscv_mno_compress)
-    opts->x_riscv_zc_subext = 0;
-
   /* Enable advanced fusion for the ARC-V cores that support it unless
      explicitly disabled.
      TODO Add arcv_rmx500 once it supports fusion.  */
