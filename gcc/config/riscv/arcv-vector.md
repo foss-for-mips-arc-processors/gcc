@@ -767,7 +767,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwsra.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsra_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -791,7 +791,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwsra.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_arcv_vaddsub<mode>"
   [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -876,9 +876,9 @@
 	  UNSPEC_ARCV_VQRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vqrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vqrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqrdot_2s<mode>"
   [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -898,9 +898,9 @@
 	  UNSPEC_ARCV_VQRDOT_2S)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vqrdot.2s.v%o3\t%0,%2,%3%p1"
+  "arcv.vqrdot.2s.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwsrdot_2s<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -920,9 +920,9 @@
 	  UNSPEC_ARCV_VWSRDOT_2S)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsrdot.2s.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsrdot.2s.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqrdotu<mode>"
   [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -942,9 +942,9 @@
 	  UNSPEC_ARCV_VQRDOTU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vqrdotu.v%o3\t%0,%2,%3%p1"
+  "arcv.vqrdotu.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqrdotsu<mode>"
   [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -964,9 +964,9 @@
 	  UNSPEC_ARCV_VQRDOTSU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vqrdotsu.v%o3\t%0,%2,%3%p1"
+  "arcv.vqrdotsu.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwrdot<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -986,9 +986,9 @@
 	  UNSPEC_ARCV_VWRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vwrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_half_arcv_vwrdot<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1009,9 +1009,9 @@
 	  UNSPEC_ARCV_VWRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwrdot.h%o3\t%0,%2,%3%p1"
+  "arcv.vwrdot.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwsrdot<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1031,9 +1031,9 @@
 	  UNSPEC_ARCV_VWSRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwrdotu<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1053,9 +1053,9 @@
 	  UNSPEC_ARCV_VWRDOTU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwrdotu.v%o3\t%0,%2,%3%p1"
+  "arcv.vwrdotu.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_half_arcv_vwrdotu<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1076,9 +1076,9 @@
 	  UNSPEC_ARCV_VWRDOTU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwrdotu.h%o3\t%0,%2,%3%p1"
+  "arcv.vwrdotu.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwrdotsu<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1098,9 +1098,9 @@
 	  UNSPEC_ARCV_VWRDOTSU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwrdotsu.v%o3\t%0,%2,%3%p1"
+  "arcv.vwrdotsu.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwsmac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1122,9 +1122,9 @@
 	  UNSPEC_ARCV_VWSMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsmac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1145,9 +1145,9 @@
 	  UNSPEC_ARCV_VWSMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsnmsac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1169,9 +1169,9 @@
 	  UNSPEC_ARCV_VWSNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsnmsac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1192,9 +1192,9 @@
 	  UNSPEC_ARCV_VWSNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwsnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmul<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1217,7 +1217,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmul.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmul_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1239,7 +1239,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmul.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmac<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1261,9 +1261,9 @@
 	  UNSPEC_ARCV_VWMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwmac.h%o3\t%0,%2,%3%p1"
+  "arcv.vwmac.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmac_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1284,9 +1284,9 @@
 	  UNSPEC_ARCV_VWMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwmac.h%o3\t%0,%2,%3%p1"
+  "arcv.vwmac.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulu<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1309,7 +1309,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmulu.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulu_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1331,7 +1331,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmulu.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmacu<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1353,9 +1353,9 @@
 	  UNSPEC_ARCV_VWMACU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwmacu.h%o3\t%0,%2,%3%p1"
+  "arcv.vwmacu.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmacu_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1376,9 +1376,9 @@
 	  UNSPEC_ARCV_VWMACU)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwmacu.h%o3\t%0,%2,%3%p1"
+  "arcv.vwmacu.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_half_arcv_vsmulf<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1449,7 +1449,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmulf.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulf_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1471,7 +1471,7 @@
   "TARGET_XARCVVDSP"
   "arcv.vwmulf.h%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwsmacf<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1493,9 +1493,9 @@
 	  UNSPEC_ARCV_VWSMACF)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsmacf.h%o3\t%0,%2,%3%p1"
+  "arcv.vwsmacf.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwsmacf_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1516,9 +1516,9 @@
 	  UNSPEC_ARCV_VWSMACF)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsmacf.h%o3\t%0,%2,%3%p1"
+  "arcv.vwsmacf.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwsnmsacf<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1540,9 +1540,9 @@
 	  UNSPEC_ARCV_VWSNMSACF)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsnmsacf.h%o3\t%0,%2,%3%p1"
+  "arcv.vwsnmsacf.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwsnmsacf_scalar<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1563,9 +1563,9 @@
 	  UNSPEC_ARCV_VWSNMSACF)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsnmsacf.h%o3\t%0,%2,%3%p1"
+  "arcv.vwsnmsacf.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwsrdotf<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1586,9 +1586,9 @@
 	  UNSPEC_ARCV_VWSRDOTF)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
-  "arcv.vwsrdotf.h%o3\t%0,%2,%3%p1"
+  "arcv.vwsrdotf.h%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vconj<mode>"
   [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1771,7 +1771,7 @@
   "TARGET_XARCVVCPLX"
   "arcv.vwcredsum.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscmul<mode>"
   [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1886,7 +1886,7 @@
   "TARGET_XARCVVCPLX"
   "arcv.vwscmul.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscmul_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1908,7 +1908,7 @@
   "TARGET_XARCVVCPLX"
   "arcv.vwscmul.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmul<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1931,7 +1931,7 @@
   "TARGET_XARCVVCPLX"
   "arcv.vwscjmul.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmul_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1953,7 +1953,7 @@
   "TARGET_XARCVVCPLX"
   "arcv.vwscjmul.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscmac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1975,9 +1975,9 @@
 	  UNSPEC_ARCV_VWSCMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscmac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -1998,9 +1998,9 @@
 	  UNSPEC_ARCV_VWSCMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscnmsac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2022,9 +2022,9 @@
 	  UNSPEC_ARCV_VWSCNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscnmsac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2045,9 +2045,9 @@
 	  UNSPEC_ARCV_VWSCNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2069,9 +2069,9 @@
 	  UNSPEC_ARCV_VWSCJMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscjmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2092,9 +2092,9 @@
 	  UNSPEC_ARCV_VWSCJMAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjmac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscjmac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjnmsac<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2116,9 +2116,9 @@
 	  UNSPEC_ARCV_VWSCJNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscjnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjnmsac_scalar<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2139,9 +2139,9 @@
 	  UNSPEC_ARCV_VWSCJNMSAC)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjnmsac.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscjnmsac.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscrdot<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2161,9 +2161,9 @@
 	  UNSPEC_ARCV_VWSCRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwscjrdot<mode>"
   [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2183,9 +2183,9 @@
 	  UNSPEC_ARCV_VWSCJRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vwscjrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_EXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqcrdot<mode>"
   [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2205,9 +2205,9 @@
 	  UNSPEC_ARCV_VQCRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vqcrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vqcrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqcjrdot<mode>"
   [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2227,9 +2227,9 @@
 	  UNSPEC_ARCV_VQCJRDOT)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vqcjrdot.v%o3\t%0,%2,%3%p1"
+  "arcv.vqcjrdot.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<V_QEXT_LMUL1>")])
+   (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwsad<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2252,7 +2252,7 @@
   "TARGET_XARCVVSAD"
   "arcv.vwsad.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsadu<mode>"
   [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2275,7 +2275,7 @@
   "TARGET_XARCVVSAD"
   "arcv.vwsadu.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm4<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2297,9 +2297,9 @@
 	  UNSPEC_ARCV_VQMXM4)
 	(match_dup 2)))]
   "TARGET_XARCVMXMB"
-  "arcv.vqmxm4.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm4.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm4u<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2321,9 +2321,9 @@
 	  UNSPEC_ARCV_VQMXM4U)
 	(match_dup 2)))]
   "TARGET_XARCVMXMB"
-  "arcv.vqmxm4u.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm4u.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm4su<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2345,9 +2345,9 @@
 	  UNSPEC_ARCV_VQMXM4SU)
 	(match_dup 2)))]
   "TARGET_XARCVMXMB"
-  "arcv.vqmxm4su.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm4su.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm8<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2369,9 +2369,9 @@
 	  UNSPEC_ARCV_VQMXM8)
 	(match_dup 2)))]
   "TARGET_XARCVMXMC"
-  "arcv.vqmxm8.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm8.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm8u<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2393,9 +2393,9 @@
 	  UNSPEC_ARCV_VQMXM8U)
 	(match_dup 2)))]
   "TARGET_XARCVMXMC"
-  "arcv.vqmxm8u.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm8u.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm8su<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2417,9 +2417,9 @@
 	  UNSPEC_ARCV_VQMXM8SU)
 	(match_dup 2)))]
   "TARGET_XARCVMXMC"
-  "arcv.vqmxm8su.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm8su.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm16<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2441,9 +2441,9 @@
 	  UNSPEC_ARCV_VQMXM16)
 	(match_dup 2)))]
   "TARGET_XARCVMXMD"
-  "arcv.vqmxm16.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm16.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm16u<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2465,9 +2465,9 @@
 	  UNSPEC_ARCV_VQMXM16U)
 	(match_dup 2)))]
   "TARGET_XARCVMXMD"
-  "arcv.vqmxm16u.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm16u.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_quad_widen_arcv_vqmxm16su<mode>"
   [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
@@ -2489,6 +2489,6 @@
 	  UNSPEC_ARCV_VQMXM16SU)
 	(match_dup 2)))]
   "TARGET_XARCVMXMD"
-  "arcv.vqmxm16su.v%o3\t%0,%2,%3%p1"
+  "arcv.vqmxm16su.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
-   (set_attr "mode" "<MODE>")])
+   (set_attr "mode" "<V_QUAD_TRUNC>")])

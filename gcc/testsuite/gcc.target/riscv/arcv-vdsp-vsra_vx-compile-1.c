@@ -88,8 +88,6 @@ test_vsra_vx_i32_m (vbool32_t mask, vint32m1_t vs2, int vs1, size_t vl)
 /*
 ** test_vsra_vx_i64:
 **   csrwi\s+vxrm,0
-**   mv\s+[a-x0-9]+,[a-x0-9]+
-**   srai\s+[a-x0-9]+,[a-x0-9]+,31
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*t[au],\s*m[au]
 **   arcv.vsra.vx\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+
 **   ret
@@ -103,8 +101,6 @@ test_vsra_vx_i64 (vint64m1_t vs2, int vs1, size_t vl)
 /*
 ** test_vsra_vx_i64_m:
 **   csrwi\s+vxrm,0
-**   mv\s+[a-x0-9]+,[a-x0-9]+
-**   srai\s+[a-x0-9]+,[a-x0-9]+,31
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*t[au],\s*m[au]
 **   arcv.vsra.vx\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   ret
