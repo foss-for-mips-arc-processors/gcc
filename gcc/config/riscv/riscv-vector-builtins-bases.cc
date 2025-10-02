@@ -2324,6 +2324,10 @@ public:
 class arcv_vsra : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2362,6 +2366,10 @@ public:
 class arcv_vsra_s : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2381,6 +2389,10 @@ public:
 class arcv_vsra_2s : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2400,6 +2412,10 @@ public:
 class arcv_vnsra : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2423,6 +2439,10 @@ public:
 class arcv_vnsra_s : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2446,6 +2466,10 @@ public:
 class arcv_vnsra_2s : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
@@ -2469,6 +2493,10 @@ public:
 class arcv_vwsra : public function_base
 {
 public:
+  bool has_rounding_mode_operand_p () const override { return true; }
+
+  bool may_require_vxrm_p () const override { return true; }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
