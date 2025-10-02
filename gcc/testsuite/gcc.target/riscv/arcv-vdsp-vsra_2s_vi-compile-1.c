@@ -4,7 +4,6 @@
 /* { dg-options "-march=rv32im_xarcvvdsp -mabi=ilp32 -O2" } */
 /* { dg-final { check-function-bodies "**" "" } } */
 
-
 #include <stddef.h>
 #include <riscv_vector.h>
 
