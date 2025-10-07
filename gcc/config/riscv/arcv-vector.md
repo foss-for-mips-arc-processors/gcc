@@ -1389,8 +1389,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VWEXTI
 	    [(sign_extend:VWEXTI
 	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
@@ -1399,7 +1401,7 @@
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vsmulf.h%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_half_arcv_vsmulf_scalar<mode>"
@@ -1411,8 +1413,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VWEXTI
 	    [(sign_extend:VWEXTI
 	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
@@ -1421,7 +1425,7 @@
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vsmulf.h%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulf<mode>"
@@ -1778,8 +1782,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:V_VLSI 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
@@ -1787,7 +1793,7 @@
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
   "arcv.vscmul.v%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscmul_scalar<mode>"
@@ -1799,8 +1805,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:<VEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
@@ -1808,7 +1816,7 @@
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
   "arcv.vscmul.v%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscjmul<mode>"
@@ -1820,8 +1828,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:V_VLSI 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
@@ -1829,7 +1839,7 @@
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
   "arcv.vscjmul.v%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscjmul_scalar<mode>"
@@ -1841,8 +1851,10 @@
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
-	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	     (reg:SI VTYPE_REGNUM)
+		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:<VEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
@@ -1850,7 +1862,7 @@
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
   "arcv.vscjmul.v%o4\t%0,%3,%4%p1"
-  [(set_attr "type" "viwmuladd")
+  [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwscmul<mode>"
