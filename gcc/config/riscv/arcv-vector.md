@@ -451,7 +451,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_narrow_arcv_vnsra<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -465,7 +465,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA))
@@ -476,7 +476,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -490,7 +490,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA))
@@ -501,7 +501,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_scalar<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -515,7 +515,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -525,7 +525,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_scalar<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -539,7 +539,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -549,7 +549,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_s<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -563,7 +563,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
@@ -574,7 +574,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_s<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -588,7 +588,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
@@ -599,7 +599,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_s_scalar<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -613,7 +613,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_S))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -623,7 +623,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_s_scalar<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -637,7 +637,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_S))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -647,7 +647,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_2s<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -661,7 +661,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -672,7 +672,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_2s<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -686,7 +686,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -697,7 +697,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_2s_scalar<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -711,7 +711,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -721,7 +721,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_2s_scalar<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -735,7 +735,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -745,7 +745,7 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsra<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -770,7 +770,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwsra_scalar<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1197,7 +1197,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmul<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1209,7 +1209,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (sign_extend:VQEXTI
 	      (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))]
 	  UNSPEC_ARCV_VWMUL)
@@ -1220,7 +1220,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmul_scalar<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1232,7 +1232,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (match_operand:<VSUBEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
 	  UNSPEC_ARCV_VWMUL)
 	(match_operand:VQEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1289,7 +1289,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulu<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1301,7 +1301,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (sign_extend:VQEXTI
 	      (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))]
 	  UNSPEC_ARCV_VWMULU)
@@ -1312,7 +1312,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulu_scalar<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1324,7 +1324,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (match_operand:<VSUBEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
 	  UNSPEC_ARCV_VWMULU)
 	(match_operand:VQEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1381,7 +1381,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_half_arcv_vsmulf<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1395,7 +1395,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VWEXTI
 	    [(sign_extend:VWEXTI
-	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (match_operand:VWEXTI 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
 	  UNSPEC_ARCV_VSMULF)
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1405,7 +1405,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_half_arcv_vsmulf_scalar<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1419,7 +1419,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VWEXTI
 	    [(sign_extend:VWEXTI
-	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (match_operand:<VEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
 	  UNSPEC_ARCV_VSMULF)
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1429,7 +1429,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulf<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1441,7 +1441,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (sign_extend:VQEXTI
 	      (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))]
 	  UNSPEC_ARCV_VWMULF)
@@ -1452,7 +1452,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_half_arcv_vwmulf_scalar<mode>"
-  [(set (match_operand:VQEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VQEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VQEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1464,7 +1464,7 @@
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:VQEXTI
 	    [(sign_extend:VQEXTI
-	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr"))
+	      (match_operand:<V_QUAD_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	     (match_operand:<VSUBEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
 	  UNSPEC_ARCV_VWMULF)
 	(match_operand:VQEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1866,7 +1866,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwscmul<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1889,7 +1889,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscmul_scalar<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1911,7 +1911,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmul<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1934,7 +1934,7 @@
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_arcv_vwscjmul_scalar<mode>"
-  [(set (match_operand:VWEXTI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:VWEXTI 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:VWEXTI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
