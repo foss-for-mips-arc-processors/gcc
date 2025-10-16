@@ -563,7 +563,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
@@ -588,7 +588,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
@@ -613,7 +613,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_S))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -637,7 +637,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_S))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -661,7 +661,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -686,7 +686,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -711,7 +711,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:VWEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -735,7 +735,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:VQEXTI 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,0,0,vr,vr,0,0,vr,vr")
 	  (match_operand:SI 4 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]

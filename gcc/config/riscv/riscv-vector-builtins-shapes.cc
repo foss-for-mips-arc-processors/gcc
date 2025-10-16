@@ -616,6 +616,14 @@ struct narrow_quad_alu_def : public build_base
   char *get_name (function_builder &b, const function_instance &instance,
 		  bool overloaded_p) const override
   {
+    /* Overloading disabled due to function type conflicts with
+       vnsra_{2,}s variants.  The overload resolver only compares
+       argument types (ignoring return types), which causes multiple
+       intrinsics generated from the same instruction to conflict
+       when their argument lists are identical.  */
+    if (overloaded_p)
+      return nullptr;
+
     b.append_base_name (instance.base_name);
 
     /* vop --> vop_<op>.  */
