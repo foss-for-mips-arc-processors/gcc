@@ -1130,6 +1130,10 @@ static CONSTEXPR const rvv_arg_type_info signed_shift_qx_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_integer),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_qqx_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info surqqvv_args[]
  = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_vector),
@@ -1146,6 +1150,10 @@ static CONSTEXPR const rvv_arg_type_info hv_args[]
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_wx_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_wwx_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_integer),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info whx_args[]
@@ -1171,8 +1179,16 @@ static CONSTEXPR const rvv_arg_type_info signed_shift_wv_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_double_trunc_vector),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_wwv_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_qv_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_qqv_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info qqvv_args_prime[]
@@ -3192,6 +3208,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vqv_ops
     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
     signed_shift_qv_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvqv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_qqv_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info i_signed_shift_wvv_ops
  = {wexti_ops,			/* Types */
     OP_TYPE_vv,			/* Suffix */
@@ -3228,6 +3250,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vwv_ops
     rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
     signed_shift_wv_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvwv_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_wwv_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info iu_vv_ops
  = {iu_ops,			/* Types */
     OP_TYPE_v,			/* Suffix */
@@ -3239,6 +3267,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vwx_ops
     OP_TYPE_wx,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
     signed_shift_wx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvwx_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_wwx_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info wi_vv_ops
  = {wi_ops,			/* Types */
@@ -3317,6 +3351,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vqx_ops
     OP_TYPE_qx,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
     signed_shift_qx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvqx_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_qqx_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info i_qqvv_ops_prime
  = {qexti_ops,			/* Types */
