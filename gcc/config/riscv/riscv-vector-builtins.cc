@@ -1144,6 +1144,11 @@ static CONSTEXPR const rvv_arg_type_info suqqvv_args[]
      rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
      rvv_arg_type_info (RVV_BASE_quad_trunc_unsigned_vector),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info suqvv_args[]
+ = { rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info hv_args[]
  = { rvv_arg_type_info (RVV_BASE_double_trunc_vector),
      rvv_arg_type_info (RVV_BASE_vector),
@@ -3327,6 +3332,12 @@ static CONSTEXPR const rvv_op_info su_qqvv_ops
     OP_TYPE_vv,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
     suqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info su_qvv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    suqvv_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info u_wwvh_ops
  = {qextu_ops,			/* Types */

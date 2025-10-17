@@ -145,5 +145,5 @@ DEF_RVV_FUNCTION (arcv_vqmxm8su, alu, none_m_preds, su_qqvv_ops)
 #define REQUIRED_EXTENSIONS XARCVMXMD_EXT
 DEF_RVV_FUNCTION (arcv_vqmxm16, alu, none_m_preds, i_qqvv_ops_prime)
 DEF_RVV_FUNCTION (arcv_vqmxm16u, alu, none_m_preds, u_qqvv_ops_prime)
-DEF_RVV_FUNCTION (arcv_vqmxm16su, alu, none_m_preds, su_qqvv_ops)
+DEF_RVV_FUNCTION (arcv_vqmxm16su, alu, none_m_preds, su_qvv_ops)
 #undef REQUIRED_EXTENSIONS
