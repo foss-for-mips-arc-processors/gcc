@@ -58,6 +58,7 @@ const char *lto_section_name[LTO_N_SECTION_TYPES] =
   "odr_types",
   "ipa_modref",
   "linemap",
+  "riscv_apex",
 };
 
 /* Hooks so that the ipa passes can call into the lto front end to get
