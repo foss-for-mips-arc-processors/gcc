@@ -381,6 +381,12 @@ riscv_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
 
     case RISCV_BUILTIN_VECTOR:
       return riscv_vector::builtin_decl (subcode, initialize_p);
+
+    case RISCV_BUILTIN_APEX:
+      /* Trick GCC to think that the function is defined.
+	 The actual fndecl used is created after this
+	 validation from the GIMPLE representation in LTO.  */
+      return integer_zero_node;
     }
   return error_mark_node;
 }
@@ -614,6 +620,15 @@ riscv_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
   *update = NULL_TREE;
 }
 
+
+/* Return the function name associated with a given subcode.   */
+
+const char*
+arcv_apex_get_fn_name (unsigned int subcode)
+{
+  return arcv_apex_builtins[subcode].name;
+}
+
 /* Return the APEX instruction name associated with a given subcode operand.
 
    The subcode is an unsigned integer extracted from `op` that indexes into
@@ -654,6 +669,61 @@ arcv_apex_format_supports_p (unsigned int subcode, unsigned int insn_format)
 {
   const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[subcode];
   return (d->insn_formats & insn_format);
+}
+
+/* Check if an APEX builtin with the given characteristics already exists.
+   Returns the index if found with matching parameters, -1 if not found,
+   or -2 if found but with conflicting parameters.  */
+
+static int
+arcv_apex_lto_find_builtin (const char *fn_name, const char *insn_name,
+			    unsigned int opcode, unsigned int insn_formats,
+			    location_t loc)
+{
+  for (int i = 0; i < arcv_apex_builtin_index; i++)
+  {
+    const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[i];
+
+    /* Check if function name matches.  */
+    if (strcmp (d->name, fn_name) == 0)
+    {
+      /* Validate all parameters match.  */
+      bool mismatch = false;
+
+      if (strcmp (d->insn_name, insn_name) != 0)
+      {
+	warning_at (loc, 0, "APEX builtin %qs already registered with different "
+		    "instruction name: %qs vs %qs",
+		    fn_name, d->insn_name, insn_name);
+	mismatch = true;
+      }
+
+      if (d->opcode != opcode)
+      {
+	warning_at (loc, 0, "APEX builtin %qs already registered with different "
+		    "opcode: 0x%x vs 0x%x",
+		    fn_name, d->opcode, opcode);
+	mismatch = true;
+      }
+
+      if (d->insn_formats != insn_formats)
+      {
+	warning_at (loc, 0, "APEX builtin %qs already registered with different "
+		    "instruction formats: 0x%x vs 0x%x",
+		    fn_name, d->insn_formats, insn_formats);
+	mismatch = true;
+      }
+
+      /* Return special value for conflicting registration.  */
+      if (mismatch)
+	return -2;
+
+      /* Found matching registration.  */
+	return i;
+    }
+  }
+
+  return -1; /* Not found.  */
 }
 
 /* Set APEX operand flags for a built-in function.
@@ -1030,4 +1100,92 @@ arcv_apex_init_builtin (tree fndecl, const char *fn_name,
 	= (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
 
   arcv_apex_builtin_index++;
+}
+
+
+void
+arcv_apex_lto_register_builtin (const char *fn_name, const char *insn_name,
+			      unsigned int opcode, unsigned int insn_formats,
+			      bool wpa_p, tree fndecl)
+{
+  /* Get source location from function declaration.  */
+  location_t loc = DECL_SOURCE_LOCATION (fndecl);
+
+  /* Check if this APEX builtin is already registered.  */
+  int existing_idx = arcv_apex_lto_find_builtin (fn_name, insn_name, opcode,
+					      insn_formats, loc);
+
+  if (existing_idx >= 0)
+  {
+    /* Assert that the function code is the same as the existing index.  */
+    gcc_assert (fndecl->function_decl.function_code
+	== (unsigned) ((existing_idx << RISCV_BUILTIN_SHIFT)
+			+ RISCV_BUILTIN_APEX));
+    return;
+  }
+
+  if (existing_idx == -2)
+  {
+    /* Conflicting registration - warnings already issued.  */
+    error_at (loc, "APEX builtin %qs has conflicting definitions across "
+	   "compilation units", fn_name);
+    return;
+  }
+
+  /* Not registered yet - proceed with new registration.  */
+
+  /* Check for array overflow before storing.  */
+  gcc_assert (arcv_apex_builtin_index < arcv_apex_builtins_limit);
+
+  /* Calculate instruction suffix for auto-resolved formats.  */
+  bool suffix_p = (insn_formats & APEX_XD)
+	&& (insn_formats & (APEX_XS | APEX_XI | APEX_XC));
+  const char *insn_suffix = suffix_p ? "i" : "";
+
+  /* Print .extInstruction section during WPA phase.  */
+  if (wpa_p)
+    arcv_apex_print_insn_section (insn_name, insn_suffix, opcode, insn_formats);
+
+  /* Determine whether this builtin has a destination operand.  */
+  enum riscv_builtin_type builtin_type
+	= (insn_formats & APEX_DEST) ? RISCV_BUILTIN_DIRECT :
+				       RISCV_BUILTIN_DIRECT_NO_TARGET;
+
+  /* Store APEX builtin information.  */
+  arcv_apex_builtins[arcv_apex_builtin_index] = {
+    arcv_apex_get_icode (insn_formats), xasprintf ("%s", fn_name),
+    xasprintf ("%s", insn_name), opcode, builtin_type, insn_formats,
+    xasprintf ("%s", insn_suffix) /* TODO: Remove insn_suffix from struct.  */
+  };
+
+  /* Set function code for this builtin.  */
+  fndecl->function_decl.function_code
+    = (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+  arcv_apex_builtin_index++;
+}
+
+/* Get the number of registered APEX builtins.  */
+
+int
+arcv_apex_get_builtin_count (void)
+{
+  return arcv_apex_builtin_index;
+}
+
+/* Get information about a specific APEX builtin by index.
+   Returns the information about the builtin.  */
+
+void
+arcv_apex_get_builtin_info (int index, const char **fn_name,
+			      const char **insn_name, unsigned int *opcode,
+			      unsigned int *insn_formats)
+{
+  gcc_assert (index >= 0 && index < arcv_apex_builtins_limit);
+  const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[index];
+
+  *fn_name = d->name;
+  *insn_name = d->insn_name;
+  *opcode = d->opcode;
+  *insn_formats = d->insn_formats;
 }

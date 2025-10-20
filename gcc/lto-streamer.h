@@ -225,6 +225,7 @@ enum lto_section_type
   LTO_section_ipa_sra,
   LTO_section_odr_types,
   LTO_section_ipa_modref,
+  LTO_section_riscv_apex,
   LTO_N_SECTION_TYPES		/* Must be last.  */
 };
 
@@ -966,6 +967,11 @@ void cl_optimization_stream_in (class data_in *,
 /* In lto-opts.cc.  */
 extern void lto_write_options (void);
 
+#ifdef RISCV_APEX
+/* In config/riscv/riscv-apex-lto.cc.  */
+extern void arcv_apex_lto_write_section (void);
+extern void arcv_apex_lto_read_section (void);
+#endif
 
 /* Statistics gathered during LTO, WPA and LTRANS.  */
 extern struct lto_stats_d lto_stats;

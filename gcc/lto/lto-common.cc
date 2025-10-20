@@ -2970,6 +2970,11 @@ read_cgraph_and_symbols (unsigned nfiles, const char **fnames)
   else
     ipa_read_summaries ();
 
+#ifdef RISCV_APEX
+  /* Read RISC-V APEX intrinsic information.  */
+  arcv_apex_lto_read_section ();
+#endif
+
   ggc_grow ();
 
   for (i = 0; all_file_decl_data[i]; i++)

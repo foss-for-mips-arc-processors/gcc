@@ -838,6 +838,12 @@ extern const char* arcv_apex_get_insn_suffix (rtx);
 extern bool arcv_apex_format_supports_p (unsigned int, unsigned int);
 extern void arcv_apex_init_builtin (tree, const char *, const char *,
 				    unsigned int, unsigned int);
+extern void  arcv_apex_lto_register_builtin (const char *, const char *,
+					  unsigned int, unsigned int,
+					  bool, tree);
+extern int arcv_apex_get_builtin_count (void);
+extern void arcv_apex_get_builtin_info (int, const char **, const char **,
+					  unsigned int *, unsigned int *);
 #ifdef RTX_CODE
 extern const char*
 th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);

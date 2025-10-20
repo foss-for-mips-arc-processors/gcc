@@ -3474,6 +3474,11 @@ produce_asm_for_decls (void)
   /* Write command line opts.  */
   lto_write_options ();
 
+#ifdef RISCV_APEX
+  /* Write RISC-V APEX intrinsic information.  */
+  arcv_apex_lto_write_section ();
+#endif
+
   /* Deallocate memory and clean up.  */
   for (idx = 0; idx < num_fns; idx++)
     {

@@ -19,6 +19,13 @@ riscv-builtins.o: $(srcdir)/config/riscv/riscv-builtins.cc $(CONFIG_H) \
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/riscv-builtins.cc
 
+riscv-apex-lto.o: $(srcdir)/config/riscv/riscv-apex-lto.cc \
+  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(BACKEND_H) $(TREE_H) $(GIMPLE_H) \
+  $(CGRAPH_H) $(LTO_STREAMER_H) $(IPA_UTILS_H) $(DATA_STREAMER_H) \
+  stringpool.h attribs.h
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+		$(srcdir)/config/riscv/riscv-apex-lto.cc
+
 riscv-vector-builtins.o: $(srcdir)/config/riscv/riscv-vector-builtins.cc \
   $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) $(RTL_H) $(TM_P_H) \
   memmodel.h insn-codes.h $(OPTABS_H) $(RECOG_H) $(DIAGNOSTIC_H) $(EXPR_H) \
