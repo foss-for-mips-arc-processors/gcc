@@ -3554,7 +3554,14 @@ archs4x, archs4xd"
   [(set (match_operand:SI 0 "dest_reg_operand" "")
 	(ANY_SHIFT_ROTATE:SI (match_operand:SI 1 "register_operand" "")
 			     (match_operand:SI 2 "nonmemory_operand" "")))]
-  "")
+  ""
+{
+  if (!TARGET_BARREL_SHIFTER && operands[2] != const1_rtx)
+    {
+      emit_insn (gen_<insn>si3_loop (operands[0], operands[1], operands[2]));
+      DONE;
+    }
+})
 
 ; asl, asr, lsr patterns:
 ; There is no point in including an 'I' alternative since only the lowest 5
@@ -3653,35 +3660,25 @@ archs4x, archs4xd"
   [(set_attr "type" "shift")
    (set_attr "length" "8")])
 
-(define_insn_and_split "*<insn>si3_nobs"
-  [(set (match_operand:SI 0 "dest_reg_operand")
-	(ANY_SHIFT_ROTATE:SI (match_operand:SI 1 "register_operand")
-			     (match_operand:SI 2 "nonmemory_operand")))]
-  "!TARGET_BARREL_SHIFTER
-   && operands[2] != const1_rtx
-   && arc_pre_reload_split ()"
-  "#"
-  "&& 1"
-  [(const_int 0)]
-{
-  arc_split_<insn> (operands);
-  DONE;
-})
-
-;; <ANY_SHIFT_ROTATE>si3_loop appears after <ANY_SHIFT_ROTATE>si3_nobs
-(define_insn "<insn>si3_loop"
+(define_insn_and_split "<insn>si3_loop"
   [(set (match_operand:SI 0 "dest_reg_operand" "=r,r")
-	(ANY_SHIFT_ROTATE:SI 
-	  (match_operand:SI 1 "register_operand" "0,0")
-	  (match_operand:SI 2 "nonmemory_operand" "rn,Cal")))
-   (clobber (reg:SI LP_COUNT))
-   (clobber (reg:CC CC_REG))
-  ]
-  "!TARGET_BARREL_SHIFTER
-   && operands[2] != const1_rtx"
+  (ANY_SHIFT_ROTATE:SI (match_operand:SI 1 "register_operand" "0,0")
+        (match_operand:SI 2 "nonmemory_operand" "rn,Cal")))
+  (clobber (reg:SI LP_COUNT))
+  (clobber (reg:CC CC_REG))]
+  "!TARGET_BARREL_SHIFTER"
   "* return output_shift_loop (<CODE>, operands);"
-  [(set_attr "type" "shift")
-   (set_attr "length" "16,20")])
+  "&& arc_pre_reload_split ()"
+  [(set (match_dup 0) (ANY_SHIFT_ROTATE:SI (match_dup 1) (match_dup 2)))]
+{
+  if (operands[2] != const1_rtx)
+    {
+      arc_split_<insn> (operands);
+      DONE;
+    }
+}
+[(set_attr "type" "shift")
+ (set_attr "length" "16,20")])
 
 ;; DImode shifts
 
