@@ -861,6 +861,7 @@ bool
 arcv_micro_arch_supports_fusion_p (void)
 {
   return (riscv_is_micro_arch (arcv_rhx100)
+	  || riscv_is_micro_arch (arcv_rmx500)
 	  || riscv_is_micro_arch (arcv_rpx100));
 }
 
@@ -11475,7 +11476,8 @@ riscv_override_options_internal (struct gcc_options *opts)
 
   /* Enable advanced fusion for the ARC-V cores that support it unless
      explicitly disabled.
-     TODO Add arcv_rmx500 once it supports fusion.  */
+     advanced fusion for rmx500 is turned on by an option.
+   */
   if ((riscv_microarchitecture == arcv_rhx100
   	|| riscv_microarchitecture == arcv_rpx100)
       && (target_flags_explicit & MASK_ARCV_ADVANCED_FUSION) == 0)
