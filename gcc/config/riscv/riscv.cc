@@ -1010,7 +1010,11 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   false,					/* overlap_op_by_pieces */
   true,						/* use_zero_stride_load */
   false,					/* speculative_sched_vsetvl */
-  RISCV_FUSE_NOTHING,				/* fusible_ops */
+  (RISCV_FUSE_MULT_ADD | RISCV_FUSE_LI_BRANCH
+   | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
+   | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
+   | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
+   | RISCV_FUSE_LUI_LD_REV),			/* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
@@ -12425,8 +12429,8 @@ riscv_override_options_internal (struct gcc_options *opts)
     }
 
   /* Enable advanced fusion for the ARC-V cores that support it unless
-     explicitly disabled.
-     TODO Add arcv_rmx500 once it supports fusion.  */
+     explicitly disabled.  For the RMX-500 it has to be enabled
+     explicitly.  */
   if ((riscv_microarchitecture == arcv_rhx100
        || riscv_microarchitecture == arcv_rpx100
        || riscv_microarchitecture == arcv_rmx700)
