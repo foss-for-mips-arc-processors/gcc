@@ -20,70 +20,86 @@
 
 (define_automaton "arcv_rmx500")
 
-(define_cpu_unit "arcv_rmx500_ALU"    "arcv_rmx500")
-;(define_cpu_unit "arcv_rmx500_CSR"    "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_FPU"    "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_MPY"    "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_DIV"    "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_DMP"    "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_ALU_A_fuse0_early"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_ALU_A_fuse1_early"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_ALU_B_fuse0_early"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_ALU_B_fuse1_early"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_MPY32"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DIV"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DMP_fuse0"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DMP_fuse1"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_fdivsqrt"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issueA_fuse0" "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issueA_fuse1" "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issueB_fuse0" "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issueB_fuse1" "arcv_rmx500")
 
-;; Instruction reservation for arithmetic instructions.
-(define_insn_reservation "arcv_rmx500_alu_arith" 3
+;; Instruction reservation for arithmetic instructions (pipe A, pipe B).
+(define_insn_reservation "arcv_rmx500_alu_early_arith" 1
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "unknown, const, arith, shift, slt, multi, auipc, nop,
-			logical, move, atomic, mvpair, bitmanip, clz, ctz, cpop,
-			zicond, condmove, clmul, min, max, minu, maxu"))
-  "arcv_rmx500_ALU, nothing*2")
+       (eq_attr "type" "unknown,move,const,arith,shift,slt,multi,auipc,nop,logical,\
+		bitmanip,min,max,minu,maxu,clz,ctz,atomic,\
+		condmove,mvpair,zicond,cpop,clmul"))
+  "((arcv_rmx500_issueA_fuse0 + arcv_rmx500_ALU_A_fuse0_early) | (arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse1_early)) | ((arcv_rmx500_issueB_fuse0 + arcv_rmx500_ALU_B_fuse0_early) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse1_early))")
+
+(define_insn_reservation "arcv_rmx500_imul_fused" 1
+  (and (eq_attr "tune" "arcv_rmx500")
+       (eq_attr "type" "imul_fused"))
+  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early + arcv_rmx500_MPY32)")
+
+(define_insn_reservation "arcv_rmx500_alu_fused" 1
+   (and (eq_attr "tune" "arcv_rmx500")
+       (eq_attr "type" "alu_fused"))
+  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early) | (arcv_rmx500_issueB_fuse0 + arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse0_early + arcv_rmx500_ALU_B_fuse1_early)")
+
 
 (define_insn_reservation "arcv_rmx500_jmp_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "branch, jump, call, jalr, ret, trap"))
-  "arcv_rmx500_ALU")
+       (eq_attr "type" "branch,jump,call,jalr,ret,trap"))
+  "arcv_rmx500_issueA_fuse0 | arcv_rmx500_issueA_fuse1")
 
 (define_insn_reservation "arcv_rmx500_div_insn" 22
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "idiv"))
-  "arcv_rmx500_DIV*22")
+  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_DIV, nothing*21")
 
 (define_insn_reservation "arcv_rmx500_mpy32_insn" 10
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul"))
-  "arcv_rmx500_MPY*10")
+  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*9")
 
 (define_insn_reservation "arcv_rmx500_load_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
-  "arcv_rmx500_DMP")
+  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
 
 (define_insn_reservation "arcv_rmx500_store_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "store,fpstore"))
-  "arcv_rmx500_DMP")
+  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
 
-(define_insn_reservation "arcv_rmx500_farith_insn" 2
-  (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "fadd,fmul,fmadd,fcmp"))
-  "arcv_rmx500_FPU*2")
-
-(define_insn_reservation "arcv_rmx500_fdiv_insn" 17
-  (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "fdiv,fsqrt"))
-  "arcv_rmx500_FPU*17")
-
+;; (soft) floating points
 (define_insn_reservation "arcv_rmx500_xfer" 2
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "fmove,mtc,mfc,fcvt,fcvt_f2i,fcvt_i2f"))
-   "arcv_rmx500_FPU*2")
+       (eq_attr "type" "mfc,mtc,fcvt,fcvt_i2f,fcvt_f2i,fmove,fcmp"))
+  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early), nothing")
 
-;;(define_insn_reservation "core" 1
-;;  (eq_attr "type" "block, brk, dmb, flag, lr, sr, sync")
-;;  "arcv_rmx500_ALU0 + arcv_rmx500_ALU1 + arcv_rmx500_DMP + arcv_rmx500_MPY + arcv_rmx500_MPY64 + arcv_rmx500_DIV")
+(define_insn_reservation "arcv_rmx500_fmul" 2
+  (and (eq_attr "tune" "arcv_rmx500")
+       (eq_attr "type" "fadd,fmul,fmadd"))
+  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early,nothing)")
+
+(define_insn_reservation "arcv_rmx500_fdiv" 17
+  (and (eq_attr "tune" "arcv_rmx500")
+       (eq_attr "type" "fdiv,fsqrt"))
+  "arcv_rmx500_fdivsqrt*17")
 
 ;; Bypasses
-(define_bypass 9 "arcv_rmx500_mpy32_insn" "arcv_rmx500_mpy32_insn,arcv_rmx500_div_insn")
-
-;;(define_bypass 1 "arcv_rmx500_alu_arith" "arcv_rmx500_mpy32_insn" "!accumulator_bypass_p")
-(define_bypass 1 "arcv_rmx500_alu_arith,arcv_rmx500_load_insn"
-		 "arcv_rmx500_alu_arith,arcv_rmx500_mpy32_insn,arcv_rmx500_div_insn,arcv_rmx500_load_insn")
-(define_bypass 1 "arcv_rmx500_alu_arith,arcv_rmx500_load_insn"
-		 "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 1 "arcv_rmx500_alu_early_arith" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_alu_early_arith")
+(define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_mpy*_insn")
+(define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_load_insn")
+(define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_div_insn")
+(define_bypass 9 "arcv_rmx500_mpy32_insn" "arcv_rmx500_mpy*_insn")
+(define_bypass 9 "arcv_rmx500_mpy32_insn" "arcv_rmx500_div_insn")
