@@ -4435,8 +4435,8 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
-			&& (TARGET_ZMMUL || TARGET_MUL))"
+  "(TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
+			&& (TARGET_ZMMUL || TARGET_MUL)))"
   {
     if (TARGET_ARCV_ADVANCED_FUSION)
       {
