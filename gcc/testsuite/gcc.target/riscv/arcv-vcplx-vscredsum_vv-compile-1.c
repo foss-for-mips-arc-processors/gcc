@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target arcv_vcplx } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-O3" "-Os" "-Og" "-Oz" "-flto" } } */
-/* { dg-options "-march=rv32im_xarcvvcplx -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32imv_xarcvvcplx -mabi=ilp32 -O2" } */
 /* { dg-final { check-function-bodies "**" "" } } */
 
 #include <stddef.h>
