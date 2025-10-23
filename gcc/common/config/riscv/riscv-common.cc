@@ -261,14 +261,12 @@ static const riscv_implied_info_t riscv_implied_info[] =
 
   {"xsfvcp", "zve32x"},
 
-  {"xarcvbitrev", "v"},
-  {"xarcvbitstream", "v"},
-  {"xarcvvdsp", "v"},
-  {"xarcvvcplx", "v"},
-  {"xarcvvsad", "v"},
-  {"xarcvmxmb", "v"},
-  {"xarcvmxmc", "v"},
-  {"xarcvmxmd", "v"},
+  {"xarcvvdsp", "zve32x"},
+  {"xarcvvcplx", "zve32x"},
+  {"xarcvvsad", "zve32x"},
+  {"xarcvmxmb", "zve32x"},
+  {"xarcvmxmc", "zve32x"},
+  {"xarcvmxmd", "zve32x"},
 
   {NULL, NULL}
 };
