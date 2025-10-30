@@ -78,3 +78,123 @@ foreach ir { tree rtl } {
 	}
     }]
 }
+
+# Assembly scanning procedures for LTRANS output.
+# These scan the .ltrans*.s assembly files produced during LTO compilation.
+
+# Look for a pattern in all .ltrans*.s files produced by the LTO compiler.
+# This combines results from all LTRANS units for the current test.
+proc scan-ltrans-assembler { args } {
+    if { [llength $args] < 1 } {
+	error "scan-ltrans-assembler: too few arguments"
+	return
+    }
+    if { [llength $args] > 2 } {
+	error "scan-ltrans-assembler: too many arguments"
+	return
+    }
+    if { [llength $args] >= 2 } {
+	switch [dg-process-target [lindex $args 1]] {
+	    "S" { }
+	    "N" { return }
+	    "F" { setup_xfail "*-*-*" }
+	    "P" { }
+	}
+    }
+
+    set testcase [testname-for-summary]
+    set pattern [lindex $args 0]
+    set pp_pattern [make_pattern_printable $pattern]
+    
+    # Get the testcase name (for LTO tests, this is the executable name like
+    # gcc-target-riscv-apex-arcv-apex-lto-test0-01.exe)
+    set testname [lindex $testcase 0]
+    
+    # Strip .exe extension if present
+    set basename [file rootname $testname]
+    
+    # Match only ltrans files for this specific test
+    # Pattern: basename.ltrans*.s (e.g., test-01.ltrans0.ltrans.s)
+    set output_files [dg_glob_remote "${basename}.ltrans*.s"]
+
+    if { $output_files == "" } {
+       verbose -log "$testcase: no ${basename}.ltrans*.s files found"
+       unresolved "$testcase scan-ltrans-assembler $pp_pattern"
+       return
+    }
+
+    set total_matches 0
+    foreach file $output_files {
+       set fd [open $file r]
+       set text [read $fd]
+       close $fd
+       set matches [regexp -all -- $pattern $text]
+       set total_matches [expr $total_matches + $matches]
+    }
+
+    if { $total_matches > 0 } {
+       pass "$testcase scan-ltrans-assembler $pp_pattern"
+    } else {
+       fail "$testcase scan-ltrans-assembler $pp_pattern"
+    }
+}
+set_required_options_for scan-ltrans-assembler
+
+# Check that a pattern appears exactly N times across all .ltrans.s files for this test.
+proc scan-ltrans-assembler-times { args } {
+    if { [llength $args] < 2 } {
+	error "scan-ltrans-assembler-times: too few arguments"
+	return
+    }
+    if { [llength $args] > 3 } {
+	error "scan-ltrans-assembler-times: too many arguments"
+	return
+    }
+    if { [llength $args] >= 3 } {
+	switch [dg-process-target [lindex $args 2]] {
+	    "S" { }
+	    "N" { return }
+	    "F" { setup_xfail "*-*-*" }
+	    "P" { }
+	}
+    }
+
+    set testcase [testname-for-summary]
+    set pattern [lindex $args 0]
+    set times [lindex $args 1]
+    set pp_pattern [make_pattern_printable $pattern]
+    
+    # Get the testcase name (for LTO tests, this is the executable name like
+    # gcc-target-riscv-apex-arcv-apex-lto-test0-01.exe)
+    set testname [lindex $testcase 0]
+    
+    # Strip .exe extension if present
+    set basename [file rootname $testname]
+    
+    # Match only ltrans files for this specific test
+    # Pattern: basename.ltrans*.s (e.g., test-01.ltrans0.ltrans.s)
+    set output_files [dg_glob_remote "${basename}.ltrans*.s"]
+    
+    if { $output_files == "" } {
+	verbose -log "$testcase: no ${basename}.ltrans*.s files found"
+	unresolved "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+	return
+    }
+    
+    set total_matches 0
+    foreach file $output_files {
+	set fd [open $file r]
+	set text [read $fd]
+	close $fd
+	set matches [regexp -all -- $pattern $text]
+	set total_matches [expr $total_matches + $matches]
+    }
+    
+    if { $total_matches == $times } {
+	pass "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+    } else {
+	verbose -log "$testcase: $pp_pattern found $total_matches times"
+	fail "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+    }
+}
+set_required_options_for scan-ltrans-assembler-times
