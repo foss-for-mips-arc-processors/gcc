@@ -14,27 +14,59 @@
 # along with GCC; see the file COPYING3.  If not see
 # <http://www.gnu.org/licenses/>.
 
-# GCC testsuite that uses the `dg.exp' driver.
+# GCC testsuite for RISC-V APEX intrinsics.
+# This file handles both regular single-file tests and multi-file LTO tests.
 
 # Exit immediately if this isn't a RISC-V target.
 if ![istarget riscv*-*-*] then {
   return
 }
 
-# Load support procs.
+# Load all required libraries.
 load_lib gcc-dg.exp
+load_lib standard.exp
+load_lib gcc.exp
+load_lib lto.exp
+load_lib scanltrans.exp
 
 global DEFAULT_CFLAGS
 if ![info exists DEFAULT_CFLAGS] then {
     set DEFAULT_CFLAGS " -ansi -pedantic-errors"
 }
 
-# Initialize `dg'.
+#
+# Run regular single-file tests
+#
 dg-init
 
-# Main loop.
-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]] \
-        "" $DEFAULT_CFLAGS
+set tests [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]]
+set non_lto_tests [list]
+foreach test $tests {
+    if {![string match "*arcv-apex-lto-*" $test]} {
+        lappend non_lto_tests $test
+    }
+}
 
-# All done.
+dg-runtest $non_lto_tests "" $DEFAULT_CFLAGS
+
 dg-finish
+
+#
+# Run multi-file LTO tests (if LTO is supported)
+#
+if { [check_effective_target_lto] } {
+    gcc_init
+    lto_init no-mathlib
+    
+    set sid "riscv_apex_lto"
+    
+    foreach src [lsort [find $srcdir/$subdir arcv-apex-lto-*_0.c]] {
+        if ![runtest_file_p $runtests $src] then {
+            continue
+        }
+        
+        lto-execute $src $sid
+    }
+    
+    lto_finish
+}
