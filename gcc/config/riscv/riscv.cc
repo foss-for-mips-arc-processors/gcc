@@ -909,12 +909,6 @@ typedef enum
 
 typedef insn_code (*code_for_push_pop_t) (machine_mode);
 
-bool
-riscv_is_micro_arch (enum riscv_microarchitecture_type arch)
-{
-  return (riscv_microarchitecture == arch);
-}
-
 void riscv_frame_info::reset(void)
 {
   total_size = 0;
@@ -4343,7 +4337,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
+      if ((TARGET_ARCV_RHX100 || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -10825,7 +10819,7 @@ riscv_set_is_shNadduw (rtx set)
 static bool
 pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!TARGET_ARCV_RHX100)
     return true;
 
   return ((is_load && (mode == SImode
@@ -11736,7 +11730,7 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV_RHX100)
     return arcv_macro_fusion_pair_p (prev, curr);
 
   return false;
@@ -11842,7 +11836,7 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  if (riscv_is_micro_arch (arcv_rhx100) && dep_type == REG_DEP_ANTI
+  if (TARGET_ARCV_RHX100 && dep_type == REG_DEP_ANTI
       && !SCHED_GROUP_P (insn))
     return cost + 1;
 
@@ -11929,7 +11923,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!TARGET_ARCV_RHX100)
     return priority;
 
   if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE

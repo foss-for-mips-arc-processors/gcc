@@ -149,7 +149,7 @@ riscv_cpu_cpp_builtins (cpp_reader *pfile)
     builtin_define_with_int_value ("__riscv_th_v_intrinsic",
 				   riscv_ext_version_value (0, 11));
 
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     builtin_define ("__riscv_rhx");
 
   /* Define architecture extension test macros.  */
