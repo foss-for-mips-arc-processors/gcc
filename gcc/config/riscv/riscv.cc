@@ -344,6 +344,9 @@ static int alu_pipe_scheduled_p;
 static int pipeB_scheduled_p;
 
 static rtx_insn *last_scheduled_insn;
+
+/* Forward declaration for scheduler functions.  */
+static bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 static short cached_can_issue_more;
 
 /* If non-zero, this is an offset to be added to SP to redefine the CFA
@@ -10660,6 +10663,9 @@ riscv_issue_rate (void)
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
+  if (!riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return more;
+
   /* Beginning of cycle - reset variables.  */
   if (more == tune_param->issue_rate)
     {
