@@ -10819,7 +10819,7 @@ riscv_set_is_shNadduw (rtx set)
 static bool
 pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!TARGET_ARCV_RHX100)
+  if (!riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return true;
 
   return ((is_load && (mode == SImode
@@ -11730,7 +11730,7 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_macro_fusion_pair_p (prev, curr);
 
   return false;
@@ -11836,7 +11836,7 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  if (TARGET_ARCV_RHX100 && dep_type == REG_DEP_ANTI
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV) && dep_type == REG_DEP_ANTI
       && !SCHED_GROUP_P (insn))
     return cost + 1;
 
@@ -11923,7 +11923,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (!TARGET_ARCV_RHX100)
+  if (!riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return priority;
 
   if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
@@ -11965,6 +11965,10 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 
   if (!cached_can_issue_more)
     return 0;
+
+  /* Only perform ARCV-specific reordering if ARCV fusion is enabled.  */
+  if (!riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return cached_can_issue_more;
 
   /* Fuse double load/store instances missed by sched_fusion.  */
   if (!pipeB_scheduled_p && last_scheduled_insn && ready && *n_readyp > 0
