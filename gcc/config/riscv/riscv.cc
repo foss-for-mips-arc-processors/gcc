@@ -10932,8 +10932,118 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   return false;
 }
 
+/* Helper function to check if instruction type is arithmetic-like.  */
+
+static bool
+is_arith_type_insn (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+
+  return (type == TYPE_ARITH
+	  || type == TYPE_LOGICAL
+	  || type == TYPE_SHIFT
+	  || type == TYPE_SLT
+	  || type == TYPE_BITMANIP
+	  || type == TYPE_MIN
+	  || type == TYPE_MAX
+	  || type == TYPE_MINU
+	  || type == TYPE_MAXU
+	  || type == TYPE_CLZ
+	  || type == TYPE_CTZ);
+}
+
+/* Helper to check if curr's source operand is valid for fusion.  */
+
+static bool
+is_valid_arith_src (rtx curr_set)
+{
+  rtx src = SET_SRC (curr_set);
+
+  /* Immediate operand or register operand.  */
+  return CONST_INT_P (src) || REG_P (XEXP (src, 0));
+}
+
+/* Helper to check if curr operation is compatible with load's destination.  */
+
+static bool
+is_valid_load_arith_pair (rtx prev_set, rtx curr_set)
+{
+  rtx load_addr = XEXP (SET_SRC (prev_set), 0);
+  rtx load_dest = SET_DEST (prev_set);
+  rtx arith_src = XEXP (SET_SRC (curr_set), 0);
+  rtx arith_dest = SET_DEST (curr_set);
+
+  /* Address register must be a register.  */
+  if (!REG_P (load_addr))
+    return false;
+
+  /* Address register must match first source operand of arithmetic op.  */
+  if (REGNO (load_addr) != REGNO (arith_src))
+    return false;
+
+  /* Address register must not be the load destination (no clobber).  */
+  if (REGNO (load_addr) == REGNO (load_dest))
+    return false;
+
+  /* Load and arithmetic destinations must be different.  */
+  if (REGNO (load_dest) == REGNO (arith_dest))
+    return false;
+
+  /* Check operand constraints for different arithmetic formats.  */
+  rtx src = SET_SRC (curr_set);
+
+  /* Unary operation: (set (reg:X rd1) (not (reg:X rs1))).  */
+  if (GET_RTX_LENGTH (GET_CODE (src)) == 1)
+    return true;
+
+  /* Immediate operation: (set (reg:X rd2) (op (reg:X rs1) (const_int))).  */
+  if (CONST_INT_P (XEXP (src, 1)))
+    return true;
+
+  /* Binary register operation: ensure load dest != second source register.  */
+  if (REGNO (load_dest) != REGNO (XEXP (src, 1)))
+    return true;
+
+  return false;
+}
+
+/* Helper to check if curr operation is compatible with store's address.  */
+
+static bool
+is_valid_store_arith_pair (rtx prev_set, rtx curr_set)
+{
+  rtx store_addr = XEXP (SET_DEST (prev_set), 0);
+  rtx arith_src = XEXP (SET_SRC (curr_set), 0);
+
+  /* Address register must be a register.  */
+  if (!REG_P (store_addr))
+    return false;
+
+  /* Address register must match first source operand of arithmetic op.  */
+  if (REGNO (store_addr) != REGNO (arith_src))
+    return false;
+
+  /* Check operand constraints for different arithmetic formats.  */
+  rtx src = SET_SRC (curr_set);
+
+  /* Unary operation.  */
+  if (GET_RTX_LENGTH (GET_CODE (src)) == 1)
+    return true;
+
+  /* Immediate operation.  */
+  if (CONST_INT_P (XEXP (src, 1)))
+    return true;
+
+  /* Binary register operation: store addr == second source is OK.  */
+  if (REGNO (store_addr) == REGNO (XEXP (src, 1)))
+    return true;
+
+  return false;
+}
+
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of ARCV-specific macro-op fusion.  */
+
 static bool
 arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
@@ -10943,54 +11053,108 @@ arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
   gcc_assert (prev_set);
   gcc_assert (curr_set);
 
-  /* Fuse load/store + register post-{inc,dec}rement:
-   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X rs1) (const_int))))
-   *   or
-   * prev (st) == (set (mem:X (plus:X (reg:X rs1) (const_int))) (reg:X rs2))
-   * ...
-   */
-  if ((get_attr_type (curr) == TYPE_ARITH
-       || get_attr_type (curr) == TYPE_LOGICAL
-       || get_attr_type (curr) == TYPE_SHIFT
-       || get_attr_type (curr) == TYPE_SLT
-       || get_attr_type (curr) == TYPE_BITMANIP
-       || get_attr_type (curr) == TYPE_MIN
-       || get_attr_type (curr) == TYPE_MAX
-       || get_attr_type (curr) == TYPE_MINU
-       || get_attr_type (curr) == TYPE_MAXU
-       || get_attr_type (curr) == TYPE_CLZ
-       || get_attr_type (curr) == TYPE_CTZ)
-      && (CONST_INT_P (SET_SRC (curr_set))
-	  || REG_P (XEXP (SET_SRC (curr_set), 0)))
-      && ((get_attr_type (prev) == TYPE_LOAD
-	   && REG_P (XEXP (SET_SRC (prev_set), 0))
-	   && REGNO (XEXP (SET_SRC (prev_set), 0))
-	      == REGNO (XEXP (SET_SRC (curr_set), 0))
-	   && REGNO (XEXP (SET_SRC (prev_set), 0))
-	      != REGNO (SET_DEST (prev_set))
-	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))
-	   && (/* (set (reg:X rd1) (not (reg:X rs1))) */
-	       GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
-    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	       || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
-	       || REGNO (SET_DEST (prev_set))
-		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
-      || (get_attr_type (prev) == TYPE_STORE
-	  && REG_P (XEXP (SET_DEST (prev_set), 0))
-	  && REGNO (XEXP (SET_DEST (prev_set), 0))
-	     == REGNO (XEXP (SET_SRC (curr_set), 0))
-	  && (/* (set (reg:X rd1) (not (reg:X rs1))) */
-	      GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
-    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
-	      || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */
-	      || REGNO (XEXP (SET_DEST (prev_set), 0))
-		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
-    return true;
+  /* Check if curr is an arithmetic-type instruction.  */
+  if (!is_arith_type_insn (curr))
+    return false;
+
+  /* Check if curr has valid source operands.  */
+  if (!is_valid_arith_src (curr_set))
+    return false;
+
+  /* Check for load + arithmetic fusion.  */
+  if (get_attr_type (prev) == TYPE_LOAD)
+    return is_valid_load_arith_pair (prev_set, curr_set);
+
+  /* Check for store + arithmetic fusion.  */
+  if (get_attr_type (prev) == TYPE_STORE)
+    return is_valid_store_arith_pair (prev_set, curr_set);
 
   return false;
 }
+
+//static bool
+//arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
+//{
+//  rtx prev_set = single_set (prev);
+//  rtx curr_set = single_set (curr);
+//
+//  gcc_assert (prev_set);
+//  gcc_assert (curr_set);
+//
+//  /* Fuse load/store + register post-{inc,dec}rement:
+//   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X rs1) (const_int))))
+//   *   or
+//   * prev (st) == (set (mem:X (plus:X (reg:X rs1) (const_int))) (reg:X rs2))
+//   * ...
+//   */
+
+//  if ((get_attr_type (curr) == TYPE_ARITH            // is_arith_type_insn ()
+//       || get_attr_type (curr) == TYPE_LOGICAL
+//       || get_attr_type (curr) == TYPE_SHIFT
+//       || get_attr_type (curr) == TYPE_SLT
+//       || get_attr_type (curr) == TYPE_BITMANIP
+//       || get_attr_type (curr) == TYPE_MIN
+//       || get_attr_type (curr) == TYPE_MAX
+//       || get_attr_type (curr) == TYPE_MINU
+//       || get_attr_type (curr) == TYPE_MAXU
+//       || get_attr_type (curr) == TYPE_CLZ
+//       || get_attr_type (curr) == TYPE_CTZ)
+
+//      && (CONST_INT_P (SET_SRC (curr_set))            // is_valid_arith_src ()
+//	  || REG_P (XEXP (SET_SRC (curr_set), 0)))
+
+
+//      && ((get_attr_type (prev) == TYPE_LOAD          /* Check for load + arithmetic fusion.  */
+
+//	   && REG_P (XEXP (SET_SRC (prev_set), 0))     // is_valid_load_arith_pair ()  /* Address register must be a register.  */
+
+
+//	   && REGNO (XEXP (SET_SRC (prev_set), 0))     /* Address register must match first source operand of arithmetic op.  */
+//	      == REGNO (XEXP (SET_SRC (curr_set), 0))
+
+
+//	   && REGNO (XEXP (SET_SRC (prev_set), 0))     /* Address register must not be the load destination (no clobber).  */
+//	      != REGNO (SET_DEST (prev_set))
+
+//	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set))    /* Load and arithmetic destinations must be different.  */
+
+//	   && (/* (set (reg:X rd1) (not (reg:X rs1))) */
+//	       GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1        /* Unary operation: (set (reg:X rd1) (not (reg:X rs1))).  */
+
+
+//    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+//	       || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))              /* Immediate operation: (set (reg:X rd2) (op (reg:X rs1) (const_int))).  */
+
+
+//    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */  /* Binary register operation: ensure load dest != second source register.  */
+//	       || REGNO (SET_DEST (prev_set))
+//		  != REGNO (XEXP (SET_SRC (curr_set), 1))))
+
+
+//      || (get_attr_type (prev) == TYPE_STORE       /* Check for store + arithmetic fusion.  */
+
+
+//	  && REG_P (XEXP (SET_DEST (prev_set), 0))   is_valid_store_arith_pair () /* Address register must be a register */
+
+//	  && REGNO (XEXP (SET_DEST (prev_set), 0))   /* Address register must match first source operand of arithmetic op */
+//	     == REGNO (XEXP (SET_SRC (curr_set), 0))
+
+
+//	  && (/* (set (reg:X rd1) (not (reg:X rs1))) */       /* Unary operation */
+//	      GET_RTX_LENGTH (GET_CODE (SET_SRC (curr_set))) == 1
+
+
+//    /* (op-imm) == (set (reg:X rd2) (plus/minus (reg:X rs1) (const_int))) */
+//	      || CONST_INT_P (XEXP (SET_SRC (curr_set), 1))   /* Immediate operation */
+
+
+//    /* (op) == (set (reg:X rd2) (plus/minus (reg:X rs1) (reg:X rs2))) */   /* Binary register operation: store addr == second source is OK */
+//	      || REGNO (XEXP (SET_DEST (prev_set), 0))
+//		 == REGNO (XEXP (SET_SRC (curr_set), 1))))))
+//    return true;
+//
+//  return false;
+//}
 
 /* Return true if PREV and CURR constitute an ordered load/store + lui pair, for
    the purposes of ARCV-specific macro-op fusion.  */
