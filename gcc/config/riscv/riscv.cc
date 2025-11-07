@@ -10659,13 +10659,16 @@ riscv_issue_rate (void)
   return tune_param->issue_rate;
 }
 
-/* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
-static int
-riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
-{
-  if (!riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
-    return more;
+/* Check if more instructions can be issued in the current cycle for ARCV
+   fusion.  This function resets pipe scheduling state at the beginning of
+   each cycle and checks if both ALU and pipeB are already scheduled.
 
+   Return false if both pipes are scheduled and no more instructions can be
+   issued, true otherwise.  */
+
+static bool
+arcv_can_issue_more_p (rtx_insn *insn, int more)
+{
   /* Beginning of cycle - reset variables.  */
   if (more == tune_param->issue_rate)
     {
@@ -10676,31 +10679,25 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
   if (alu_pipe_scheduled_p && pipeB_scheduled_p)
     {
       cached_can_issue_more = 0;
-      return 0;
+      return false;
     }
 
   cached_can_issue_more = more;
 
-  if (DEBUG_INSN_P (insn))
-    return more;
+  return true;
+}
 
-  rtx_code code = GET_CODE (PATTERN (insn));
-  if (code == USE || code == CLOBBER)
-    return more;
+/* ARCV-specific implementation for TARGET_SCHED_VARIABLE_ISSUE.  This
+   function tracks which execution pipe (ALU or pipeB) gets scheduled and
+   updates the scheduling state accordingly.
 
-  /* GHOST insns are used for blockage and similar cases which
-     effectively end a cycle.  */
-  if (get_attr_type (insn) == TYPE_GHOST)
-    return 0;
+   Load/store instructions and their fused pairs use pipeB, while other
+   fused operations use the ALU pipe.  Returns the number of additional
+   instructions that can be issued in the current cycle.  */
 
-  /* If we ever encounter an insn with an unknown type, trip
-     an assert so we can find and fix this problem.  */
-  gcc_assert (get_attr_type (insn) != TYPE_UNKNOWN);
-
-  /* If we ever encounter an insn without an insn reservation, trip
-     an assert so we can find and fix this problem.  */
-  gcc_assert (insn_has_dfa_reservation_p (insn));
-
+static int
+arcv_sched_variable_issue (rtx_insn *insn, int more)
+{
   if (next_insn (insn) && INSN_P (next_insn (insn))
       && SCHED_GROUP_P (next_insn (insn)))
     {
@@ -10722,6 +10719,40 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 
   last_scheduled_insn = insn;
   cached_can_issue_more = more - 1;
+
+  return cached_can_issue_more;
+}
+
+/* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
+static int
+riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
+{
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV)
+      && !arcv_can_issue_more_p (insn, more))
+    return 0;
+
+  if (DEBUG_INSN_P (insn))
+    return more;
+
+  rtx_code code = GET_CODE (PATTERN (insn));
+  if (code == USE || code == CLOBBER)
+    return more;
+
+  /* GHOST insns are used for blockage and similar cases which
+     effectively end a cycle.  */
+  if (get_attr_type (insn) == TYPE_GHOST)
+    return 0;
+
+  /* If we ever encounter an insn with an unknown type, trip
+     an assert so we can find and fix this problem.  */
+  gcc_assert (get_attr_type (insn) != TYPE_UNKNOWN);
+
+  /* If we ever encounter an insn without an insn reservation, trip
+     an assert so we can find and fix this problem.  */
+  gcc_assert (insn_has_dfa_reservation_p (insn));
+
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
 }
