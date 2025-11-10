@@ -11158,6 +11158,7 @@ arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
 
 /* Return true if PREV and CURR constitute an ordered load/store + lui pair, for
    the purposes of ARCV-specific macro-op fusion.  */
+
 static bool
 arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
@@ -11167,21 +11168,25 @@ arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
   gcc_assert (prev_set);
   gcc_assert (curr_set);
 
-  /* Fuse load/store with lui:
-   * prev (ld) == (set (reg:X rd1) (mem:X (plus:X (reg:X) (const_int))))
-   *   or
-   * prev (st) == (set (mem:X (plus:X (reg:X) (const_int))) (reg:X rD))
-   *
-   * curr (lui) == (set (reg:X rd2) (const_int UPPER_IMM_20))
-   */
-  if (REG_P (curr)
-      && ((get_attr_type (curr) == TYPE_MOVE
-	   && GET_CODE (SET_SRC (curr_set)) == HIGH)
-	  || (CONST_INT_P (SET_SRC (curr_set))
-	      && LUI_OPERAND (INTVAL (SET_SRC (curr_set)))))
-      && ((get_attr_type (prev) == TYPE_LOAD
-	   && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
-	  || get_attr_type (prev) == TYPE_STORE))
+  /* Check if curr is a LUI instruction:
+     - LUI via HIGH: (set (reg:X rd) (high (const_int)))
+     - LUI via immediate: (set (reg:X rd) (const_int UPPER_IMM_20))  */
+  bool is_lui = (REG_P (curr)
+		 && ((get_attr_type (curr) == TYPE_MOVE
+		      && GET_CODE (SET_SRC (curr_set)) == HIGH)
+		     || (CONST_INT_P (SET_SRC (curr_set))
+			 && LUI_OPERAND (INTVAL (SET_SRC (curr_set))))));
+
+  if (!is_lui)
+    return false;
+
+  /* Check for load + LUI fusion:
+     Load and LUI destinations must be different to avoid hazard.  */
+  if (get_attr_type (prev) == TYPE_LOAD)
+    return REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set));
+
+  /* Check for store + LUI fusion (always allowed).  */
+  if (get_attr_type (prev) == TYPE_STORE)
     return true;
 
   return false;
