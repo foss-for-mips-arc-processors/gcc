@@ -11204,33 +11204,52 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
 
-  /* Fuse multiply-add pair.  */
-  if (prev_set && curr_set && GET_CODE (SET_SRC (prev_set)) == MULT
-      && GET_CODE (SET_SRC (curr_set)) == PLUS
-      && (REG_P (XEXP (SET_SRC (curr_set), 0))
-	  && REGNO (SET_DEST (prev_set)) ==
-	     REGNO (XEXP (SET_SRC (curr_set), 0))
-	  || (REG_P (XEXP (SET_SRC (curr_set), 1))
-	      && REGNO (SET_DEST (prev_set)) ==
-		 REGNO (XEXP (SET_SRC (curr_set), 1)))))
-    return true;
+  /* Fuse multiply-add pair:
+     prev: (set rd_mult (mult rs1 rs2))
+     curr: (set rd_add (plus rd_mult rs3))  */
+  if (prev_set && curr_set
+      && GET_CODE (SET_SRC (prev_set)) == MULT
+      && GET_CODE (SET_SRC (curr_set)) == PLUS)
+    {
+      rtx curr_plus = SET_SRC (curr_set);
+      rtx mult_dest = SET_DEST (prev_set);
+      unsigned int mult_dest_regno = REGNO (mult_dest);
 
-  /* Fuse logical shift left with logical shift right (bit-extract pattern).  */
-  if (prev_set && curr_set && GET_CODE (SET_SRC (prev_set)) == ASHIFT
+      /* Check if multiply result is used in either operand of the addition.  */
+      if (REG_P (XEXP (curr_plus, 0))
+	  && REGNO (XEXP (curr_plus, 0)) == mult_dest_regno)
+	return true;
+
+      if (REG_P (XEXP (curr_plus, 1))
+	  && REGNO (XEXP (curr_plus, 1)) == mult_dest_regno)
+	return true;
+    }
+
+  /* Fuse logical shift left with logical shift right (bit-extract pattern):
+     prev: (set rd (ashift rs imm1))
+     curr: (set rd (lshiftrt rd imm2))  */
+  if (prev_set && curr_set
+      && GET_CODE (SET_SRC (prev_set)) == ASHIFT
       && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
       && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
       && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0)))
     return true;
 
-  /* Fuse load-immediate with a dependent conditional branch.  */
+  /* Fuse load-immediate with a dependent conditional branch:
+     prev: (set rd imm)
+     curr: (if_then_else (cond rd ...) ...)  */
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
       && any_condjump_p (curr))
     {
-      rtx comp = XEXP (SET_SRC (curr_set), 0);
+      if (!curr_set)
+	return false;
 
-      return (REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == SET_DEST (prev_set))
-	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == SET_DEST (prev_set));
+      rtx comp = XEXP (SET_SRC (curr_set), 0);
+      rtx prev_dest = SET_DEST (prev_set);
+
+      return (REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == prev_dest)
+	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == prev_dest);
     }
 
   /* Do not fuse loads/stores before sched2.  */
@@ -11244,7 +11263,7 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (!simple_sets_p)
     return false;
 
-  /* Fuse adjacent loads and stores.  */
+  /* Fuse adjacent loads.  */
   if (get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
     {
@@ -11252,6 +11271,7 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return true;
     }
 
+  /* Fuse adjacent stores.  */
   if (get_attr_type (prev) == TYPE_STORE
       && get_attr_type (curr) == TYPE_STORE)
     {
@@ -11259,47 +11279,56 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return true;
     }
 
-  /* Look ahead 1 insn to make sure double loads/stores are always
-     fused together, even in the presence of other opportunities.  */
-  if (next_insn (curr) && single_set (next_insn (curr))
-      && get_attr_type (curr) == TYPE_LOAD
-      && get_attr_type (next_insn (curr)) == TYPE_LOAD)
-  {
-      if (arcv_fused_addr_p (SET_SRC (curr_set),
-			     SET_SRC (single_set (next_insn (curr))),
-			     true))
-	return false;
-  }
+  /* Look ahead 1 insn to prioritize adjacent load/store pairs.
+     If curr and next form a better fusion opportunity, defer this fusion.  */
+  rtx_insn *next = next_insn (curr);
+  if (next)
+    {
+      rtx next_set = single_set (next);
 
-  if (next_insn (curr) && single_set (next_insn (curr))
-      && get_attr_type (curr) == TYPE_STORE
-      && get_attr_type (next_insn (curr)) == TYPE_STORE)
-  {
-      if (arcv_fused_addr_p (SET_DEST (curr_set),
-			     SET_DEST (single_set (next_insn (curr))),
-			     false))
+      /* Defer if next instruction forms an adjacent load pair with curr.  */
+      if (next_set
+	  && get_attr_type (curr) == TYPE_LOAD
+	  && get_attr_type (next) == TYPE_LOAD
+	  && arcv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
 	return false;
-  }
 
-  /* Fuse a pre- or post-update memory operation.  */
+      /* Defer if next instruction forms an adjacent store pair with curr.  */
+      if (next_set
+	  && get_attr_type (curr) == TYPE_STORE
+	  && get_attr_type (next) == TYPE_STORE
+	  && arcv_fused_addr_p (SET_DEST (curr_set), SET_DEST (next_set), false))
+	return false;
+    }
+
+  /* Fuse a pre- or post-update memory operation:
+     Examples: load+add, add+load, store+add, add+store.  */
   if (arcv_memop_arith_pair_p (prev, curr)
       || arcv_memop_arith_pair_p (curr, prev))
     return true;
 
-  /* Fuse a memory operation preceded or followed by a lui.  */
+  /* Fuse a memory operation preceded or followed by a LUI:
+     Examples: load+lui, lui+load, store+lui, lui+store.  */
   if (arcv_memop_lui_pair_p (prev, curr)
       || arcv_memop_lui_pair_p (curr, prev))
     return true;
 
-  /* Fuse load-immediate with a store of the destination register.  */
+  /* Fuse load-immediate with a store of the destination register:
+     prev: (set rd imm)
+     curr: (set (mem ...) rd)  */
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
-      && get_attr_type (curr) == TYPE_STORE
-      && ((REG_P (SET_SRC (curr_set))
-	   && SET_DEST (prev_set) == SET_SRC (curr_set))
-	  || (SUBREG_P (SET_SRC (curr_set))
-	      && SET_DEST (prev_set) == SUBREG_REG (SET_SRC (curr_set)))))
-    return true;
+      && get_attr_type (curr) == TYPE_STORE)
+    {
+      rtx store_src = SET_SRC (curr_set);
+      rtx load_dest = SET_DEST (prev_set);
+
+      if (REG_P (store_src) && store_src == load_dest)
+	return true;
+
+      if (SUBREG_P (store_src) && SUBREG_REG (store_src) == load_dest)
+	return true;
+    }
 
   return false;
 }
