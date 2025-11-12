@@ -904,12 +904,6 @@ typedef enum
 
 typedef insn_code (*code_for_push_pop_t) (machine_mode);
 
-bool
-riscv_is_micro_arch (enum riscv_microarchitecture_type arch)
-{
-  return (riscv_microarchitecture == arch);
-}
-
 int
 riscv_get_tune_param_issue_rate (void)
 {
@@ -4344,7 +4338,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((riscv_is_micro_arch (arcv_rhx100) || TARGET_XTHEADBB)
+      if ((TARGET_ARCV_RHX100 || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -10644,7 +10638,7 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
 
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     if (!arcv_can_issue_more_p (insn, more))
       return 0;
 
@@ -10668,7 +10662,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
      an assert so we can find and fix this problem.  */
   gcc_assert (insn_has_dfa_reservation_p (insn));
 
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
@@ -11408,7 +11402,7 @@ static void
 riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 			     int *pri)
 {
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     {
       arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri);
       return;
@@ -11431,7 +11425,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     return arcv_sched_adjust_cost (insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
@@ -11517,7 +11511,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
@@ -11529,7 +11523,7 @@ riscv_sched_init (FILE *file ATTRIBUTE_UNUSED,
 		  int verbose ATTRIBUTE_UNUSED,
 		  int max_ready ATTRIBUTE_UNUSED)
 {
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     arcv_sched_init ();
 }
 
@@ -11540,7 +11534,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (riscv_is_micro_arch (arcv_rhx100))
+  if (TARGET_ARCV_RHX100)
     return arcv_sched_reorder2 (ready, n_readyp);
 
   return 0;

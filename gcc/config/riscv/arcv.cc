@@ -87,7 +87,7 @@ arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
 static bool
 pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!TARGET_ARCV_RHX100)
     return true;
 
   return ((is_load && (mode == SImode
@@ -516,7 +516,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 int
 arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (!riscv_is_micro_arch (arcv_rhx100))
+  if (!TARGET_ARCV_RHX100)
     return priority;
 
   if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
