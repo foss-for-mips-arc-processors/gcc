@@ -341,6 +341,9 @@ unsigned riscv_stack_boundary;
 /* Whether in riscv_output_mi_thunk. */
 static bool riscv_in_thunk_func = false;
 
+/* Forward declaration for scheduler functions.  */
+static bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
+
 /* If non-zero, this is an offset to be added to SP to redefine the CFA
    when restoring the FP register from the stack.  Only valid when generating
    the epilogue.  */
@@ -10638,7 +10641,7 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
 
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     if (!arcv_can_issue_more_p (insn, more))
       return 0;
 
@@ -10662,7 +10665,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
      an assert so we can find and fix this problem.  */
   gcc_assert (insn_has_dfa_reservation_p (insn));
 
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
@@ -11511,7 +11514,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
@@ -11523,7 +11526,7 @@ riscv_sched_init (FILE *file ATTRIBUTE_UNUSED,
 		  int verbose ATTRIBUTE_UNUSED,
 		  int max_ready ATTRIBUTE_UNUSED)
 {
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     arcv_sched_init ();
 }
 
@@ -11534,7 +11537,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (TARGET_ARCV_RHX100)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_reorder2 (ready, n_readyp);
 
   return 0;
