@@ -726,48 +726,60 @@ void
 arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 			     int *pri)
 {
-  int tmp, off_val;
-  bool is_load;
   rtx base, offset;
   machine_mode mode = SImode;
+  bool is_load;
 
   gcc_assert (INSN_P (insn));
 
-  tmp = max_pri - 1;
+  /* Default priority for non-fusible instructions.  */
+  int default_pri = max_pri - 1;
+
+  /* Check if this is a fusible load/store instruction.  */
   if (!arcv_fusion_load_store (insn, &base, &offset, &mode, &is_load)
       || !arcv_pair_fusion_mode_allowed_p (mode, is_load))
     {
-      *pri = tmp;
-      *fusion_pri = tmp;
+      *pri = default_pri;
+      *fusion_pri = default_pri;
       return;
     }
 
-  tmp /= 2;
+  /* Start with half the default priority to distinguish fusible from
+     non-fusible instructions.  */
+  int priority = default_pri / 2;
 
+  /* Scale priority by access width - narrower accesses get lower priority.
+     HImode: divide by 2, QImode: divide by 4.  This encourages wider
+     accesses to be scheduled together.  */
   if (mode == HImode)
-    tmp /= 2;
+    priority /= 2;
   else if (mode == QImode)
-    tmp /= 4;
+    priority /= 4;
 
-  /* INSN with smaller base register goes first.  */
-  tmp -= ((REGNO (base) & 0xff) << 20);
+  /* Factor in base register: instructions with smaller register numbers
+     get higher priority.  The shift by 20 bits ensures this is the most
+     significant component of the priority.  */
+  const int BASE_REG_SHIFT = 20;
+  const int BASE_REG_MASK = 0xff;
+  priority -= ((REGNO (base) & BASE_REG_MASK) << BASE_REG_SHIFT);
 
-  /* INSN with smaller offset goes first.  */
-  off_val = (int)(INTVAL (offset));
+  /* Calculate fusion priority: group loads/stores with adjacent addresses
+     into the same scheduling group.  We divide the offset by (mode_size * 2)
+     to group pairs of adjacent accesses, then shift left by 1 to make room
+     for the load/store bit.  */
+  int off_val = (int)(INTVAL (offset));
+  int addr_group = off_val / (GET_MODE_SIZE (mode).to_constant () * 2);
+  *fusion_pri = priority - (addr_group << 1) + is_load;
 
-  /* Put loads/stores operating on adjacent words into the same
-   * scheduling group.  */
-  *fusion_pri = tmp
-		- ((off_val / (GET_MODE_SIZE (mode).to_constant () * 2)) << 1)
-		+ is_load;
-
+  /* Factor in the actual offset value: instructions with smaller offsets
+     get higher priority.  We use only the lower 20 bits to avoid overflow.  */
+  const int OFFSET_MASK = 0xfffff;
   if (off_val >= 0)
-    tmp -= (off_val & 0xfffff);
+    priority -= (off_val & OFFSET_MASK);
   else
-    tmp += ((- off_val) & 0xfffff);
+    priority += ((-off_val) & OFFSET_MASK);
 
-  *pri = tmp;
-  return;
+  *pri = priority;
 }
 
 
