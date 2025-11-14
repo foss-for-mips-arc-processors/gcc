@@ -51,10 +51,26 @@ along with GCC; see the file COPYING3.  If not see
 #include "arcv.h"
 
 /* Scheduler state tracking for dual-pipe ARCV architectures.  */
+
 struct arcv_sched_state {
+  /* True if the ALU pipe has been scheduled for the current cycle.
+     The ALU pipe handles arithmetic, logical, and other computational
+     instructions.  */
   int alu_pipe_scheduled_p;
+
+  /* True if pipe B has been scheduled for the current cycle.
+     Pipe B is the second execution pipe, typically used for memory
+     operations (loads/stores) but can also handle other instructions.  */
   int pipeB_scheduled_p;
+
+  /* The last instruction that was scheduled.  Used to detect fusion
+     opportunities by looking ahead at the next instruction to be
+     scheduled.  */
   rtx_insn *last_scheduled_insn;
+
+  /* Cached value of how many more instructions can be issued in the
+     current cycle.  Updated as instructions are scheduled and pipes
+     become occupied.  */
   short cached_can_issue_more;
 };
 
