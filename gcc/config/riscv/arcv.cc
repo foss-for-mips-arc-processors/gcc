@@ -508,7 +508,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     return 0;
 
   /* Fuse double load/store instances missed by sched_fusion.  */
-  if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn && ready && *n_readyp > 0
+  if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn
+      && ready && *n_readyp > 0
       && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
       && (get_attr_type (sched_state.last_scheduled_insn) == TYPE_LOAD
 	  || get_attr_type (sched_state.last_scheduled_insn) == TYPE_STORE))
@@ -520,7 +521,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	      && (!next_insn (ready[*n_readyp - i])
 		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
 		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
-	&& arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn, ready[*n_readyp - i]))
+	      && arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+					   ready[*n_readyp - i]))
 	    {
 	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
@@ -545,7 +547,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	      && (!next_insn (ready[*n_readyp - i])
 		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
 		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
-	&& arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn, ready[*n_readyp - i]))
+	      && arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+					   ready[*n_readyp - i]))
 	    {
 	      if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
 		  || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
