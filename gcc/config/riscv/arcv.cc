@@ -493,10 +493,8 @@ arcv_sched_init (void)
   sched_state.last_scheduled_insn = 0;
 }
 
-
 /* Try to reorder ready queue to promote ARCV fusion opportunities.
    Returns the number of instructions that can be issued this cycle.  */
-
 
 int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
@@ -667,7 +665,6 @@ arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
   return cost;
 }
 
-
 /* If INSN is a load or store of address in the form of [base+offset],
    extract the two parts and set to BASE and OFFSET.  IS_LOAD is set
    to TRUE if it's a load.  Return TRUE if INSN is such an instruction,
@@ -708,7 +705,6 @@ fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, machine_mode *mode,
 
   return (*base != NULL_RTX && *offset != NULL_RTX);
 }
-
 
 void
 arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
