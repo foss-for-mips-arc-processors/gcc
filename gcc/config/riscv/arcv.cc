@@ -51,10 +51,14 @@ along with GCC; see the file COPYING3.  If not see
 #include "arcv.h"
 
 /* Scheduler state tracking for dual-pipe ARCV architectures.  */
-static int alu_pipe_scheduled_p;
-static int pipeB_scheduled_p;
-static rtx_insn *last_scheduled_insn;
-static short cached_can_issue_more;
+struct arcv_sched_state {
+  int alu_pipe_scheduled_p;
+  int pipeB_scheduled_p;
+  rtx_insn *last_scheduled_insn;
+  short cached_can_issue_more;
+};
+
+static struct arcv_sched_state sched_state;
 
 /* Implement one boolean function for each of the values of the
    arcv_mpy_option enum, for the needs of rhx100.md.  */
@@ -486,7 +490,7 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 void
 arcv_sched_init (void)
 {
-  last_scheduled_insn = 0;
+  sched_state.last_scheduled_insn = 0;
 }
 
 
@@ -498,16 +502,16 @@ int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
   if (sched_fusion)
-    return cached_can_issue_more;
+    return sched_state.cached_can_issue_more;
 
-  if (!cached_can_issue_more)
+  if (!sched_state.cached_can_issue_more)
     return 0;
 
   /* Fuse double load/store instances missed by sched_fusion.  */
-  if (!pipeB_scheduled_p && last_scheduled_insn && ready && *n_readyp > 0
-      && !SCHED_GROUP_P (last_scheduled_insn)
-      && (get_attr_type (last_scheduled_insn) == TYPE_LOAD
-	  || get_attr_type (last_scheduled_insn) == TYPE_STORE))
+  if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
+      && (get_attr_type (sched_state.last_scheduled_insn) == TYPE_LOAD
+	  || get_attr_type (sched_state.last_scheduled_insn) == TYPE_STORE))
     {
       for (int i = 1; i <= *n_readyp; i++)
 	{
@@ -516,23 +520,23 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	      && (!next_insn (ready[*n_readyp - i])
 		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
 		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
-	&& arcv_macro_fusion_pair_p (last_scheduled_insn, ready[*n_readyp - i]))
+	&& arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn, ready[*n_readyp - i]))
 	    {
 	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
-	      pipeB_scheduled_p = 1;
-	      return cached_can_issue_more;
+	      sched_state.pipeB_scheduled_p = 1;
+	      return sched_state.cached_can_issue_more;
 	    }
 	}
-      pipeB_scheduled_p = 1;
+      sched_state.pipeB_scheduled_p = 1;
     }
 
   /* Try to fuse a non-memory last_scheduled_insn.  */
-  if ((!alu_pipe_scheduled_p || !pipeB_scheduled_p)
-      && last_scheduled_insn && ready && *n_readyp > 0
-      && !SCHED_GROUP_P (last_scheduled_insn)
-      && (get_attr_type (last_scheduled_insn) != TYPE_LOAD
-	  && get_attr_type (last_scheduled_insn) != TYPE_STORE))
+  if ((!sched_state.alu_pipe_scheduled_p || !sched_state.pipeB_scheduled_p)
+      && sched_state.last_scheduled_insn && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
+      && (get_attr_type (sched_state.last_scheduled_insn) != TYPE_LOAD
+	  && get_attr_type (sched_state.last_scheduled_insn) != TYPE_STORE))
     {
       for (int i = 1; i <= *n_readyp; i++)
 	{
@@ -541,36 +545,36 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	      && (!next_insn (ready[*n_readyp - i])
 		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
 		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
-	&& arcv_macro_fusion_pair_p (last_scheduled_insn, ready[*n_readyp - i]))
+	&& arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn, ready[*n_readyp - i]))
 	    {
 	      if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
 		  || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
-		if (pipeB_scheduled_p)
+		if (sched_state.pipeB_scheduled_p)
 		  continue;
 		else
-		  pipeB_scheduled_p = 1;
-	      else if (!alu_pipe_scheduled_p)
-		alu_pipe_scheduled_p = 1;
+		  sched_state.pipeB_scheduled_p = 1;
+	      else if (!sched_state.alu_pipe_scheduled_p)
+		sched_state.alu_pipe_scheduled_p = 1;
 	      else
-		pipeB_scheduled_p = 1;
+		sched_state.pipeB_scheduled_p = 1;
 
 	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
-	      return cached_can_issue_more;
+	      return sched_state.cached_can_issue_more;
 	    }
 	}
-      alu_pipe_scheduled_p = 1;
+      sched_state.alu_pipe_scheduled_p = 1;
     }
 
   /* When pipe B is scheduled, we can have no more memops this cycle.  */
-  if (pipeB_scheduled_p && *n_readyp > 0
+  if (sched_state.pipeB_scheduled_p && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
       && recog_memoized (ready[*n_readyp - 1]) >= 0
       && !SCHED_GROUP_P (ready[*n_readyp - 1])
       && (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
 	  || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE))
   {
-    if (alu_pipe_scheduled_p)
+    if (sched_state.alu_pipe_scheduled_p)
       return 0;
 
     for (int i = 2; i <= *n_readyp; i++)
@@ -590,8 +594,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_STORE)))
 	  {
 	    std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
-	    alu_pipe_scheduled_p = 1;
-	    cached_can_issue_more = 1;
+	    sched_state.alu_pipe_scheduled_p = 1;
+	    sched_state.cached_can_issue_more = 1;
 	    return 1;
 	  }
       }
@@ -605,24 +609,24 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
       && get_attr_type (ready[*n_readyp - 1]) != TYPE_LOAD
       && get_attr_type (ready[*n_readyp - 1]) != TYPE_STORE)
   {
-    if (!pipeB_scheduled_p
+    if (!sched_state.pipeB_scheduled_p
 	&& (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
 	    || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE))
     {
-      alu_pipe_scheduled_p = pipeB_scheduled_p = 1;
-      cached_can_issue_more = 1;
+      sched_state.alu_pipe_scheduled_p = sched_state.pipeB_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
       return 1;
     }
     else if (get_attr_type (ready[*n_readyp - 1]) != TYPE_LOAD
 	|| get_attr_type (ready[*n_readyp - 1]) != TYPE_STORE)
     {
-      alu_pipe_scheduled_p = pipeB_scheduled_p = 1;
-      cached_can_issue_more = 1;
+      sched_state.alu_pipe_scheduled_p = sched_state.pipeB_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
       return 1;
     }
   }
 
-  return cached_can_issue_more;
+  return sched_state.cached_can_issue_more;
 }
 
 int
@@ -758,17 +762,17 @@ arcv_can_issue_more_p (rtx_insn *insn, int more)
   /* Beginning of cycle - reset variables.  */
   if (more == riscv_get_tune_param_issue_rate ())
     {
-      alu_pipe_scheduled_p = 0;
-      pipeB_scheduled_p = 0;
+      sched_state.alu_pipe_scheduled_p = 0;
+      sched_state.pipeB_scheduled_p = 0;
     }
 
-  if (alu_pipe_scheduled_p && pipeB_scheduled_p)
+  if (sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
     {
-      cached_can_issue_more = 0;
+      sched_state.cached_can_issue_more = 0;
       return false;
     }
 
-  cached_can_issue_more = more;
+  sched_state.cached_can_issue_more = more;
 
   return true;
 }
@@ -783,20 +787,20 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 	  || get_attr_type (insn) == TYPE_STORE
 	  || get_attr_type (next_insn (insn)) == TYPE_LOAD
 	  || get_attr_type (next_insn (insn)) == TYPE_STORE)
-	pipeB_scheduled_p = 1;
+	sched_state.pipeB_scheduled_p = 1;
       else
-	alu_pipe_scheduled_p = 1;
+	sched_state.alu_pipe_scheduled_p = 1;
     }
 
   if (get_attr_type (insn) == TYPE_ALU_FUSED
       || get_attr_type (insn) == TYPE_IMUL_FUSED)
     {
-      alu_pipe_scheduled_p = 1;
+      sched_state.alu_pipe_scheduled_p = 1;
       more -= 1;
     }
 
-  last_scheduled_insn = insn;
-  cached_can_issue_more = more - 1;
+  sched_state.last_scheduled_insn = insn;
+  sched_state.cached_can_issue_more = more - 1;
 
-  return cached_can_issue_more;
+  return sched_state.cached_can_issue_more;
 }
