@@ -170,7 +170,7 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
 /* Helper function to check if instruction type is arithmetic-like.  */
 
 static bool
-is_arith_type_insn (rtx_insn *insn)
+arcv_arith_type_insn_p (rtx_insn *insn)
 {
   enum attr_type type = get_attr_type (insn);
 
@@ -190,7 +190,7 @@ is_arith_type_insn (rtx_insn *insn)
 /* Helper to check if curr's source operand is valid for fusion.  */
 
 static bool
-is_valid_arith_src (rtx curr_set)
+arcv_arith_src_p (rtx curr_set)
 {
   rtx src = SET_SRC (curr_set);
 
@@ -201,7 +201,7 @@ is_valid_arith_src (rtx curr_set)
 /* Helper to check if curr operation is compatible with load's destination.  */
 
 static bool
-is_valid_load_arith_pair (rtx prev_set, rtx curr_set)
+arcv_load_arith_pair_p (rtx prev_set, rtx curr_set)
 {
   rtx load_addr = XEXP (SET_SRC (prev_set), 0);
   rtx load_dest = SET_DEST (prev_set);
@@ -245,7 +245,7 @@ is_valid_load_arith_pair (rtx prev_set, rtx curr_set)
 /* Helper to check if curr operation is compatible with store's address.  */
 
 static bool
-is_valid_store_arith_pair (rtx prev_set, rtx curr_set)
+arcv_store_arith_pair_p (rtx prev_set, rtx curr_set)
 {
   rtx store_addr = XEXP (SET_DEST (prev_set), 0);
   rtx arith_src = XEXP (SET_SRC (curr_set), 0);
@@ -288,20 +288,20 @@ arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
   gcc_assert (curr_set);
 
   /* Check if curr is an arithmetic-type instruction.  */
-  if (!is_arith_type_insn (curr))
+  if (!arcv_arith_type_insn_p (curr))
     return false;
 
   /* Check if curr has valid source operands.  */
-  if (!is_valid_arith_src (curr_set))
+  if (!arcv_arith_src_p (curr_set))
     return false;
 
   /* Check for load + arithmetic fusion.  */
   if (get_attr_type (prev) == TYPE_LOAD)
-    return is_valid_load_arith_pair (prev_set, curr_set);
+    return arcv_load_arith_pair_p (prev_set, curr_set);
 
   /* Check for store + arithmetic fusion.  */
   if (get_attr_type (prev) == TYPE_STORE)
-    return is_valid_store_arith_pair (prev_set, curr_set);
+    return arcv_store_arith_pair_p (prev_set, curr_set);
 
   return false;
 }
