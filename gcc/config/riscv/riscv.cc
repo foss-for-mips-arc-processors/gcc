@@ -11511,6 +11511,8 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
     }
 }
 
+/* Implement TARGET_SCHED_ADJUST_PRIORITY hook.  */
+
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
@@ -11520,6 +11522,7 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
   return priority;
 }
 
+/* Implement TARGET_SCHED_INIT hook.  */
 
 static void
 riscv_sched_init (FILE *file ATTRIBUTE_UNUSED,
@@ -11529,6 +11532,8 @@ riscv_sched_init (FILE *file ATTRIBUTE_UNUSED,
   if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     arcv_sched_init ();
 }
+
+/* Implement TARGET_SCHED_REORDER2 hook.  */
 
 static int
 riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
