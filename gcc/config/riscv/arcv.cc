@@ -105,7 +105,7 @@ arcv_mpy_10c_bypass_p (rtx_insn *out_insn ATTRIBUTE_UNUSED,
    of transfer is determined by the IS_LOAD parameter).  */
 
 static bool
-pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
+arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
   if (!TARGET_ARCV_RHX100)
     return true;
@@ -138,7 +138,7 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
     return false;
 
   /* Check if the mode is allowed.  */
-  if (!pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
+  if (!arcv_pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
     return false;
 
   rtx reg0 = XEXP (addr0, 0);
@@ -687,7 +687,7 @@ arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
    otherwise return FALSE.  */
 
 static bool
-fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, machine_mode *mode,
+arcv_fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset, machine_mode *mode,
 		   bool *is_load)
 {
   rtx x, dest, src;
@@ -734,8 +734,8 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
   gcc_assert (INSN_P (insn));
 
   tmp = max_pri - 1;
-  if (!fusion_load_store (insn, &base, &offset, &mode, &is_load)
-      || !pair_fusion_mode_allowed_p (mode, is_load))
+  if (!arcv_fusion_load_store (insn, &base, &offset, &mode, &is_load)
+      || !arcv_pair_fusion_mode_allowed_p (mode, is_load))
     {
       *pri = tmp;
       *fusion_pri = tmp;
