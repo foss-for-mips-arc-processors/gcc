@@ -11489,7 +11489,6 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
   return new_cost;
 }
 
-
 /* Implement TARGET_SCHED_CAN_SPECULATE_INSN hook.  Return true if insn can
    can be scheduled for speculative execution.  Reject vsetvl instructions to
    prevent the scheduler from hoisting them out of basic blocks without
