@@ -11411,7 +11411,7 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
       return;
     }
 
-  /* Default priority for non-ARCV architectures.  */
+  /* Default priority.  */
   *pri = max_pri - 1;
   *fusion_pri = max_pri - 1;
 }
