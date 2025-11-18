@@ -10642,7 +10642,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
 
   if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
-    if (!arcv_can_issue_more_p (insn, more))
+    if (!arcv_can_issue_more_p (more))
       return 0;
 
   if (DEBUG_INSN_P (insn))

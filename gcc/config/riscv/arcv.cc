@@ -832,7 +832,7 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 
 
 bool
-arcv_can_issue_more_p (rtx_insn *insn, int more)
+arcv_can_issue_more_p (int more)
 {
   /* Beginning of cycle - reset variables.  */
   if (more == riscv_get_tune_param_issue_rate ())

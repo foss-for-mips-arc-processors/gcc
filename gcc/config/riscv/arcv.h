@@ -21,7 +21,7 @@ along with GCC; see the file COPYING3.  If not see
 #define GCC_RISCV_ARCV_H
 
 /* ARCV scheduler interface functions.  */
-extern bool arcv_can_issue_more_p (rtx_insn *, int);
+extern bool arcv_can_issue_more_p (int);
 extern int arcv_sched_variable_issue (rtx_insn *, int);
 extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern void arcv_sched_init (void);
