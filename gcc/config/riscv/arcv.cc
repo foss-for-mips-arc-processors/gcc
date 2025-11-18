@@ -365,10 +365,6 @@ arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
 bool
 arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
-  /* Never create sched groups with more than 2 members.  */
-  if (SCHED_GROUP_P (prev))
-    return false;
-
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
 
