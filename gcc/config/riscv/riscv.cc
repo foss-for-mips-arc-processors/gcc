@@ -10674,7 +10674,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 /* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
    instruction fusion of some sort.  */
 
-bool
+static bool
 riscv_macro_fusion_p (void)
 {
   return tune_param->fusible_ops != RISCV_FUSE_NOTHING;
