@@ -382,11 +382,19 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       /* Check if multiply result is used in either operand of the addition.  */
       if (REG_P (XEXP (curr_plus, 0))
 	 && REGNO (XEXP (curr_plus, 0)) == mult_dest_regno)
-       return true;
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "ARCV_FUSE_MULT_ADD (op0)\n");
+	 return true;
+       }
 
       if (REG_P (XEXP (curr_plus, 1))
 	 && REGNO (XEXP (curr_plus, 1)) == mult_dest_regno)
-       return true;
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "ARCV_FUSE_MULT_ADD (op1)\n");
+	 return true;
+       }
     }
 
   /* Fuse logical shift left with logical shift right (bit-extract pattern):
@@ -397,7 +405,11 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
       && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
       && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0)))
-    return true;
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_FUSE_SHIFT_BITEXTRACT\n");
+      return true;
+    }
 
   /* Fuse load-immediate with a dependent conditional branch:
      prev: (set rd imm)
@@ -412,8 +424,14 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       rtx comp = XEXP (SET_SRC (curr_set), 0);
       rtx prev_dest = SET_DEST (prev_set);
 
-      return (REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == prev_dest)
-	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == prev_dest);
+      if ((REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == prev_dest)
+	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == prev_dest))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "ARCV_FUSE_LI_BRANCH\n");
+	  return true;
+	}
+      return false;
     }
 
   /* Do not fuse loads/stores before sched2.  */
@@ -432,7 +450,11 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (curr) == TYPE_LOAD)
     {
       if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
-	return true;
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "ARCV_FUSE_ADJACENT_LOAD\n");
+	  return true;
+	}
     }
 
   /* Fuse adjacent stores.  */
@@ -440,7 +462,11 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       && get_attr_type (curr) == TYPE_STORE)
     {
       if (arcv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
-	return true;
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "ARCV_FUSE_ADJACENT_STORE\n");
+	  return true;
+	}
     }
 
   /* Look ahead 1 insn to prioritize adjacent load/store pairs.
