@@ -93,16 +93,9 @@
        (eq_attr "type" "fdiv,fsqrt"))
   "arcv_rhx100_fdivsqrt*20")
 
-;(final_presence_set "arcv_rhx100_issueA_fuse1" "arcv_rhx100_issueA_fuse0")
-;(final_presence_set "arcv_rhx100_issueB_fuse1" "arcv_rhx100_issueB_fuse0")
-;(final_presence_set "arcv_rhx100_ALU_A_fuse1_early" "arcv_rhx100_ALU_A_fuse0_early")
-;(final_presence_set "arcv_rhx100_ALU_B_fuse1_early" "arcv_rhx100_ALU_B_fuse0_early")
-
 ;; Bypasses
-;(define_bypass 0 "arcv_rhx100_alu_early_arith" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rhx100_alu_early_arith" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
 
-;(define_bypass 0 "arcv_rhx100_load_insn" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rhx100_load_insn" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rhx100_load_insn" "arcv_rhx100_alu_early_arith")
 (define_bypass 1 "arcv_rhx100_load_insn" "arcv_rhx100_mpy*_insn")
