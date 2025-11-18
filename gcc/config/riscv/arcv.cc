@@ -493,15 +493,33 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
   /* Fuse a pre- or post-update memory operation:
      Examples: load+add, add+load, store+add, add+store.  */
-  if (arcv_memop_arith_pair_p (prev, curr)
-      || arcv_memop_arith_pair_p (curr, prev))
-    return true;
+  if (arcv_memop_arith_pair_p (prev, curr))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (prev, curr)\n");
+      return true;
+    }
+  if (arcv_memop_arith_pair_p (curr, prev))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (curr, prev)\n");
+      return true;
+    }
 
   /* Fuse a memory operation preceded or followed by a LUI:
      Examples: load+lui, lui+load, store+lui, lui+store.  */
-  if (arcv_memop_lui_pair_p (prev, curr)
-      || arcv_memop_lui_pair_p (curr, prev))
-    return true;
+  if (arcv_memop_lui_pair_p (prev, curr))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (prev, curr)\n");
+      return true;
+    }
+  if (arcv_memop_lui_pair_p (curr, prev))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (curr, prev)\n");
+      return true;
+    }
 
   /* Fuse load-immediate with a store of the destination register:
      prev: (set rd imm)
@@ -514,10 +532,18 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       rtx load_dest = SET_DEST (prev_set);
 
       if (REG_P (store_src) && store_src == load_dest)
-       return true;
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "ARCV_FUSE_LI_STORE\n");
+	 return true;
+       }
 
       if (SUBREG_P (store_src) && SUBREG_REG (store_src) == load_dest)
-       return true;
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "ARCV_FUSE_LI_STORE (subreg)\n");
+	 return true;
+       }
     }
 
   return false;
