@@ -10842,7 +10842,8 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (sched_fusion)
+
+	if (sched_fusion)
     return cached_can_issue_more;
 
   if (!cached_can_issue_more)
@@ -10856,11 +10857,12 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
     {
       for (int i = 1; i <= *n_readyp; i++)
 	{
-	  if (NONDEBUG_INSN_P (ready[*n_readyp - i])
-	      && !SCHED_GROUP_P (ready[*n_readyp - i])
-	      && (!next_insn (ready[*n_readyp - i])
-		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
-		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
+	  /*try to fuse the last_scheduled_insn with */	
+	  if (NONDEBUG_INSN_P (ready[*n_readyp - i]) /*fuse only with nondebug insn*/
+	      && !SCHED_GROUP_P (ready[*n_readyp - i]) /*which have not been already fused*/
+	      && (!next_nonnote_nondebug_insn (ready[*n_readyp - i]) /* no real insn comes after*/
+		  /*dont fuse at the expense of breaking another fuse*/    
+		  || !SCHED_GROUP_P (next_nonnote_nondebug_insn (ready[*n_readyp - i]))) 
 	&& arcv_macro_fusion_pair_p (last_scheduled_insn, ready[*n_readyp - i]))
 	    {
 	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
@@ -10873,8 +10875,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
     }
 
   /* Try to fuse a non-memory last_scheduled_insn.  */
-  if ((!alu_pipe_scheduled_p || !pipeB_scheduled_p)
-      && last_scheduled_insn && ready && *n_readyp > 0
+  if ((!alu_pipe_scheduled_p || !pipeB_scheduled_p) && last_scheduled_insn && ready && *n_readyp > 0
       && !SCHED_GROUP_P (last_scheduled_insn)
       && (get_attr_type (last_scheduled_insn) != TYPE_LOAD
 	  && get_attr_type (last_scheduled_insn) != TYPE_STORE))
@@ -10883,10 +10884,9 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 	{
 	  if (NONDEBUG_INSN_P (ready[*n_readyp - i])
 	      && !SCHED_GROUP_P (ready[*n_readyp - i])
-	      && (!next_insn (ready[*n_readyp - i])
-		  || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
-		  || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))
-	&& arcv_macro_fusion_pair_p (last_scheduled_insn, ready[*n_readyp - i]))
+              && (!next_nonnote_nondebug_insn (ready[*n_readyp - i]) 
+		  || !SCHED_GROUP_P (next_nonnote_nondebug_insn (ready[*n_readyp - i]))) 
+	      && arcv_macro_fusion_pair_p (last_scheduled_insn, ready[*n_readyp - i]))
 	    {
 	      if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
 		  || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
@@ -10925,11 +10925,11 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 	     && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
 	     && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
-	     && ((!next_insn (ready[*n_readyp - i])
-		 || !NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
-		 || !SCHED_GROUP_P (next_insn (ready[*n_readyp - i])))))
+             && (!next_nonnote_nondebug_insn (ready[*n_readyp - i]) 
+		 || !SCHED_GROUP_P (next_nonnote_nondebug_insn (ready[*n_readyp - i]))) 
+	     )
 	|| ((next_insn (ready[*n_readyp - i])
-	    && NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i]))
+	    /* && NONDEBUG_INSN_P (next_insn (ready[*n_readyp - i])) */
 	    && recog_memoized (next_insn (ready[*n_readyp - i])) >= 0
 	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_LOAD
 	    && get_attr_type (next_insn (ready[*n_readyp - i])) != TYPE_STORE)))
