@@ -865,6 +865,9 @@ extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
 extern bool riscv_use_divmod_expander (void);
