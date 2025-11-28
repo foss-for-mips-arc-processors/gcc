@@ -225,6 +225,8 @@
 				      (zero_extract "srliw")])
 (define_code_attr extract_shift [(sign_extract "ashiftrt")
 				 (zero_extract "lshiftrt")])
+(define_code_attr is_zero_extract [(sign_extract "false")
+				   (zero_extract "true")])
 
 ;; This code iterator allows the two right shift instructions to be
 ;; generated from the same template.
