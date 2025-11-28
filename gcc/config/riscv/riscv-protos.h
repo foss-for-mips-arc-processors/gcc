@@ -832,6 +832,7 @@ enum riscv_fusion_pairs
   RISCV_FUSE_BFEXT = (1 << 11),
   RISCV_FUSE_EXPANDED_LD = (1 << 12),
   RISCV_FUSE_B_ALUI = (1 << 13),
+  RISCV_FUSE_ARCV = (1 << 14),
 };
 
 extern bool riscv_macro_fusion_p (void);
