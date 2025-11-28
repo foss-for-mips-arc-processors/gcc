@@ -42,7 +42,7 @@
 		condmove,mvpair,zicond,cpop,clmul"))
   "((arcv_rmx500_issueA_fuse0 + arcv_rmx500_ALU_A_fuse0_early) | (arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse1_early)) | ((arcv_rmx500_issueB_fuse0 + arcv_rmx500_ALU_B_fuse0_early) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse1_early))")
 
-(define_insn_reservation "arcv_rmx500_imul_fused" 1
+(define_insn_reservation "arcv_rmx500_imul_fused" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul_fused"))
   "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early + arcv_rmx500_MPY32)")
@@ -63,12 +63,12 @@
        (eq_attr "type" "idiv"))
   "arcv_rmx500_issueA_fuse0 + arcv_rmx500_DIV, nothing*21")
 
-(define_insn_reservation "arcv_rmx500_mpy32_insn" 10
+(define_insn_reservation "arcv_rmx500_mpy32_insn" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul"))
-  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*9")
+  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*2")
 
-(define_insn_reservation "arcv_rmx500_load_insn" 1
+(define_insn_reservation "arcv_rmx500_load_insn" 2
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
   "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
@@ -101,5 +101,5 @@
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_mpy*_insn")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_load_insn")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_div_insn")
-(define_bypass 9 "arcv_rmx500_mpy32_insn" "arcv_rmx500_mpy*_insn")
+(define_bypass 3 "arcv_rmx500_mpy32_insn" "arcv_rmx500_mpy*_insn")
 (define_bypass 9 "arcv_rmx500_mpy32_insn" "arcv_rmx500_div_insn")
