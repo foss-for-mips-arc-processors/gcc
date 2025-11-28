@@ -831,6 +831,7 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 
 /* Routines implemented in arcv.cc.  */
 extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 
 extern bool riscv_use_divmod_expander (void);
 void riscv_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree, int);
