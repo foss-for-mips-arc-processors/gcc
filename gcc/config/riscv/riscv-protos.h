@@ -875,6 +875,7 @@ extern rtx riscv_prefetch_cookie (rtx, rtx);
 extern bool riscv_prefetch_offset_address_p (rtx, machine_mode);
 
 struct riscv_tune_param;
+
 /* Information about one micro-arch we know about.  */
 struct riscv_tune_info {
   /* This micro-arch canonical name.  */

@@ -340,6 +340,9 @@ unsigned riscv_stack_boundary;
 /* Whether in riscv_output_mi_thunk. */
 static bool riscv_in_thunk_func = false;
 
+/* Return true if the instruction fusion described by OP is enabled.  */
+static bool riscv_fusion_enabled_p (enum riscv_fusion_pairs op);
+
 /* If non-zero, this is an offset to be added to SP to redefine the CFA
    when restoring the FP register from the stack.  Only valid when generating
    the epilogue.  */
@@ -10929,12 +10932,20 @@ static void
 riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
+
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    arcv_sched_init ();
 }
 
 /* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
+
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
+      return 0;
+
   if (DEBUG_INSN_P (insn))
     return more;
 
@@ -10979,6 +10990,9 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	  last_vconfig.ma = mask_agnostic_p (insn);
 	}
     }
+
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
 }
@@ -11790,9 +11804,13 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
    we currently only perform the adjustment when -madjust-lmul-cost is given.
    */
 static int
-riscv_sched_adjust_cost (rtx_insn *, int, rtx_insn *insn, int cost,
+riscv_sched_adjust_cost (rtx_insn *, int dep_type, rtx_insn *insn, int cost,
 			 unsigned int)
 {
+  /* Use ARCV-specific cost adjustment for RHX-100.  */
+  if (TARGET_ARCV_RHX100)
+    return arcv_sched_adjust_cost (insn, dep_type, cost);
+
   /* Only do adjustments for the generic out-of-order scheduling model.  */
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)
     return cost;
@@ -11870,6 +11888,32 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
       default:
 	return true;
     }
+}
+
+/* Implement TARGET_SCHED_ADJUST_PRIORITY hook.  */
+
+static int
+riscv_sched_adjust_priority (rtx_insn *insn, int priority)
+{
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return arcv_sched_adjust_priority (insn, priority);
+
+  return priority;
+}
+
+/* Implement TARGET_SCHED_REORDER2 hook.  */
+
+static int
+riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
+		      int verbose ATTRIBUTE_UNUSED,
+		      rtx_insn **ready,
+		      int *n_readyp,
+		      int clock ATTRIBUTE_UNUSED)
+{
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+    return arcv_sched_reorder2 (ready, n_readyp);
+
+  return 0;
 }
 
 /* Auxiliary function to emit RISC-V ELF attribute. */
@@ -16455,6 +16499,12 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 
 #undef TARGET_SCHED_CAN_SPECULATE_INSN
 #define TARGET_SCHED_CAN_SPECULATE_INSN riscv_sched_can_speculate_insn
+
+#undef  TARGET_SCHED_ADJUST_PRIORITY
+#define TARGET_SCHED_ADJUST_PRIORITY riscv_sched_adjust_priority
+
+#undef  TARGET_SCHED_REORDER2
+#define TARGET_SCHED_REORDER2 riscv_sched_reorder2
 
 #undef TARGET_FUNCTION_OK_FOR_SIBCALL
 #define TARGET_FUNCTION_OK_FOR_SIBCALL riscv_function_ok_for_sibcall
