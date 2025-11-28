@@ -10315,6 +10315,21 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+static void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
+			     int *pri)
+{
+  if (TARGET_ARCV_RHX100)
+    {
+      arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri);
+      return;
+    }
+
+  /* Default priority.  */
+  *pri = max_pri - 1;
+  *fusion_pri = max_pri - 1;
+}
+
 /* Adjust the cost/latency of instructions for scheduling.
    For now this is just used to change the latency of vector instructions
    according to their LMUL.  We assume that an insn with LMUL == 8 requires
@@ -14302,6 +14317,8 @@ bool need_shadow_stack_push_pop_p ()
 #define TARGET_SCHED_MACRO_FUSION_P riscv_macro_fusion_p
 #undef TARGET_SCHED_MACRO_FUSION_PAIR_P
 #define TARGET_SCHED_MACRO_FUSION_PAIR_P riscv_macro_fusion_pair_p
+#undef TARGET_SCHED_FUSION_PRIORITY
+#define TARGET_SCHED_FUSION_PRIORITY riscv_sched_fusion_priority
 
 #undef  TARGET_SCHED_VARIABLE_ISSUE
 #define TARGET_SCHED_VARIABLE_ISSUE riscv_sched_variable_issue
