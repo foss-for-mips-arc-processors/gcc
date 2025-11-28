@@ -291,6 +291,7 @@ enum riscv_fusion_pairs
   RISCV_FUSE_BFEXT = (1 << 11),
   RISCV_FUSE_EXPANDED_LD = (1 << 12),
   RISCV_FUSE_B_ALUI = (1 << 13),
+  RISCV_FUSE_ARCV = (1 << 14),
 };
 
 /* Costs of various operations on the different architectures.  */
@@ -830,6 +831,31 @@ static const struct riscv_tune_param andes_45_tune_info = {
   false,					/* use_zero_stride_load */
   false,					/* speculative_sched_vsetvl */
   RISCV_FUSE_NOTHING,				/* fusible_ops */
+  NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
+  true,						/* prefer-agnostic.  */
+};
+
+/* Costs to use when optimizing for Synopsys RHX-100.  */
+static const struct riscv_tune_param arcv_rhx100_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
+  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},	/* int_mul */
+  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
+  4,						/* issue_rate */
+  9,						/* branch_cost */
+  2,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
+  false,					/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
+  true,						/* use_zero_stride_load */
+  false,					/* speculative_sched_vsetvl */
+  RISCV_FUSE_ARCV,				/* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
