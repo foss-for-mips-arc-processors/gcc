@@ -405,9 +405,15 @@ legitimate_small_data_address_p (rtx x, machine_mode mode)
 	  case 1:
 	    break;
 	  case 2:
-	    if ((offset & 0x1) == 0) break; else return false;
+	    if ((offset & 0x1) == 0)
+	      break;
+	    else
+	      return false;
 	  case 4:
-	    if ((offset & 0x3) == 0) break; else return false;
+	    if ((offset & 0x3) == 0)
+	      break;
+	    else
+	      return false;
 	  default:
 	    return false;
 	  }
