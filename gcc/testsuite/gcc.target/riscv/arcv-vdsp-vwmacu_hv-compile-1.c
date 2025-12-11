@@ -13,6 +13,7 @@
 **  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **  ret
 */
+
 vuint32m2_t
 test_vwmacu_hv_u16 (vuint32m2_t vd, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
 {
@@ -21,14 +22,54 @@ test_vwmacu_hv_u16 (vuint32m2_t vd, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
 
 /*
 ** test_vwmacu_hv_u16_m:
-**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*m[au]
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*ma
 **  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **  ret
 */
+
 vuint32m2_t
 test_vwmacu_hv_u16_m (vbool16_t mask, vuint32m2_t vd, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
 {
   return __riscv_arcv_vwmacu_hv_u32m2_m (mask, vd, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u16_tu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*tu,\s*m[au]
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
+**  ret
+*/
+
+vuint32m2_t
+test_vwmacu_hv_u16_tu (vuint32m2_t maskedoff, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u32m2_tu (maskedoff, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u16_tumu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*tu,\s*mu
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
+**  ret
+*/
+
+vuint32m2_t
+test_vwmacu_hv_u16_tumu (vbool16_t mask, vuint32m2_t maskedoff, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u32m2_tumu (mask, maskedoff, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u16_mu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*mu
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
+**  ret
+*/
+
+vuint32m2_t
+test_vwmacu_hv_u16_mu (vbool16_t mask, vuint32m2_t pass, vuint16m1_t vs1, vuint8mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u32m2_mu (mask, pass, vs1, vs2, vl);
 }
 
 /*
@@ -37,6 +78,7 @@ test_vwmacu_hv_u16_m (vbool16_t mask, vuint32m2_t vd, vuint16m1_t vs1, vuint8mf2
 **  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **  ret
 */
+
 vuint64m2_t
 test_vwmacu_hv_u32 (vuint64m2_t vd, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl)
 {
@@ -45,12 +87,52 @@ test_vwmacu_hv_u32 (vuint64m2_t vd, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl
 
 /*
 ** test_vwmacu_hv_u32_m:
-**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*m[au]
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*ma
 **  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **  ret
 */
+
 vuint64m2_t
 test_vwmacu_hv_u32_m (vbool32_t mask, vuint64m2_t vd, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl)
 {
   return __riscv_arcv_vwmacu_hv_u64m2_m (mask, vd, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u32_tu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*tu,\s*m[au]
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
+**  ret
+*/
+
+vuint64m2_t
+test_vwmacu_hv_u32_tu (vuint64m2_t maskedoff, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u64m2_tu (maskedoff, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u32_tumu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*tu,\s*mu
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
+**  ret
+*/
+
+vuint64m2_t
+test_vwmacu_hv_u32_tumu (vbool32_t mask, vuint64m2_t maskedoff, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u64m2_tumu (mask, maskedoff, vs1, vs2, vl);
+}
+
+/*
+** test_vwmacu_hv_u32_mu:
+**  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*mu
+**  arcv.vwmacu.hv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
+**  ret
+*/
+
+vuint64m2_t
+test_vwmacu_hv_u32_mu (vbool32_t mask, vuint64m2_t pass, vuint32m1_t vs1, vuint16mf2_t vs2, size_t vl)
+{
+  return __riscv_arcv_vwmacu_hv_u64m2_mu (mask, pass, vs1, vs2, vl);
 }
