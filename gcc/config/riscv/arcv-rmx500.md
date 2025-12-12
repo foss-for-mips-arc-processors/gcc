@@ -35,6 +35,7 @@
 (define_cpu_unit "arcv_rmx500_issueB_fuse1" "arcv_rmx500")
 
 ;; Instruction reservation for arithmetic instructions (pipe A, pipe B).
+;; instructions can be issued back to back - after 1 cycle the result is available
 (define_insn_reservation "arcv_rmx500_alu_early_arith" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "unknown,move,const,arith,shift,slt,multi,auipc,nop,logical,\
@@ -42,10 +43,10 @@
 		condmove,mvpair,zicond,cpop,clmul"))
   "((arcv_rmx500_issueA_fuse0 + arcv_rmx500_ALU_A_fuse0_early) | (arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse1_early)) | ((arcv_rmx500_issueB_fuse0 + arcv_rmx500_ALU_B_fuse0_early) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse1_early))")
 
-(define_insn_reservation "arcv_rmx500_imul_fused" 1
+(define_insn_reservation "arcv_rmx500_imul_fused" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul_fused"))
-  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early + arcv_rmx500_MPY32)")
+  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early + arcv_rmx500_MPY32), nothing*2")
 
 (define_insn_reservation "arcv_rmx500_alu_fused" 1
    (and (eq_attr "tune" "arcv_rmx500")
@@ -58,20 +59,20 @@
        (eq_attr "type" "branch,jump,call,jalr,ret,trap"))
   "arcv_rmx500_issueA_fuse0 | arcv_rmx500_issueA_fuse1")
 
-(define_insn_reservation "arcv_rmx500_div_insn" 22
+(define_insn_reservation "arcv_rmx500_div_insn" 21
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "idiv"))
-  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_DIV, nothing*21")
+  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_DIV, nothing*20")
 
-(define_insn_reservation "arcv_rmx500_mpy32_insn" 10
+(define_insn_reservation "arcv_rmx500_mpy32_insn" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul"))
-  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*9")
+  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*2")
 
-(define_insn_reservation "arcv_rmx500_load_insn" 1
+(define_insn_reservation "arcv_rmx500_load_insn" 2
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
-  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
+  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1), nothing")
 
 (define_insn_reservation "arcv_rmx500_store_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
@@ -79,20 +80,20 @@
   "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
 
 ;; (soft) floating points
-(define_insn_reservation "arcv_rmx500_xfer" 2
+(define_insn_reservation "arcv_rmx500_xfer" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "mfc,mtc,fcvt,fcvt_i2f,fcvt_f2i,fmove,fcmp"))
-  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early), nothing")
+  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early), nothing*2")
 
-(define_insn_reservation "arcv_rmx500_fmul" 2
+(define_insn_reservation "arcv_rmx500_fmul" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "fadd,fmul,fmadd"))
-  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early,nothing)")
+  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early,nothing*2)")
 
-(define_insn_reservation "arcv_rmx500_fdiv" 17
+(define_insn_reservation "arcv_rmx500_fdiv" 21
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "fdiv,fsqrt"))
-  "arcv_rmx500_fdivsqrt*17")
+  "arcv_rmx500_fdivsqrt*21")
 
 ;; Bypasses
 (define_bypass 1 "arcv_rmx500_alu_early_arith" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
