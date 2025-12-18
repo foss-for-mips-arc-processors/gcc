@@ -11805,7 +11805,7 @@ riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
    we currently only perform the adjustment when -madjust-lmul-cost is given.
    */
 static int
-riscv_sched_adjust_cost (rtx_insn *, int dep_type, rtx_insn *insn, int cost,
+riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 			 unsigned int)
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
@@ -11816,10 +11816,10 @@ riscv_sched_adjust_cost (rtx_insn *, int dep_type, rtx_insn *insn, int cost,
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)
     return cost;
 
-  if (recog_memoized (insn) < 0)
+  if (recog_memoized (dep_insn) < 0)
     return cost;
 
-  enum attr_type type = get_attr_type (insn);
+  enum attr_type type = get_attr_type (dep_insn);
 
   if (type == TYPE_VFREDO || type == TYPE_VFWREDO)
     {
@@ -11837,7 +11837,7 @@ riscv_sched_adjust_cost (rtx_insn *, int dep_type, rtx_insn *insn, int cost,
     return cost;
 
   enum riscv_vector::vlmul_type lmul =
-    (riscv_vector::vlmul_type)get_attr_vlmul (insn);
+    (riscv_vector::vlmul_type)get_attr_vlmul (dep_insn);
 
   double factor = 1;
   switch (lmul)
