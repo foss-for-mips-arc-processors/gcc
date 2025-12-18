@@ -4654,22 +4654,24 @@
   [(set_attr "type" "imul_fused")]
 )
 
-(define_insn "*zero_extract_fused"
+(define_insn_and_split "*zero_extract_fused"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
 			 (match_operand 2 "const_int_operand")
 			 (match_operand 3 "const_int_operand")))]
   "TARGET_ARCV_RHX100 && !TARGET_64BIT
      && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
-  {
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0) (ashift:SI   (match_dup 1) (match_dup 2)))
+   (set (match_dup 0) (lshiftrt:SI (match_dup 0) (match_dup 3)))]
+  "{
      int amount = INTVAL (operands[2]);
      int end = INTVAL (operands[3]) + amount;
      operands[2] = GEN_INT (BITS_PER_WORD - end);
      operands[3] = GEN_INT (BITS_PER_WORD - amount);
-     return "slli\t%0,%1,%2\n\tsrli\t%0,%0,%3";
-  }
-  [(set_attr "type" "alu_fused")]
-)
+  }"
+  [(set_attr "type" "alu_fused")])
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)
