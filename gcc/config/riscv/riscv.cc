@@ -10281,7 +10281,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   rtx curr_set = single_set (curr);
 
   /* Fuse multiply-add pair.  */
-  if (prev_set && curr_set && GET_CODE (SET_SRC (prev_set)) == MULT
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && prev_set && curr_set && GET_CODE (SET_SRC (prev_set)) == MULT
       && GET_CODE (SET_SRC (curr_set)) == PLUS
       && (REG_P (XEXP (SET_SRC (curr_set), 0))
 	  && REGNO (SET_DEST (prev_set)) ==
@@ -10321,14 +10322,16 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Fuse adjacent loads and stores.  */
-  if (get_attr_type (prev) == TYPE_LOAD
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
     {
       if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
 	return true;
     }
 
-  if (get_attr_type (prev) == TYPE_STORE
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && get_attr_type (prev) == TYPE_STORE
       && get_attr_type (curr) == TYPE_STORE)
     {
       if (arcv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
@@ -10337,7 +10340,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
   /* Look ahead 1 insn to make sure double loads/stores are always
      fused together, even in the presence of other opportunities.  */
-  if (next_insn (curr) && single_set (next_insn (curr))
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && next_insn (curr) && single_set (next_insn (curr))
       && get_attr_type (curr) == TYPE_LOAD
       && get_attr_type (next_insn (curr)) == TYPE_LOAD)
   {
@@ -10347,7 +10351,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	return false;
   }
 
-  if (next_insn (curr) && single_set (next_insn (curr))
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && next_insn (curr) && single_set (next_insn (curr))
       && get_attr_type (curr) == TYPE_STORE
       && get_attr_type (next_insn (curr)) == TYPE_STORE)
   {
@@ -10815,7 +10820,8 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
-  if (next_insn (insn) && INSN_P (next_insn (insn))
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && next_insn (insn) && INSN_P (next_insn (insn))
       && SCHED_GROUP_P (next_insn (insn))
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next_insn (insn)) == TYPE_STORE)
