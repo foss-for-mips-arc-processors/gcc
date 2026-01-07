@@ -670,7 +670,7 @@
 ;; Microarchitectures we know how to tune for.
 ;; Keep this in sync with enum riscv_microarchitecture.
 (define_attr "tune"
-  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,arcv_rmx100,arcv_rmx500,arcv_rhx100,arcv_rpx100,generic_ooo"
+  "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,arcv_rmx100,arcv_rmx500,arcv_rpx100,generic_ooo"
   (const (symbol_ref "((enum attr_tune) riscv_microarchitecture)")))
 
 ;; Describe a user's asm statement.
@@ -3052,7 +3052,6 @@
 ;; * Single-bit extraction (SFB)
 ;; * Extraction instruction th.ext(u) (XTheadBb)
 ;; * lshrsi3_extend_2 (see above)
-;; * Zero extraction fusion (ARC-V)
 (define_insn_and_split "*<any_extract:optab><GPR:mode>3"
   [(set (match_operand:GPR 0 "register_operand" "=r")
 	 (any_extract:GPR
@@ -3064,8 +3063,6 @@
       || TARGET_XVENTANACONDOPS || TARGET_SFB_ALU)
      && (INTVAL (operands[2]) == 1))
    && !TARGET_XTHEADBB
-   && !(arcv_micro_arch_supports_fusion_p ()
-        && <any_extract:is_zero_extract>)
    && !(TARGET_64BIT
         && (INTVAL (operands[3]) > 0)
         && (INTVAL (operands[2]) + INTVAL (operands[3]) == 32))"
@@ -4435,63 +4432,7 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "(TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
-			&& (TARGET_ZMMUL || TARGET_MUL)))"
-  {
-    if (TARGET_ARCV_ADVANCED_FUSION)
-      {
-	rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
-	emit_insn (gen_extendhisi2 (tmp0, operands[1]));
-	emit_insn (gen_extendhisi2 (tmp1, operands[2]));
-
-	if (TARGET_64BIT)
-	  {
-	    rtx op0 = gen_reg_rtx (DImode);
-	    emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
-	    op0 = gen_lowpart (SImode, op0);
-	    SUBREG_PROMOTED_VAR_P (op0) = 1;
-	    SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
-	    emit_move_insn (operands[0], op0);
-	  }
-	else
-	  {
-	    emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
-	  }
-
-	DONE;
-      }
-  }
-)
-
-(define_expand "umaddhisi4"
-  [(set (match_operand:SI 0 "register_operand")
-	(plus:SI
-	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
-		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
-	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_ARCV_ADVANCED_FUSION
-   && (TARGET_ZMMUL || TARGET_MUL)"
-  {
-    rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
-    emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
-    emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
-
-    if (TARGET_64BIT)
-      {
-	rtx op0 = gen_reg_rtx (DImode);
-	emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
-	op0 = gen_lowpart (SImode, op0);
-	SUBREG_PROMOTED_VAR_P (op0) = 1;
-	SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
-	emit_move_insn (operands[0], op0);
-      }
-    else
-      {
-	emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
-      }
-
-    DONE;
-  }
+  "TARGET_XTHEADMAC"
 )
 
 (define_expand "msubhisi4"
@@ -4501,68 +4442,6 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))))]
   "TARGET_XTHEADMAC"
-)
-
-(define_insn "madd_split_fused"
-  [(set (match_operand:SI 0 "register_operand" "=&r,r")
-     (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
-		 (match_operand:SI 2 "register_operand" "r,r"))
-	(match_operand:SI 3 "register_operand" "r,?0")))
-    (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "TARGET_ARCV_ADVANCED_FUSION
-   && (TARGET_ZMMUL || TARGET_MUL)"
-  {
-     if (REGNO (operands[0]) == REGNO (operands[3]))
-       {
-	 return "mul\t%4,%1,%2\n\tadd\t%4,%3,%4\n\tmv\t%0,%4";
-       }
-     else
-       {
-	 return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
-       }
-  }
-  [(set_attr "type" "imul_fused")]
-)
-
-(define_insn "madd_split_fused_extended"
-  [(set (match_operand:DI 0 "register_operand" "=&r,r")
-     (sign_extend:DI
-      (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
-		 (match_operand:SI 2 "register_operand" "r,r"))
-	(match_operand:SI 3 "register_operand" "r,?0"))))
-    (clobber (match_scratch:SI 4 "=&r,&r"))]
-  "TARGET_ARCV_ADVANCED_FUSION
-   && (TARGET_ZMMUL || TARGET_MUL)"
-  {
-     if (REGNO (operands[0]) == REGNO (operands[3]))
-       {
-	 return "mulw\t%4,%1,%2\n\taddw\t%4,%3,%4\n\tmv\t%0,%4";
-       }
-     else
-       {
-	 return "mulw\t%0,%1,%2\n\taddw\t%0,%0,%3";
-       }
-  }
-  [(set_attr "type" "imul_fused")]
-)
-
-(define_insn "*zero_extract_fused"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
-			 (match_operand 2 "const_int_operand")
-			 (match_operand 3 "const_int_operand")))]
-  "arcv_micro_arch_supports_fusion_p ()
-     && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
-  {
-     int amount = INTVAL (operands[2]);
-     int end = INTVAL (operands[3]) + amount;
-     operands[2] = GEN_INT (BITS_PER_WORD - end);
-     operands[3] = GEN_INT (BITS_PER_WORD - amount);
-     return "slli\t%0,%1,%2\n\tsrli\t%0,%0,%3";
-  }
-  [(set_attr "type" "alu_fused")]
 )
 
 ;; String compare with length insn.
@@ -4949,7 +4828,6 @@
 (include "xiangshan.md")
 (include "arcv-rmx100.md")
 (include "arcv-rmx500.md")
-(include "arcv-rhx100.md")
 (include "arcv-rpx100.md")
 (include "arcv-udsp.md")
 (include "arcv-apex.md")
