@@ -4546,32 +4546,33 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
-			&& (TARGET_ZMMUL || TARGET_MUL))"
-{
-  if (TARGET_ARCV_ADVANCED_FUSION)
-    {
-      rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
-      emit_insn (gen_extendhisi2 (tmp0, operands[1]));
-      emit_insn (gen_extendhisi2 (tmp1, operands[2]));
+  "(TARGET_XTHEADMAC || (TARGET_ARCV_ADVANCED_FUSION
+			&& (TARGET_ZMMUL || TARGET_MUL)))"
+  {
+    if (TARGET_ARCV_ADVANCED_FUSION)
+      {
+	rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+	emit_insn (gen_extendhisi2 (tmp0, operands[1]));
+	emit_insn (gen_extendhisi2 (tmp1, operands[2]));
 
-      if (TARGET_64BIT)
-	{
-	  rtx op0 = gen_reg_rtx (DImode);
-	  emit_insn (gen_madd_fused_extended (op0, tmp0, tmp1, operands[3]));
-	  op0 = gen_lowpart (SImode, op0);
-	  SUBREG_PROMOTED_VAR_P (op0) = 1;
-	  SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
-	  emit_move_insn (operands[0], op0);
-	}
-      else
-	{
-	  emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
-	}
+	if (TARGET_64BIT)
+	  {
+	    rtx op0 = gen_reg_rtx (DImode);
+	    emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
+	    op0 = gen_lowpart (SImode, op0);
+	    SUBREG_PROMOTED_VAR_P (op0) = 1;
+	    SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+	    emit_move_insn (operands[0], op0);
+	  }
+	else
+	  {
+	    emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+	  }
 
-      DONE;
-    }
-})
+	DONE;
+      }
+  }
+)
 
 (define_expand "umaddhisi4"
   [(set (match_operand:SI 0 "register_operand")
@@ -4581,27 +4582,28 @@
 	  (match_operand:SI 3 "register_operand")))]
   "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
-{
-  rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
-  emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
-  emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
+  {
+    rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+    emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
+    emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
 
-  if (TARGET_64BIT)
-    {
-      rtx op0 = gen_reg_rtx (DImode);
-      emit_insn (gen_madd_fused_extended (op0, tmp0, tmp1, operands[3]));
-      op0 = gen_lowpart (SImode, op0);
-      SUBREG_PROMOTED_VAR_P (op0) = 1;
-      SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
-      emit_move_insn (operands[0], op0);
-    }
-  else
-    {
-      emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
-    }
+    if (TARGET_64BIT)
+      {
+	rtx op0 = gen_reg_rtx (DImode);
+	emit_insn (gen_madd_split_fused_extended (op0, tmp0, tmp1, operands[3]));
+	op0 = gen_lowpart (SImode, op0);
+	SUBREG_PROMOTED_VAR_P (op0) = 1;
+	SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+	emit_move_insn (operands[0], op0);
+      }
+    else
+      {
+	emit_insn (gen_madd_split_fused (operands[0], tmp0, tmp1, operands[3]));
+      }
 
-  DONE;
-})
+    DONE;
+  }
+)
 
 (define_expand "msubhisi4"
   [(set (match_operand:SI 0 "register_operand")
@@ -4612,7 +4614,7 @@
   "TARGET_XTHEADMAC"
 )
 
-(define_insn_and_split "madd_fused"
+(define_insn "madd_split_fused"
   [(set (match_operand:SI 0 "register_operand" "=&r,r")
      (plus:SI
 	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
@@ -4621,25 +4623,20 @@
     (clobber (match_scratch:SI 4 "=&r,&r"))]
   "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
-  "#"
-  "&& reload_completed"
-  [(const_int 0)]
-  "{
+  {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
-	 emit_insn (gen_mulsi3 (operands[4], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[3], operands[4]));
+	 return "mul\t%4,%1,%2\n\tadd\t%4,%3,%4\n\tmv\t%0,%4";
        }
      else
        {
-	 emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
+	 return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
        }
-    DONE;
-   }"
-  [(set_attr "type" "imul_fused")])
+  }
+  [(set_attr "type" "imul_fused")]
+)
 
-(define_insn_and_split "madd_fused_extended"
+(define_insn "madd_split_fused_extended"
   [(set (match_operand:DI 0 "register_operand" "=&r,r")
      (sign_extend:DI
       (plus:SI
@@ -4649,42 +4646,35 @@
     (clobber (match_scratch:SI 4 "=&r,&r"))]
   "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
-  "#"
-  "&& reload_completed"
-  [(const_int 0)]
-  "{
+  {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
-	 emit_insn (gen_mulsi3_extended (operands[4], operands[1], operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0], operands[3], operands[4]));
+	 return "mulw\t%4,%1,%2\n\taddw\t%4,%3,%4\n\tmv\t%0,%4";
        }
      else
        {
-	 emit_insn (gen_mulsi3_extended (operands[0], operands[1], operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0], operands[0], operands[3]));
+	 return "mulw\t%0,%1,%2\n\taddw\t%0,%0,%3";
        }
-    DONE;
-   }"
-  [(set_attr "type" "imul_fused")])
+  }
+  [(set_attr "type" "imul_fused")]
+)
 
-(define_insn_and_split "*zero_extract_fused"
+(define_insn "*zero_extract_fused"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
 			 (match_operand 2 "const_int_operand")
 			 (match_operand 3 "const_int_operand")))]
   "TARGET_ARCV_FUSION && !TARGET_64BIT
      && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
-  "#"
-  "&& reload_completed"
-  [(set (match_dup 0) (ashift:SI   (match_dup 1) (match_dup 2)))
-   (set (match_dup 0) (lshiftrt:SI (match_dup 0) (match_dup 3)))]
-  "{
+  {
      int amount = INTVAL (operands[2]);
      int end = INTVAL (operands[3]) + amount;
      operands[2] = GEN_INT (BITS_PER_WORD - end);
      operands[3] = GEN_INT (BITS_PER_WORD - amount);
-   }"
-  [(set_attr "type" "alu_fused")])
+     return "slli\t%0,%1,%2\n\tsrli\t%0,%0,%3";
+  }
+  [(set_attr "type" "alu_fused")]
+)
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)
