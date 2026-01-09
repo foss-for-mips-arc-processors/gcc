@@ -110,6 +110,8 @@ MULTILIB_REQUIRED   += march=rv32imc_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-
 MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rmx-500-series
 MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx/mabi=ilp32/mtune=arc-v-rmx-500-series
 MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imafc_zcb_zba_zbb_zbs/mabi=ilp32f/mtune=arc-v-rmx-500-series
+MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rmx-500-series
 
 # Configurations for RHX-100 - general
 MULTILIB_REQUIRED   += march=rv32i/mabi=ilp32/mtune=arc-v-rhx-100-series
