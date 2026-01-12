@@ -11599,7 +11599,7 @@ riscv_sched_init (FILE *, int, int)
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
-  if (TARGET_ARCV_RHX100
+  if (TARGET_ARCV_FUSION
       && !arcv_can_issue_more_p (riscv_issue_rate (), more, insn))
     {
       riscv_cached_can_issue_more = 0;
@@ -11672,7 +11672,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	  last_vconfig.ma = mask_agnostic_p (insn);
 	}
     }
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_FUSION)
     {
       more = arcv_sched_variable_issue (insn, more);
       riscv_cached_can_issue_more = more;
@@ -11797,7 +11797,7 @@ static int
 riscv_sched_reorder2 (FILE *file, int verbose, rtx_insn **ready,
 		      int *nreadyp, int)
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_FUSION)
     return arcv_sched_reorder2 (ready, nreadyp);
 
   if (riscv_cached_can_issue_more > 0)
@@ -11824,8 +11824,8 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  /* Use ARCV-specific cost adjustment for RHX-100.  */
-  if (TARGET_ARCV_RHX100)
+  /* Use ARCV-specific cost adjustment for the ARC-V fusion cores.  */
+  if (TARGET_ARCV_FUSION)
     return arcv_sched_adjust_cost (insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
@@ -11891,7 +11891,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_FUSION)
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
