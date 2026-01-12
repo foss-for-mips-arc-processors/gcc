@@ -3064,7 +3064,7 @@
       || TARGET_XVENTANACONDOPS || TARGET_SFB_ALU)
      && (INTVAL (operands[2]) == 1))
    && !TARGET_XTHEADBB
-   && !(TARGET_ARCV_RHX100
+   && !(TARGET_ARCV_FUSION
 	&& <any_extract:is_zero_extract>)
    && !(TARGET_64BIT
         && (INTVAL (operands[3]) > 0)
@@ -4561,7 +4561,7 @@
 	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
 			 (match_operand 2 "const_int_operand")
 			 (match_operand 3 "const_int_operand")))]
-  "TARGET_ARCV_RHX100 && !TARGET_64BIT
+  "TARGET_ARCV_FUSION && !TARGET_64BIT
      && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
   "#"
   "&& reload_completed"
