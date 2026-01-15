@@ -31,7 +31,7 @@
 #define REQUIRED_EXTENSIONS XARCVVDSP_EXT
 DEF_RVV_FUNCTION (arcv_vmv, arcv_vmv, none_preds, iu_v_sx_ops)
 DEF_RVV_FUNCTION (arcv_vmv, arcv_vmv, none_preds, iu_s_vx_ops)
-DEF_RVV_FUNCTION (arcv_vnorm, alu, none_m_preds, iu_vv_ops)
+DEF_RVV_FUNCTION (arcv_vnorm, alu, none_m_preds, iu_vv_ops_no_eew8)
 DEF_RVV_FUNCTION (arcv_vssabs, alu, none_m_preds, iu_vv_ops)
 DEF_RVV_FUNCTION (arcv_vsneg, alu, none_m_preds, iu_vv_ops)
 DEF_RVV_FUNCTION (arcv_vclr, alu, none_m_preds, iu_v_i_ops)
