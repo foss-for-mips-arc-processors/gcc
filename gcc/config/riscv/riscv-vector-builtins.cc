@@ -3695,6 +3695,12 @@ static CONSTEXPR const rvv_op_info iu_vv_ops
     rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
     v_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info iu_vv_ops_no_eew8 = {
+    eew8_interpret_ops,            /* Types */
+    OP_TYPE_v,                          /* Suffix */
+    rvv_arg_type_info(RVV_BASE_vector), /* Return type */
+    v_args /* Args */};
+
 static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vwx_ops
  = {wexti_ops,			/* Types */
     OP_TYPE_wx,			/* Suffix */
