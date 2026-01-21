@@ -269,6 +269,97 @@ arcv_store_arith_pair_p (rtx prev_set, rtx curr_set)
   return false;
 }
 
+static bool
+arcv_ls_update_restricted_case (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  gcc_assert (prev_set);
+  gcc_assert (curr_set);
+
+  if (MEM_P (SET_SRC (prev_set))
+      && REG_P (XEXP (SET_SRC (prev_set), 0))
+      && REGNO (XEXP (SET_SRC (prev_set), 0)) == REGNO (SET_DEST (curr_set))
+      && GET_CODE (SET_SRC (curr_set)) == PLUS
+      && REG_P (XEXP (SET_SRC (curr_set), 0))
+      && CONST_INT_P (XEXP (SET_SRC (curr_set), 1)))
+	return true;
+
+  if (MEM_P (SET_DEST (prev_set))
+      && REG_P (XEXP (SET_DEST (prev_set), 0))
+      && REGNO (XEXP (SET_DEST (prev_set), 0)) == REGNO (SET_DEST (curr_set))
+      && GET_CODE (SET_SRC (curr_set)) == PLUS
+      && REG_P (XEXP (SET_SRC (curr_set), 0))
+      && CONST_INT_P (XEXP (SET_SRC (curr_set), 1)))
+	return true;
+
+}
+
+static bool
+arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  gcc_assert (prev_set && curr_set);
+
+  if (!arcv_arith_type_insn_p (curr))
+    return false;
+
+  rtx c_src = SET_SRC (curr_set);
+  rtx c_dest = SET_DEST (curr_set);
+
+  /* check curr has at least one register source  */
+  if (!REG_P (XEXP (c_src, 0)) && !CONST_INT_P (c_src))
+    return false;
+
+  int c_rs1 = REGNO (XEXP (c_src, 0));
+  int c_rd  = REGNO (c_dest);
+
+  /* check if there is a second source register */
+  bool has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1 && REG_P (XEXP (c_src, 1)));
+  int c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
+
+  enum attr_type p_type = get_attr_type (prev);
+
+  switch (p_type)
+    {
+    case TYPE_LOAD:
+      {
+	rtx p_src_addr = XEXP (SET_SRC (prev_set), 0);
+	if (!REG_P (p_src_addr))
+	  return false;
+
+	int p_rs = REGNO (p_src_addr);
+	int p_rd = REGNO (SET_DEST (prev_set));
+
+	return (p_rs == c_rs1
+		&& p_rs != p_rd
+		&& p_rd != c_rd
+		&& (!has_rs2 ||  /* Fused LD + OP */
+		     p_rd != c_rs2)); /* Fused LD + OP-IMM */
+      }
+
+    case TYPE_STORE:
+      {
+	rtx p_dst_addr = XEXP (SET_DEST (prev_set), 0);
+	if (!REG_P (p_dst_addr))
+	  return false;
+
+	int p_rs = REGNO (p_dst_addr);
+
+	return (p_rs == c_rs1 &&
+		(!has_rs2 || /* Fused ST + OP */
+		 p_rs == c_rs2)); /* Fused ST + OP-IMM*/
+      }
+
+    default:
+      return false;
+    }
+}
+
+
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of ARCV-specific macro-op fusion.  */
 static bool
@@ -470,13 +561,13 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
   /* Fuse a pre- or post-update memory operation:
      Examples: load+add, add+load, store+add, add+store.  */
-  if (arcv_memop_arith_pair_p (prev, curr))
+  if (arcv_ls_update (prev, curr))
     {
       if (dump_file)
 	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (prev, curr)\n");
       return true;
     }
-  if (arcv_memop_arith_pair_p (curr, prev))
+  if (arcv_ls_update (curr, prev))
     {
       if (dump_file)
 	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (curr, prev)\n");
@@ -485,13 +576,13 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
   /* Fuse a memory operation preceded or followed by a LUI:
      Examples: load+lui, lui+load, store+lui, lui+store.  */
-  if (arcv_memop_lui_pair_p (prev, curr))
+  if (arcv_memop_arith_pair_p (prev, curr))
     {
       if (dump_file)
 	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (prev, curr)\n");
       return true;
     }
-  if (arcv_memop_lui_pair_p (curr, prev))
+  if (arcv_memop_arith_pair_p (curr, prev))
     {
       if (dump_file)
 	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (curr, prev)\n");
