@@ -30,7 +30,7 @@
   UNSPEC_ARCV_BSPOP
   UNSPEC_ARCV_BSPUSH
   UNSPEC_ARCV_VMV_V_SX
-  UNSPEC_ARCV_VMV_S_V
+  UNSPEC_ARCV_VMV_S_VX
   UNSPEC_ARCV_VNORM
   UNSPEC_ARCV_VSSABS
   UNSPEC_ARCV_VSNEG
@@ -159,7 +159,7 @@
    (set (attr "ma") (const_int INVALID_ATTRIBUTE))
    (set (attr "avl_type_idx") (const_int 5))])
 
-(define_insn "@pred_arcv_vmv_s_v_scalar<V_VLSI:mode><P:mode>"
+(define_insn "@pred_arcv_vmv_s_vx_scalar<V_VLSI:mode><P:mode>"
   [(set (match_operand:<V_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
 	(if_then_else:<V_LMUL1>
 	  (unspec:<V_VLSI:VM>
@@ -170,10 +170,10 @@
 	  (unspec:<V_LMUL1>
 	    [(match_operand:V_VLSI 2 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:P 3 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
-	    UNSPEC_ARCV_VMV_S_V)
+	    UNSPEC_ARCV_VMV_S_VX)
 	  (match_operand:<V_LMUL1> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
   "TARGET_XARCVVDSP"
-  { return which_alternative < 6 ? "arcv.vmv.s.v\t%0,%2,%3" : "arcv.vmvi.s.v\t%0,%2,%3"; }
+  { return which_alternative < 6 ? "arcv.vmv.s.vx\t%0,%2,%3" : "arcv.vmvi.s.v\t%0,%2,%3"; }
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_VLSI:MODE>")
    (set_attr "vl_op_idx" "4")
