@@ -2243,7 +2243,7 @@ public:
     switch (e.op_info->op)
       {
       case OP_TYPE_v_s:
-	return e.generate_insn (code_for_pred_arcv_vmv_v_s_scalar (e.vector_mode (), Pmode));
+	return e.generate_insn (code_for_pred_arcv_vmv_v_sx_scalar (e.vector_mode (), Pmode));
       case OP_TYPE_s_v:
 	return e.generate_insn (code_for_pred_arcv_vmv_s_v_scalar (e.vector_mode (), Pmode));
       default:

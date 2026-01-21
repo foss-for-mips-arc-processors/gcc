@@ -29,7 +29,7 @@
   UNSPEC_ARCV_BSPEEK
   UNSPEC_ARCV_BSPOP
   UNSPEC_ARCV_BSPUSH
-  UNSPEC_ARCV_VMV_V_S
+  UNSPEC_ARCV_VMV_V_SX
   UNSPEC_ARCV_VMV_S_V
   UNSPEC_ARCV_VNORM
   UNSPEC_ARCV_VSSABS
@@ -137,7 +137,7 @@
   "arcv.bspush\t%0,%1,%2"
   [(set_attr "type" "arith")])
 
-(define_insn "@pred_arcv_vmv_v_s_scalar<V_VLSI:mode><P:mode>"
+(define_insn "@pred_arcv_vmv_v_sx_scalar<V_VLSI:mode><P:mode>"
   [(set (match_operand:<V_VLSI:MODE> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
 	(if_then_else:<V_VLSI:MODE>
 	  (unspec:<V_VLSI:VM>
@@ -148,7 +148,7 @@
 	  (unspec:<V_VLSI:MODE>
 	    [(match_operand:V_VLSI 2 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:P 3 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
-	    UNSPEC_ARCV_VMV_V_S)
+	    UNSPEC_ARCV_VMV_V_SX)
 	  (match_operand:<V_VLSI:MODE> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
   "TARGET_XARCVVDSP"
   { return which_alternative < 6 ? "arcv.vmv.v.sx\t%0,%2,%3" : "arcv.vmvi.v.s\t%0,%2,%3"; }

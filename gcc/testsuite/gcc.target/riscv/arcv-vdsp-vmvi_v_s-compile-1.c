@@ -16,7 +16,7 @@
 */
 vint8m1_t test_vmvi_v_s_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vmv_v_s_i8m1 (vd, 1, vs2, vl);
+  return __riscv_arcv_vmv_v_sx_i8m1 (vd, 1, vs2, vl);
 }
 
 /*
@@ -27,7 +27,7 @@ vint8m1_t test_vmvi_v_s_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
 */
 vint16m1_t test_vmvi_v_s_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vmv_v_s_i16m1 (vd, 1, vs2, vl);
+  return __riscv_arcv_vmv_v_sx_i16m1 (vd, 1, vs2, vl);
 }
 
 /*
@@ -38,7 +38,7 @@ vint16m1_t test_vmvi_v_s_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
 */
 vint32m1_t test_vmvi_v_s_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vmv_v_s_i32m1 (vd, 1, vs2, vl);
+  return __riscv_arcv_vmv_v_sx_i32m1 (vd, 1, vs2, vl);
 }
 
 /*
@@ -49,5 +49,5 @@ vint32m1_t test_vmvi_v_s_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
 */
 vint64m1_t test_vmvi_v_s_i64 (vint64m1_t vd, int vs1, vint64m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vmv_v_s_i64m1 (vd, 1, vs2, vl);
+  return __riscv_arcv_vmv_v_sx_i64m1 (vd, 1, vs2, vl);
 }
