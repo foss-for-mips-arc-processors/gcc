@@ -9,45 +9,45 @@
 
 
 /*
-** test_vmvi_v_s_i8:
+** test_vmv_v_si_i8:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e8,m1,\s*t[au],\s*m[au]
-**  arcv\.vmvi\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
+**  arcv\.vmv\.v\.si\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
 **  ret
 */
-vint8m1_t test_vmvi_v_s_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
+vint8m1_t test_vmv_v_si_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
 {
   return __riscv_arcv_vmv_v_s_i8m1 (vd, 1, vs2, vl);
 }
 
 /*
-** test_vmvi_v_s_i16:
+** test_vmv_v_si_i16:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*m[au]
-**  arcv\.vmvi\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
+**  arcv\.vmv\.v\.si\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
 **  ret
 */
-vint16m1_t test_vmvi_v_s_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
+vint16m1_t test_vmv_v_si_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
 {
   return __riscv_arcv_vmv_v_s_i16m1 (vd, 1, vs2, vl);
 }
 
 /*
-** test_vmvi_v_s_i32:
+** test_vmv_v_si_i32:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*m[au]
-**  arcv\.vmvi\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
+**  arcv\.vmv\.v\.si\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
 **  ret
 */
-vint32m1_t test_vmvi_v_s_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
+vint32m1_t test_vmv_v_si_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
 {
   return __riscv_arcv_vmv_v_s_i32m1 (vd, 1, vs2, vl);
 }
 
 /*
-** test_vmvi_v_s_i64:
+** test_vmv_v_si_i64:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*t[au],\s*m[au]
-**  arcv\.vmvi\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
+**  arcv\.vmv\.v\.si\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*1
 **  ret
 */
-vint64m1_t test_vmvi_v_s_i64 (vint64m1_t vd, int vs1, vint64m1_t vs2, size_t vl)
+vint64m1_t test_vmv_v_si_i64 (vint64m1_t vd, int vs1, vint64m1_t vs2, size_t vl)
 {
   return __riscv_arcv_vmv_v_s_i64m1 (vd, 1, vs2, vl);
 }
