@@ -14624,7 +14624,7 @@ proc check_effective_target_arcv_vdsp { } {
     return [check_no_compiler_messages arcv_vdsp object {
         void foo (void)
           {
-            asm ("arcv.vmv.v.s v0, v0, x0");
+            asm ("arcv.vmv.v.sx v0, v0, x0");
           }
   } "-march=rv32im_xarcvvdsp" ]
 }

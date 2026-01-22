@@ -11,7 +11,7 @@
 /*
 ** test_vmv_v_s_i8:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e8,m1,\s*t[au],\s*m[au]
-**  arcv\.vmv\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
+**  arcv\.vmv\.v\.sx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
 vint8m1_t test_vmv_v_s_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
@@ -22,7 +22,7 @@ vint8m1_t test_vmv_v_s_i8 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
 /*
 ** test_vmv_v_s_i16:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*m[au]
-**  arcv\.vmv\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
+**  arcv\.vmv\.v\.sx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
 vint16m1_t test_vmv_v_s_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
@@ -33,7 +33,7 @@ vint16m1_t test_vmv_v_s_i16 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
 /*
 ** test_vmv_v_s_i32:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*m[au]
-**  arcv\.vmv\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
+**  arcv\.vmv\.v\.sx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
 vint32m1_t test_vmv_v_s_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
@@ -44,7 +44,7 @@ vint32m1_t test_vmv_v_s_i32 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
 /*
 ** test_vmv_v_s_i64:
 **  vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*t[au],\s*m[au]
-**  arcv\.vmv\.v\.s\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
+**  arcv\.vmv\.v\.sx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
 vint64m1_t test_vmv_v_s_i64 (vint64m1_t vd, int vs1, vint64m1_t vs2, size_t vl)
