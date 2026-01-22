@@ -151,7 +151,7 @@
 	    UNSPEC_ARCV_VMV_V_S)
 	  (match_operand:<V_VLSI:MODE> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
   "TARGET_XARCVVDSP"
-  { return which_alternative < 6 ? "arcv.vmv.v.s\t%0,%2,%3" : "arcv.vmvi.v.s\t%0,%2,%3"; }
+  { return which_alternative < 6 ? "arcv.vmv.v.sx\t%0,%2,%3" : "arcv.vmv.v.si\t%0,%2,%3"; }
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_VLSI:MODE>")
    (set_attr "vl_op_idx" "4")
@@ -173,7 +173,7 @@
 	    UNSPEC_ARCV_VMV_S_V)
 	  (match_operand:<V_LMUL1> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
   "TARGET_XARCVVDSP"
-  { return which_alternative < 6 ? "arcv.vmv.s.v\t%0,%2,%3" : "arcv.vmvi.s.v\t%0,%2,%3"; }
+  { return which_alternative < 6 ? "arcv.vmv.s.vx\t%0,%2,%3" : "arcv.vmv.s.vi\t%0,%2,%3"; }
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_VLSI:MODE>")
    (set_attr "vl_op_idx" "4")
