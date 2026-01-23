@@ -1225,8 +1225,8 @@ static CONSTEXPR const rvv_arg_type_info rqqvv_args[]
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info v_sx_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
-     rvv_arg_type_info (RVV_BASE_size),
      rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_size),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info ss_wwvv_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),

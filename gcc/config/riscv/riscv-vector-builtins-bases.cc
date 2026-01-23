@@ -2239,10 +2239,10 @@ public:
     }
   else
     {
-      /* For v_s operations: (vd, rs1, vs2, vl) - original behavior.   */
+      /* For v_s operations: (vd, vs2, rs1, vl) - original behavior.   */
       rtx vd = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
-      rtx rs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
       rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+      rtx rs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
 
       e.add_input_operand (mode, vd);
       e.add_input_operand (mode, vs2);
