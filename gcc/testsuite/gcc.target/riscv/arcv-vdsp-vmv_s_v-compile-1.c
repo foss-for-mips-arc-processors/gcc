@@ -14,9 +14,9 @@
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint8m1_t test_vmv_s_v_i8m1 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
+vint8m1_t test_vmv_s_v_i8m1 (vint8m1_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i8m1_i8m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i8m1_i8m1 (vs2, vs1, vl);
 }
 
 /*
@@ -25,9 +25,9 @@ vint8m1_t test_vmv_s_v_i8m1 (vint8m1_t vd, int vs1, vint8m1_t vs2, size_t vl)
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint8m1_t test_vmv_s_v_i8m2 (vint8m1_t vd, int vs1, vint8m2_t vs2, size_t vl)
+vint8m1_t test_vmv_s_v_i8m2 (vint8m2_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i8m2_i8m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i8m2_i8m1 (vs2, vs1, vl);
 }
 
 /*
@@ -36,9 +36,9 @@ vint8m1_t test_vmv_s_v_i8m2 (vint8m1_t vd, int vs1, vint8m2_t vs2, size_t vl)
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint8m1_t test_vmv_s_v_i8m4 (vint8m1_t vd, int vs1, vint8m4_t vs2, size_t vl)
+vint8m1_t test_vmv_s_v_i8m4 (vint8m4_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i8m4_i8m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i8m4_i8m1 (vs2, vs1, vl);
 }
 
 /*
@@ -47,9 +47,9 @@ vint8m1_t test_vmv_s_v_i8m4 (vint8m1_t vd, int vs1, vint8m4_t vs2, size_t vl)
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint16m1_t test_vmv_s_v_i16m1 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl)
+vint16m1_t test_vmv_s_v_i16m1 (vint16m1_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i16m1_i16m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i16m1_i16m1 (vs2, vs1, vl);
 }
 
 /*
@@ -58,9 +58,9 @@ vint16m1_t test_vmv_s_v_i16m1 (vint16m1_t vd, int vs1, vint16m1_t vs2, size_t vl
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint32m1_t test_vmv_s_v_i32m1 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl)
+vint32m1_t test_vmv_s_v_i32m1 (vint32m1_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i32m1_i32m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i32m1_i32m1 (vs2, vs1, vl);
 }
 
 /*
@@ -69,9 +69,9 @@ vint32m1_t test_vmv_s_v_i32m1 (vint32m1_t vd, int vs1, vint32m1_t vs2, size_t vl
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint32m1_t test_vmv_s_v_i32m2 (vint32m1_t vd, int vs1, vint32m2_t vs2, size_t vl)
+vint32m1_t test_vmv_s_v_i32m2 (vint32m2_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i32m2_i32m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i32m2_i32m1 (vs2, vs1, vl);
 }
 
 /*
@@ -80,7 +80,7 @@ vint32m1_t test_vmv_s_v_i32m2 (vint32m1_t vd, int vs1, vint32m2_t vs2, size_t vl
 **  arcv\.vmv\.s\.vx\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*[a-x0-9]+
 **  ret
 */
-vint64m1_t test_vmv_s_v_i64m1 (vint64m1_t vd, int vs1, vint64m1_t vs2, size_t vl)
+vint64m1_t test_vmv_s_v_i64m1 (vint64m1_t vs2, int vs1, size_t vl)
 {
-  return __riscv_arcv_vmv_s_v_i64m1_i64m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vmv_s_v_i64m1_i64m1 (vs2, vs1, vl);
 }

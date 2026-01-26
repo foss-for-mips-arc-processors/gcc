@@ -2214,13 +2214,31 @@ public:
 
   /* Record the offset to get the argument.  */
   int arg_offset = 0;
-  rtx vd = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
-  rtx vs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
-  rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
 
-  e.add_input_operand (e.op_info->op == OP_TYPE_s_v ? e.arg_mode (0) : mode, vd);
-  e.add_input_operand (mode, vs2);
-  e.add_input_operand (Pmode, vs1);
+  if (e.op_info->op == OP_TYPE_s_v)
+    {
+      rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+      rtx vs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+
+      machine_mode dest_mode = e.ret_mode ();
+      machine_mode src_mode = e.arg_mode (0);
+      rtx vd = (dest_mode != src_mode) ? gen_lowpart (dest_mode, vs2) : vs2;
+
+      e.add_input_operand (dest_mode, vd);
+      e.add_input_operand (src_mode, vs2);
+      e.add_input_operand (Pmode, vs1);
+    }
+  else
+    {
+      rtx vd = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+      rtx vs2 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+      rtx vs1 = expand_normal (CALL_EXPR_ARG (e.exp, arg_offset++));
+
+      e.add_input_operand (mode, vd);
+      e.add_input_operand (mode, vs2);
+      e.add_input_operand (Pmode, vs1);
+    }
+
   for (int argno = arg_offset; argno < call_expr_nargs (e.exp); argno++)
     {
       e.add_input_operand (argno);
