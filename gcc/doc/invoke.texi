@@ -15337,6 +15337,14 @@ Split paths leading to loop backedges.  This can improve dead code
 elimination and common subexpression elimination.  This is enabled by
 default at @option{-O3} and above.
 
+@opindex fsplit-exit-in-unroller
+@item -fsplit-exit-in-unroller
+This option allows converting a single-exit uncountable loop into a
+multiple-exit one while splitting variables defined in the loop to improve
+propagation opportunities, saving move instructions inside the loop body.
+
+This optimization is enabled by default.
+
 @opindex fsplit-ivs-in-unroller
 @opindex fno-split-ivs-in-unroller
 @item -fsplit-ivs-in-unroller
