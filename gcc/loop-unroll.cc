@@ -35,6 +35,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dojump.h"
 #include "expr.h"
 #include "dumpfile.h"
+#include "df.h"
 
 /* This pass performs loop unrolling.  We only perform this
    optimization on innermost loops (with single exception) because
@@ -172,6 +173,9 @@ static void unroll_loop_runtime_iterations (class loop *);
 static struct opt_info *analyze_insns_in_loop (class loop *);
 static void opt_info_start_duplication (struct opt_info *);
 static void apply_opt_in_copies (struct opt_info *, unsigned, bool, bool);
+static void split_exit (class loop *);
+static bool regno_defined_inside_loop_p (unsigned, class loop *);
+static bool has_use_with_multiple_defs_p (df_link *);
 static void free_opt_info (struct opt_info *);
 static struct var_to_expand *analyze_insn_to_expand_var (class loop*, rtx_insn *);
 static bool referenced_in_one_insn_in_loop_p (class loop *, rtx, int *);
@@ -1259,6 +1263,10 @@ unroll_loop_stupid (class loop *loop)
       free_opt_info (opt_info);
     }
 
+  /* Create multiple exits to uncover more propagation opportunities.  */
+  if (flag_split_exit_in_unroller)
+    split_exit (loop);
+
   if (desc->simple_p)
     {
       /* We indeed may get here provided that there are nontrivial assumptions
@@ -2112,6 +2120,194 @@ apply_opt_in_copies (struct opt_info *opt_info,
 
         }
     }
+}
+
+/* Return TRUE if there is an instruction defining REGNO
+   inside loop LOOP.  */
+
+static bool
+regno_defined_inside_loop_p (unsigned regno, class loop *loop)
+{
+  for (df_ref def = DF_REG_DEF_CHAIN (regno); def; def = DF_REF_NEXT_REG (def))
+    {
+      if (DF_REF_IS_ARTIFICIAL (def))
+	continue;
+
+      if (!flow_bb_inside_loop_p (loop, DF_REF_BB (def)))
+	continue;
+
+      if (dump_file)
+	{
+	  fprintf (dump_file, ";; Found definition of ");
+	  print_simple_rtl (dump_file, regno_reg_rtx[regno]);
+	  fprintf (dump_file, "\n;; in BB %d (loop %d)\n",
+		DF_REF_BB (def)->index, loop->num);
+	}
+
+      return true;
+    }
+
+  return false;
+}
+
+static bool
+has_use_with_multiple_defs_p (df_link *def)
+{
+  for (df_link *use = DF_REF_CHAIN (def->ref);
+		use;
+		use = use->next)
+    if (DF_REF_CHAIN (use->ref)->next)
+      return true;
+
+  return false;
+}
+
+/* Determine if LOOP has multiple exits to the same BB (happens after
+   unroll_loop_stupid ()), and if so, try to split DU chains for pseudos
+   defined inside the loop and live at the entry to the exit BB.  */
+static void
+split_exit (class loop *loop)
+{
+  basic_block exit_bb = NULL;
+  basic_block new_bb;
+  edge e;
+  unsigned j;
+  unsigned regno;
+  bitmap_iterator it;
+  auto_bitmap pseudos_to_replace;
+  auto_vec<basic_block> new_exit_bbs;
+  auto_vec<edge> exit_edges;
+  rtx_insn *insn;
+
+  /* Sanity check: after unrolling, the loop should have more than
+     one exit, all to the same basic block.  */
+  exit_edges = get_loop_exit_edges (loop);
+  if (exit_edges.length () <= 1)
+    return;
+
+  FOR_EACH_VEC_ELT (exit_edges, j, e)
+    {
+      if (!exit_bb)
+	exit_bb = e->dest;
+      else if (exit_bb != e->dest)
+	return;
+    }
+
+  if (dump_file)
+    fprintf (dump_file, "\n;; Splitting loop exit for loop %d\n", loop->num);
+
+  /* Construct a bitmap of pseudos that are live in at the exit BB
+     and are defined within the loop.  */
+  if (optimize == 1)
+    df_live_add_problem ();
+
+  df_live_set_all_dirty ();
+  df_set_blocks (NULL);
+  df_analyze ();
+
+  EXECUTE_IF_SET_IN_BITMAP (DF_LIVE_IN (exit_bb),
+			    FIRST_PSEUDO_REGISTER, regno, it)
+    if (regno_defined_inside_loop_p (regno, loop))
+      {
+	if (dump_file)
+	  fprintf (dump_file,
+		   ";; added %u to list of pseudos to replace\n", regno);
+
+	bitmap_set_bit (pseudos_to_replace, regno);
+      }
+
+  if (optimize == 1)
+    df_remove_problem (df_live);
+
+  if (bitmap_empty_p (pseudos_to_replace))
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; no pseudos to replace, exiting\n");
+      return;
+    }
+
+  /* Split edge + insert copy instructions for each pseudo in
+     pseudos_to_replace.  */
+  FOR_EACH_VEC_ELT (exit_edges, j, e)
+    {
+      start_sequence ();
+
+      EXECUTE_IF_SET_IN_BITMAP (pseudos_to_replace,
+				FIRST_PSEUDO_REGISTER, regno, it)
+	emit_insn (gen_move_insn (regno_reg_rtx[regno],
+				  regno_reg_rtx[regno]));
+
+      insn = get_insns ();
+      end_sequence ();
+
+      new_bb = split_edge_and_insert (e, insn);
+      new_exit_bbs.safe_push (new_bb);
+
+      if (dump_file)
+	fprintf (dump_file, ";; Split exit edge %d->%d\n",
+		 e->src->index, exit_bb->index);
+    }
+
+  /* Redo chain construction with the new exit BBs.  */
+  df_remove_problem (df_chain);
+
+  df_set_flags (DF_NO_HARD_REGS);
+  df_chain_add_problem (DF_DU_CHAIN + DF_UD_CHAIN);
+
+  df_analyze ();
+
+  /* Iterate over the new exit BBs, which by this point contain only
+     instructions of the form "mov Rx, Rx".  Try to rename the source
+     pseudo together with the whole DU-chain of its definition.  */
+  FOR_EACH_VEC_ELT (new_exit_bbs, j, new_bb)
+    FOR_BB_INSNS (new_bb, insn)
+      {
+	rtx set, old_reg, new_reg;
+	df_ref use;
+	df_link *def, *du;
+
+	if (!INSN_P (insn))
+	  continue;
+
+	/* Each insn is a single set of a pseudo to itself.  Check
+	   conditions required for renaming the use operand of the insn.  */
+	set = single_set (insn);
+	gcc_assert (set);
+
+	use = df_single_use (DF_INSN_INFO_GET (insn));
+	gcc_assert (use);
+
+	/* There must be exactly one reachable definition.  */
+	def = DF_REF_CHAIN (use);
+	if (!def || !def->ref || DF_REF_IS_ARTIFICIAL (def->ref) || def->next)
+	  continue;
+
+	/* The definition must be the only one reachable by all its uses.  */
+	if (has_use_with_multiple_defs_p (def))
+	  continue;
+
+	/* If the conditions above are met, replace the def and all its uses
+	   with a newly allocated pseudo.  */
+	old_reg = SET_DEST (set);
+	new_reg = gen_reg_rtx (GET_MODE (old_reg));
+
+	if (dump_file)
+	  {
+	    fprintf (dump_file, ";; replacing DU-chain for reg %d (def: ",
+				REGNO (old_reg));
+	    df_refs_chain_dump (def->ref, false, dump_file);
+	    fprintf (dump_file, ") with reg %d\n", REGNO (new_reg));
+	  }
+
+	for (du = DF_REF_CHAIN (def->ref); du; du = du->next)
+	    validate_replace_src_group (old_reg, new_reg,
+			    DF_REF_INSN (du->ref));
+
+	validate_replace_rtx_subexp (old_reg, new_reg,
+			  DF_REF_INSN (def->ref), DF_REF_REAL_LOC (def->ref));
+      }
+
+  df_clear_flags (DF_NO_HARD_REGS);
 }
 
 /* Release OPT_INFO.  */
