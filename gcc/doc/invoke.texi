@@ -637,8 +637,8 @@ Objective-C and Objective-C++ Dialects}.
 -fsel-sched-pipelining  -fsel-sched-pipelining-outer-loops
 -fsemantic-interposition  -fshrink-wrap  -fshrink-wrap-separate
 -fsignaling-nans
--fsingle-precision-constant  -fsplit-ivs-in-unroller  -fsplit-loops
--fsplit-paths
+-fsingle-precision-constant -fsplit-exit-in-unroller  -fsplit-ivs-in-unroller
+-fsplit-loops -fsplit-paths
 -fsplit-wide-types  -fsplit-wide-types-early  -fssa-backprop  -fssa-phiopt
 -fstdarg-opt  -fstore-merging  -fstrict-aliasing -fipa-strict-aliasing
 -fthread-jumps  -ftracer  -ftree-bit-ccp
@@ -14488,6 +14488,14 @@ enabled.
 Split paths leading to loop backedges.  This can improve dead code
 elimination and common subexpression elimination.  This is enabled by
 default at @option{-O3} and above.
+
+@opindex fsplit-exit-in-unroller
+@item -fsplit-exit-in-unroller
+This option allows converting a single-exit uncountable loop into a
+multiple-exit one while splitting variables defined in the loop to improve
+propagation opportunities, saving move instructions inside the loop body.
+
+This optimization is enabled by default.
 
 @opindex fsplit-ivs-in-unroller
 @item -fsplit-ivs-in-unroller
