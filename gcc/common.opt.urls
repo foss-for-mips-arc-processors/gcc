@@ -1328,6 +1328,9 @@ UrlSuffix(gcc/Optimize-Options.html#index-fno-signed-zeros)
 fsingle-precision-constant
 UrlSuffix(gcc/Optimize-Options.html#index-fsingle-precision-constant)
 
+fsplit-exit-in-unroller
+UrlSuffix(gcc/Optimize-Options.html#index-fsplit-exit-in-unroller)
+
 fsplit-ivs-in-unroller
 UrlSuffix(gcc/Optimize-Options.html#index-fsplit-ivs-in-unroller)
 
