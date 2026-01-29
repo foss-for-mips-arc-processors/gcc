@@ -2593,7 +2593,9 @@ riscv*-*-elf* | riscv*-*-rtems*)
 		  xyes)
 			case ${target} in
 			*-snps-*)
-			  tmake_file="${tmake_file} riscv/t-arcv"
+			  if test "x${with_multilib_list}" = "xdefault"; then
+				with_multilib_list=release
+			  fi
 			  ;;
 			*)
 			  tmake_file="${tmake_file} riscv/t-elf-multilib"
@@ -4923,12 +4925,20 @@ case "${target}" in
 
 		# Handle --with-multilib-list.
 		if test "x${with_multilib_list}" != xdefault; then
-			tmake_file="${tmake_file} riscv/t-withmultilib"
 
 			case ${with_multilib_list} in
 			ilp32 | ilp32f | ilp32d \
 			| lp64 | lp64f | lp64d )
+				tmake_file="${tmake_file} riscv/t-withmultilib"
 				TM_MULTILIB_CONFIG="${with_arch},${with_multilib_list}"
+				;;
+			reduced)
+				# Fast dev build: one config per core variant
+				tmake_file="${tmake_file} riscv/t-arcv-reduced"
+				;;
+			release)
+				# Full release build: all configurations
+				tmake_file="${tmake_file} riscv/t-arcv"
 				;;
 			*)
 				echo "--with-multilib-list=${with_multilib_list} not supported."
