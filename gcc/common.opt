@@ -3015,7 +3015,7 @@ Common Var(flag_single_precision_constant) Optimization
 Convert floating point constants to single precision constants.
 
 fsplit-exit-in-unroller
-Common Var(flag_split_exit_in_unroller) Init(1) Optimization
+Common Var(flag_split_exit_in_unroller) Init(0) Optimization
 Split exit basic blocks of uncountable loops.
 
 fsplit-ivs-in-unroller
