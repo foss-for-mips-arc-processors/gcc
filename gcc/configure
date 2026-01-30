@@ -1886,7 +1886,7 @@ Optional Packages:
                           Root for documentation URLs
   --with-changes-root-url=URL
                           Root for GCC changes URLs
-  --with-multilib-list    select multilibs (AArch64, ARM, AVR, nvptx, OR1K,
+  --with-multilib-list    select multilibs (AArch64, ARC, ARM, AVR, nvptx, OR1K,
                           RISC-V, SH and x86-64 only)
   --with-multilib-generator
                           Multi-libs configuration string (RISC-V only)
