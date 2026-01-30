@@ -1388,7 +1388,23 @@ alpha*-dec-*vms*)
 	;;
 arc-*-elf* | arceb-*-elf*)
 	tm_file="arc/arc-arch.h elfos.h newlib-stdint.h arc/elf.h ${tm_file}"
-	tmake_file="arc/t-multilib arc/t-arc"
+	# Handle --with-multilib-list: reduced or release (default).
+	if test "${with_multilib_list}" = "default"; then
+		with_multilib_list=release
+	fi
+	case ${with_multilib_list} in
+	reduced)
+		tmake_file="arc/t-multilib-reduced arc/t-arc"
+		;;
+	release)
+		tmake_file="arc/t-multilib arc/t-arc"
+		;;
+	*)
+		echo "Error: --with-multilib-list=${with_multilib_list} not supported for ARC." 1>&2
+		echo "Valid options: reduced, release" 1>&2
+		exit 1
+		;;
+	esac
 	extra_gcc_objs="driver-arc.o"
 	if test "x$with_cpu" != x; then
 		tm_defines="${tm_defines} TARGET_CPU_BUILD=PROCESSOR_$with_cpu"
