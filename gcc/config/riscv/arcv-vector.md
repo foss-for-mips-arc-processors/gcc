@@ -138,18 +138,18 @@
   [(set_attr "type" "arith")])
 
 (define_insn "@pred_arcv_vmv_v_s_scalar<V_VLSI:mode><P:mode>"
-  [(set (match_operand:<V_VLSI:MODE> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:<V_VLSI:MODE>
+  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:V_VLSI
 	  (unspec:<V_VLSI:VM>
 	    [(match_operand 4 "vector_length_operand" " rK, rK, rK, rK, rK, rK, rK, rK, rK, rK, rK, rK")
 	     (match_operand 5 "const_int_operand"     "  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (unspec:<V_VLSI:MODE>
-	    [(match_operand:V_VLSI 2 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	    [(match_operand:<V_LMUL1> 2 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:P 3 "reg_or_int_operand" "r,r,r,r,r,r,i,i,i,i,i,i")]
 	    UNSPEC_ARCV_VMV_V_S)
-	  (match_operand:<V_VLSI:MODE> 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
+	  (match_operand:V_VLSI 1 "register_operand" "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")))]
   "TARGET_XARCVVDSP"
   { return which_alternative < 6 ? "arcv.vmv.v.sx\t%0,%2,%3" : "arcv.vmv.v.si\t%0,%2,%3"; }
   [(set_attr "type" "viwmuladd")
