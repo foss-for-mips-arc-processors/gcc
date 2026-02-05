@@ -4626,7 +4626,7 @@
   {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
-	 return "mul\t%4,%1,%2\n\tadd\t%4,%3,%4\n\tmv\t%0,%4";
+	 return "mul\t%4,%1,%2\n\tadd\t%4,%4,%3\n\tmv\t%0,%4";
        }
      else
        {
@@ -4649,7 +4649,7 @@
   {
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
-	 return "mulw\t%4,%1,%2\n\taddw\t%4,%3,%4\n\tmv\t%0,%4";
+	 return "mulw\t%4,%1,%2\n\taddw\t%4,%4,%3\n\tmv\t%0,%4";
        }
      else
        {
