@@ -265,7 +265,7 @@
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
-	[(match_operand 3 "imm5_operand" "i,i,i,i,i,i,i,i,i,i,i,i")]
+	[(match_operand 3 "const_0_31_operand" "i,i,i,i,i,i,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VCLR)
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
