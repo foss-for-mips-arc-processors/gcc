@@ -75,13 +75,21 @@
   UNSPEC_ARCV_VSCREDSUM
   UNSPEC_ARCV_VWCREDSUM
   UNSPEC_ARCV_VSCMUL
+  UNSPEC_ARCV_VSCMUL_SCALAR
   UNSPEC_ARCV_VSCJMUL
+  UNSPEC_ARCV_VSCJMUL_SCALAR
   UNSPEC_ARCV_VWSCMUL
+  UNSPEC_ARCV_VWSCMUL_SCALAR
   UNSPEC_ARCV_VWSCJMUL
+  UNSPEC_ARCV_VWSCJMUL_SCALAR
   UNSPEC_ARCV_VWSCMAC
+  UNSPEC_ARCV_VWSCMAC_SCALAR
   UNSPEC_ARCV_VWSCNMSAC
+  UNSPEC_ARCV_VWSCNMSAC_SCALAR
   UNSPEC_ARCV_VWSCJMAC
+  UNSPEC_ARCV_VWSCJMAC_SCALAR
   UNSPEC_ARCV_VWSCJNMSAC
+  UNSPEC_ARCV_VWSCJNMSAC_SCALAR
   UNSPEC_ARCV_VWSCRDOT
   UNSPEC_ARCV_VWSCJRDOT
   UNSPEC_ARCV_VQCRDOT
@@ -1805,7 +1813,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscmul_scalar<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:V_VLSI 0 "register_operand" "=&vd, &vd, &vr, &vr, &vd, &vd, &vr, &vr, &vd, &vd, &vr, &vr")
 	(if_then_else:V_VLSI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1819,11 +1827,11 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand:<VEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
-	  UNSPEC_ARCV_VSCMUL)
+	(match_operand:<V_LMUL1> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
+	  UNSPEC_ARCV_VSCMUL_SCALAR)
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
-  "arcv.vscmul.v%o4\t%0,%3,%4%p1"
+  "arcv.vscmul.vs\t%0,%3,%4%p1"
   [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
@@ -1851,7 +1859,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscjmul_scalar<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:V_VLSI 0 "register_operand" "=&vd, &vd, &vr, &vr, &vd, &vd, &vr, &vr, &vd, &vd, &vr, &vr")
 	(if_then_else:V_VLSI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1865,11 +1873,11 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand:<VEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
-	  UNSPEC_ARCV_VSCJMUL)
+	(match_operand:<V_LMUL1> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
+	  UNSPEC_ARCV_VSCJMUL_SCALAR)
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
-  "arcv.vscjmul.v%o4\t%0,%3,%4%p1"
+  "arcv.vscjmul.vs\t%0,%3,%4%p1"
   [(set_attr "type" "vsmul")
    (set_attr "mode" "<MODE>")])
 
@@ -1910,11 +1918,11 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
-	  UNSPEC_ARCV_VWSCMUL)
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
+	  UNSPEC_ARCV_VWSCMUL_SCALAR)
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscmul.v%o4\t%0,%3,%4%p1"
+  "arcv.vwscmul.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
@@ -1955,11 +1963,11 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 4 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")]
-	  UNSPEC_ARCV_VWSCJMUL)
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
+	  UNSPEC_ARCV_VWSCJMUL_SCALAR)
 	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjmul.v%o4\t%0,%3,%4%p1"
+  "arcv.vwscjmul.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
@@ -2001,12 +2009,12 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 3 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
-	  UNSPEC_ARCV_VWSCMAC)
+	  UNSPEC_ARCV_VWSCMAC_SCALAR)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscmac.v%o3\t%0,%3,%4%p1"
+  "arcv.vwscmac.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
@@ -2048,12 +2056,12 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 3 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
-	  UNSPEC_ARCV_VWSCNMSAC)
+	  UNSPEC_ARCV_VWSCNMSAC_SCALAR)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscnmsac.v%o3\t%0,%3,%4%p1"
+  "arcv.vwscnmsac.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
@@ -2095,12 +2103,12 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 3 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
-	  UNSPEC_ARCV_VWSCJMAC)
+	  UNSPEC_ARCV_VWSCJMAC_SCALAR)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjmac.v%o3\t%0,%3,%4%p1"
+  "arcv.vwscjmac.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
@@ -2142,12 +2150,12 @@
 	(unspec:VWEXTI
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
-	(match_operand:<VSUBEL> 3 "register_operand" "r,r,r,r,r,r,r,r,r,r,r,r")
+	(match_operand:<V_DOUBLE_TRUNC_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
-	  UNSPEC_ARCV_VWSCJNMSAC)
+	  UNSPEC_ARCV_VWSCJNMSAC_SCALAR)
 	(match_dup 2)))]
   "TARGET_XARCVVCPLX"
-  "arcv.vwscjnmsac.v%o3\t%0,%3,%4%p1"
+  "arcv.vwscjnmsac.vs\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 

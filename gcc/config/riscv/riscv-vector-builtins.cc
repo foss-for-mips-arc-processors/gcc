@@ -851,6 +851,12 @@ static CONSTEXPR const rvv_arg_type_info wvs_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_widen_lmul1_vector), rvv_arg_type_info_end};
 
+/* A list of args for vector_type func (double demote type, double demote lmul1 type)
+ * function.  */
+static CONSTEXPR const rvv_arg_type_info wvl1_args[]
+  = {rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_lmul1_vector), rvv_arg_type_info_end};
+
 /* A list of args for vector_type func (vector_type) function.  */
 static CONSTEXPR const rvv_arg_type_info f_v_args[]
   = {rvv_arg_type_info (RVV_BASE_float_vector), rvv_arg_type_info_end};
@@ -922,6 +928,13 @@ static CONSTEXPR const rvv_arg_type_info wvv_args[]
 static CONSTEXPR const rvv_arg_type_info wwvv_args[]
   = {rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector), rvv_arg_type_info_end};
+
+/* A list of args for vector_type func (vector_type, double demote lmul1 type, double
+ * demote type) function.  */
+static CONSTEXPR const rvv_arg_type_info wwl1v_args[]
+  = {rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_double_trunc_vector), rvv_arg_type_info_end};
 
 /* A list of args for vector_type func (vector_type, double demote type, double
@@ -1901,6 +1914,14 @@ static CONSTEXPR const rvv_op_info iu_vvx_ops
      rvv_arg_type_info (RVV_BASE_vector), /* Return type */
      vx_args /* Args */};
 
+/* A static operand information for vector_type func (vector_type, vector_type)
+ * function registration. */
+static CONSTEXPR const rvv_op_info iu_vvs_ops
+  = {iu_ops,                                   /* Types */
+     OP_TYPE_vs,                               /* Suffix */
+     rvv_arg_type_info (RVV_BASE_vector), /* Return type */
+     vs_args /* Args */};
+
 /* A static operand information for vector_type func (vector_type, scalar_type)
  * function registration. */
 static CONSTEXPR const rvv_op_info all_vvx_ops
@@ -2679,6 +2700,14 @@ static CONSTEXPR const rvv_op_info i_wwxv_ops
      rvv_arg_type_info (RVV_BASE_vector), /* Return type */
      wwxv_args /* Args */};
 
+/* A static operand information for vector_type func (vector_type, double demote lmul1
+ * type, double demote type) function registration. */
+static CONSTEXPR const rvv_op_info i_wwl1v_ops
+  = {wexti_ops,				  /* Types */
+     OP_TYPE_vs,			  /* Suffix */
+     rvv_arg_type_info (RVV_BASE_vector), /* Return type */
+     wwl1v_args /* Args */};
+
 /* A static operand information for vector_type func (vector_type, double demote
  * type, double demote type) function registration. */
 static CONSTEXPR const rvv_op_info f_wwvv_ops
@@ -2830,6 +2859,14 @@ static CONSTEXPR const rvv_op_info i_wvx_ops
      OP_TYPE_vx,			  /* Suffix */
      rvv_arg_type_info (RVV_BASE_vector), /* Return type */
      wvx_args /* Args */};
+
+/* A static operand information for widened_vector_type func
+ * (narrow_vector_type, narrow_lmul1_vector_type) function registration. */
+static CONSTEXPR const rvv_op_info i_wvl1s_ops
+  = {wexti_ops,				  /* Types */
+     OP_TYPE_vs,			  /* Suffix */
+     rvv_arg_type_info (RVV_BASE_vector), /* Return type */
+     wvl1_args /* Args */};
 
 /* A static operand information for vector_type func (double demote type, double
  * demote scalar_type) function registration. */
