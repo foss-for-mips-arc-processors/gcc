@@ -3113,6 +3113,11 @@ public:
 
   bool may_require_vxrm_p () const override { return true; }
 
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVCPLX);
@@ -3120,7 +3125,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_exact_insn (code_for_pred_arcv_vscmul (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_exact_insn (code_for_pred_arcv_vscmul_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3136,6 +3141,11 @@ public:
 
   bool may_require_vxrm_p () const override { return true; }
 
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVCPLX);
@@ -3143,7 +3153,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_exact_insn (code_for_pred_arcv_vscjmul (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_exact_insn (code_for_pred_arcv_vscjmul_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3155,6 +3165,11 @@ public:
 class arcv_vwscmul : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVCPLX);
@@ -3162,7 +3177,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_exact_insn (code_for_pred_widen_arcv_vwscmul (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_exact_insn (code_for_pred_widen_arcv_vwscmul_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3174,6 +3189,11 @@ public:
 class arcv_vwscjmul : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVCPLX);
@@ -3181,7 +3201,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_exact_insn (code_for_pred_widen_arcv_vwscjmul (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_exact_insn (code_for_pred_widen_arcv_vwscjmul_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3193,6 +3213,11 @@ public:
 class arcv_vwscmac : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
@@ -3201,7 +3226,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscmac (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscmac_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3213,6 +3238,11 @@ public:
 class arcv_vwscnmsac : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
@@ -3221,7 +3251,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscnmsac (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscnmsac_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3233,6 +3263,11 @@ public:
 class arcv_vwscjmac : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
@@ -3241,7 +3276,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjmac (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjmac_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
@@ -3253,6 +3288,11 @@ public:
 class arcv_vwscjnmsac : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
@@ -3261,7 +3301,7 @@ public:
       {
       case OP_TYPE_vv:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjnmsac (e.vector_mode ()));
-      case OP_TYPE_vx:
+      case OP_TYPE_vs:
 	return e.use_widen_ternop_insn (code_for_pred_widen_arcv_vwscjnmsac_scalar (e.vector_mode ()));
       default:
 	gcc_unreachable ();
