@@ -57,8 +57,6 @@ DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, full_preds, i_narrow_signed_sh
 DEF_RVV_FUNCTION (arcv_vnsra_2s, narrow_quad_alu, full_preds, i_narrow_signed_shift_vvqx_ops)
 DEF_RVV_FUNCTION (arcv_vwsra, widen_alu, full_preds, i_signed_shift_wvv_ops)
 DEF_RVV_FUNCTION (arcv_vwsra, widen_alu, full_preds, i_signed_shift_wvx_ops)
-DEF_RVV_FUNCTION (arcv_vaddsub, alu, full_preds, iu_vvv_ops)
-DEF_RVV_FUNCTION (arcv_vsaddsub, alu, full_preds, iu_vvv_ops)
 DEF_RVV_FUNCTION (arcv_vsasub, alu, full_preds, iu_vvv_ops)
 DEF_RVV_FUNCTION (arcv_vqrdot, arcv_rdot_alu, full_preds, i_rqqvv_ops)
 DEF_RVV_FUNCTION (arcv_vqrdot_2s, arcv_rdot_alu, full_preds, i_rqqvv_ops)

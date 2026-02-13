@@ -2510,3 +2510,152 @@
   "arcv.vqmxm16su.v%o3\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<V_QUAD_TRUNC>")])
+
+;; Combine vadd + vsub to arcv.vaddsub.vv
+(define_peephole2
+  [(set (match_operand:V_VLSI 0 "register_operand")
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (plus:V_VLSI
+	    (match_operand:V_VLSI 3 "register_operand")
+	    (match_operand:V_VLSI 4 "register_operand"))
+	  (match_operand:V_VLSI 2 "vector_merge_operand")))
+   (set (match_dup 3)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (minus:V_VLSI
+	    (match_dup 3)
+	    (match_dup 4))
+	  (match_operand:V_VLSI 13 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+  [(set (match_dup 0)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:V_VLSI
+	    [(match_dup 3)
+	     (match_dup 4)]
+	    UNSPEC_ARCV_VADDSUB)
+	  (match_dup 2)))])
+
+;; Combine vsadd + vssub to arcv.vsaddsub.vv
+(define_peephole2
+  [(set (match_operand:V_VLSI 0 "register_operand")
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (ss_plus:V_VLSI
+	    (match_operand:V_VLSI 3 "register_operand")
+	    (match_operand:V_VLSI 4 "register_operand"))
+	  (match_operand:V_VLSI 2 "vector_merge_operand")))
+   (set (match_dup 3)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (ss_minus:V_VLSI
+	    (match_dup 3)
+	    (match_dup 4))
+	  (match_operand:V_VLSI 13 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+  [(set (match_dup 0)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:V_VLSI
+	    [(match_dup 3)
+	     (match_dup 4)]
+	    UNSPEC_ARCV_VSADDSUB)
+	  (match_dup 2)))])
+
+;; Combine vaadd + arcv.vsasub to arcv.vsaaddsub.vv
+(define_peephole2
+  [(set (match_operand:V_VLSI 0 "register_operand")
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (match_operand 9 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:V_VLSI
+	    [(match_operand:V_VLSI 3 "register_operand")
+	     (match_operand:V_VLSI 4 "register_operand")]
+	    UNSPEC_VAADD)
+	  (match_operand:V_VLSI 2 "vector_merge_operand")))
+   (set (match_dup 3)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (match_dup 9)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:V_VLSI
+	    [(match_dup 3)
+	     (match_dup 4)]
+	    UNSPEC_ARCV_VSAADDSUB)
+	  (match_operand:V_VLSI 13 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+  [(set (match_dup 0)
+	(if_then_else:V_VLSI
+	  (unspec:<VM>
+	    [(match_dup 1)
+	     (match_dup 5)
+	     (match_dup 6)
+	     (match_dup 7)
+	     (match_dup 8)
+	     (match_dup 9)
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	  (unspec:V_VLSI
+	    [(match_dup 3)
+	     (match_dup 4)]
+	    UNSPEC_ARCV_VSAADDSUB)
+	  (match_dup 2)))])
