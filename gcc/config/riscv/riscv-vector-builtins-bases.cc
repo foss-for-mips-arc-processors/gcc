@@ -2518,40 +2518,6 @@ public:
   }
 };
 
-/* Implements arcv_vaddsub. */
-class arcv_vaddsub : public function_base
-{
-public:
-  rtx expand (function_expander &e) const override
-  {
-    gcc_assert (TARGET_XARCVVDSP);
-    switch (e.op_info->op)
-      {
-      case OP_TYPE_vv:
-	return e.use_exact_insn (code_for_pred_arcv_vaddsub (e.vector_mode ()));
-      default:
-	gcc_unreachable ();
-      }
-  }
-};
-
-/* Implements arcv_vsaddsub. */
-class arcv_vsaddsub : public function_base
-{
-public:
-  rtx expand (function_expander &e) const override
-  {
-    gcc_assert (TARGET_XARCVVDSP);
-    switch (e.op_info->op)
-      {
-      case OP_TYPE_vv:
-	return e.use_exact_insn (code_for_pred_arcv_vsaddsub (e.vector_mode ()));
-      default:
-	gcc_unreachable ();
-      }
-  }
-};
-
 /* Implements arcv_vsasub. */
 class arcv_vsasub : public function_base
 {
@@ -4132,8 +4098,6 @@ static CONSTEXPR const arcv_vnsra arcv_vnsra_obj;
 static CONSTEXPR const arcv_vnsra_s arcv_vnsra_s_obj;
 static CONSTEXPR const arcv_vnsra_2s arcv_vnsra_2s_obj;
 static CONSTEXPR const arcv_vwsra arcv_vwsra_obj;
-static CONSTEXPR const arcv_vaddsub arcv_vaddsub_obj;
-static CONSTEXPR const arcv_vsaddsub arcv_vsaddsub_obj;
 static CONSTEXPR const arcv_vsasub arcv_vsasub_obj;
 static CONSTEXPR const arcv_vqrdot arcv_vqrdot_obj;
 static CONSTEXPR const arcv_vqrdot_2s arcv_vqrdot_2s_obj;
@@ -4565,8 +4529,6 @@ BASE (arcv_vnsra)
 BASE (arcv_vnsra_s)
 BASE (arcv_vnsra_2s)
 BASE (arcv_vwsra)
-BASE (arcv_vaddsub)
-BASE (arcv_vsaddsub)
 BASE (arcv_vsasub)
 BASE (arcv_vqrdot)
 BASE (arcv_vqrdot_2s)
