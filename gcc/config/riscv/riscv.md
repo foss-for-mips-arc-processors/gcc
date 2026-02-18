@@ -4659,12 +4659,12 @@
   [(set_attr "type" "imul_fused")]
 )
 
-(define_insn "*zero_extract_fused"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
-			 (match_operand 2 "const_int_operand")
-			 (match_operand 3 "const_int_operand")))]
-  "TARGET_ARCV_FUSION && !TARGET_64BIT
+(define_insn "*zero_extract_fused<mode>"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(zero_extract:X (match_operand:X 1 "register_operand" "r")
+			(match_operand 2 "const_int_operand")
+			(match_operand 3 "const_int_operand")))]
+  "TARGET_ARCV_FUSION
      && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
   {
      int amount = INTVAL (operands[2]);
