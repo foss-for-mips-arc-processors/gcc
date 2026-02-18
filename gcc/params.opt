@@ -674,6 +674,10 @@ Bound on the cost of an expression to compute the number of iterations.
 Common Joined UInteger Var(param_max_iterations_to_track) Init(1000) Param Optimization
 Bound on the number of iterations the brute force # of iterations analysis algorithm evaluates.
 
+-param=max-niter-dominators-walk=
+Common Joined UInteger Var(param_max_niter_dominators_walk) Init(8) IntegerRange(1, 1024) Param Optimization
+Maximum number of dominators BBs to walk when simplifying loop bounds and conditions.
+
 -param=max-jump-thread-duplication-stmts=
 Common Joined UInteger Var(param_max_jump_thread_duplication_stmts) Init(15) Param Optimization
 Maximum number of statements allowed in a block that needs to be duplicated when threading jumps.

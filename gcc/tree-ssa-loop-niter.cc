@@ -48,11 +48,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "sreal.h"
 
 
-/* The maximum number of dominator BBs we search for conditions
-   of loop header copies we use for simplifying a conditional
-   expression.  */
-#define MAX_DOMINATORS_TO_WALK 8
-
 /*
 
    Analysis of number of iterations of an affine exit test.
@@ -441,7 +436,8 @@ determine_value_range (class loop *loop, tree type, tree var, mpz_t off,
       /* Now walk the dominators of the loop header and use the entry
 	 guards to refine the estimates.  */
       for (bb = loop->header;
-	   bb != ENTRY_BLOCK_PTR_FOR_FN (cfun) && cnt < MAX_DOMINATORS_TO_WALK;
+	   bb != ENTRY_BLOCK_PTR_FOR_FN (cfun)
+	     && cnt < param_max_niter_dominators_walk;
 	   bb = get_immediate_dominator (CDI_DOMINATORS, bb))
 	{
 	  edge e;
@@ -769,7 +765,8 @@ bound_difference (class loop *loop, tree x, tree y, bounds *bnds)
   /* Now walk the dominators of the loop header and use the entry
      guards to refine the estimates.  */
   for (bb = loop->header;
-       bb != ENTRY_BLOCK_PTR_FOR_FN (cfun) && cnt < MAX_DOMINATORS_TO_WALK;
+       bb != ENTRY_BLOCK_PTR_FOR_FN (cfun)
+	 && cnt < param_max_niter_dominators_walk;
        bb = get_immediate_dominator (CDI_DOMINATORS, bb))
     {
       if (!single_pred_p (bb))
@@ -3100,7 +3097,8 @@ simplify_using_initial_conditions (class loop *loop, tree expr)
      the number of BBs times the number of loops in degenerate
      cases.  */
   for (bb = loop->header;
-       bb != ENTRY_BLOCK_PTR_FOR_FN (cfun) && cnt < MAX_DOMINATORS_TO_WALK;
+       bb != ENTRY_BLOCK_PTR_FOR_FN (cfun)
+	 && cnt < param_max_niter_dominators_walk;
        bb = get_immediate_dominator (CDI_DOMINATORS, bb))
     {
       if (!single_pred_p (bb))
