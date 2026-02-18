@@ -3855,7 +3855,7 @@ static CONSTEXPR const rvv_op_info u_ss_wwvv_ops
 static CONSTEXPR const function_type_info function_types[] = {
 #define DEF_RVV_TYPE_INDEX(                                                    \
   VECTOR, MASK, SIGNED, UNSIGNED, SIGNED_EEW8_INDEX, EEW8_INDEX, EEW16_INDEX,  \
-  EEW32_INDEX, EEW64_INDEX, SHIFT, DOUBLE_TRUNC, QUAD_TRUNC, QUAD_EMUL,        \
+  EEW32_INDEX, EEW64_INDEX, SHIFT, DOUBLE_TRUNC, DOUBLE_TRUNC_LMUL1, QUAD_TRUNC, QUAD_EMUL,        \
   QUAD_EMUL_SIGNED, QUAD_EMUL_UNSIGNED, QUAD_FIX, QUAD_FIX_SIGNED,             \
   QUAD_FIX_UNSIGNED, OCT_TRUNC, DOUBLE_TRUNC_SCALAR, QUAD_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED,      \
   DOUBLE_TRUNC_UNSIGNED, DOUBLE_TRUNC_UNSIGNED_SCALAR,                         \
@@ -3892,6 +3892,7 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_##EEW64_INDEX,                                                 \
     VECTOR_TYPE_##SHIFT,                                                       \
     VECTOR_TYPE_##DOUBLE_TRUNC,                                                \
+    VECTOR_TYPE_##DOUBLE_TRUNC_LMUL1,                                          \
     VECTOR_TYPE_##QUAD_TRUNC,                                                  \
     VECTOR_TYPE_##QUAD_EMUL,                                                   \
     VECTOR_TYPE_##QUAD_EMUL_SIGNED,                                            \
@@ -4474,6 +4475,7 @@ required_extensions_p (enum rvv_base_type type)
       case RVV_BASE_float_vector:
       case RVV_BASE_double_trunc_float_vector:
       case RVV_BASE_double_trunc_vector:
+      case RVV_BASE_double_trunc_lmul1_vector:
       case RVV_BASE_widen_lmul1_vector:
       case RVV_BASE_eew8_interpret:
       case RVV_BASE_eew16_interpret:
