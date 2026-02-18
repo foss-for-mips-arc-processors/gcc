@@ -70,7 +70,7 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef DEF_RVV_TYPE_INDEX
 #define DEF_RVV_TYPE_INDEX(                                                    \
   VECTOR, MASK, SIGNED, UNSIGNED, SIGNED_EEW8_INDEX, EEW8_INDEX, EEW16_INDEX,  \
-  EEW32_INDEX, EEW64_INDEX, SHIFT, DOUBLE_TRUNC, QUAD_TRUNC, QUAD_EMUL,        \
+  EEW32_INDEX, EEW64_INDEX, SHIFT, DOUBLE_TRUNC, DOUBLE_TRUNC_LMUL1, QUAD_TRUNC, QUAD_EMUL,        \
   QUAD_EMUL_SIGNED, QUAD_EMUL_UNSIGNED, QUAD_FIX, QUAD_FIX_SIGNED,             \
   QUAD_FIX_UNSIGNED, OCT_TRUNC, DOUBLE_TRUNC_SCALAR, QUAD_TRUNC_SCALAR, DOUBLE_TRUNC_SIGNED,      \
   DOUBLE_TRUNC_UNSIGNED, DOUBLE_TRUNC_UNSIGNED_SCALAR,                         \
@@ -717,6 +717,7 @@ DEF_RVV_BASE_TYPE (eew32_index, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (eew64_index, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (shift_vector, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (double_trunc_vector, get_vector_type (type_idx))
+DEF_RVV_BASE_TYPE (double_trunc_lmul1_vector, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (quad_trunc_vector, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (quad_emul_vector, get_vector_type (type_idx))
 DEF_RVV_BASE_TYPE (quad_emul_signed_vector, get_vector_type (type_idx))
