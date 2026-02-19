@@ -65,6 +65,10 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 10)")))
 
+(define_predicate "const_0_31_operand"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 0, 31)")))
+
 (define_predicate "csr_operand"
   (ior (match_operand 0 "const_csr_operand")
        (match_operand 0 "register_operand")))

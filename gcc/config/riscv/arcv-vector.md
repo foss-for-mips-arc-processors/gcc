@@ -258,19 +258,18 @@
 	(if_then_else:V_VLSI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
-	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 4 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 5 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
-	[(match_operand:V_VLSI 3 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")
-	(match_operand:V_VLSI 4 "imm5_operand" "i,i,i,i,i,i,i,i,i,i,i,i")]
+	[(match_operand 3 "const_0_31_operand" "i,i,i,i,i,i,i,i,i,i,i,i")]
 	  UNSPEC_ARCV_VCLR)
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
-  "arcv.vclr.v.i\t%0,%4%p1"
+  "arcv.vclr.v.i\t%0,%3%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<MODE>")
    (set_attr "vl_op_idx" "4")

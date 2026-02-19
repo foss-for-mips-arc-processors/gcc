@@ -2325,12 +2325,17 @@ public:
 class arcv_vclr : public function_base
 {
 public:
+  bool can_be_overloaded_p (enum predication_type_index) const override
+  {
+    return false;
+  }
+
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVDSP);
     switch (e.op_info->op)
       {
-      case OP_TYPE_v_i:
+      case OP_TYPE_v:
 	return e.use_exact_insn (code_for_pred_arcv_vclr (e.vector_mode ()));
       default:
 	gcc_unreachable ();

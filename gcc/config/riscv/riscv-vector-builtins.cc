@@ -1209,6 +1209,9 @@ static CONSTEXPR const rvv_arg_type_info v_i_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_long),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info i_args[]
+ = { rvv_arg_type_info (RVV_BASE_long),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info surwwvv_args[]
  = { rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_vector),
@@ -3224,6 +3227,12 @@ static CONSTEXPR const rvv_op_info iu_v_i_ops
     OP_TYPE_v_i,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
     v_i_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info iu_i_ops
+ = {iu_ops,			/* Types */
+    OP_TYPE_v,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_vector),	/* Return type */
+    i_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info i_whv_ops
  = {qexti_ops,			/* Types */
