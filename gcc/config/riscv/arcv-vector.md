@@ -565,50 +565,50 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_s<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
-	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
-	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
-	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
-	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
+	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
-	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vnsra.s.w%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_s<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
-	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
-	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
-	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
-	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
+	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_S))
-	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vnsra.s.q%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
@@ -663,50 +663,50 @@
    (set_attr "mode" "<V_QUAD_TRUNC>")])
 
 (define_insn "@pred_narrow_arcv_vnsra_2s<mode>"
-  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
+  [(set (match_operand:<V_DOUBLE_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_DOUBLE_TRUNC>
 	  (unspec:<VM>
-	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
-	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
-	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
-	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
+	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
-	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vnsra.2s.w%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_quad_narrow_arcv_vnsra_2s<mode>"
-  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
+  [(set (match_operand:<V_QUAD_TRUNC> 0 "register_operand" "=&vd,&vd,&vr,&vr,&vd,&vd,&vr,&vr")
 	(if_then_else:<V_QUAD_TRUNC>
 	  (unspec:<VM>
-	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
-	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
-	     (match_operand 6 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 7 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
-	     (match_operand 9 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK, rK, rK, rK, rK, rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
-	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "0,0,0,0,vr,vr,vr,vr,vk,vk,vk,vk"))]
+	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
-	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
   "arcv.vnsra.2s.q%o4\t%0,%3,%4%p1"
   [(set_attr "type" "vsshift")
