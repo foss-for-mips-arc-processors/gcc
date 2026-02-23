@@ -3378,6 +3378,7 @@ public:
 class arcv_vwsad : public function_base
 {
 public:
+  bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVSAD);
@@ -3396,6 +3397,7 @@ public:
 class arcv_vwsadu : public function_base
 {
 public:
+  bool has_merge_operand_p () const override { return false; }
   rtx expand (function_expander &e) const override
   {
     gcc_assert (TARGET_XARCVVSAD);
