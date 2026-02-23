@@ -2262,9 +2262,10 @@
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	(sign_extend:VWEXTI
-	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))]
+	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
+	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
 	  UNSPEC_ARCV_VWSAD)
-	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_dup 2)))]
   "TARGET_XARCVVSAD"
   "arcv.vwsad.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
@@ -2285,9 +2286,10 @@
 	[(sign_extend:VWEXTI
 	  (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
 	(sign_extend:VWEXTI
-	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))]
+	  (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr"))
+	     (match_operand:VWEXTI 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
 	  UNSPEC_ARCV_VWSADU)
-	(match_operand:VWEXTI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_dup 2)))]
   "TARGET_XARCVVSAD"
   "arcv.vwsadu.v%o4\t%0,%3,%4%p1"
   [(set_attr "type" "viwmuladd")
