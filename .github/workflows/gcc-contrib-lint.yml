@@ -1,0 +1,150 @@
+name: GCC Contrib Lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gcc-contrib-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get update && sudo apt-get install -y libgdiagnostics0
+          # Create unversioned symlink for ctypes to find
+          LIBDIR=$(dirname $(ldconfig -p | grep libgdiagnostics.so.0 | awk '{print $NF}' | head -1))
+          LIBFILE=$(basename $(ldconfig -p | grep libgdiagnostics.so.0 | awk '{print $NF}' | head -1))
+          sudo ln -sf "$LIBFILE" "$LIBDIR/libgdiagnostics.so"
+          python3 -m pip install --user unidiff termcolor
+
+      - name: Run check-gnu-style
+        run: |
+          # Generate patch for PR changes (merge base to HEAD)
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          BASE=$(git merge-base origin/${{ github.event.pull_request.base.ref }} HEAD)
+          git format-patch $BASE..HEAD --output=pr.patch
+          if [ -s pr.patch ]; then
+            echo "::group::Running check-gnu-style"
+            set +e
+            python3 contrib/check_GNU_style.py pr.patch > style-check.log 2>&1
+            STYLE_EXIT=$?
+            set -e
+            cat style-check.log
+            echo "::endgroup::"
+            
+            # Check if there are any ERROR messages in the output
+            if grep -q "ERROR type" style-check.log; then
+              echo "::error::GNU style check found formatting errors"
+              echo "## ❌ GNU Style Check Failed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              # Limit output to avoid huge summaries
+              head -100 style-check.log >> $GITHUB_STEP_SUMMARY
+              if [ $(wc -l < style-check.log) -gt 100 ]; then
+                echo "... (output truncated, see full log above)" >> $GITHUB_STEP_SUMMARY
+              fi
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            elif [ $STYLE_EXIT -ne 0 ]; then
+              echo "::error::GNU style check failed with exit code $STYLE_EXIT"
+              echo "## ❌ GNU Style Check Failed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              head -100 style-check.log >> $GITHUB_STEP_SUMMARY
+              if [ $(wc -l < style-check.log) -gt 100 ]; then
+                echo "... (output truncated, see full log above)" >> $GITHUB_STEP_SUMMARY
+              fi
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit $STYLE_EXIT
+            else
+              echo "::notice::GNU style check passed"
+              echo "## ✅ GNU Style Check Passed" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No changes in patch. Skipping check-gnu-style."
+            echo "## ⏭️ GNU Style Check Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "No changes in patch." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Run dg-lint
+        if: always() # always run, even if check-gnu-style fails
+        run: |
+          export PYTHONPATH="$(pwd)/contrib/dg-lint:$PYTHONPATH"
+          # Get list of changed files from the patch that are test files
+          if [ -s pr.patch ]; then
+            # Extract filenames from the patch (lines starting with +++ b/)
+            CHANGED_FILES=$(grep '^+++ b/' pr.patch | sed 's|^+++ b/||' | grep -E '\.(c|cc|cpp|C|h|hh|hpp|f90|f95|f03|f08|dg)$' || true)
+            if [ -n "$CHANGED_FILES" ]; then
+              # Filter to only files that exist and are in test directories
+              TEST_FILES=""
+              for file in $CHANGED_FILES; do
+                if [ -f "$file" ] && echo "$file" | grep -q 'testsuite'; then
+                  TEST_FILES="${TEST_FILES:+$TEST_FILES }$file"
+                fi
+              done
+              if [ -n "$TEST_FILES" ]; then
+                echo "::group::Running dg-lint on changed test files"
+                echo "Files to check: $TEST_FILES"
+                # Capture exit code
+                set +e
+                python3 contrib/dg-lint/dg-lint $TEST_FILES > dg-lint.log 2>&1
+                DG_LINT_EXIT=$?
+                set -e
+                cat dg-lint.log
+                echo "::endgroup::"
+                
+                # Check for warnings in output (look for 'warning:' in the text output)
+                if grep -qi "warning:" dg-lint.log; then
+                  ISSUE_COUNT=$(grep -ci "warning:" dg-lint.log || echo "0")
+                  echo "::error::dg-lint found $ISSUE_COUNT warning(s) in test files"
+                  echo "## ❌ dg-lint Found Issues" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "Found $ISSUE_COUNT warning(s) in test files:" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  head -50 dg-lint.log >> $GITHUB_STEP_SUMMARY
+                  if [ $(wc -l < dg-lint.log) -gt 50 ]; then
+                    echo "... (output truncated, see full log above)" >> $GITHUB_STEP_SUMMARY
+                  fi
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  exit 1
+                elif [ $DG_LINT_EXIT -ne 0 ]; then
+                  echo "::error::dg-lint exited with code $DG_LINT_EXIT"
+                  echo "## ❌ dg-lint Failed" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  head -50 dg-lint.log >> $GITHUB_STEP_SUMMARY
+                  if [ $(wc -l < dg-lint.log) -gt 50 ]; then
+                    echo "... (output truncated, see full log above)" >> $GITHUB_STEP_SUMMARY
+                  fi
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  exit $DG_LINT_EXIT
+                else
+                  echo "::notice::dg-lint: no issues found"
+                  echo "## ✅ dg-lint Passed" >> $GITHUB_STEP_SUMMARY
+                  echo "No issues found in test files." >> $GITHUB_STEP_SUMMARY
+                fi
+              else
+                echo "No test files changed in this PR. Skipping dg-lint."
+                echo "## ⏭️ dg-lint Skipped" >> $GITHUB_STEP_SUMMARY
+                echo "No test files changed." >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "No relevant files changed in this PR. Skipping dg-lint."
+              echo "## ⏭️ dg-lint Skipped" >> $GITHUB_STEP_SUMMARY
+              echo "No relevant files changed." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No patch file. Skipping dg-lint."
+            echo "## ⏭️ dg-lint Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "No patch file." >> $GITHUB_STEP_SUMMARY
+          fi
