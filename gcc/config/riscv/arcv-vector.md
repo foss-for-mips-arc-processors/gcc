@@ -1836,7 +1836,7 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vscjmul<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+  [(set (match_operand:V_VLSI 0 "register_operand" "=&vd,&vd,&vr,&vr,vd, vd, vr, vr, vd, vd, vr, vr")
 	(if_then_else:V_VLSI
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
@@ -1850,7 +1850,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(unspec:V_VLSI
 	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand:V_VLSI 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")]
+	(match_operand:V_VLSI 4 "register_operand" " 0, 0, 0, 0,vr,vr,vr,vr,vr,vr,vr,vr")]
 	  UNSPEC_ARCV_VSCJMUL)
 	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVCPLX"
