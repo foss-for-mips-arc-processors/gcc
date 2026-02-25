@@ -1,0 +1,57 @@
+name: GCC Contrib Lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gcc-contrib-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libdiagnostics0
+          python3 -m pip install --user unidiff termcolor
+
+      - name: Fetch GCC contrib scripts
+        run: |
+          mkdir -p gcc-contrib
+          curl -sL -o gcc-contrib/check_GNU_style.py \
+            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/check_GNU_style.py
+          curl -sL -o gcc-contrib/check_GNU_style_lib.py \
+            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/check_GNU_style_lib.py
+          mkdir -p gcc-contrib/dg-lint
+          curl -sL -o gcc-contrib/dg-lint/dg-lint \
+            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/dg-lint/dg-lint
+          curl -sL -o gcc-contrib/dg-lint/libgdiagnostics.py \
+            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/dg-lint/libgdiagnostics.py
+
+      - name: Run check-gnu-style
+        run: |
+          # Generate patch for PR changes (merge base to HEAD)
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          BASE=$(git merge-base origin/${{ github.event.pull_request.base.ref }} HEAD)
+          git format-patch $BASE..HEAD --output=pr.patch
+          if [ -s pr.patch ]; then
+            python3 gcc-contrib/check_GNU_style.py pr.patch
+          else
+            echo "No changes in patch. Skipping check-gnu-style."
+          fi
+
+      - name: Run dg-lint
+        run: |
+          export PYTHONPATH="$(pwd)/gcc-contrib/dg-lint:$PYTHONPATH"
+          PATHS=""
+          for d in gcc/testsuite gcc/gcc/testsuite gfortran.dg libstdc++-v3/testsuite; do
+            [ -d "$d" ] && PATHS="${PATHS:+$PATHS }$d"
+          done
+          [ -z "$PATHS" ] && PATHS="."
+          python3 gcc-contrib/dg-lint/dg-lint $PATHS
