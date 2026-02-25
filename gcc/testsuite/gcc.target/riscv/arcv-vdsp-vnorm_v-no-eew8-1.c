@@ -1,4 +1,4 @@
-/* { dg-do compile } */
+/* { dg-d compile } */
 /* { dg-require-effective-target arcv_vdsp } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-O3" "-Os" "-Og" "-Oz" "-flto" } }
  */
