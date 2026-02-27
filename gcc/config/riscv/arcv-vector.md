@@ -310,8 +310,8 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vsra_scalar<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:V_VLSI
+  [(set (match_operand:V_VLSI_QHS 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:V_VLSI_QHS
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
 	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
@@ -322,13 +322,75 @@
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
-	(unspec:V_VLSI
-	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand 4 "pmode_reg_or_uimm5_operand" "r,r,r,r,r,r,K,K,K,K,K,K")]
+	(unspec:V_VLSI_QHS
+	[(match_operand:V_VLSI_QHS 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	 (vec_duplicate:V_VLSI_QHS
+	   (match_operand:<VEL> 4 "reg_or_int_operand" "r,r,r,r,r,r,K,K,K,K,K,K"))]
 	  UNSPEC_ARCV_VSRA)
-	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:V_VLSI_QHS 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
-  "arcv.vsra.v%o4\t%0,%3,%4%p1"
+  "arcv.vsra.v%o4\t%0,%3,%z4%p1"
+  [(set_attr "type" "vsshift")
+   (set_attr "mode" "<MODE>")])
+
+(define_expand "@pred_arcv_vsra_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (match_operand 9 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand:<VEL> 4 "reg_or_int_operand"))]
+	  UNSPEC_ARCV_VSRA)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+{
+  if (!CONST_INT_P (operands[4])
+      && riscv_vector::sew64_scalar_helper (
+	operands,
+	/* scalar op */&operands[4],
+	/* vl */operands[5],
+	<MODE>mode,
+	false,
+	[] (rtx *operands, rtx broadcast_scalar) {
+	  emit_insn (gen_pred_arcv_vsra<mode> (operands[0], operands[1],
+	       operands[2], operands[3], broadcast_scalar, operands[5],
+	       operands[6], operands[7], operands[8], operands[9]));
+        },
+	(riscv_vector::avl_type) INTVAL (operands[8])))
+    DONE;
+})
+
+(define_insn "*pred_arcv_vsra_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand" "=vd,vd, vr, vr,vd,vd, vr, vr")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm,vm,Wc1,Wc1,vm,vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK,rK, rK, rK,rK,rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand"   "vr,vr, vr, vr,vr,vr, vr, vr")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand 4 "reg_or_int_operand" " r, r,  r,  r, K, K,  K,  K"))]
+	  UNSPEC_ARCV_VSRA)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand"     "vu,0, vu,  0,vu,0, vu,  0")))]
+  "TARGET_XARCVVDSP"
+  "arcv.vsra.v%o4\t%0,%3,%z4%p1"
   [(set_attr "type" "vsshift")
    (set_attr "mode" "<MODE>")])
 
@@ -354,8 +416,8 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vsrat_scalar<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:V_VLSI
+  [(set (match_operand:V_VLSI_QHS 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:V_VLSI_QHS
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
 	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
@@ -364,13 +426,71 @@
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	(unspec:V_VLSI
-	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand 4 "pmode_reg_or_uimm5_operand" "r,r,r,r,r,r,K,K,K,K,K,K")]
+	(unspec:V_VLSI_QHS
+	[(match_operand:V_VLSI_QHS 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	 (vec_duplicate:V_VLSI_QHS
+	   (match_operand:<VEL> 4 "reg_or_int_operand" "r,r,r,r,r,r,K,K,K,K,K,K"))]
 	  UNSPEC_ARCV_VSRAT)
-	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:V_VLSI_QHS 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
-  "arcv.vsrat.v%o4\t%0,%3,%4%p1"
+  "arcv.vsrat.v%o4\t%0,%3,%z4%p1"
+  [(set_attr "type" "viwmuladd")
+   (set_attr "mode" "<MODE>")])
+
+(define_expand "@pred_arcv_vsrat_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand:<VEL> 4 "reg_or_int_operand"))]
+	  UNSPEC_ARCV_VSRAT)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+{
+  if (!CONST_INT_P (operands[4])
+      && riscv_vector::sew64_scalar_helper (
+	operands,
+	/* scalar op */&operands[4],
+	/* vl */operands[5],
+	<MODE>mode,
+	false,
+	[] (rtx *operands, rtx broadcast_scalar) {
+	  emit_insn (gen_pred_arcv_vsrat<mode> (operands[0], operands[1],
+	       operands[2], operands[3], broadcast_scalar, operands[5],
+	       operands[6], operands[7], operands[8]));
+        },
+	(riscv_vector::avl_type) INTVAL (operands[8])))
+    DONE;
+})
+
+(define_insn "*pred_arcv_vsrat_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand" "=vd,vd, vr, vr,vd,vd, vr, vr")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm,vm,Wc1,Wc1,vm,vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK,rK, rK, rK,rK,rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand"   "vr,vr, vr, vr,vr,vr, vr, vr")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand 4 "reg_or_int_operand" " r, r,  r,  r, K, K,  K,  K"))]
+	  UNSPEC_ARCV_VSRAT)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand"     "vu,0, vu,  0,vu,0, vu,  0")))]
+  "TARGET_XARCVVDSP"
+  "arcv.vsrat.v%o4\t%0,%3,%z4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<MODE>")])
 
@@ -444,8 +564,8 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_arcv_vsra_2s_scalar<mode>"
-  [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:V_VLSI
+  [(set (match_operand:V_VLSI_QHS 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:V_VLSI_QHS
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
 	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
@@ -456,13 +576,75 @@
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
-	(unspec:V_VLSI
-	[(match_operand:V_VLSI 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	(match_operand 4 "pmode_reg_or_uimm5_operand" "r,r,r,r,r,r,K,K,K,K,K,K")]
+	(unspec:V_VLSI_QHS
+	[(match_operand:V_VLSI_QHS 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	 (vec_duplicate:V_VLSI_QHS
+	   (match_operand:<VEL> 4 "reg_or_int_operand" "r,r,r,r,r,r,K,K,K,K,K,K"))]
 	  UNSPEC_ARCV_VSRA_2S)
-	(match_operand:V_VLSI 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
+	(match_operand:V_VLSI_QHS 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
   "TARGET_XARCVVDSP"
-  "arcv.vsra.2s.v%o4\t%0,%3,%4%p1"
+  "arcv.vsra.2s.v%o4\t%0,%3,%z4%p1"
+  [(set_attr "type" "vsshift")
+   (set_attr "mode" "<MODE>")])
+
+(define_expand "@pred_arcv_vsra_2s_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand")
+	     (match_operand 5 "vector_length_operand")
+	     (match_operand 6 "const_int_operand")
+	     (match_operand 7 "const_int_operand")
+	     (match_operand 8 "const_int_operand")
+	     (match_operand 9 "const_int_operand")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand:<VEL> 4 "reg_or_int_operand"))]
+	  UNSPEC_ARCV_VSRA_2S)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand")))]
+  "TARGET_XARCVVDSP"
+{
+  if (!CONST_INT_P (operands[4])
+      && riscv_vector::sew64_scalar_helper (
+	operands,
+	/* scalar op */&operands[4],
+	/* vl */operands[5],
+	<MODE>mode,
+	false,
+	[] (rtx *operands, rtx broadcast_scalar) {
+	  emit_insn (gen_pred_arcv_vsra_2s<mode> (operands[0], operands[1],
+	       operands[2], operands[3], broadcast_scalar, operands[5],
+	       operands[6], operands[7], operands[8], operands[9]));
+        },
+	(riscv_vector::avl_type) INTVAL (operands[8])))
+    DONE;
+})
+
+(define_insn "*pred_arcv_vsra_2s_scalar<mode>"
+  [(set (match_operand:V_VLSI_D 0 "register_operand" "=vd,vd, vr, vr,vd,vd, vr, vr")
+	(if_then_else:V_VLSI_D
+	  (unspec:<VM>
+	    [(match_operand:<VM> 1 "vector_mask_operand" "vm,vm,Wc1,Wc1,vm,vm,Wc1,Wc1")
+	     (match_operand 5 "vector_length_operand"    "rK,rK, rK, rK,rK,rK, rK, rK")
+	     (match_operand 6 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 7 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 8 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (match_operand 9 "const_int_operand"        " i, i,  i,  i, i, i,  i,  i")
+	     (reg:SI VL_REGNUM)
+	     (reg:SI VTYPE_REGNUM)
+	     (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
+	(unspec:V_VLSI_D
+	[(match_operand:V_VLSI_D 3 "register_operand"   "vr,vr, vr, vr,vr,vr, vr, vr")
+	 (vec_duplicate:V_VLSI_D
+	   (match_operand 4 "reg_or_int_operand" " r, r,  r,  r, K, K,  K,  K"))]
+	  UNSPEC_ARCV_VSRA_2S)
+	(match_operand:V_VLSI_D 2 "vector_merge_operand"     "vu,0, vu,  0,vu,0, vu,  0")))]
+  "TARGET_XARCVVDSP"
+  "arcv.vsra.2s.v%o4\t%0,%3,%z4%p1"
   [(set_attr "type" "vsshift")
    (set_attr "mode" "<MODE>")])
 
