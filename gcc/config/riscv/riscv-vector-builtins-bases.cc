@@ -2564,8 +2564,8 @@ public:
   }
 };
 
-/* Implements arcv_vsaaddsub. */
-class arcv_vsaaddsub : public function_base
+/* Implements arcv_vsasub. */
+class arcv_vsasub : public function_base
 {
 public:
   bool has_rounding_mode_operand_p () const override { return true; }
@@ -4146,7 +4146,7 @@ static CONSTEXPR const arcv_vnsra_2s arcv_vnsra_2s_obj;
 static CONSTEXPR const arcv_vwsra arcv_vwsra_obj;
 static CONSTEXPR const arcv_vaddsub arcv_vaddsub_obj;
 static CONSTEXPR const arcv_vsaddsub arcv_vsaddsub_obj;
-static CONSTEXPR const arcv_vsaaddsub arcv_vsaaddsub_obj;
+static CONSTEXPR const arcv_vsasub arcv_vsasub_obj;
 static CONSTEXPR const arcv_vqrdot arcv_vqrdot_obj;
 static CONSTEXPR const arcv_vqrdot_2s arcv_vqrdot_2s_obj;
 static CONSTEXPR const arcv_vwsrdot_2s arcv_vwsrdot_2s_obj;
@@ -4579,7 +4579,7 @@ BASE (arcv_vnsra_2s)
 BASE (arcv_vwsra)
 BASE (arcv_vaddsub)
 BASE (arcv_vsaddsub)
-BASE (arcv_vsaaddsub)
+BASE (arcv_vsasub)
 BASE (arcv_vqrdot)
 BASE (arcv_vqrdot_2s)
 BASE (arcv_vwsrdot_2s)
