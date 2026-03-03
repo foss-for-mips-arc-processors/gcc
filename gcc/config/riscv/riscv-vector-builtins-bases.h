@@ -368,7 +368,7 @@ extern const function_base *const arcv_vnsra_2s;
 extern const function_base *const arcv_vwsra;
 extern const function_base *const arcv_vaddsub;
 extern const function_base *const arcv_vsaddsub;
-extern const function_base *const arcv_vsaaddsub;
+extern const function_base *const arcv_vsasub;
 extern const function_base *const arcv_vqrdot;
 extern const function_base *const arcv_vqrdot_2s;
 extern const function_base *const arcv_vwsrdot_2s;
