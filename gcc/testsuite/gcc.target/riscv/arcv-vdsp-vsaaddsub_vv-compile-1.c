@@ -45,6 +45,7 @@ test_vsaaddsub_vv_i16_m (vbool16_t mask, vint16m1_t vs2, vint16m1_t vs1, size_t 
 ** test_vsaaddsub_vv_i16_tu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*tu,\s*m[au]
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   ret
@@ -62,6 +63,7 @@ test_vsaaddsub_vv_i16_tu (vint16m1_t maskedoff, vint16m1_t vs2, vint16m1_t vs1, 
 ** test_vsaaddsub_vv_i16_tumu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*tu,\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
@@ -79,6 +81,7 @@ test_vsaaddsub_vv_i16_tumu (vbool16_t mask, vint16m1_t maskedoff, vint16m1_t vs2
 ** test_vsaaddsub_vv_i16_mu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e16,m1,\s*t[au],\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
@@ -130,6 +133,7 @@ test_vsaaddsub_vv_i32_m (vbool32_t mask, vint32m1_t vs2, vint32m1_t vs1, size_t 
 ** test_vsaaddsub_vv_i32_tu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*tu,\s*m[au]
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   ret
@@ -147,6 +151,7 @@ test_vsaaddsub_vv_i32_tu (vint32m1_t maskedoff, vint32m1_t vs2, vint32m1_t vs1, 
 ** test_vsaaddsub_vv_i32_tumu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*tu,\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
@@ -164,6 +169,7 @@ test_vsaaddsub_vv_i32_tumu (vbool32_t mask, vint32m1_t maskedoff, vint32m1_t vs2
 ** test_vsaaddsub_vv_i32_mu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e32,m1,\s*t[au],\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
@@ -215,6 +221,7 @@ test_vsaaddsub_vv_i64_m (vbool64_t mask, vint64m1_t vs2, vint64m1_t vs1, size_t 
 ** test_vsaaddsub_vv_i64_tu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*tu,\s*m[au]
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   ret
@@ -232,6 +239,7 @@ test_vsaaddsub_vv_i64_tu (vint64m1_t maskedoff, vint64m1_t vs2, vint64m1_t vs1, 
 ** test_vsaaddsub_vv_i64_tumu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*tu,\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
@@ -249,6 +257,7 @@ test_vsaaddsub_vv_i64_tumu (vbool64_t mask, vint64m1_t maskedoff, vint64m1_t vs2
 ** test_vsaaddsub_vv_i64_mu:
 **   csrwi\s+vxrm,0
 **   vsetvli\s+zero,\s*[a-x0-9]+,\s*e64,m1,\s*t[au],\s*mu
+**   vmv[0-9]*r\.v\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1])
 **   arcv.vsaaddsub.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*[a-x0-9]+,\s*v0\.t
 **   vand.vv\s+(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|v3[0-1]),\s*v0\.t
 **   ret
