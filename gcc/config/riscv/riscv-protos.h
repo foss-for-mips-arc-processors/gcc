@@ -827,6 +827,11 @@ extern unsigned int th_int_get_mask (unsigned int);
 extern unsigned int th_int_get_save_adjustment (void);
 extern rtx th_int_adjust_cfi_prologue (unsigned int);
 extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
+
+/* Routines implemented in arcv-builtins.cc.  */
+extern const char* arcv_apex_asm_mnemonic (rtx, bool);
+extern bool arcv_apex_format_enabled_p (unsigned int, unsigned int);
+
 #ifdef RTX_CODE
 extern const char*
 th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);
