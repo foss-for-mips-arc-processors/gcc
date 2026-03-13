@@ -178,6 +178,13 @@ thead.o: $(srcdir)/config/riscv/thead.cc \
 	$(COMPILE) $<
 	$(POSTCOMPILE)
 
+arcv-builtins.o: $(srcdir)/config/riscv/arcv-builtins.cc \
+  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(RTL_H) $(TREE_H) \
+  gimple-expr.h memmodel.h $(OPTABS_H) $(RECOG_H) $(DIAGNOSTIC_CORE_H) \
+  stor-layout.h stringpool.h $(EXPR_H) $(TM_P_H) $(BACKEND_H)
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+		$(srcdir)/config/riscv/arcv-builtins.cc
+
 riscv-zicfilp.o: $(srcdir)/config/riscv/riscv-zicfilp.cc \
     $(CONFIG_H) $(SYSTEM_H) $(TM_H) $(REGS_H) insn-config.h $(RTL_BASE_H) \
     dominance.h cfg.h cfganal.h $(BASIC_BLOCK_H) $(INSN_ATTR_H) $(RECOG_H) \
