@@ -339,6 +339,12 @@ riscv_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
 
     case RISCV_BUILTIN_VECTOR:
       return riscv_vector::builtin_decl (subcode, initialize_p);
+
+    case RISCV_BUILTIN_APEX:
+      /* APEX intrinsics are pragma-registered and don't have
+	 persistent decls.  */
+      sorry ("APEX intrinsics are not supported with LTO yet");
+      return error_mark_node;
     }
   return error_mark_node;
 }
@@ -417,6 +423,10 @@ riscv_gimple_fold_builtin (gimple_stmt_iterator *gsi)
     case RISCV_BUILTIN_VECTOR:
       new_stmt = riscv_vector::gimple_fold_builtin (subcode, gsi, stmt);
       break;
+
+    case RISCV_BUILTIN_APEX:
+      new_stmt = NULL;
+      break;
     }
 
   if (!new_stmt)
@@ -440,6 +450,10 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
       case RISCV_BUILTIN_VECTOR:
 	return riscv_vector::expand_builtin (subcode, exp, target);
+
+      case RISCV_BUILTIN_APEX:
+	return arcv_apex_expand_builtin (subcode, exp, target);
+
       case RISCV_BUILTIN_GENERAL: {
 	const struct riscv_builtin_description *d = &riscv_builtins[subcode];
 

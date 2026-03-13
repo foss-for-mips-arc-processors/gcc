@@ -1361,6 +1361,28 @@ enum apex_insn_format {
   APEX_NO_SRC1	= 1 << 7,
 };
 
+/* APEX opcode maximums for each format.  */
+enum APEX_OPCODE_FIELD_MAX
+{
+  APEX_OP_MAX_XD = 0xFF,
+  APEX_OP_MAX_XS = 0x3F,
+  APEX_OP_MAX_XI = 0x1F,
+  APEX_OP_MAX_XC = 0x1F,
+};
+
+/* Mask to extract instruction format from format_flags.  */
+#define APEX_FORMAT_MASK 0xF
+
+/* APEX operand signature masks (3-bit patterns for void/src0/src1).  */
+enum apex_signature_mask  {
+  APEX_VOID_FTYPE	    = 0b111,
+  APEX_VOID_FTYPE_SRC0	    = 0b101,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b001,
+  APEX_DEST_FTYPE	    = 0b110,
+  APEX_DEST_FTYPE_SRC0	    = 0b100,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b000,
+};
+
 #endif /* ! RISCV_APEX_H */
 
 #endif /* ! GCC_RISCV_H */

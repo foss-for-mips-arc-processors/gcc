@@ -81,6 +81,7 @@ struct arcv_apex_builtin_description {
 static const int arcv_apex_builtins_limit = 384;
 static struct arcv_apex_builtin_description
 arcv_apex_builtins[arcv_apex_builtins_limit];
+static int arcv_apex_builtin_index = 0;
 
 /* Return the assembly mnemonic for an APEX instruction.
    Appends "i" suffix if immediate_p is true and multiple formats exist.  */
@@ -109,4 +110,418 @@ arcv_apex_format_enabled_p (unsigned int subcode, unsigned int insn_format)
 {
   const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[subcode];
   return (d->format_flags & insn_format);
+}
+
+/* Infer APEX operand flags from a built-in function signature.
+   Sets APEX_VOID if return type is void.
+   Sets APEX_NO_SRC0/APEX_NO_SRC1 if parameters are absent.
+   Returns true on success, false on error.  */
+
+static bool
+arcv_apex_infer_operand_flags (unsigned int *insn_format, tree fndecl)
+{
+  tree return_type = TREE_TYPE (TREE_TYPE (fndecl));
+  if (return_type == void_type_node)
+    *insn_format |= APEX_VOID;
+
+  unsigned int nargs = 0;
+  const char *fn_name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+  for (tree arg = TYPE_ARG_TYPES (TREE_TYPE (fndecl));
+       arg && TREE_CODE (TREE_VALUE (arg)) != VOID_TYPE;
+       arg = TREE_CHAIN (arg))
+  {
+    if (++nargs > 2)
+    {
+      warning (0, "pragma intrinsic: Associated function can have no more "
+		  "than 2 parameters");
+      return false;
+    }
+
+    /* Only perform size checks on 32-bit architectures.  */
+    if (POINTER_SIZE != 32)
+      continue;
+
+    /* We want to check the size of the value represented by the argument.
+       - If it's a pointer, we check the size of the pointed-to type.
+       - If it's a scalar or aggregate type, we check its own size.  */
+    tree argtype = TREE_VALUE (arg);
+    tree type_to_check = argtype;
+    if (TREE_CODE (argtype) == POINTER_TYPE)
+    {
+      /* Skip size check if return type is void.  */
+      if (return_type == void_type_node)
+	continue;
+
+      type_to_check = TREE_TYPE (argtype);
+    }
+    else
+      type_to_check = argtype;
+
+    /* If TYPE_SIZE_UNIT exists and represents a constant integer value,
+       retrieve its size in bytes as a HOST_WIDE_INT.  */
+    if (! (TYPE_SIZE_UNIT (type_to_check)
+	&& tree_fits_uhwi_p (TYPE_SIZE_UNIT (type_to_check))))
+      continue;
+
+    /* If the type's size is greater than 4 bytes, emit an error.
+       This applies to both pointed-to types and scalar types
+       larger than 4 bytes.  */
+    HOST_WIDE_INT bytes = tree_to_uhwi (TYPE_SIZE_UNIT (type_to_check));
+    if (bytes <= 4)
+      continue;
+
+    if (TREE_CODE (argtype) == POINTER_TYPE)
+    {
+      /* Specific error for pointer parameters when return type is not void.  */
+      error ("pragma intrinsic: APEX function %qs must return "
+		"void or a scalar type that does not exceed 4 bytes",
+		fn_name);
+    }
+    else
+    {
+      /* General error for large or non-scalar parameter types.  */
+      error ("pragma intrinsic: APEX function %qs contains a parameter "
+		"of a non-scalar type, or one that exceeds 4 bytes",
+		fn_name);
+    }
+      return false;
+  }
+
+  if (nargs < 1)
+    *insn_format |= APEX_NO_SRC0;
+  if (nargs < 2)
+    *insn_format |= APEX_NO_SRC1;
+
+  return true;
+}
+
+/* Infer APEX instruction format when not explicitly specified.
+   Determines the format (XD, XS, XI, XC) based on opcode and operand
+   layout.  */
+
+static unsigned int
+arcv_apex_infer_format (unsigned int insn_format, unsigned int opcode)
+{
+  unsigned int insn_operands = insn_format >> 5;
+
+  /* APEX_XD is always available (most general format).  */
+  insn_format |= APEX_XD;
+
+  /* Add APEX_XS if opcode fits and has two source operands.  */
+  if (opcode <= APEX_OP_MAX_XS
+      && (insn_operands == APEX_VOID_FTYPE_SRC0_SRC1
+	  || insn_operands == APEX_DEST_FTYPE_SRC0_SRC1))
+    insn_format |= APEX_XS;
+
+  /* Add APEX_XI if opcode fits and has one source operand.  */
+  if (opcode <= APEX_OP_MAX_XI
+      && (insn_operands == APEX_VOID_FTYPE_SRC0
+	  || insn_operands == APEX_DEST_FTYPE_SRC0))
+    insn_format |= APEX_XI;
+
+  /* Add APEX_XC if opcode fits and has dest + two sources.  */
+  if (opcode <= APEX_OP_MAX_XC
+      && insn_operands == APEX_DEST_FTYPE_SRC0_SRC1)
+    insn_format |= APEX_XC;
+
+  return insn_format;
+}
+
+/* Validate APEX instruction format, opcode, and operand count.
+   Checks that the format, opcode, and operands comply with APEX rules.  */
+
+static void
+arcv_apex_validate_format (const char* fn_name, unsigned int insn_format,
+			    unsigned int opcode)
+{
+  gcc_assert (insn_format != APEX_NONE);
+
+  /* Check for duplicate opcode registration.  */
+  for (int i = 0; i < arcv_apex_builtin_index; i++)
+    {
+      if ((arcv_apex_builtins[i].format_flags & APEX_FORMAT_MASK) & insn_format
+	  && arcv_apex_builtins[i].opcode == opcode)
+	{
+	  error ("pragma intrinsic: this specification defines an opcode "
+      "that duplicates a previous one");
+	  return;
+	}
+    }
+
+  bool void_p = (insn_format & APEX_VOID) ? true : false;
+  unsigned int num_args = ((insn_format & APEX_NO_SRC0) ? 0 : 1)
+			+ ((insn_format & APEX_NO_SRC1) ? 0 : 1);
+
+  /* Validate XD format: opcode <= APEX_OP_MAX_XD.  */
+  if (insn_format & APEX_XD)
+    {
+      if (opcode > APEX_OP_MAX_XD)
+	{
+	  error ("pragma intrinsic: APEX opcode value %<%d%> must be an "
+		 "integer constant in the range 0 to 0xff, inclusive", opcode);
+	  return;
+	}
+    }
+
+  /* Validate XS format: opcode <= APEX_OP_MAX_XS, requires 2 arguments.  */
+  if (insn_format & APEX_XS)
+    {
+      if (opcode > APEX_OP_MAX_XS)
+	{
+	  error ("pragma intrinsic: APEX opcode value %<%d%> must be an "
+		 "integer constant in the range 0 to 0x3f, inclusive", opcode);
+	  return;
+	}
+      if (num_args != 2)
+	{
+	  error ("pragma intrinsic: APEX function %qs must have 2 scalar "
+		 "parameter(s) for the 'XS' format class", fn_name);
+	  return;
+	}
+    }
+
+  /* Validate XI format: opcode <= APEX_OP_MAX_XI, requires 1 argument.  */
+  if (insn_format & APEX_XI)
+    {
+      if (opcode > APEX_OP_MAX_XI)
+	{
+	  error ("pragma intrinsic: APEX opcode value %<%d%> must be an "
+		 "integer constant in the range 0 to 0x1f, inclusive", opcode);
+	  return;
+	}
+      if (num_args != 1)
+	{
+	  error ("pragma intrinsic: APEX function %qs must have 1 scalar "
+		 "parameter(s) for the 'XI' format class", fn_name);
+	  return;
+	}
+    }
+
+  /* Validate XC format: opcode <= APEX_OP_MAX_XC, requires 2 arguments and return
+     value.  */
+  if (insn_format & APEX_XC)
+    {
+      if (opcode > APEX_OP_MAX_XC)
+	{
+	  error ("pragma intrinsic: APEX opcode value %<%d%> must be an "
+		 "integer constant in the range 0 to 0x1f, inclusive", opcode);
+	  return;
+	}
+      if (num_args != 2)
+	{
+	  error ("pragma intrinsic: APEX function %qs must have 2 scalar "
+		 "parameter(s) for the 'XC' format class", fn_name);
+	  return;
+	}
+      if (void_p)
+	{
+	  error ("pragma intrinsic: APEX function %qs must return the same "
+		 "type as the first parameter for the 'XC' format class",
+		 fn_name);
+	  return;
+	}
+    }
+}
+
+/* Map APEX operand layout to the corresponding instruction code.  */
+
+static enum insn_code
+arcv_apex_icode (unsigned int insn_format)
+{
+  unsigned int insn_operands = insn_format >> 5;
+  bool is_volatile = insn_format & APEX_VOLATILE;
+
+  /* Void return types are always volatile (side effects).  */
+  switch (insn_operands)
+  {
+    case APEX_VOID_FTYPE:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_v;
+
+    case APEX_VOID_FTYPE_SRC0:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_v;
+
+    case APEX_VOID_FTYPE_SRC0_SRC1:
+      return CODE_FOR_riscv_arcv_apex_void_ftype_src0_src1_v;
+
+    case APEX_DEST_FTYPE:
+      return is_volatile ? CODE_FOR_riscv_arcv_apex_dest_ftype_v
+			 : CODE_FOR_riscv_arcv_apex_dest_ftype;
+
+    case APEX_DEST_FTYPE_SRC0:
+      return is_volatile ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_v
+			 : CODE_FOR_riscv_arcv_apex_dest_ftype_src0;
+
+    case APEX_DEST_FTYPE_SRC0_SRC1:
+      return is_volatile ? CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1_v
+			 : CODE_FOR_riscv_arcv_apex_dest_ftype_src0_src1;
+
+    default:
+      return CODE_FOR_nothing;
+   }
+}
+
+/* Initialize an APEX built-in from pragma directive.  */
+
+void
+arcv_apex_register_builtin (tree fndecl, const char *fn_name,
+			const char *mnemonic, unsigned int format_flags,
+			unsigned int opcode)
+{
+  if (!arcv_apex_infer_operand_flags (&format_flags, fndecl))
+    return;
+
+  if ((format_flags & APEX_FORMAT_MASK) == APEX_NONE)
+    format_flags = arcv_apex_infer_format (format_flags, opcode);
+  arcv_apex_validate_format (fn_name, format_flags, opcode);
+
+  enum insn_code icode = arcv_apex_icode (format_flags);
+  enum riscv_builtin_type builtin_type
+	= (format_flags & APEX_VOID) ? RISCV_BUILTIN_DIRECT_NO_TARGET
+				     : RISCV_BUILTIN_DIRECT;
+
+  /* Store APEX insn information.  */
+  arcv_apex_builtins[arcv_apex_builtin_index]
+    = { icode, fn_name, xstrdup (mnemonic), opcode, builtin_type,
+	format_flags };
+
+  fndecl->function_decl.built_in_class = BUILT_IN_MD;
+
+  fndecl->function_decl.function_code
+	= (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+  arcv_apex_builtin_index++;
+
+  arcv_apex_emit_ext_directive (mnemonic, opcode, format_flags);
+}
+
+/* Validate the immediate argument passed to an APEX intrinsic.
+   Used during builtin expansion.  */
+
+bool
+arcv_apex_immediate_argument_valid_p (unsigned int subcode, tree exp)
+{
+  if (arcv_apex_format_enabled_p (subcode, APEX_XD))
+    return true;
+
+  tree arg;
+  HOST_WIDE_INT val;
+  HOST_WIDE_INT min_val, max_val;
+
+  if (arcv_apex_format_enabled_p (subcode, APEX_XI))
+  {
+    arg = CALL_EXPR_ARG (exp, 0);
+    min_val = -2048;
+    max_val = 2047;
+  }
+  else if (arcv_apex_format_enabled_p (subcode, APEX_XC)
+	   || arcv_apex_format_enabled_p (subcode, APEX_XS))
+  {
+    arg = CALL_EXPR_ARG (exp, 1);
+    min_val = arcv_apex_format_enabled_p (subcode, APEX_XS) ? -128 : -2048;
+    max_val = arcv_apex_format_enabled_p (subcode, APEX_XS) ? 127 : 2047;
+  }
+  else
+    return true;
+
+  if (!TREE_CONSTANT (arg) || TREE_CODE (arg) != INTEGER_CST)
+  {
+    error ("argument to %qs must be a constant integer",
+	   arcv_apex_builtins[subcode].name);
+    return false;
+  }
+
+  val = tree_to_shwi (arg);
+  if (val < min_val || val > max_val)
+  {
+    error ("argument value %wd is outside the valid range [%wd, %wd]",
+	   val, min_val, max_val);
+    return false;
+  }
+
+  return true;
+}
+
+/* Take argument ARGNO from EXP's argument list and convert it into
+   an expand operand.  Store the operand in *OP.  */
+
+static void
+arcv_apex_prepare_builtin_arg (struct expand_operand *op, tree exp,
+			       unsigned argno)
+{
+  tree arg = CALL_EXPR_ARG (exp, argno);
+  create_input_operand (op, expand_normal (arg), TYPE_MODE (TREE_TYPE (arg)));
+}
+
+/* Expand instruction ICODE as part of a built-in function sequence.
+   Use the first NOPS elements of OPS as the instruction's operands.
+   HAS_TARGET_P is true if operand 0 is a target; it is false if the
+   instruction has no target.
+
+   Return the target rtx if HAS_TARGET_P, otherwise return const0_rtx.  */
+
+static rtx
+arcv_apex_expand_builtin_insn (enum insn_code icode, unsigned int n_ops,
+			       struct expand_operand *ops, bool has_target_p)
+{
+  if (!maybe_expand_insn (icode, n_ops, ops))
+    {
+      error ("invalid argument to built-in function");
+      return has_target_p ? gen_reg_rtx (ops[0].mode) : const0_rtx;
+    }
+
+  return has_target_p ? ops[0].value : const0_rtx;
+}
+
+/* Expand a RISCV_BUILTIN_DIRECT or RISCV_BUILTIN_DIRECT_NO_TARGET function
+   for APEX builtins; HAS_TARGET_P says which.  EXP is the CALL_EXPR that
+   calls the function and ICODE is the code of the associated .md pattern.
+   TARGET, if nonnull, suggests a good place to put the result.  */
+
+static rtx
+arcv_apex_expand_builtin_direct (enum insn_code icode, rtx target, tree exp,
+				 bool has_target_p, unsigned int subcode)
+{
+  struct expand_operand ops[MAX_RECOG_OPERANDS];
+
+  /* Map any target to operand 0.  */
+  int opno = 0;
+  if (has_target_p)
+    create_output_operand (&ops[opno++], target, TYPE_MODE (TREE_TYPE (exp)));
+
+  /* Create an RTL constant for the APEX subcode.  */
+  rtx const_rtx = GEN_INT (subcode);
+  /* Add the subcode as an additional input operand to the RTL expression.  */
+  create_input_operand (&ops[opno++], const_rtx, SImode);
+  /* Validate the immediate argument passed to the APEX intrinsic.  */
+  if (!arcv_apex_immediate_argument_valid_p (subcode, exp))
+    return const0_rtx;
+
+  /* Map the arguments to the other operands.  */
+  gcc_assert (opno + call_expr_nargs (exp)
+	      == insn_data[icode].n_generator_args);
+  for (int argno = 0; argno < call_expr_nargs (exp); argno++)
+    arcv_apex_prepare_builtin_arg (&ops[opno++], exp, argno);
+
+  return arcv_apex_expand_builtin_insn (icode, opno, ops, has_target_p);
+}
+
+/* Expand an APEX builtin.  */
+
+rtx
+arcv_apex_expand_builtin (unsigned int subcode, tree exp, rtx target)
+{
+  const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[subcode];
+
+  switch (d->builtin_type)
+    {
+    case RISCV_BUILTIN_DIRECT:
+      return arcv_apex_expand_builtin_direct (d->icode, target, exp, true,
+					      subcode);
+
+    case RISCV_BUILTIN_DIRECT_NO_TARGET:
+      return arcv_apex_expand_builtin_direct (d->icode, target, exp, false,
+					      subcode);
+    }
+
+  gcc_unreachable ();
 }

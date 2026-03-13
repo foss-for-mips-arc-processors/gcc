@@ -271,6 +271,9 @@ riscv_check_builtin_call (location_t loc, vec<location_t> arg_loc, tree fndecl,
     case RISCV_BUILTIN_VECTOR:
       return riscv_vector::check_builtin_call (loc, arg_loc, subcode,
 					       fndecl, nargs, args);
+
+    case RISCV_BUILTIN_APEX:
+      return true;
     }
   gcc_unreachable ();
 }
@@ -296,6 +299,8 @@ riscv_resolve_overloaded_builtin (location_t loc, tree fndecl,
     case RISCV_BUILTIN_VECTOR:
       new_fndecl = riscv_vector::resolve_overloaded_builtin (loc, subcode,
 							     fndecl, arglist);
+      break;
+    case RISCV_BUILTIN_APEX:
       break;
     default:
       gcc_unreachable ();

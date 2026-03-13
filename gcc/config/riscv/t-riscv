@@ -185,6 +185,15 @@ arcv-builtins.o: $(srcdir)/config/riscv/arcv-builtins.cc \
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/arcv-builtins.cc
 
+arcv.o: $(srcdir)/config/riscv/arcv.cc \
+  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(BACKEND_H) $(TARGET_H) $(RTL_H) \
+  $(TREE_H) memmodel.h $(TM_H) $(OPTABS_H) $(REGS_H) $(EMIT_RTL_H) $(RECOG_H) \
+  $(DIAGNOSTIC_CORE_H) stor-layout.h alias.h fold-const.h output.h insn-attr.h \
+  flags.h explow.h calls.h varasm.h $(EXPR_H) $(TM_P_H) df.h reload.h \
+  sched-int.h tm-constrs.h
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+		$(srcdir)/config/riscv/arcv.cc
+
 riscv-zicfilp.o: $(srcdir)/config/riscv/riscv-zicfilp.cc \
     $(CONFIG_H) $(SYSTEM_H) $(TM_H) $(REGS_H) insn-config.h $(RTL_BASE_H) \
     dominance.h cfg.h cfganal.h $(BASIC_BLOCK_H) $(INSN_ATTR_H) $(RECOG_H) \
