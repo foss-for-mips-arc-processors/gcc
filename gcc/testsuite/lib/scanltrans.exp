@@ -78,3 +78,103 @@ foreach ir { tree rtl } {
 	}
     }]
 }
+
+# Scan LTRANS assembly output (.ltrans*.s files).
+
+proc scan-ltrans-assembler { args } {
+    if { [llength $args] < 1 } {
+	error "scan-ltrans-assembler: too few arguments"
+	return
+    }
+    if { [llength $args] > 2 } {
+	error "scan-ltrans-assembler: too many arguments"
+	return
+    }
+    if { [llength $args] >= 2 } {
+	switch [dg-process-target [lindex $args 1]] {
+	    "S" { }
+	    "N" { return }
+	    "F" { setup_xfail "*-*-*" }
+	    "P" { }
+	}
+    }
+
+    set testcase [testname-for-summary]
+    set pattern [lindex $args 0]
+    set pp_pattern [make_pattern_printable $pattern]
+    set testname [lindex $testcase 0]
+    set basename [file rootname $testname]
+    set output_files [dg_glob_remote "${basename}.ltrans*.s"]
+
+    if { $output_files == "" } {
+       verbose -log "$testcase: no ${basename}.ltrans*.s files found"
+       unresolved "$testcase scan-ltrans-assembler $pp_pattern"
+       return
+    }
+
+    set total_matches 0
+    foreach file $output_files {
+       set fd [open $file r]
+       set text [read $fd]
+       close $fd
+       set matches [regexp -all -- $pattern $text]
+       set total_matches [expr $total_matches + $matches]
+    }
+
+    if { $total_matches > 0 } {
+       pass "$testcase scan-ltrans-assembler $pp_pattern"
+    } else {
+       fail "$testcase scan-ltrans-assembler $pp_pattern"
+    }
+}
+set_required_options_for scan-ltrans-assembler
+
+proc scan-ltrans-assembler-times { args } {
+    if { [llength $args] < 2 } {
+	error "scan-ltrans-assembler-times: too few arguments"
+	return
+    }
+    if { [llength $args] > 3 } {
+	error "scan-ltrans-assembler-times: too many arguments"
+	return
+    }
+    if { [llength $args] >= 3 } {
+	switch [dg-process-target [lindex $args 2]] {
+	    "S" { }
+	    "N" { return }
+	    "F" { setup_xfail "*-*-*" }
+	    "P" { }
+	}
+    }
+
+    set testcase [testname-for-summary]
+    set pattern [lindex $args 0]
+    set times [lindex $args 1]
+    set pp_pattern [make_pattern_printable $pattern]
+    set testname [lindex $testcase 0]
+    set basename [file rootname $testname]
+    set output_files [dg_glob_remote "${basename}.ltrans*.s"]
+    
+    if { $output_files == "" } {
+	verbose -log "$testcase: no ${basename}.ltrans*.s files found"
+	unresolved "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+	return
+    }
+    
+    set total_matches 0
+    foreach file $output_files {
+	set fd [open $file r]
+	set text [read $fd]
+	close $fd
+	set matches [regexp -all -- $pattern $text]
+	set total_matches [expr $total_matches + $matches]
+    }
+    
+    if { $total_matches == $times } {
+	pass "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+    } else {
+	verbose -log "$testcase: $pp_pattern found $total_matches times"
+	fail "$testcase scan-ltrans-assembler-times $pp_pattern $times"
+    }
+}
+set_required_options_for scan-ltrans-assembler-times

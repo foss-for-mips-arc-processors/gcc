@@ -33,6 +33,7 @@ load_lib gcc.exp
 
 # Load the language-independent compabibility support procedures.
 load_lib lto.exp
+load_lib scanltrans.exp
 
 # If LTO has not been enabled, bail.
 if { ![check_effective_target_lto] } {

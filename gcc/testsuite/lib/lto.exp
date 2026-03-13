@@ -372,6 +372,7 @@ proc lto-link-and-maybe-run { testname objlist dest optall optfile optstr } {
     global tool
     global compile_type
     global board_info
+    global dg_lto_has_error
 
     upvar dg-messages-by-file dg-messages-by-file
 
@@ -419,6 +420,54 @@ proc lto-link-and-maybe-run { testname objlist dest optall optfile optstr } {
     # Prune unimportant visibility warnings before checking output.
     set comp_output [lto_prune_warns $comp_output]
 
+    # Handle dg-lto-error: expect link failure and check pattern if specified.
+    if { [info exists dg_lto_has_error] && $dg_lto_has_error } {
+	verbose "lto.exp: dg-lto-error present, expecting link failure" 2
+	set link_failed [expr {![file_on_host exists $dest] || $comp_output != ""}]
+	
+	global dg_lto_error_line
+	global dg_lto_error_comment
+	global dg-linenum-format
+	set at_line ""
+	set comment_str ""
+	
+	if { [info exists dg_lto_error_comment] && $dg_lto_error_comment != "" } {
+	    set comment_str " $dg_lto_error_comment"
+	}
+	
+	if { [info exists dg_lto_error_line] && $dg_lto_error_line != "" } {
+	    # $line will either be a formatted line number or a number all by
+	    # itself.  Delete the formatting.
+	    set line $dg_lto_error_line
+	    scan $line ${dg-linenum-format} line
+	    set at_line " at line $line"
+	}
+	
+	set describe_where "$comment_str$at_line (test for LTO link errors)"
+	
+	if { $link_failed } {
+	    global dg_lto_error_pattern
+	    if { [info exists dg_lto_error_pattern] && $dg_lto_error_pattern != "" } {
+		if { [regexp -- $dg_lto_error_pattern $comp_output] } {
+		    verbose "lto.exp: link failed with expected pattern" 2
+		    pass "$testcase $testname link $optstr$describe_where"
+		} else {
+		    verbose "lto.exp: pattern '$dg_lto_error_pattern' not found in: $comp_output" 2
+		    fail "$testcase $testname link $optstr$describe_where (pattern not found)"
+		}
+	    } else {
+		verbose "lto.exp: link failed as expected" 2
+		pass "$testcase $testname link $optstr$describe_where"
+	    }
+	} else {
+	    fail "$testcase $testname link $optstr$describe_where (expected failure)"
+	}
+	if { ![string compare "execute" $compile_type] } {
+	    unresolved "$testcase $testname execute $optstr"
+	}
+	return
+    }
+    
     if ![${tool}_check_compile "$testcase $testname link" $optstr \
 	 $dest $comp_output] then {
 	if { ![string compare "execute" $compile_type] } {
@@ -453,6 +502,35 @@ proc lto-can-handle-directive { op } {
 
     # dg-warning and dg-message append to dg-messages.
     upvar dg-messages dg-messages
+    global dg_lto_has_error
+
+    # Handle dg-lto-error: linker errors lack source line info, so check
+    # for link failure and match error patterns against linker output.
+    if { $cmd == "dg-lto-error" } {
+	set dg_lto_has_error 1
+	verbose "lto.exp: dg-lto-error detected" 2
+	
+	# Store the line number for reporting
+	global dg_lto_error_line
+	set dg_lto_error_line [lindex $op 1]
+	verbose "lto.exp: dg-lto-error line: '$dg_lto_error_line'" 2
+	
+	# Store the comment/description if present
+	global dg_lto_error_comment
+	if { [llength $op] > 3 } {
+	    set dg_lto_error_comment [lindex $op 3]
+	} else {
+	    set dg_lto_error_comment ""
+	}
+	verbose "lto.exp: dg-lto-error comment: '$dg_lto_error_comment'" 2
+	
+	if { [llength $op] > 2 } {
+	    global dg_lto_error_pattern
+	    set dg_lto_error_pattern [lindex $op 2]
+	    verbose "lto.exp: dg-lto-error pattern: '$dg_lto_error_pattern'" 2
+	}
+	return 1
+    }
 
     # A list of directives to recognize, and a list of directives
     # to remap them to.
@@ -681,6 +759,10 @@ proc lto-execute-1 { src1 sid } {
     global LTO_OPTIONS
     global dg-final-code
     global testname_with_flags
+    global dg_lto_has_error
+    global dg_lto_error_pattern
+    global dg_lto_error_line
+    global dg_lto_error_comment
     
     # Get extra flags for this test from the primary source file, and
     # process other dg-* options that this suite supports.  Warn about
@@ -689,6 +771,16 @@ proc lto-execute-1 { src1 sid } {
     set compile_type "run"
     set dg-do-what [list ${dg-do-what-default} "" P]
     array set dg-messages-by-file [list]
+    set dg_lto_has_error 0
+    if { [info exists dg_lto_error_pattern] } {
+	unset dg_lto_error_pattern
+    }
+    if { [info exists dg_lto_error_line] } {
+	unset dg_lto_error_line
+    }
+    if { [info exists dg_lto_error_comment] } {
+	unset dg_lto_error_comment
+    }
     set extra_flags(0) [lto-get-options-main $src1]
     set compile_xfail(0) "" 
 
