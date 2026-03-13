@@ -835,6 +835,8 @@ extern const char *th_asm_output_opcode (FILE *asm_out_file, const char *p);
 extern const char* arcv_apex_asm_mnemonic (rtx, bool);
 extern bool arcv_apex_format_enabled_p (unsigned int, unsigned int);
 extern rtx arcv_apex_expand_builtin (unsigned int, tree, rtx);
+extern void arcv_apex_register_builtin (tree, const char *, const char *,
+					unsigned int, unsigned int);
 
 /* Routines implemented in arcv.cc.  */
 extern void arcv_apex_emit_ext_directive (const char *, int, unsigned int);
