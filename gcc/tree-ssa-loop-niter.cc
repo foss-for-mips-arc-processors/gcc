@@ -5617,6 +5617,114 @@ scev_var_range_cant_overflow (tree var, tree step, class loop *loop)
   return (wi::geu_p (diff, step_wi));
 }
 
+/* Like determine_value_range but uses gori.  Returns true if a
+   non-varying range was found.
+   TODO Improve original determine_value_range instead of using this.  */
+
+static bool
+determine_value_range_gori (class loop *loop, tree name, int_range_max &r)
+{
+  if (TREE_CODE (name) != SSA_NAME || !INTEGRAL_TYPE_P (TREE_TYPE (name)))
+    return false;
+
+  get_range_query (cfun)->range_of_expr (r, name);
+
+  int cnt = 0;
+  for (basic_block dom = loop->header;
+       dom != ENTRY_BLOCK_PTR_FOR_FN (cfun)
+	 && cnt < param_max_niter_dominators_walk;
+       dom = get_immediate_dominator (CDI_DOMINATORS, dom))
+    {
+      if (!single_pred_p (dom))
+	continue;
+
+      edge e = single_pred_edge (dom);
+      if (!(e->flags & (EDGE_TRUE_VALUE | EDGE_FALSE_VALUE)))
+	continue;
+
+      int_range_max edge_range (TREE_TYPE (name));
+      if (gori_name_on_edge (edge_range, name, e))
+	r.intersect (edge_range);
+
+      ++cnt;
+    }
+
+  return !r.varying_p () && !r.undefined_p ();
+}
+
+/* Try to prove that SCEV {BASE, +, STEP} doesn't overflow in LOOP.  This
+   handles cases where STEP is a non-constant but we can derive its bound from
+   the loop structure.  Returns true if we can prove no overflow.  */
+
+static bool
+scev_non_constant_step_cant_overflow (tree base, tree step, class loop *loop)
+{
+  tree type = TREE_TYPE (base);
+
+  /* For signed types, we'd need to handle both positive and negative steps.
+     This is more complex - for now, rely on signed overflow semantics.  */
+  if (!INTEGRAL_TYPE_P (type) || !TYPE_UNSIGNED (type))
+    return false;
+
+  if (TREE_CODE (step) != SSA_NAME || !INTEGRAL_TYPE_P (TREE_TYPE (step)))
+    return false;
+
+  widest_int niter;
+  estimate_numbers_of_iterations (loop);
+  if (!max_loop_iterations (loop, &niter))
+    return false;
+
+  wide_int type_max = wi::max_value (type);
+
+  wide_int base_max;
+  if (TREE_CODE (base) == INTEGER_CST)
+    {
+      base_max = wi::to_wide (base);
+    }
+  else
+    {
+      int_range_max br;
+      if (!determine_value_range_gori (loop, base, br))
+	return false;
+      base_max = br.upper_bound ();
+    }
+
+  int_range_max sr;
+  if (!determine_value_range_gori (loop, step, sr))
+    return false;
+  wide_int step_max = sr.upper_bound ();
+
+  /* Check that `base_max + step_max * niter <= type_max`.  */
+  wi::overflow_type overflow = wi::OVF_NONE;
+  widest_int step_w = widest_int::from (step_max, UNSIGNED);
+  widest_int product = wi::mul (step_w, niter, UNSIGNED, &overflow);
+  if (overflow)
+    return false;
+
+  widest_int base_w = widest_int::from (base_max, UNSIGNED);
+  widest_int total = wi::add (base_w, product, UNSIGNED, &overflow);
+  if (overflow)
+    return false;
+
+  widest_int type_max_w = widest_int::from (type_max, UNSIGNED);
+  if (wi::gtu_p (total, type_max_w))
+    return false;
+
+  if (dump_file && (dump_flags & TDF_DETAILS))
+    {
+      fprintf (dump_file, "scev_non_constant_step_cant_overflow: no overflow "
+	       "for base_max=");
+      print_dec (base_max, dump_file, UNSIGNED);
+      fprintf (dump_file, " step_max=");
+      print_dec (step_max, dump_file, UNSIGNED);
+      fprintf (dump_file, " niter=");
+      print_dec (niter, dump_file, UNSIGNED);
+      fprintf (dump_file, "\n");
+    }
+
+  return true;
+}
+
 /* Return false only when the induction variable BASE + STEP * I is
    known to not overflow: i.e. when the number of iterations is small
    enough with respect to the step and initial condition in order to
@@ -5663,15 +5771,20 @@ scev_probably_wraps_p (tree var, tree base, tree step,
   if (use_overflow_semantics && nowrap_type_p (TREE_TYPE (base)))
     return false;
 
-  /* To be able to use estimates on number of iterations of the loop,
-     we must have an upper bound on the absolute value of the step.  */
-  if (TREE_CODE (step) != INTEGER_CST)
-    return true;
-
   /* Check if var can be proven not overflow with value range info.  */
   if (var && TREE_CODE (var) == SSA_NAME
       && scev_var_range_cant_overflow (var, step, loop))
     return false;
+
+  /* For non-constant step, try to prove no overflow occurs using the max bound
+     of the step.  */
+  if (scev_non_constant_step_cant_overflow (base, step, loop))
+    return false;
+
+  /* To be able to use estimates on number of iterations of the loop,
+     we must have an upper bound on the absolute value of the step.  */
+  if (TREE_CODE (step) != INTEGER_CST)
+    return true;
 
   if (loop_exits_before_overflow (base, step, at_stmt, loop))
     return false;
