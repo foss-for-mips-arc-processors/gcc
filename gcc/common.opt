@@ -3452,6 +3452,10 @@ fversion-loops-for-strides
 Common Var(flag_version_loops_for_strides) Optimization
 Version loops based on whether indices have a stride of one.
 
+fversion-loops-for-iv-overflow
+Common Var(flag_version_loops_for_iv_overflow) Optimization
+Version loops to guard against induction variable overflow.
+
 funwind-tables
 Common Var(flag_unwind_tables) Optimization
 Just generate unwind tables for exception handling.

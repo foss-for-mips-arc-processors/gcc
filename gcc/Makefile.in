@@ -1519,6 +1519,7 @@ OBJS = \
 	gimple-harden-control-flow.o \
 	gimple-laddress.o \
 	gimple-loop-interchange.o \
+	tree-ssa-loop-ivbound.o \
 	gimple-loop-jam.o \
 	gimple-loop-versioning.o \
 	gimple-low.o \
