@@ -1087,9 +1087,13 @@ private:
 unsigned int
 execute_ranger_vrp (struct function *fun, bool final_p)
 {
-  loop_optimizer_init (LOOPS_NORMAL | LOOPS_HAVE_RECORDED_EXITS);
-  rewrite_into_loop_closed_ssa (NULL, TODO_update_ssa);
-  scev_initialize ();
+  bool in_loop_pipeline = scev_initialized_p ();
+  if (!in_loop_pipeline)
+    {
+      loop_optimizer_init (LOOPS_NORMAL | LOOPS_HAVE_RECORDED_EXITS);
+      rewrite_into_loop_closed_ssa (NULL, TODO_update_ssa);
+      scev_initialize ();
+    }
   calculate_dominance_info (CDI_DOMINATORS);
 
   set_all_edges_as_executable (fun);
@@ -1151,8 +1155,11 @@ execute_ranger_vrp (struct function *fun, bool final_p)
 
   phi_analysis_finalize ();
   disable_ranger (fun);
-  scev_finalize ();
-  loop_optimizer_finalize ();
+  if (!in_loop_pipeline)
+    {
+      scev_finalize ();
+      loop_optimizer_finalize ();
+    }
   return 0;
 }
 
