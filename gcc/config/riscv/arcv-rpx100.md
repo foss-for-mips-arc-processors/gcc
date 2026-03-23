@@ -24,7 +24,7 @@
 (define_cpu_unit "arcv_rpx100_ALU_A_fuse1_early"	"arcv_rpx100")
 (define_cpu_unit "arcv_rpx100_ALU_B_fuse0_early"	"arcv_rpx100")
 (define_cpu_unit "arcv_rpx100_ALU_B_fuse1_early"	"arcv_rpx100")
-(define_cpu_unit "arcv_rpx100_MPY32"	"arcv_rpx100")
+(define_cpu_unit "arcv_rpx100_MPY"	"arcv_rpx100")
 (define_cpu_unit "arcv_rpx100_DIV"	"arcv_rpx100")
 (define_cpu_unit "arcv_rpx100_DMP_fuse0"	"arcv_rpx100")
 (define_cpu_unit "arcv_rpx100_DMP_fuse1"	"arcv_rpx100")
@@ -45,7 +45,7 @@
 (define_insn_reservation "arcv_rpx100_imul_fused" 4
   (and (eq_attr "tune" "arcv_rpx100")
        (eq_attr "type" "imul_fused"))
-  "(arcv_rpx100_issueA_fuse0 + arcv_rpx100_issueA_fuse1 + arcv_rpx100_ALU_A_fuse0_early + arcv_rpx100_ALU_A_fuse1_early + arcv_rpx100_MPY32), nothing*3")
+  "(arcv_rpx100_issueA_fuse0 + arcv_rpx100_issueA_fuse1 + arcv_rpx100_ALU_A_fuse0_early + arcv_rpx100_ALU_A_fuse1_early + arcv_rpx100_MPY), nothing*3")
 
 (define_insn_reservation "arcv_rpx100_alu_fused" 1
    (and (eq_attr "tune" "arcv_rpx100")
@@ -64,8 +64,26 @@
 
 (define_insn_reservation "arcv_rpx100_mpy32_insn" 4
   (and (eq_attr "tune" "arcv_rpx100")
-       (eq_attr "type" "imul"))
-  "arcv_rpx100_issueA_fuse0 + arcv_rpx100_MPY32, nothing*3")
+       (eq_attr "type" "imul")
+       (eq_attr "mode" "SI"))
+  "arcv_rpx100_issueA_fuse0 + arcv_rpx100_MPY, nothing*3")
+
+(define_insn_reservation "arcv_rpx100_mpy64l_insn" 6
+  (and (eq_attr "tune" "arcv_rpx100")
+       (eq_attr "type" "imul")
+       (eq_attr "mode" "DI")
+       (eq_attr "mul_part" "low"))
+  "arcv_rpx100_issueA_fuse0 + arcv_rpx100_MPY, arcv_rpx100_MPY*2, nothing * 3")
+
+;; The 1 cycle reservation of the multiplier is only correct for the bonded mul case.
+;; Mul high part is usually generated together with the low part.
+;; Otherwise, this is 3 cycles too optimistic about multiplier reservation.
+(define_insn_reservation "arcv_rpx100_mpy64h_insn" 7
+  (and (eq_attr "tune" "arcv_rpx100")
+       (eq_attr "type" "imul")
+       (eq_attr "mode" "DI")
+       (eq_attr "mul_part" "high"))
+  "arcv_rpx100_issueA_fuse0 + arcv_rpx100_MPY, nothing*6")
 
 (define_insn_reservation "arcv_rpx100_load_insn" 3
   (and (eq_attr "tune" "arcv_rpx100")
