@@ -1043,7 +1043,7 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
    | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
    | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
    | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
-   | RISCV_FUSE_LUI_LD_REV),		       /* fusible_ops */
+   | RISCV_FUSE_LUI_LD_REV | RISCV_FUSE_MULH_MUL), /* fusible_ops */
   NULL,					       /* vector cost */
   NULL,					       /* function_align */
   NULL,					       /* jump_align */
@@ -11826,7 +11826,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 {
   /* Use ARCV-specific cost adjustment for the ARC-V fusion cores.  */
   if (TARGET_ARCV_FUSION)
-    return arcv_sched_adjust_cost (insn, dep_type, cost);
+    return arcv_sched_adjust_cost (insn, dep_type, dep_insn, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)

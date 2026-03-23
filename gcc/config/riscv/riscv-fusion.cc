@@ -2315,6 +2315,56 @@ riscv_fuse_lui_ld_reversible (rtx_insn *prev, rtx_insn *curr)
 	  || riscv_fuse_lui_ld_independent_p (curr, prev));
 }
 
+/* Check for RISCV_FUSE_MULH_MUL fusion (bonded multiply).
+   prev (mulh) == (set (reg:DI rH)
+		       (truncate:DI
+			 (lshiftrt:TI
+			   (mult:TI (any_extend:TI (reg:DI rS1))
+				    (any_extend:TI (reg:DI rS2)))
+			   (const_int 64))))
+   curr (mul)  == (set (reg:DI rL) (mult:DI (reg:DI rS1) (reg:DI rS2)))
+
+   Constraints:
+     rH != rS1 and rH != rS2.  */
+
+static bool
+riscv_fuse_mulh_mul (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set, curr_set;
+  if (!TARGET_64BIT
+      || !riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
+    return false;
+
+  rtx high = SET_SRC (prev_set);
+  rtx low = SET_SRC (curr_set);
+  if (GET_CODE (high) != TRUNCATE || GET_MODE (high) != DImode
+      || GET_CODE (low) != MULT || GET_MODE (low) != DImode)
+    return false;
+
+  high = XEXP (high, 0);
+  if (GET_CODE (high) != LSHIFTRT
+      || !CONST_INT_P (XEXP (high, 1))
+      || INTVAL (XEXP (high, 1)) != 64
+      || GET_CODE (XEXP (high, 0)) != MULT)
+    return false;
+
+  rtx high_op0 = XEXP (XEXP (high, 0), 0);
+  rtx high_op1 = XEXP (XEXP (high, 0), 1);
+  if ((GET_CODE (high_op0) != SIGN_EXTEND
+       && GET_CODE (high_op0) != ZERO_EXTEND)
+      || (GET_CODE (high_op1) != SIGN_EXTEND
+	  && GET_CODE (high_op1) != ZERO_EXTEND))
+    return false;
+
+  rtx high_dest = SET_DEST (prev_set);
+  return (riscv_regno (high_dest) != INVALID_REGNUM
+	  && riscv_regno (SET_DEST (curr_set)) != INVALID_REGNUM
+	  && riscv_fuse_same_reg_p (XEXP (high_op0, 0), XEXP (low, 0))
+	  && riscv_fuse_same_reg_p (XEXP (high_op1, 0), XEXP (low, 1))
+	  && !reg_overlap_mentioned_p (high_dest, XEXP (low, 0))
+	  && !reg_overlap_mentioned_p (high_dest, XEXP (low, 1)));
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -2410,6 +2460,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_bfext_srli, "RISCV_FUSE_BFEXT_SRLI" },
   { RISCV_FUSE_BFEXT_SRAI,
     riscv_fuse_bfext_srai, "RISCV_FUSE_BFEXT_SRAI" },
+  { RISCV_FUSE_MULH_MUL,
+    riscv_fuse_mulh_mul, "RISCV_FUSE_MULH_MUL" },
 };
 
 /* Return the name of fusion operation OP.  */

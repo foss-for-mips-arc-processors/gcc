@@ -222,11 +222,43 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
   return priority;
 }
 
+/* Return true if INSN has a true dependence of type DEP_TYPE on DEP_INSN
+   and DEP_INSN is the low part of a bonded mulh/mul pair.  */
+
+static bool
+arcv_depends_on_lowpart_bonded_mul_p (rtx_insn *insn, int dep_type,
+				      rtx_insn *dep_insn)
+{
+  if (dep_type != REG_DEP_TRUE
+      || !riscv_fusion_enabled_p (RISCV_FUSE_MULH_MUL))
+    return false;
+
+  rtx_insn *prev_insn = prev_nonnote_nondebug_insn_bb (dep_insn);
+  if (!prev_insn
+      || riscv_get_fusion_pair_type (prev_insn, dep_insn)
+	 != RISCV_FUSE_MULH_MUL)
+    return false;
+
+  if (dump_file)
+    fprintf (dump_file,
+	     "ARCV_BONDED_MUL_ADJUST_COST\t insn: %d, high_part: %d, "
+	     "low_part: %d\n",
+	     INSN_UID (insn), INSN_UID (prev_insn), INSN_UID (dep_insn));
+
+  return true;
+}
+
 /* Adjust scheduling cost for ARCV fusion.  */
 
 int
-arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
+arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
+			int cost)
 {
+  /* The low part of a bonded mulh/mul pair is available one cycle
+     earlier.  */
+  if (arcv_depends_on_lowpart_bonded_mul_p (insn, dep_type, dep_insn))
+    return cost - 1;
+
   if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
     return cost + 1;
 
