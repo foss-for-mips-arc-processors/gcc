@@ -858,11 +858,12 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 
 /* Routines implemented in arcv.cc.  */
 extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool arcv_macro_bonded_mul_pair_p (rtx_insn *, rtx_insn *);
 extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
 extern int arcv_sched_adjust_priority (rtx_insn *, int);
-extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, rtx_insn *,int);
 extern bool arcv_can_issue_more_p (int, int);
 extern int arcv_sched_variable_issue (rtx_insn *, int);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
