@@ -75,6 +75,133 @@ arcv_memop_p (rtx_insn *insn)
 	  || type == TYPE_FPLOAD || type == TYPE_FPSTORE);
 }
 
+static bool
+arcv_alu_class_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return (type == TYPE_ARITH
+	  || type == TYPE_LOGICAL
+	  || type == TYPE_SHIFT
+	  || type == TYPE_SLT
+	  || type == TYPE_BITMANIP
+	  || type == TYPE_MIN
+	  || type == TYPE_MAX
+	  || type == TYPE_MINU
+	  || type == TYPE_MAXU
+	  || type == TYPE_CLZ
+	  || type == TYPE_CTZ
+	  || type == TYPE_CPOP
+	  || type == TYPE_MOVE
+	  || type == TYPE_CONST);
+}
+
+static bool
+arcv_limited_dual_issue_hazard_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+
+  if (!prev_set || !REG_P (SET_DEST (prev_set)))
+    return false;
+
+  rtx prev_dest = SET_DEST (prev_set);
+  rtx curr_set = single_set (curr);
+
+  if (curr_set)
+    {
+      if (reg_overlap_mentioned_p (prev_dest, SET_SRC (curr_set)))
+	return true;
+
+      if (MEM_P (SET_DEST (curr_set))
+	  && reg_overlap_mentioned_p (prev_dest, XEXP (SET_DEST (curr_set), 0)))
+	return true;
+
+      if (REG_P (SET_DEST (curr_set))
+	  && REGNO (prev_dest) == REGNO (SET_DEST (curr_set)))
+	return true;
+    }
+  else
+    {
+      if (reg_overlap_mentioned_p (prev_dest, PATTERN (curr)))
+	return true;
+    }
+
+  return false;
+}
+
+static void
+arcv_count_source_regs_cb (rtx *x, void *data)
+{
+  HARD_REG_SET *regs = (HARD_REG_SET *) data;
+  if (REG_P (*x))
+    {
+      SET_HARD_REG_BIT (*regs, REGNO (*x));
+      return;
+    }
+  const char *fmt = GET_RTX_FORMAT (GET_CODE (*x));
+  for (int i = GET_RTX_LENGTH (GET_CODE (*x)) - 1; i >= 0; i--)
+    {
+      if (fmt[i] == 'e')
+	arcv_count_source_regs_cb (&XEXP (*x, i), data);
+      else if (fmt[i] == 'E')
+	for (int j = XVECLEN (*x, i) - 1; j >= 0; j--)
+	  arcv_count_source_regs_cb (&XVECEXP (*x, i, j), data);
+    }
+}
+
+static bool
+arcv_too_many_source_regs_p (rtx_insn *prev, rtx_insn *curr)
+{
+  HARD_REG_SET regs;
+  CLEAR_HARD_REG_SET (regs);
+
+  note_uses (&PATTERN (prev), arcv_count_source_regs_cb, &regs);
+  note_uses (&PATTERN (curr), arcv_count_source_regs_cb, &regs);
+
+  return hard_reg_set_popcount (regs) > 3;
+}
+
+static bool
+arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  bool valid_pair = false;
+  enum attr_type prev_type = get_attr_type (prev);
+  enum attr_type curr_type = get_attr_type (curr);
+
+  bool prev_is_load = (prev_type == TYPE_LOAD || prev_type == TYPE_FPLOAD);
+  bool curr_is_load = (curr_type == TYPE_LOAD || curr_type == TYPE_FPLOAD);
+  bool prev_is_store = (prev_type == TYPE_STORE || prev_type == TYPE_FPSTORE);
+  bool curr_is_store = (curr_type == TYPE_STORE || curr_type == TYPE_FPSTORE);
+  bool prev_is_alu = arcv_alu_class_insn_p (prev);
+  bool curr_is_alu = arcv_alu_class_insn_p (curr);
+
+  if ((prev_is_load && curr_is_alu) || (prev_is_alu && curr_is_load))
+    valid_pair = true;
+
+  if ((prev_is_store && curr_is_alu) || (prev_is_alu && curr_is_store))
+    valid_pair = true;
+
+  if ((prev_is_store || prev_is_load) && curr_type == TYPE_BRANCH)
+    valid_pair = true;
+
+  if ((prev_type == TYPE_FPLOAD && (curr_type == TYPE_FADD
+				    || curr_type == TYPE_FMUL
+				    || curr_type == TYPE_FMADD))
+      || ((prev_type == TYPE_FADD || prev_type == TYPE_FMUL
+	   || prev_type == TYPE_FMADD) && curr_type == TYPE_FPLOAD))
+    valid_pair = true;
+
+  if (!valid_pair)
+    return false;
+
+  if (arcv_limited_dual_issue_hazard_p (prev, curr))
+    return false;
+
+  if (arcv_too_many_source_regs_p (prev, curr))
+    return false;
+
+  return true;
+}
+
 /* Try to reorder ready queue to promote ARCV fusion opportunities.
    Returns the number of instructions that can be issued this cycle.  */
 
@@ -86,6 +213,49 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
   if (!riscv_cached_can_issue_more)
     return 0;
+
+  if ((riscv_microarchitecture == arcv_rmx500
+       || riscv_microarchitecture == arcv_rmx700)
+      && riscv_last_scheduled_insn
+      && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (riscv_last_scheduled_insn))
+    {
+      for (int i = 1; i <= *n_readyp; i++)
+	{
+	  rtx_insn *candidate = ready[*n_readyp - i];
+	  rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (candidate);
+	  bool limited_dual_issue = false;
+	  if (NONDEBUG_INSN_P (candidate)
+	      && !SCHED_GROUP_P (candidate)
+	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		  || !SCHED_GROUP_P (next_insn))
+	      && (riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
+					     candidate)
+	      /* Limited dual issue is checked only in reorder2
+	      during sched2 to avoid breaking other fusion opportunities.
+	      This happens easily because a sched group groups all
+	      dependencies, causing 5 unrelated registers (3 source and
+	      2 destination registers) to be stuck together for limited dual
+	      issue.  This makes it harder to reorder other instructions.  */
+	      || (limited_dual_issue = (reload_completed
+		  && TARGET_ARCV_ADVANCED_FUSION
+		  && single_set (riscv_last_scheduled_insn)
+		  && single_set (candidate)
+		  && arcv_rmx500_limited_dual_issue_pair_p
+			(riscv_last_scheduled_insn, candidate)))))
+	    {
+	      if (limited_dual_issue && dump_file)
+		fprintf (dump_file, "ARCV_RMX500_LIMITED_DUAL_ISSUE\n");
+
+	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	      return riscv_cached_can_issue_more;
+	    }
+	}
+
+      riscv_cached_can_issue_more = 0;
+      return 0;
+    }
 
   /* Fuse double load/store instances missed by sched_fusion.  */
   if (!sched_state.pipeB_scheduled_p && riscv_last_scheduled_insn
@@ -271,6 +441,14 @@ arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 bool
 arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
 {
+  if (riscv_microarchitecture == arcv_rmx500
+      || riscv_microarchitecture == arcv_rmx700)
+    {
+      if (more == issue_rate)
+	riscv_cached_can_issue_more = more;
+      return more > 0;
+    }
+
   /* Beginning of cycle - reset variables.  */
   if (more == issue_rate)
     {
@@ -294,6 +472,24 @@ int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+
+  if (riscv_microarchitecture == arcv_rmx500
+      || riscv_microarchitecture == arcv_rmx700)
+    {
+      riscv_last_scheduled_insn = insn;
+
+      if (single_set (insn)
+	  && (get_attr_type (insn) == TYPE_ALU_FUSED
+	      || get_attr_type (insn) == TYPE_IMUL_FUSED))
+	{
+	  riscv_cached_can_issue_more = 0;
+	  return 0;
+	}
+
+      riscv_cached_can_issue_more = more - 1;
+      return more - 1;
+    }
+
   if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
       && single_set (insn) && single_set (next))
     {
