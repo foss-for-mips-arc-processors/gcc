@@ -873,7 +873,7 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},	/* fp_div */
   {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* int_mul */
   {COSTS_N_INSNS (21), COSTS_N_INSNS (21)},	/* int_div */
-  4,						/* issue_rate */
+  2,						/* issue_rate */
   9,						/* branch_cost */
   2,						/* memory_cost */
   8,						/* fmv_cost */
