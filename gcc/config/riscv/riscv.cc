@@ -81,7 +81,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "cgraph.h"
 #include "langhooks.h"
 #include "gimplify.h"
-
+#include "context.h"
 /* This file should be included last.  */
 #include "target-def.h"
 #include "riscv-vector-costs.h"
@@ -10968,6 +10968,25 @@ riscv_override_options_internal (struct gcc_options *opts)
     {
       opts->x_target_flags &= ~MASK_ARCV_ADVANCED_FUSION;
     }
+}
+
+static void
+riscv_register_pass (
+  rtl_opt_pass *(*make_pass_func) (gcc::context *),
+  enum pass_positioning_ops pass_pos,
+  const char *ref_pass_name)
+{
+  opt_pass *new_opt_pass = make_pass_func (g);
+
+  struct register_pass_info insert_pass
+   = {
+      new_opt_pass,	/* pass.  */
+      ref_pass_name,	/* reference_pass_name.  */
+      1,		/* ref_pass_instance_number.  */
+      pass_pos		/* po_op.  */
+    };
+
+  register_pass (&insert_pass);
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */
