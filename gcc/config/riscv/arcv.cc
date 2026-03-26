@@ -184,6 +184,98 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   return false;
 }
 
+static bool
+arcv_alu_class_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return (type == TYPE_ARITH
+	  || type == TYPE_LOGICAL
+	  || type == TYPE_SHIFT
+	  || type == TYPE_SLT
+	  || type == TYPE_BITMANIP
+	  || type == TYPE_MIN
+	  || type == TYPE_MAX
+	  || type == TYPE_MINU
+	  || type == TYPE_MAXU
+	  || type == TYPE_CLZ
+	  || type == TYPE_CTZ
+	  || type == TYPE_CPOP
+	  || type == TYPE_MOVE
+	  || type == TYPE_CONST);
+}
+
+static bool
+arcv_limited_dual_issue_hazard_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+
+  if (!prev_set || !REG_P (SET_DEST (prev_set)))
+    return false;
+
+  rtx prev_dest = SET_DEST (prev_set);
+  rtx curr_set = single_set (curr);
+
+  if (curr_set)
+    {
+      if (reg_overlap_mentioned_p (prev_dest, SET_SRC (curr_set)))
+	return true;
+
+      if (MEM_P (SET_DEST (curr_set))
+	  && reg_overlap_mentioned_p (prev_dest, XEXP (SET_DEST (curr_set), 0)))
+	return true;
+
+      if (REG_P (SET_DEST (curr_set))
+	  && REGNO (prev_dest) == REGNO (SET_DEST (curr_set)))
+	return true;
+    }
+  else
+    {
+      if (reg_overlap_mentioned_p (prev_dest, PATTERN (curr)))
+	return true;
+    }
+
+  return false;
+}
+
+static bool
+arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  bool valid_pair = false;
+  enum attr_type prev_type = get_attr_type (prev);
+  enum attr_type curr_type = get_attr_type (curr);
+
+  bool prev_is_load = (prev_type == TYPE_LOAD || prev_type == TYPE_FPLOAD);
+  bool curr_is_load = (curr_type == TYPE_LOAD || curr_type == TYPE_FPLOAD);
+  bool prev_is_store = (prev_type == TYPE_STORE || prev_type == TYPE_FPSTORE);
+  bool curr_is_store = (curr_type == TYPE_STORE || curr_type == TYPE_FPSTORE);
+  bool prev_is_alu = arcv_alu_class_insn_p (prev);
+  bool curr_is_alu = arcv_alu_class_insn_p (curr);
+
+  if ((prev_is_load && curr_is_alu) || (prev_is_alu && curr_is_load))
+    valid_pair = true;
+
+  if ((prev_is_store && curr_is_alu) || (prev_is_alu && curr_is_store))
+    valid_pair = true;
+
+  if ((prev_is_store || prev_is_load) && curr_type == TYPE_BRANCH)
+    valid_pair = true;
+
+  if ((prev_type == TYPE_FPLOAD && (curr_type == TYPE_FADD
+				    || curr_type == TYPE_FMUL
+				    || curr_type == TYPE_FMADD))
+      || ((prev_type == TYPE_FADD || prev_type == TYPE_FMUL
+	   || prev_type == TYPE_FMADD) && curr_type == TYPE_FPLOAD))
+    valid_pair = true;
+
+  if (!valid_pair)
+    return false;
+
+  if (arcv_limited_dual_issue_hazard_p (prev, curr))
+    return false;
+
+  return true;
+}
+
 /* Helper function to check if instruction type is arithmetic-like.  */
 
 static bool
@@ -478,6 +570,16 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && riscv_microarchitecture == arcv_rmx500
+      && prev_set && curr_set
+      && arcv_rmx500_limited_dual_issue_pair_p (prev, curr))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_RMX500_LIMITED_DUAL_ISSUE\n");
+      return true;
+    }
+
   /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
   bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
 
@@ -649,6 +751,31 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
   if (!sched_state.cached_can_issue_more)
     return 0;
+
+  if (riscv_microarchitecture == arcv_rmx500
+      && sched_state.last_scheduled_insn
+      && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn))
+    {
+      for (int i = 1; i <= *n_readyp; i++)
+	{
+	  rtx_insn *candidate = ready[*n_readyp - i];
+	  rtx_insn *next_insn = arcv_next_fusible_insn (candidate);
+	  if (NONDEBUG_INSN_P (candidate)
+	      && !SCHED_GROUP_P (candidate)
+	      && (!next_insn || !SCHED_GROUP_P (next_insn))
+	      && arcv_macro_fusion_pair_p
+		   (sched_state.last_scheduled_insn, candidate))
+	    {
+	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	      return sched_state.cached_can_issue_more;
+	    }
+	}
+
+      sched_state.cached_can_issue_more = 0;
+      return 0;
+    }
 
   /* Fuse double load/store instances missed by sched_fusion.  */
   if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn
@@ -933,6 +1060,13 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 bool
 arcv_can_issue_more_p (int issue_rate, int more)
 {
+  if (riscv_microarchitecture == arcv_rmx500)
+    {
+      if (more == issue_rate)
+	sched_state.cached_can_issue_more = more;
+      return more > 0;
+    }
+
   /* Beginning of cycle - reset variables.  */
   if (more == issue_rate)
     {
@@ -955,6 +1089,22 @@ int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = arcv_next_fusible_insn (insn);
+
+  if (riscv_microarchitecture == arcv_rmx500)
+    {
+      sched_state.last_scheduled_insn = insn;
+
+      if (get_attr_type (insn) == TYPE_ALU_FUSED
+	  || get_attr_type (insn) == TYPE_IMUL_FUSED)
+	{
+	  sched_state.cached_can_issue_more = 0;
+	  return 0;
+	}
+
+      sched_state.cached_can_issue_more = more - 1;
+      return more - 1;
+    }
+
   if (next && SCHED_GROUP_P (next))
     {
       if (arcv_memop_p (insn) || arcv_memop_p (next))
