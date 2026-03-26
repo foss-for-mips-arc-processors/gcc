@@ -20,75 +20,72 @@
 
 (define_automaton "arcv_rmx500")
 
-(define_cpu_unit "arcv_rmx500_ALU_A_fuse0_early"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_ALU_A_fuse1_early"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_ALU_B_fuse0_early"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_ALU_B_fuse1_early"	"arcv_rmx500")
+;; RMX-500 is a single-issue core with fusion support.
+;; Single pipe with fuse0/fuse1 to model fused instructions that occupy
+;; two issue slots.  Single DMP unit for memory operations.
+(define_cpu_unit "arcv_rmx500_ALU_fuse0_early"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_ALU_fuse1_early"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_MPY32"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_DIV"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_DMP_fuse0"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_DMP_fuse1"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DMP"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_fdivsqrt"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_issueA_fuse0" "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_issueA_fuse1" "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_issueB_fuse0" "arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_issueB_fuse1" "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issue_fuse0" "arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_issue_fuse1" "arcv_rmx500")
 
-;; Instruction reservation for arithmetic instructions (pipe A, pipe B).
-;; instructions can be issued back to back - after 1 cycle the result is available
+;; Instruction reservation for arithmetic instructions (single pipe).
+;; Instructions can be issued back to back - after 1 cycle the result is available.
 (define_insn_reservation "arcv_rmx500_alu_early_arith" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "unknown,move,const,arith,shift,slt,multi,auipc,nop,logical,\
 		bitmanip,min,max,minu,maxu,clz,ctz,atomic,\
 		condmove,mvpair,zicond,cpop,clmul"))
-  "((arcv_rmx500_issueA_fuse0 + arcv_rmx500_ALU_A_fuse0_early) | (arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse1_early)) | ((arcv_rmx500_issueB_fuse0 + arcv_rmx500_ALU_B_fuse0_early) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse1_early))")
+  "(arcv_rmx500_issue_fuse0 + arcv_rmx500_ALU_fuse0_early) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_ALU_fuse1_early)")
 
 (define_insn_reservation "arcv_rmx500_imul_fused" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul_fused"))
-  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early + arcv_rmx500_MPY32), nothing*2")
+  "(arcv_rmx500_issue_fuse0 + arcv_rmx500_issue_fuse1 + arcv_rmx500_ALU_fuse0_early + arcv_rmx500_ALU_fuse1_early + arcv_rmx500_MPY32), nothing*2")
 
 (define_insn_reservation "arcv_rmx500_alu_fused" 1
    (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "alu_fused"))
-  "(arcv_rmx500_issueA_fuse0 + arcv_rmx500_issueA_fuse1 + arcv_rmx500_ALU_A_fuse0_early + arcv_rmx500_ALU_A_fuse1_early) | (arcv_rmx500_issueB_fuse0 + arcv_rmx500_issueB_fuse1 + arcv_rmx500_ALU_B_fuse0_early + arcv_rmx500_ALU_B_fuse1_early)")
-
+  "(arcv_rmx500_issue_fuse0 + arcv_rmx500_issue_fuse1 + arcv_rmx500_ALU_fuse0_early + arcv_rmx500_ALU_fuse1_early)")
 
 (define_insn_reservation "arcv_rmx500_jmp_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "branch,jump,call,jalr,ret,trap"))
-  "arcv_rmx500_issueA_fuse0 | arcv_rmx500_issueA_fuse1")
+  "arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1")
 
 (define_insn_reservation "arcv_rmx500_div_insn" 21
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "idiv"))
-  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_DIV, nothing*20")
+  "arcv_rmx500_issue_fuse0 + arcv_rmx500_DIV, nothing*20")
 
 (define_insn_reservation "arcv_rmx500_mpy32_insn" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "imul"))
-  "arcv_rmx500_issueA_fuse0 + arcv_rmx500_MPY32, nothing*2")
+  "arcv_rmx500_issue_fuse0 + arcv_rmx500_MPY32, nothing*2")
 
 (define_insn_reservation "arcv_rmx500_load_insn" 2
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
-  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1), nothing")
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_DMP, nothing")
 
 (define_insn_reservation "arcv_rmx500_store_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "store,fpstore"))
-  "(arcv_rmx500_issueB_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issueB_fuse1 + arcv_rmx500_DMP_fuse1)")
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_DMP")
 
 ;; (soft) floating points
 (define_insn_reservation "arcv_rmx500_xfer" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "mfc,mtc,fcvt,fcvt_i2f,fcvt_f2i,fmove,fcmp"))
-  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early), nothing*2")
+  "(arcv_rmx500_ALU_fuse0_early | arcv_rmx500_ALU_fuse1_early), nothing*2")
 
 (define_insn_reservation "arcv_rmx500_fmul" 3
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "fadd,fmul,fmadd"))
-  "(arcv_rmx500_ALU_A_fuse0_early | arcv_rmx500_ALU_B_fuse0_early,nothing*2)")
+  "(arcv_rmx500_ALU_fuse0_early | arcv_rmx500_ALU_fuse1_early), nothing*2")
 
 (define_insn_reservation "arcv_rmx500_fdiv" 21
   (and (eq_attr "tune" "arcv_rmx500")

@@ -160,6 +160,170 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   return false;
 }
 
+/* Return TRUE if INSN is a load instruction (integer or floating-point).  */
+
+static bool
+arcv_load_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return type == TYPE_LOAD || type == TYPE_FPLOAD;
+}
+
+/* Return TRUE if INSN is a store instruction (integer or floating-point).  */
+
+static bool
+arcv_store_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return type == TYPE_STORE || type == TYPE_FPSTORE;
+}
+
+/* Return TRUE if INSN is a floating-point load instruction.  */
+
+static bool
+arcv_fpload_insn_p (rtx_insn *insn)
+{
+  return get_attr_type (insn) == TYPE_FPLOAD;
+}
+
+/* Return TRUE if INSN is an FMAC-class instruction (fadd, fmul, fmadd).  */
+
+static bool
+arcv_fmac_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return type == TYPE_FADD || type == TYPE_FMUL || type == TYPE_FMADD;
+}
+
+/* Return TRUE if INSN is a branch instruction (conditional).  */
+
+static bool
+arcv_branch_insn_p (rtx_insn *insn)
+{
+  return get_attr_type (insn) == TYPE_BRANCH;
+}
+
+/* Return TRUE if INSN is an ALU-class or ALU-IMM-class instruction
+   for the purposes of limited dual-issue fusion.  OP and OP-IMM formats
+   include arithmetic, logical, shift, slt, bitmanip, min/max, clz/ctz.
+   Also includes LUI (move of upper immediate constant).  */
+
+static bool
+arcv_alu_class_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return (type == TYPE_ARITH
+	  || type == TYPE_LOGICAL
+	  || type == TYPE_SHIFT
+	  || type == TYPE_SLT
+	  || type == TYPE_BITMANIP
+	  || type == TYPE_MIN
+	  || type == TYPE_MAX
+	  || type == TYPE_MINU
+	  || type == TYPE_MAXU
+	  || type == TYPE_CLZ
+	  || type == TYPE_CTZ
+	  || type == TYPE_CPOP
+	  || type == TYPE_MOVE
+	  || type == TYPE_CONST);
+}
+
+/* Return TRUE if there is a RAW or WAW hazard between PREV and CURR
+   that prevents limited dual-issue.  In simultaneous dual-issue, both
+   instructions read their operands from the state before either writes,
+   so CURR must not read PREV's destination (RAW), and they must not
+   write to the same register (WAW).  */
+
+static bool
+arcv_limited_dual_issue_hazard_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+
+  /* If prev doesn't have a simple SET, be conservative.
+     Stores don't produce register results so skip the check.  */
+  if (!prev_set || !REG_P (SET_DEST (prev_set)))
+    return false;
+
+  rtx prev_dest = SET_DEST (prev_set);
+  rtx curr_set = single_set (curr);
+
+  if (curr_set)
+    {
+      /* RAW: curr's source reads prev's destination.  */
+      if (reg_overlap_mentioned_p (prev_dest, SET_SRC (curr_set)))
+	return true;
+
+      /* For stores, also check if the memory address reads prev's dest.  */
+      if (MEM_P (SET_DEST (curr_set))
+	  && reg_overlap_mentioned_p (prev_dest, XEXP (SET_DEST (curr_set), 0)))
+	return true;
+
+      /* WAW: both write to the same register.  */
+      if (REG_P (SET_DEST (curr_set))
+	  && REGNO (prev_dest) == REGNO (SET_DEST (curr_set)))
+	return true;
+    }
+  else
+    {
+      /* Branch or other non-SET instruction: check if it reads prev's dest.  */
+      if (reg_overlap_mentioned_p (prev_dest, PATTERN (curr)))
+	return true;
+    }
+
+  return false;
+}
+
+/* Check if a limited dual-issue pair of PREV and CURR is valid.
+   This implements the RMX-500 limited dual-issue specification.
+
+   Allowed pairs:
+     LD/FLD + ALU/ALU-IMM  (interchangeable)
+     ST/FST + ALU/ALU-IMM  (interchangeable)
+     ST/FST + BR           (I1 then I2 only: ST first)
+     LD/FLD + BR           (I1 then I2 only: LD first)
+     FLD + FMAC            (interchangeable)
+
+   All pairs require no RAW/WAW hazard between the two instructions.
+   Only for RMX-500 with advanced fusion enabled.  */
+
+static bool
+arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  bool valid_pair = false;
+
+  /* LD/FLD + ALU/ALU-IMM (interchangeable).  */
+  if ((arcv_load_insn_p (prev) && arcv_alu_class_insn_p (curr))
+      || (arcv_alu_class_insn_p (prev) && arcv_load_insn_p (curr)))
+    valid_pair = true;
+
+  /* ST/FST + ALU/ALU-IMM (interchangeable).  */
+  if ((arcv_store_insn_p (prev) && arcv_alu_class_insn_p (curr))
+      || (arcv_alu_class_insn_p (prev) && arcv_store_insn_p (curr)))
+    valid_pair = true;
+
+  /* ST/FST + BR (ordered: store then branch).  */
+  if (arcv_store_insn_p (prev) && arcv_branch_insn_p (curr))
+    valid_pair = true;
+
+  /* LD/FLD + BR (ordered: load then branch).  */
+  if (arcv_load_insn_p (prev) && arcv_branch_insn_p (curr))
+    valid_pair = true;
+
+  /* FLD + FMAC (interchangeable).  */
+  if ((arcv_fpload_insn_p (prev) && arcv_fmac_insn_p (curr))
+      || (arcv_fmac_insn_p (prev) && arcv_fpload_insn_p (curr)))
+    valid_pair = true;
+
+  if (!valid_pair)
+    return false;
+
+  /* Check for RAW/WAW hazards that prevent dual-issue.  */
+  if (arcv_limited_dual_issue_hazard_p (prev, curr))
+    return false;
+
+  return true;
+}
+
 /* Helper function to check if instruction type is arithmetic-like.  */
 
 static bool
@@ -415,6 +579,17 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
+  /* RMX-500 limited dual-issue fusions.  These are only available
+     for RMX-500 with advanced fusion enabled.  */
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && riscv_microarchitecture == arcv_rmx500
+      && arcv_rmx500_limited_dual_issue_pair_p (prev, curr))
+    {
+      if (dump_file)
+	fprintf (dump_file, "ARCV_RMX500_LIMITED_DUAL_ISSUE\n");
+      return true;
+    }
+
   /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
   bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
 
@@ -573,6 +748,11 @@ arcv_next_fusible_insn (rtx_insn *insn)
 int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
+  /* RMX-500 is single-pipe: no dual-pipe reordering needed.
+     Macro-op fusion is handled by riscv_macro_fusion_pair_p.  */
+  if (riscv_microarchitecture == arcv_rmx500)
+    return sched_state.cached_can_issue_more;
+
   if (sched_fusion)
     return sched_state.cached_can_issue_more;
 
@@ -845,6 +1025,14 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 bool
 arcv_can_issue_more_p (int issue_rate, int more)
 {
+  /* RMX-500 is single-issue: no dual-pipe tracking needed.  */
+  if (riscv_microarchitecture == arcv_rmx500)
+    {
+      if (more == issue_rate)
+	sched_state.cached_can_issue_more = more;
+      return more > 0;
+    }
+
   /* Beginning of cycle - reset variables.  */
   if (more == issue_rate)
     {
@@ -866,6 +1054,33 @@ arcv_can_issue_more_p (int issue_rate, int more)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
+  /* RMX-500 is single-issue with fusion support.  */
+  if (riscv_microarchitecture == arcv_rmx500)
+    {
+      sched_state.last_scheduled_insn = insn;
+
+      /* Fused instruction (mul+add, slli+srli) takes both issue slots.  */
+      if (get_attr_type (insn) == TYPE_ALU_FUSED
+	  || get_attr_type (insn) == TYPE_IMUL_FUSED)
+	{
+	  sched_state.cached_can_issue_more = 0;
+	  return 0;
+	}
+
+      /* Part of a macro-op fusion pair: allow the paired instruction.  */
+      if (next_insn (insn) && INSN_P (next_insn (insn))
+	  && SCHED_GROUP_P (next_insn (insn)))
+	{
+	  sched_state.cached_can_issue_more = more - 1;
+	  return more - 1;
+	}
+
+      /* Single non-fused instruction: consumes the entire cycle.  */
+      sched_state.cached_can_issue_more = 0;
+      return 0;
+    }
+
+  /* RHX-100/RPX-100: dual-pipe tracking.  */
   if (next_insn (insn) && INSN_P (next_insn (insn))
       && SCHED_GROUP_P (next_insn (insn)))
     {
