@@ -81,7 +81,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "cgraph.h"
 #include "langhooks.h"
 #include "gimplify.h"
-
+#include "context.h"
 /* This file should be included last.  */
 #include "target-def.h"
 #include "riscv-vector-costs.h"
@@ -2310,7 +2310,7 @@ riscv_classify_address (struct riscv_address_info *info, rtx x,
       info->type = ADDRESS_REG;
       info->reg = XEXP (x, 0);
       info->offset = XEXP (x, 1);
-      return (riscv_valid_base_register_p (info->reg, mode, strict_p)
+      return  (riscv_valid_base_register_p (info->reg, mode, strict_p)
 	      && riscv_valid_offset_p (info->offset, mode));
 
     case LO_SUM:
@@ -4031,7 +4031,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	      && !riscv_compressed_lw_address_p (XEXP (x, 0)))
 	    cost++;
 
-	  *total = COSTS_N_INSNS (cost + tune_param->memory_cost);
+	  *total = COSTS_N_INSNS (tune_param->memory_cost);
 	  return true;
 	}
       /* Otherwise use the default handling.  */
@@ -4454,7 +4454,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 /* Implement TARGET_ADDRESS_COST.  */
 
 static int
-riscv_address_cost (rtx addr, machine_mode mode,
+riscv_address_cost (rtx x, machine_mode mode,
 		    addr_space_t as ATTRIBUTE_UNUSED,
 		    bool speed ATTRIBUTE_UNUSED)
 {
@@ -4462,9 +4462,9 @@ riscv_address_cost (rtx addr, machine_mode mode,
    * expensive so that compressible 32-bit addresses are preferred.  */
   if ((TARGET_RVC || TARGET_ZCA)
       && !speed && riscv_mshorten_memrefs && mode == SImode
-      && !riscv_compressed_lw_address_p (addr))
-    return riscv_address_insns (addr, mode, false) + 1;
-  return riscv_address_insns (addr, mode, false);
+      && !riscv_compressed_lw_address_p (x))
+    return riscv_address_insns (x, mode, false) + 1;
+  return riscv_address_insns (x, mode, false);
 }
 
 /* Implement TARGET_INSN_COST.  We factor in the branch cost in the cost
@@ -10968,6 +10968,25 @@ riscv_override_options_internal (struct gcc_options *opts)
     {
       opts->x_target_flags &= ~MASK_ARCV_ADVANCED_FUSION;
     }
+}
+
+static void
+	riscv_register_pass (
+  rtl_opt_pass *(*make_pass_func) (gcc::context *),
+  enum pass_positioning_ops pass_pos,
+  const char *ref_pass_name)
+{
+  opt_pass *new_opt_pass = make_pass_func (g);
+
+  struct register_pass_info insert_pass =
+    {
+      new_opt_pass,     /* pass */
+      ref_pass_name,    /* reference_pass_name */
+      1,                /* ref_pass_instance_number */
+      pass_pos          /* po_op */
+    };
+
+  register_pass (&insert_pass);
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */

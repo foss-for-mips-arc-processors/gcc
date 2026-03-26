@@ -736,3 +736,7 @@ Use 128-bit long double.
 marc-v-rmx-500-series-advanced-fusion
 Target Mask(ARCV_ADVANCED_FUSION)
 Explicitly disable or enable advanced fusion for the RMX-500 core.
+
+friscv-fold-mem
+Target Var(riscv_fold_mem) Init(0)
+Enable the RISC-V memory folding pass.
