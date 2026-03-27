@@ -161,39 +161,6 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
 }
 
 static bool
-arcv_load_insn_p (rtx_insn *insn)
-{
-  enum attr_type type = get_attr_type (insn);
-  return type == TYPE_LOAD || type == TYPE_FPLOAD;
-}
-
-static bool
-arcv_store_insn_p (rtx_insn *insn)
-{
-  enum attr_type type = get_attr_type (insn);
-  return type == TYPE_STORE || type == TYPE_FPSTORE;
-}
-
-static bool
-arcv_fpload_insn_p (rtx_insn *insn)
-{
-  return get_attr_type (insn) == TYPE_FPLOAD;
-}
-
-static bool
-arcv_fmac_insn_p (rtx_insn *insn)
-{
-  enum attr_type type = get_attr_type (insn);
-  return type == TYPE_FADD || type == TYPE_FMUL || type == TYPE_FMADD;
-}
-
-static bool
-arcv_branch_insn_p (rtx_insn *insn)
-{
-  return get_attr_type (insn) == TYPE_BRANCH;
-}
-
-static bool
 arcv_alu_class_insn_p (rtx_insn *insn)
 {
   enum attr_type type = get_attr_type (insn);
@@ -250,23 +217,30 @@ static bool
 arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
   bool valid_pair = false;
+  enum attr_type prev_type = get_attr_type (prev);
+  enum attr_type curr_type = get_attr_type (curr);
 
-  if ((arcv_load_insn_p (prev) && arcv_alu_class_insn_p (curr))
-      || (arcv_alu_class_insn_p (prev) && arcv_load_insn_p (curr)))
+  bool prev_is_load = (prev_type == TYPE_LOAD || prev_type == TYPE_FPLOAD);
+  bool curr_is_load = (curr_type == TYPE_LOAD || curr_type == TYPE_FPLOAD);
+  bool prev_is_store = (prev_type == TYPE_STORE || prev_type == TYPE_FPSTORE);
+  bool curr_is_store = (curr_type == TYPE_STORE || curr_type == TYPE_FPSTORE);
+  bool prev_is_alu = arcv_alu_class_insn_p (prev);
+  bool curr_is_alu = arcv_alu_class_insn_p (curr);
+
+  if ((prev_is_load && curr_is_alu) || (prev_is_alu && curr_is_load))
     valid_pair = true;
 
-  if ((arcv_store_insn_p (prev) && arcv_alu_class_insn_p (curr))
-      || (arcv_alu_class_insn_p (prev) && arcv_store_insn_p (curr)))
+  if ((prev_is_store && curr_is_alu) || (prev_is_alu && curr_is_store))
     valid_pair = true;
 
-  if (arcv_store_insn_p (prev) && arcv_branch_insn_p (curr))
+  if ((prev_is_store || prev_is_load) && curr_type == TYPE_BRANCH)
     valid_pair = true;
 
-  if (arcv_load_insn_p (prev) && arcv_branch_insn_p (curr))
-    valid_pair = true;
-
-  if ((arcv_fpload_insn_p (prev) && arcv_fmac_insn_p (curr))
-      || (arcv_fmac_insn_p (prev) && arcv_fpload_insn_p (curr)))
+  if ((prev_type == TYPE_FPLOAD && (curr_type == TYPE_FADD
+				    || curr_type == TYPE_FMUL
+				    || curr_type == TYPE_FMADD))
+      || ((prev_type == TYPE_FADD || prev_type == TYPE_FMUL
+	   || prev_type == TYPE_FMADD) && curr_type == TYPE_FPLOAD))
     valid_pair = true;
 
   if (!valid_pair)
@@ -700,14 +674,32 @@ arcv_next_fusible_insn (rtx_insn *insn)
 int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
-  if (riscv_microarchitecture == arcv_rmx500)
-    return sched_state.cached_can_issue_more;
-
   if (sched_fusion)
     return sched_state.cached_can_issue_more;
 
   if (!sched_state.cached_can_issue_more)
     return 0;
+
+  if (riscv_microarchitecture == arcv_rmx500
+      && sched_state.last_scheduled_insn
+      && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn))
+    {
+      for (int i = 1; i <= *n_readyp; i++)
+	{
+	  rtx_insn *candidate = ready[*n_readyp - i];
+	  if (NONDEBUG_INSN_P (candidate)
+	      && !SCHED_GROUP_P (candidate)
+	      && arcv_macro_fusion_pair_p
+		   (sched_state.last_scheduled_insn, candidate))
+	    {
+	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	      return sched_state.cached_can_issue_more;
+	    }
+	}
+      return sched_state.cached_can_issue_more;
+    }
 
   /* Fuse double load/store instances missed by sched_fusion.  */
   if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn
