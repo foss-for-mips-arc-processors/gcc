@@ -20,20 +20,18 @@
 
 (define_automaton "arcv_rmx500")
 
-;; RMX-500 is a single-issue core with fusion support.
-;; Single pipe with fuse0/fuse1 to model fused instructions that occupy
-;; two issue slots.  Single DMP unit for memory operations.
 (define_cpu_unit "arcv_rmx500_ALU_fuse0_early"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_ALU_fuse1_early"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_MPY32"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_DIV"	"arcv_rmx500")
-(define_cpu_unit "arcv_rmx500_DMP"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DMP_fuse0"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_DMP_fuse1"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_fdivsqrt"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_issue_fuse0" "arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_issue_fuse1" "arcv_rmx500")
 
 ;; Instruction reservation for arithmetic instructions (single pipe).
-;; Instructions can be issued back to back - after 1 cycle the result is available.
+;; instructions can be issued back to back - after 1 cycle the result is available
 (define_insn_reservation "arcv_rmx500_alu_early_arith" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "unknown,move,const,arith,shift,slt,multi,auipc,nop,logical,\
@@ -69,12 +67,12 @@
 (define_insn_reservation "arcv_rmx500_load_insn" 2
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
-  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_DMP, nothing")
+  "(arcv_rmx500_issue_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_DMP_fuse1), nothing")
 
 (define_insn_reservation "arcv_rmx500_store_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "store,fpstore"))
-  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_DMP")
+  "(arcv_rmx500_issue_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_DMP_fuse1)")
 
 ;; (soft) floating points
 (define_insn_reservation "arcv_rmx500_xfer" 3

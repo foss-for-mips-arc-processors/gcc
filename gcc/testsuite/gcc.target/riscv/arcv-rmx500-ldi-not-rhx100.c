@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
-/* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-Os" "-Oz" } } */
-/* { dg-options "-O2 -mtune=arc-v-rhx-100-series -marc-v-rmx-500-series-advanced-fusion -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
+/* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-O1" "-Oz" "-Os" } } */
+/* { dg-options "-mtune=arc-v-rhx-100-series -marc-v-rmx-500-series-advanced-fusion -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
 
 /* Test that RMX-500 limited dual-issue fusions do NOT fire on RHX-100.
    Even with the advanced fusion flag, the limited dual-issue is RMX-500 only.

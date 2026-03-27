@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
-/* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-Os" "-Oz" } } */
-/* { dg-options "-O2 -mtune=arc-v-rmx-500-series -marc-v-rmx-500-series-advanced-fusion -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
+/* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-O1" "-Oz" "-Os" } } */
+/* { dg-options "-mtune=arc-v-rmx-500-series -marc-v-rmx-500-series-advanced-fusion -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
 
 /* Test RMX-500 limited dual-issue: ST + BR fusion.
    The store and conditional branch should be scheduled in the same cycle.
@@ -18,5 +18,5 @@ test_st_br (int *p, int val, int cond1, int cond2)
   return val;
 }
 
-/* Verify ST+BR fusion occurs.  */
-/* { dg-final { scan-rtl-dump "ARCV_RMX500_LIMITED_DUAL_ISSUE" "sched2" } } */
+/* Verify ST and BR are both at cycle 0 (fused).  */
+/* { dg-final { scan-rtl-dump "0-->.*\\\[a0\\\]=a1.*\n.*0-->.*pc=" "sched2" } } */
