@@ -1128,8 +1128,7 @@
   "TARGET_HARD_FLOAT  || TARGET_ZFINX"
   "fmul.<fmt>\t%0,%1,%2"
   [(set_attr "type" "fmul")
-   (set_attr "mode" "<UNITMODE>")
-   (set_attr "mul_part" "low")])
+   (set_attr "mode" "<UNITMODE>")])
 
 (define_insn "*mulsi3"
   [(set (match_operand:SI          0 "register_operand" "=r")
@@ -1138,8 +1137,7 @@
   "TARGET_ZMMUL || TARGET_MUL"
   "mul%~\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "SI")
-   (set_attr "mul_part" "low")])
+   (set_attr "mode" "SI")])
 
 (define_expand "mulsi3"
   [(set (match_operand:SI          0 "register_operand" "=r")
@@ -1166,8 +1164,7 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
   "mul\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "DI")
-   (set_attr "mul_part" "low")])
+   (set_attr "mode" "DI")])
 
 (define_expand "mulv<mode>4"
   [(set (match_operand:GPR           0 "register_operand" "=r")
@@ -1256,8 +1253,7 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
   "mulw\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "SI")
-   (set_attr "mul_part" "low")])
+   (set_attr "mode" "SI")])
 
 (define_insn "*mulsi3_extended2"
   [(set (match_operand:DI                       0 "register_operand" "=r")
@@ -1268,8 +1264,7 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
   "mulw\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "SI")
-   (set_attr "mul_part" "low")])
+   (set_attr "mode" "SI")])
 
 ;;
 ;;  ........................
@@ -1290,12 +1285,10 @@
   rtx high = gen_reg_rtx (DImode);
 
   if (riscv_microarchitecture == arcv_rpx100)
-    {
-      emit_insn (gen_<su>mulditi4_bonded_arcv_rpx100 (high,
-      						      operands[1],
-						      operands[2],
-						      low));
-    }
+    emit_insn (gen_<su>mulditi4_bonded_arcv_rpx100 (high,
+						    operands[1],
+						    operands[2],
+						    low));
   else
     {
       emit_insn (gen_muldi3 (low, operands[1], operands[2]));
