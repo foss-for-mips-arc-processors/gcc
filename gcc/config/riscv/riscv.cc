@@ -11971,10 +11971,12 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
+  if (riscv_microarchitecture == arcv_rpx100
+      && arcv_macro_bonded_mul_pair_p(prev, curr))
+    return true;
+
   if (TARGET_ARCV_FUSION)
-    return (arcv_macro_fusion_pair_p (prev, curr)
-	    || (riscv_microarchitecture == rpx100 &&
-		arcv_macro_bonded_mul_pair_p (prev, curr)));
+    return arcv_macro_fusion_pair_p(prev, curr);
 
   return false;
 }
