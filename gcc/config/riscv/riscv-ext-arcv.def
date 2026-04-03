@@ -1,4 +1,4 @@
-/* Andes extension definition file for RISC-V.
+/* ARC-V extension definition file for RISC-V.
    Copyright (C) 2025-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
@@ -24,7 +24,98 @@ Format of DEFINE_RISCV_EXT, please refer to riscv-ext.def.  */
 DEFINE_RISCV_EXT(
   /* NAME */ xarcvudsp,
   /* UPPERCASE_NAME */ XARCVUDSP,
-  /* FULL_NAME */ "Synopsys ARC-V micro-DSP extension",
+  /* FULL_NAME */ "ARC-V micro-DSP extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvbitrev,
+  /* UPPERCASE_NAME */ XARCVBITREV,
+  /* FULL_NAME */ "ARC-V bit-reverse addressing extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvvdsp,
+  /* UPPERCASE_NAME */ XARCVVDSP,
+  /* FULL_NAME */ "ARC-V fixed-point DSP extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvvcplx,
+  /* UPPERCASE_NAME */ XARCVVCPLX,
+  /* FULL_NAME */ "ARC-V complex numbers extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvvsad,
+  /* UPPERCASE_NAME */ XARCVVSAD,
+  /* FULL_NAME */ "ARC-V sum of absolute difference extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvmxmb,
+  /* UPPERCASE_NAME */ XARCVMXMB,
+  /* FULL_NAME */ "ARC-V 4x4 matrix multiplication extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvmxmc,
+  /* UPPERCASE_NAME */ XARCVMXMC,
+  /* FULL_NAME */ "ARC-V 8x8 matrix multiplication extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
+  /* NAME */ xarcvmxmd,
+  /* UPPERCASE_NAME */ XARCVMXMD,
+  /* FULL_NAME */ "ARC-V 16x16 matrix multiplication extension",
   /* DESC */ "",
   /* URL */ ,
   /* DEP_EXTS */ ({}),
