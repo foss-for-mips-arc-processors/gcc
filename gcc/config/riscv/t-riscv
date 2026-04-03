@@ -95,6 +95,13 @@ riscv-opt-popretz.o: $(srcdir)/config/riscv/riscv-opt-popretz.cc $(CONFIG_H) \
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/riscv-opt-popretz.cc
 
+riscv-fusion.o: $(srcdir)/config/riscv/riscv-fusion.cc $(CONFIG_H) \
+  $(SYSTEM_H) coretypes.h $(TM_H) $(TARGET_H) $(RTL_H) $(REGS_H) \
+  $(RECOG_H) $(FUNCTION_H) $(EMIT_RTL_H) $(TM_P_H) insn-config.h \
+  $(srcdir)/config/riscv/riscv-protos.h
+	$(COMPILE) $<
+	$(POSTCOMPILE)
+
 riscv-c.o: $(srcdir)/config/riscv/riscv-c.cc $(CONFIG_H) $(SYSTEM_H) \
     coretypes.h $(TM_H) $(TREE_H) output.h $(C_COMMON_H) $(TARGET_H)
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \

@@ -814,6 +814,30 @@ const unsigned int RISCV_BUILTIN_CLASS = (1 << RISCV_BUILTIN_SHIFT) - 1;
 extern bool riscv_expand_strcmp (rtx, rtx, rtx, rtx, rtx);
 extern bool riscv_expand_strlen (rtx, rtx, rtx, rtx);
 
+/* Routines implemented in riscv-fusion.cc.  */
+enum riscv_fusion_pairs
+{
+  RISCV_FUSE_NOTHING = 0,
+  RISCV_FUSE_ZEXTW = (1 << 0),
+  RISCV_FUSE_ZEXTH = (1 << 1),
+  RISCV_FUSE_ZEXTWS = (1 << 2),
+  RISCV_FUSE_LDINDEXED = (1 << 3),
+  RISCV_FUSE_LUI_ADDI = (1 << 4),
+  RISCV_FUSE_AUIPC_ADDI = (1 << 5),
+  RISCV_FUSE_LUI_LD = (1 << 6),
+  RISCV_FUSE_AUIPC_LD = (1 << 7),
+  RISCV_FUSE_LDPREINCREMENT = (1 << 8),
+  RISCV_FUSE_ALIGNED_STD = (1 << 9),
+  RISCV_FUSE_CACHE_ALIGNED_STD = (1 << 10),
+  RISCV_FUSE_BFEXT = (1 << 11),
+  RISCV_FUSE_EXPANDED_LD = (1 << 12),
+  RISCV_FUSE_B_ALUI = (1 << 13),
+};
+
+extern bool riscv_macro_fusion_p (void);
+extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern unsigned int riscv_get_fusible_ops (void);
+
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);
 extern bool th_mempair_operands_p (rtx[4], bool, machine_mode);
