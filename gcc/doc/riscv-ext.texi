@@ -752,6 +752,34 @@
 
 @item @samp{xarcvudsp}
 @tab 1.0
-@tab Synopsys ARC-V micro-DSP extension
+@tab ARC-V micro-DSP extension
+
+@item @samp{xarcvbitrev}
+@tab 1.0
+@tab ARC-V bit-reverse addressing extension
+
+@item @samp{xarcvvdsp}
+@tab 1.0
+@tab ARC-V fixed-point DSP extension
+
+@item @samp{xarcvvcplx}
+@tab 1.0
+@tab ARC-V complex numbers extension
+
+@item @samp{xarcvvsad}
+@tab 1.0
+@tab ARC-V sum of absolute difference extension
+
+@item @samp{xarcvmxmb}
+@tab 1.0
+@tab ARC-V 4x4 matrix multiplication extension
+
+@item @samp{xarcvmxmc}
+@tab 1.0
+@tab ARC-V 8x8 matrix multiplication extension
+
+@item @samp{xarcvmxmd}
+@tab 1.0
+@tab ARC-V 16x16 matrix multiplication extension
 
 @end multitable
