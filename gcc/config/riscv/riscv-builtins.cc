@@ -440,6 +440,10 @@ riscv_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
       case RISCV_BUILTIN_VECTOR:
 	return riscv_vector::expand_builtin (subcode, exp, target);
+
+      case RISCV_BUILTIN_APEX:
+	return arcv_apex_expand_builtin (subcode, exp, target);
+
       case RISCV_BUILTIN_GENERAL: {
 	const struct riscv_builtin_description *d = &riscv_builtins[subcode];
 

@@ -49,3 +49,54 @@ along with GCC; see the file COPYING3.  If not see
 #include "sched-int.h"
 #include "tm-constrs.h"
 
+/* Print .extInstruction assembly directives for APEX instruction formats.  */
+
+void
+arcv_apex_emit_ext_directive (const char *mnemonic, int opcode,
+			       unsigned int format_flags)
+{
+  unsigned int operand_sig = format_flags >> 5;
+  bool has_immediate = format_flags & (APEX_XS | APEX_XI | APEX_XC);
+  const char *suffix = (format_flags & APEX_XD) && has_immediate ? "i" : "";
+
+  /* XD: most general, includes operand flags.  */
+  if (format_flags & APEX_XD)
+    {
+      fprintf (asm_out_file, "\t.extInstruction %s,%d,XD", mnemonic, opcode);
+      if (format_flags & APEX_VOID)
+	fputs (",void", asm_out_file);
+      if (format_flags & APEX_NO_SRC0)
+	fputs (",no_src0", asm_out_file);
+      if (format_flags & APEX_NO_SRC1)
+	fputs (",no_src1", asm_out_file);
+      fputc ('\n', asm_out_file);
+    }
+
+  /* XS/XC: dest, src0, src1.  */
+  if ((format_flags & (APEX_XS | APEX_XC))
+      && (operand_sig == APEX_DEST_FTYPE_SRC0_SRC1))
+    {
+      fprintf (asm_out_file, "\t.extInstruction %s%s,%d",
+	       mnemonic, suffix, opcode);
+      if (format_flags & APEX_XS)
+	fputs (",XS", asm_out_file);
+      if (format_flags & APEX_XC)
+	fputs (",XC", asm_out_file);
+      fputc ('\n', asm_out_file);
+    }
+
+  /* XI: dest (optional), src0.  */
+  if (format_flags & APEX_XI)
+    {
+      fprintf (asm_out_file, "\t.extInstruction %s%s,%d,XI",
+	       mnemonic, suffix, opcode);
+      if (format_flags & APEX_VOID)
+	fputs (",void", asm_out_file);
+      fputc ('\n', asm_out_file);
+    }
+
+  /* XS: void, src0, src1.  */
+  if ((format_flags & APEX_XS) && (operand_sig == APEX_VOID_FTYPE_SRC0_SRC1))
+    fprintf (asm_out_file, "\t.extInstruction %s%s,%d,XS,void\n",
+	     mnemonic, suffix, opcode);
+}
