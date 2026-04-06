@@ -23,8 +23,31 @@ if ![istarget riscv*-*-*] then {
 
 # Load support libraries.
 load_lib gcc-dg.exp
+load_lib standard.exp
+load_lib lto.exp
+load_lib scanltrans.exp
 
-# Run tests.
+# Run regular single-file tests.
 dg-init
-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]] "" ""
+set tests [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]]
+set non_lto_tests [list]
+foreach test $tests {
+    if {![string match "*arcv-apex-lto-*" $test]} {
+        lappend non_lto_tests $test
+    }
+}
+dg-runtest $non_lto_tests "" ""
 dg-finish
+
+# Run multi-file LTO tests if supported.
+if [check_effective_target_lto] {
+    lto_init no-mathlib
+
+    foreach src [lsort [find $srcdir/$subdir arcv-apex-lto-*_0.c]] {
+        if [runtest_file_p $runtests $src] {
+            lto-execute $src "riscv_apex_lto"
+        }
+    }
+
+    lto_finish
+}

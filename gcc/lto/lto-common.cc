@@ -2970,6 +2970,12 @@ read_cgraph_and_symbols (unsigned nfiles, const char **fnames)
   else
     ipa_read_summaries ();
 
+#ifdef TARGET_RISCV_APEX
+  /* RISC-V APEX intrinsics are registered dynamically via pragmas and
+     need explicit deserialization after LTO input.  See arcv-builtins.cc.  */
+  arcv_apex_lto_read_section ();
+#endif
+
   ggc_grow ();
 
   for (i = 0; all_file_decl_data[i]; i++)

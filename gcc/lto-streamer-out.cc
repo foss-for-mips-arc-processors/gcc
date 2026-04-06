@@ -3474,6 +3474,12 @@ produce_asm_for_decls (void)
   /* Write command line opts.  */
   lto_write_options ();
 
+#ifdef TARGET_RISCV_APEX
+  /* RISC-V APEX intrinsics are registered dynamically via pragmas and
+     need explicit serialization to survive LTO.  See arcv-builtins.cc.  */
+  arcv_apex_lto_write_section ();
+#endif
+
   /* Deallocate memory and clean up.  */
   for (idx = 0; idx < num_fns; idx++)
     {

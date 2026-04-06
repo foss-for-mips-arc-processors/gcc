@@ -341,10 +341,10 @@ riscv_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
       return riscv_vector::builtin_decl (subcode, initialize_p);
 
     case RISCV_BUILTIN_APEX:
-      /* APEX intrinsics are pragma-registered and don't have
-	 persistent decls.  */
-      sorry ("APEX intrinsics are not supported with LTO yet");
-      return error_mark_node;
+      /* Trick GCC to think that the function is defined.
+	 The actual fndecl used is created after this
+	 validation from the GIMPLE representation in LTO.  */
+      return integer_zero_node;
     }
   return error_mark_node;
 }

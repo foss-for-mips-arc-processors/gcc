@@ -4134,6 +4134,18 @@ operand_compare::hash_operand (const_tree t, inchash::hash &hstate,
 	  t = builtin_decl_explicit (DECL_FUNCTION_CODE (t));
 	  code = TREE_CODE (t);
 	}
+      /* For non-BUILT_IN_NORMAL builtins (e.g. BUILT_IN_MD), we cannot
+	 canonicalize to a single representative decl, but we must still
+	 hash consistently with operand_equal_p which compares by
+	 built_in_class + function_code.  Hash those fields instead of
+	 DECL_UID so that distinct FUNCTION_DECLs (e.g. from different
+	 LTO translation units) that compare equal also hash equal.  */
+      else if (fndecl_built_in_p (t))
+	{
+	  hstate.add_int (DECL_BUILT_IN_CLASS (t));
+	  hstate.add_hwi (DECL_UNCHECKED_FUNCTION_CODE (t));
+	  return;
+	}
       /* FALL THROUGH */
     default:
       if (POLY_INT_CST_P (t))

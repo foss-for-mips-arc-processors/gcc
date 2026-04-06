@@ -40,6 +40,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "backend.h"
 #include "gimple.h"
 #include "gimple-iterator.h"
+#include "cgraph.h"
+#include "lto-streamer.h"
+#include "ipa-utils.h"
+#include "data-streamer.h"
 
 /* Specifies how a built-in function should be converted into rtl.  */
 enum riscv_builtin_type {
@@ -392,6 +396,235 @@ arcv_apex_register_builtin (tree fndecl, const char *fn_name,
   arcv_apex_builtin_index++;
 
   arcv_apex_emit_ext_directive (mnemonic, opcode, format_flags);
+}
+
+/* Check if an APEX builtin with the given characteristics already exists.
+   Returns the index if found with matching parameters, -1 if not found,
+   or -2 if found but with conflicting parameters.  */
+
+static int
+arcv_apex_lto_lookup_builtin (const char *fn_name, const char *mnemonic,
+			    unsigned int opcode, unsigned int format_flags,
+			    location_t loc)
+{
+  for (int i = 0; i < arcv_apex_builtin_index; i++)
+    {
+      const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[i];
+
+      /* Skip if function name doesn't match.  */
+      if (strcmp (d->name, fn_name) != 0)
+	continue;
+
+      /* Function name matches - validate all parameters.  */
+      bool mismatch = false;
+
+      if (strcmp (d->mnemonic, mnemonic) != 0)
+	{
+	  warning_at (loc, 0, "APEX builtin %qs already registered with "
+		      "different mnemonic: %qs vs %qs",
+		      fn_name, d->mnemonic, mnemonic);
+	  mismatch = true;
+	}
+
+      if (d->opcode != opcode)
+	{
+	  warning_at (loc, 0, "APEX builtin %qs already registered with "
+		      "different opcode: 0x%x vs 0x%x",
+		      fn_name, d->opcode, opcode);
+	  mismatch = true;
+	}
+
+      if (d->format_flags != format_flags)
+	{
+	  warning_at (loc, 0, "APEX builtin %qs already registered with "
+		      "different instruction formats: 0x%x vs 0x%x",
+		      fn_name, d->format_flags, format_flags);
+	  mismatch = true;
+	}
+
+      /* Return -2 for conflicting registration, or index if match.  */
+      return mismatch ? -2 : i;
+    }
+
+  return -1;
+}
+
+static void
+arcv_apex_lto_register_builtin (const char *fn_name, const char *mnemonic,
+			      unsigned int opcode, unsigned int format_flags,
+			      bool emit_directive_p, tree fndecl)
+{
+  location_t loc = DECL_SOURCE_LOCATION (fndecl);
+
+  int existing_idx = arcv_apex_lto_lookup_builtin (fn_name, mnemonic, opcode,
+					      format_flags, loc);
+
+  if (existing_idx == -2)
+    {
+      error_at (loc, "APEX builtin %qs has conflicting definitions across "
+	     "compilation units", fn_name);
+      return;
+    }
+
+  if (existing_idx >= 0)
+    {
+      fndecl->function_decl.function_code
+	= (existing_idx << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+      return;
+    }
+
+  gcc_assert (arcv_apex_builtin_index < arcv_apex_builtins_limit);
+
+  enum riscv_builtin_type builtin_type
+	= (format_flags & APEX_VOID) ? RISCV_BUILTIN_DIRECT_NO_TARGET
+				     : RISCV_BUILTIN_DIRECT;
+
+  enum insn_code icode = arcv_apex_icode (format_flags);
+
+  /* Store APEX insn information.  */
+  arcv_apex_builtins[arcv_apex_builtin_index]
+    = { icode, xstrdup (fn_name), xstrdup (mnemonic), opcode,
+	builtin_type, format_flags };
+
+  fndecl->function_decl.function_code
+    = (arcv_apex_builtin_index << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_APEX;
+
+  arcv_apex_builtin_index++;
+
+  if (emit_directive_p)
+    arcv_apex_emit_ext_directive (mnemonic, opcode, format_flags);
+}
+
+/* LTO serialization for APEX intrinsics.
+
+   APEX intrinsics are registered dynamically via #pragma intrinsic,
+   so their metadata must be explicitly serialized to survive LTO.
+   See lto-streamer-out.cc (produce_asm_for_decls) and
+   lto/lto-common.cc (read_cgraph_and_symbols) for the call sites.  */
+
+/* Serialize all referenced APEX intrinsics to the LTO stream.  */
+
+void
+arcv_apex_lto_write_section (void)
+{
+  if (arcv_apex_builtin_index == 0)
+    return;
+
+  auto_vec<int> used_indices;
+  for (int i = 0; i < arcv_apex_builtin_index; i++)
+    {
+      const struct arcv_apex_builtin_description *d = &arcv_apex_builtins[i];
+      gcc_assert (d->name);
+
+      symtab_node *snode
+	= symtab_node::get_for_asmname (get_identifier (d->name));
+
+      if (snode && snode->referred_to_p ())
+	used_indices.safe_push (i);
+    }
+
+  if (used_indices.is_empty ())
+    return;
+
+  struct lto_simple_output_block *ob
+    = lto_create_simple_output_block (LTO_section_riscv_apex);
+
+  if (!ob)
+    return;
+
+  streamer_write_uhwi_stream (ob->main_stream, used_indices.length ());
+
+  for (unsigned int idx = 0; idx < used_indices.length (); idx++)
+    {
+      const struct arcv_apex_builtin_description *d
+	= &arcv_apex_builtins[used_indices[idx]];
+
+      gcc_assert (d->name && d->mnemonic);
+
+      size_t name_len = strlen (d->name);
+      streamer_write_uhwi_stream (ob->main_stream, name_len);
+      for (size_t j = 0; j < name_len; j++)
+	streamer_write_char_stream (ob->main_stream, d->name[j]);
+
+      size_t mnemonic_len = strlen (d->mnemonic);
+      streamer_write_uhwi_stream (ob->main_stream, mnemonic_len);
+      for (size_t j = 0; j < mnemonic_len; j++)
+	streamer_write_char_stream (ob->main_stream, d->mnemonic[j]);
+
+      streamer_write_uhwi_stream (ob->main_stream, d->opcode);
+      streamer_write_uhwi_stream (ob->main_stream, d->format_flags);
+    }
+
+  lto_destroy_simple_output_block (ob);
+}
+
+/* Deserialize and re-register APEX intrinsics from all LTO input files.  */
+
+void
+arcv_apex_lto_read_section (void)
+{
+  struct lto_file_decl_data **file_data_vec = lto_get_file_decl_data ();
+  struct lto_file_decl_data *file_data;
+  unsigned int j = 0;
+
+  while ((file_data = file_data_vec[j++]))
+    {
+      const char *data;
+      size_t len;
+      class lto_input_block *ib
+	= lto_create_simple_input_block (file_data, LTO_section_riscv_apex,
+					 &data, &len);
+
+      if (!ib)
+	continue;
+
+      unsigned int apex_count = streamer_read_uhwi (ib);
+      unsigned int registered_count = 0;
+
+      for (unsigned int i = 0; i < apex_count; i++)
+	{
+	  unsigned int fn_name_len = streamer_read_uhwi (ib);
+	  char *fn_name = XNEWVEC (char, fn_name_len + 1);
+	  for (unsigned int k = 0; k < fn_name_len; k++)
+	    fn_name[k] = streamer_read_uchar (ib);
+	  fn_name[fn_name_len] = '\0';
+
+	  unsigned int mnemonic_len = streamer_read_uhwi (ib);
+	  char *mnemonic = XNEWVEC (char, mnemonic_len + 1);
+	  for (unsigned int k = 0; k < mnemonic_len; k++)
+	    mnemonic[k] = streamer_read_uchar (ib);
+	  mnemonic[mnemonic_len] = '\0';
+
+	  unsigned int opcode = streamer_read_uhwi (ib);
+	  unsigned int format_flags = streamer_read_uhwi (ib);
+
+	  symtab_node *snode
+	    = symtab_node::get_for_asmname (get_identifier (fn_name));
+
+	  cgraph_node *node = dyn_cast<cgraph_node *> (snode);
+	  if (node)
+	    {
+	      tree fndecl = node->decl;
+	      if (fndecl && TREE_CODE (fndecl) == FUNCTION_DECL)
+		{
+		  arcv_apex_lto_register_builtin (fn_name, mnemonic, opcode,
+						  format_flags, !flag_wpa,
+						  fndecl);
+		  registered_count++;
+		}
+	    }
+
+	  XDELETEVEC (fn_name);
+	  XDELETEVEC (mnemonic);
+	}
+
+      if (registered_count != apex_count)
+	warning (0, "APEX LTO: expected %u intrinsics but registered %u",
+		 apex_count, registered_count);
+
+      lto_destroy_simple_input_block (file_data, LTO_section_riscv_apex,
+				      ib, data, len);
+    }
 }
 
 /* Validate the immediate argument passed to an APEX intrinsic.

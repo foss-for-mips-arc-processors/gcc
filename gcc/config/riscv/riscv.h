@@ -1348,6 +1348,8 @@ typedef enum {
 #ifndef RISCV_APEX_H
 #define RISCV_APEX_H
 
+#define TARGET_RISCV_APEX 1
+
 /* APEX instruction format flags.  */
 enum apex_insn_format {
   APEX_NONE	= 0,
