@@ -10445,8 +10445,8 @@ riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 
 static int
 riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
-		      int verbose ATTRIBUTE_UNUSED,
-		      rtx_insn **ready,
+          int verbose ATTRIBUTE_UNUSED,
+          rtx_insn **ready,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
