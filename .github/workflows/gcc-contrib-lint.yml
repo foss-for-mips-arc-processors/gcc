@@ -26,19 +26,6 @@ jobs:
           sudo ln -sf "$LIBFILE" "$LIBDIR/libgdiagnostics.so"
           python3 -m pip install --user unidiff termcolor
 
-      - name: Fetch GCC contrib scripts
-        run: |
-          mkdir -p gcc-contrib
-          curl -sL -o gcc-contrib/check_GNU_style.py \
-            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/check_GNU_style.py
-          curl -sL -o gcc-contrib/check_GNU_style_lib.py \
-            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/check_GNU_style_lib.py
-          mkdir -p gcc-contrib/dg-lint
-          curl -sL -o gcc-contrib/dg-lint/dg-lint \
-            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/dg-lint/dg-lint
-          curl -sL -o gcc-contrib/dg-lint/libgdiagnostics.py \
-            https://raw.githubusercontent.com/gcc-mirror/gcc/master/contrib/dg-lint/libgdiagnostics.py
-
       - name: Run check-gnu-style
         run: |
           # Generate patch for PR changes (merge base to HEAD)
@@ -48,7 +35,7 @@ jobs:
           if [ -s pr.patch ]; then
             echo "::group::Running check-gnu-style"
             set +e
-            python3 gcc-contrib/check_GNU_style.py pr.patch > style-check.log 2>&1
+            python3 gcc/contrib/check_GNU_style.py pr.patch > style-check.log 2>&1
             STYLE_EXIT=$?
             set -e
             cat style-check.log
@@ -91,7 +78,7 @@ jobs:
       - name: Run dg-lint
         if: always() # always run, even if check-gnu-style fails
         run: |
-          export PYTHONPATH="$(pwd)/gcc-contrib/dg-lint:$PYTHONPATH"
+          export PYTHONPATH="$(pwd)/gcc/contrib/dg-lint:$PYTHONPATH"
           # Get list of changed files from the patch that are test files
           if [ -s pr.patch ]; then
             # Extract filenames from the patch (lines starting with +++ b/)
@@ -109,7 +96,7 @@ jobs:
                 echo "Files to check: $TEST_FILES"
                 # Capture exit code
                 set +e
-                python3 gcc-contrib/dg-lint/dg-lint \
+                python3 gcc/contrib/dg-lint/dg-lint \
                   -fdiagnostics-add-output=sarif:file=dg-lint.sarif \
                   $TEST_FILES > dg-lint.log 2>&1
                 DG_LINT_EXIT=$?
