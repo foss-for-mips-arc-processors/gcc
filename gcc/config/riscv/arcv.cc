@@ -534,17 +534,16 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       rtx store_src = SET_SRC (curr_set);
       rtx load_dest = SET_DEST (prev_set);
 
-      if (REG_P (store_src) && store_src == load_dest)
+      if (REG_P (store_src) && REG_P (load_dest)
+	  && REGNO (store_src) == REGNO (load_dest))
        {
 	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_LI_STORE\n");
-	 return true;
-       }
-
-      if (SUBREG_P (store_src) && SUBREG_REG (store_src) == load_dest)
-       {
-	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_LI_STORE (subreg)\n");
+	   {
+	     if (GET_MODE (store_src) != GET_MODE (load_dest))
+	       fprintf (dump_file, "ARCV_FUSE_LI_STORE (subreg)\n");
+	     else
+	       fprintf (dump_file, "ARCV_FUSE_LI_STORE\n");
+	   }
 	 return true;
        }
     }
