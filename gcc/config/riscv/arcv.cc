@@ -268,7 +268,7 @@ arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
   /* Check if curr is a LUI instruction:
      - LUI via HIGH: (set (reg:X rd) (high (const_int)))
      - LUI via immediate: (set (reg:X rd) (const_int UPPER_IMM_20))  */
-  bool is_lui = (REG_P (curr)
+  bool is_lui = (REG_P (SET_DEST (curr_set))
 		&& ((get_attr_type (curr) == TYPE_MOVE
 		&& GET_CODE (SET_SRC (curr_set)) == HIGH)
 		|| (CONST_INT_P (SET_SRC (curr_set))
