@@ -2134,13 +2134,17 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 
    Matches mulw+addw for RV64, not mul+add:
    prev (mul) == (set (reg:DI rD) (sign_extend:DI (mult:SI ...)))
-   curr (add) == (set (reg:DI rD) (sign_extend:DI (plus:SI ...)))  */
+   curr (add) == (set (reg:DI rD) (sign_extend:DI (plus:SI ...)))
+
+   Only enabled with -marc-v-rmx-500-series-advanced-fusion, like the
+   madd_fused patterns.  */
 
 static bool
 riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 {
   rtx prev_set, curr_set;
-  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
+  if (!TARGET_ARCV_ADVANCED_FUSION
+      || !riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
     return false;
 
   rtx prev_src = SET_SRC (prev_set);
