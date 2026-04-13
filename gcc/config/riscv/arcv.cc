@@ -406,7 +406,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   /* Fuse multiply-add pair:
      prev: (set rd_mult (mult rs1 rs2))
      curr: (set rd_add (plus rd_mult rs3))  */
-  if (prev_set && curr_set
+  if (TARGET_ARCV_ADVANCED_FUSION
+      && prev_set && curr_set
       && GET_CODE (SET_SRC (prev_set)) == MULT
       && GET_CODE (SET_SRC (curr_set)) == PLUS)
     {
