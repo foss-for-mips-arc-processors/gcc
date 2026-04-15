@@ -73,7 +73,6 @@
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "store,fpstore"))
   "(arcv_rmx500_issue_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_DMP_fuse1)")
-
 ;; (soft) floating points
 (define_insn_reservation "arcv_rmx500_xfer" 3
   (and (eq_attr "tune" "arcv_rmx500")
@@ -92,6 +91,9 @@
 
 ;; Bypasses
 (define_bypass 1 "arcv_rmx500_alu_early_arith" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 1 "arcv_rmx500_mpy32_insn" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+;; (define_bypass 5 "arcv_rmx500_mpy32_insn" "arcv_rmx500_store_insn" "!riscv_store_data_bypass_p")
+;; (define_bypass 5 "arcv_rmx500_mpy32_insn" "arcv_rmx500_load_insn" "!riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_alu_early_arith")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_mpy*_insn")
