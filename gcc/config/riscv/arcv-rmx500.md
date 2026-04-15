@@ -92,6 +92,9 @@
 
 ;; Bypasses
 (define_bypass 1 "arcv_rmx500_alu_early_arith" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 1 "arcv_rmx500_mpy32_insn" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 5 "arcv_rmx500_mpy32_insn" "arcv_rmx500_store_insn" "!riscv_store_data_bypass_p")
+(define_bypass 5 "arcv_rmx500_mpy32_insn" "arcv_rmx500_load_insn" "!riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_alu_early_arith")
 (define_bypass 1 "arcv_rmx500_load_insn" "arcv_rmx500_mpy*_insn")
