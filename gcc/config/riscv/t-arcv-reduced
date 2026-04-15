@@ -1,10 +1,18 @@
+empty =
+space = $(empty) $(empty)
+
 MULTILIB_OPTIONS =
 MULTILIB_DIRNAMES =
 MULTILIB_REQUIRED =
 MULTILIB_REUSE =
 
-MULTILIB_OPTIONS    += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx/march=rv32imafd_zca_zcb_zba_zbb_zbs/march=rv64imafdc_zcb_zba_zbb_zbs
-MULTILIB_DIRNAMES   +=       rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx       rv32imafd_zca_zcb_zba_zbb_zbs       rv64imafdc_zcb_zba_zbb_zbs
+# Reduced march variants: one per mtune
+arcv_march_variants  = rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx_zicsr
+arcv_march_variants += rv32imafd_zca_zcb_zba_zbb_zbs
+arcv_march_variants += rv64imafdc_zcb_zba_zbb_zbs
+
+MULTILIB_OPTIONS    += $(subst $(space),/,$(patsubst %,march=%,$(arcv_march_variants)))
+MULTILIB_DIRNAMES   += $(arcv_march_variants)
 
 MULTILIB_OPTIONS    += mabi=ilp32/mabi=ilp32d/mabi=lp64d
 MULTILIB_DIRNAMES   +=      ilp32      ilp32d      lp64d
@@ -15,14 +23,16 @@ MULTILIB_DIRNAMES   +=       rmx500                     rhx100                  
 MULTILIB_OPTIONS    += mcmodel=medany
 MULTILIB_DIRNAMES   +=         medany
 
-# Configurations for RMX-100 - optimized
-MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx/mabi=ilp32
+# One configuration per mtune target:
 
-# Configurations for RMX-500 - general
+# RMX-100 (default tune)
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp32
+
+# RMX-500
 MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rmx-500-series
 
-# Configurations for RHX-100 - general
+# RHX-100
 MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rhx-100-series
 
-# Configurations for RPX-100 - general
+# RPX-100
 MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs/mabi=lp64d/mtune=arc-v-rpx-100-series/mcmodel=medany
