@@ -7665,7 +7665,8 @@ riscv_avoid_multi_push (const struct riscv_frame_info *frame)
       || cfun->machine->interrupt_handler_p || cfun->machine->varargs_size != 0
       || crtl->args.pretend_args_size != 0
       || (use_shrink_wrapping_separate ()
-	  && !riscv_avoid_shrink_wrapping_separate ())
+	  && !riscv_avoid_shrink_wrapping_separate ()
+	  && crtl->shrink_wrapped_separate)
       || (frame->mask & ~MULTI_PUSH_GPR_MASK))
     return true;
 
