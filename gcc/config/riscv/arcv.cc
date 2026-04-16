@@ -674,30 +674,89 @@ arcv_sched_init (void)
 int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
-  if (sched_fusion)
-    return sched_state.cached_can_issue_more;
+  if (dump_file)
+    {
+      fprintf (dump_file, "\n=== ARCV_SCHED_REORDER2 called ===\n");
+      fprintf (dump_file, "  n_ready: %d\n", *n_readyp);
+      fprintf (dump_file, "  cached_can_issue_more: %d\n", sched_state.cached_can_issue_more);
+      fprintf (dump_file, "  last_scheduled_insn: %p", (void*)sched_state.last_scheduled_insn);
+      if (sched_state.last_scheduled_insn)
+	fprintf (dump_file, " (uid %d)", INSN_UID (sched_state.last_scheduled_insn));
+      fprintf (dump_file, "\n");
+      
+      if (ready && *n_readyp > 0)
+	{
+	  fprintf (dump_file, "  Ready queue:\n");
+	  for (int i = *n_readyp - 1; i >= 0; i--)
+	    {
+	      rtx_insn *insn = ready[i];
+	      fprintf (dump_file, "    [%d] uid %d: DEBUG=%d NONDEBUG=%d SCHED_GROUP_P=%d",
+		       i, INSN_UID (insn),
+		       DEBUG_INSN_P (insn), NONDEBUG_INSN_P (insn),
+		       SCHED_GROUP_P (insn));
+	      if (NONDEBUG_INSN_P (insn) && recog_memoized (insn) >= 0
+		  && GET_CODE (PATTERN (insn)) != USE
+		  && GET_CODE (PATTERN (insn)) != CLOBBER)
+		fprintf (dump_file, " type=%d", get_attr_type (insn));
+	      fprintf (dump_file, "\n");
+	    }
+	}
+    }
 
-  if (!sched_state.cached_can_issue_more)
+  if (sched_fusion) {
+    if (dump_file)
+      fprintf (dump_file, "  Early exit: sched_fusion active\n");
+    return sched_state.cached_can_issue_more;
+  }
+
+  if (!sched_state.cached_can_issue_more) {
+    if (dump_file)
+      fprintf (dump_file, "  Early exit: cached_can_issue_more is 0\n");
     return 0;
+  }
 
   if (riscv_microarchitecture == arcv_rmx500
       && sched_state.last_scheduled_insn
       && ready && *n_readyp > 0
       && !SCHED_GROUP_P (sched_state.last_scheduled_insn))
     {
+      if (dump_file)
+	fprintf (dump_file, "  Entering RMX500 fusion check\n");
+      
       for (int i = 1; i <= *n_readyp; i++)
 	{
 	  rtx_insn *candidate = ready[*n_readyp - i];
-	  if (NONDEBUG_INSN_P (candidate)
-	      && !SCHED_GROUP_P (candidate)
-	      && arcv_macro_fusion_pair_p
-		   (sched_state.last_scheduled_insn, candidate))
+	  
+	  if (dump_file)
 	    {
-	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
-	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
-	      return sched_state.cached_can_issue_more;
+	      fprintf (dump_file, "    Checking candidate[%d] uid %d: ", i, INSN_UID (candidate));
+	      fprintf (dump_file, "NONDEBUG=%d SCHED_GROUP_P=%d ",
+		       NONDEBUG_INSN_P (candidate), SCHED_GROUP_P (candidate));
 	    }
+	  
+	  if (NONDEBUG_INSN_P (candidate)
+	      && !SCHED_GROUP_P (candidate))
+	    {
+	      if (dump_file)
+		fprintf (dump_file, "calling arcv_macro_fusion_pair_p...");
+	      
+	      if (arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn, candidate))
+		{
+		  if (dump_file)
+		    fprintf (dump_file, " FUSION FOUND! Swapping to front.\n");
+		  std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+		  SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+		  return sched_state.cached_can_issue_more;
+		}
+	      else if (dump_file)
+		fprintf (dump_file, " no fusion\n");
+	    }
+	  else if (dump_file)
+	    fprintf (dump_file, "skipped\n");
 	}
+      
+      if (dump_file)
+	fprintf (dump_file, "  No RMX500 fusion found\n");
       return sched_state.cached_can_issue_more;
     }
 
@@ -855,11 +914,18 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 /* Adjust scheduling cost for ARCV fusion.  */
 
 int
-arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
+arcv_sched_adjust_cost (rtx_insn *insn, rtx_insn *dep_insn, int dep_type, int cost)
 {
-  if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
+  if (dump_file)
+    fprintf (dump_file, "  ARCV_SCHED_ADJUST_COST called for insn uid %d from uid %d, dep_type=%d, cost=%d\n",
+	     INSN_UID (insn), INSN_UID (dep_insn), dep_type, cost);
+  if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn)) {
+    if (dump_file)
+      fprintf (dump_file, "  REG_DEP_ANTI, adding 1 to cost: %d + 1 = %d\n", cost, cost + 1);
     return cost + 1;
-
+  }
+  if (dump_file)
+    fprintf (dump_file, "  Returning cost=%d\n", cost);
   return cost;
 }
 
@@ -995,6 +1061,29 @@ arcv_can_issue_more_p (int issue_rate, int more)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
+  if (dump_file)
+    {
+      fprintf (dump_file, "\n=== ARCV_SCHED_VARIABLE_ISSUE called ===\n");
+      fprintf (dump_file, "  insn uid: %d, more: %d\n", INSN_UID (insn), more);
+      fprintf (dump_file, "  DEBUG_INSN_P: %d, NONDEBUG_INSN_P: %d\n",
+	       DEBUG_INSN_P (insn), NONDEBUG_INSN_P (insn));
+      if (NONDEBUG_INSN_P (insn) && recog_memoized (insn) >= 0
+	  && GET_CODE (PATTERN (insn)) != USE
+	  && GET_CODE (PATTERN (insn)) != CLOBBER)
+	fprintf (dump_file, "  insn type: %d\n", get_attr_type (insn));
+      
+      rtx_insn *next_immediate = next_insn (insn);
+      if (next_immediate)
+	{
+	  fprintf (dump_file, "  next_insn: uid %d, DEBUG=%d, SCHED_GROUP_P=%d\n",
+		   INSN_UID (next_immediate),
+		   DEBUG_INSN_P (next_immediate),
+		   SCHED_GROUP_P (next_immediate));
+	}
+      else
+	fprintf (dump_file, "  next_insn: NULL\n");
+    }
+
   if (riscv_microarchitecture == arcv_rmx500)
     {
       sched_state.last_scheduled_insn = insn;
@@ -1002,6 +1091,8 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
       if (get_attr_type (insn) == TYPE_ALU_FUSED
 	  || get_attr_type (insn) == TYPE_IMUL_FUSED)
 	{
+	  if (dump_file)
+	    fprintf (dump_file, "  RMX500: Returning 0 (ALU_FUSED/IMUL_FUSED)\n");
 	  sched_state.cached_can_issue_more = 0;
 	  return 0;
 	}
@@ -1009,34 +1100,55 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
   rtx_insn *next = arcv_next_fusible_insn (insn);
       if (next && INSN_P (next) && SCHED_GROUP_P (next))
 	{
+	  if (dump_file)
+	    fprintf (dump_file, "  RMX500: Next insn is SCHED_GROUP_P, returning more-1=%d\n", more - 1);
 	  sched_state.cached_can_issue_more = more - 1;
 	  return more - 1;
 	}
 
+      if (dump_file)
+	fprintf (dump_file, "  RMX500: No fusion detected, returning 0 (cached_can_issue_more=0)\n");
       sched_state.cached_can_issue_more = 0;
       return 0;
     }
   rtx_insn *next = arcv_next_fusible_insn (insn);
   if (next && INSN_P (next) && SCHED_GROUP_P (next))
     {
+      if (dump_file)
+	fprintf (dump_file, "  Non-RMX500: Next insn is SCHED_GROUP_P\n");
+      
       if (get_attr_type (insn) == TYPE_LOAD
 	  || get_attr_type (insn) == TYPE_STORE
 	  || get_attr_type (next) == TYPE_LOAD
 	  || get_attr_type (next) == TYPE_STORE)
-	sched_state.pipeB_scheduled_p = 1;
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "  Setting pipeB_scheduled_p=1 (memory fusion)\n");
+	  sched_state.pipeB_scheduled_p = 1;
+	}
       else
-	sched_state.alu_pipe_scheduled_p = 1;
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "  Setting alu_pipe_scheduled_p=1 (ALU fusion)\n");
+	  sched_state.alu_pipe_scheduled_p = 1;
+	}
     }
 
   if (get_attr_type (insn) == TYPE_ALU_FUSED
       || get_attr_type (insn) == TYPE_IMUL_FUSED)
     {
+      if (dump_file)
+	fprintf (dump_file, "  Setting alu_pipe_scheduled_p=1, more=%d\n", more - 1);
       sched_state.alu_pipe_scheduled_p = 1;
       more -= 1;
     }
 
   sched_state.last_scheduled_insn = insn;
   sched_state.cached_can_issue_more = more - 1;
+
+  if (dump_file)
+    fprintf (dump_file, "  Final: cached_can_issue_more=%d, returning %d\n",
+	     sched_state.cached_can_issue_more, sched_state.cached_can_issue_more);
 
   return sched_state.cached_can_issue_more;
 }

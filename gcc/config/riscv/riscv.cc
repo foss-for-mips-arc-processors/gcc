@@ -9665,6 +9665,11 @@ riscv_store_data_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
   rtx out_exp, in_exp;
   int i, j;
 
+  if (dump_file && out_insn && in_insn) {
+    fprintf(dump_file, "riscv_store_data_bypass_p: out_insn = %d, in_insn = %d\n",
+            INSN_UID(out_insn), INSN_UID(in_insn));
+  }
+
   in_set = single_set (in_insn);
   if (in_set)
     {
@@ -9724,6 +9729,11 @@ riscv_store_data_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
 	    }
 	}
     }
+
+  if (dump_file && out_insn && in_insn) {
+    fprintf(dump_file, "riscv_store_data_bypass_p: returning %d for out_insn = %d, in_insn = %d\n",
+            store_data_bypass_p (out_insn, in_insn), INSN_UID(out_insn), INSN_UID(in_insn));
+  }
 
   return store_data_bypass_p (out_insn, in_insn);
 }
@@ -10367,7 +10377,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int c
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
   if (TARGET_ARCV_FUSION)
-    return arcv_sched_adjust_cost (insn, dep_type, cost);
+    return arcv_sched_adjust_cost (insn, dep_insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)
