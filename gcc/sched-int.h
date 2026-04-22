@@ -218,6 +218,12 @@ struct _dep
   /* Consumer.  */
   rtx_insn *con;
 
+  /* When a dependency is transferred by chain_to_prev_insn (scheduling
+     groups), the consumer changes but bypass lookup still needs the
+     original consumer insn to compute the correct latency.  NULL when
+     the consumer is still unchanged.  */
+  rtx_insn *original_con;
+
   /* If nonnull, holds a pointer to information about how to break the
      dependency by making a replacement in one of the insns.  There is
      only one such dependency for each insn that must be modified in
@@ -249,6 +255,7 @@ typedef dep_def *dep_t;
 
 #define DEP_PRO(D) ((D)->pro)
 #define DEP_CON(D) ((D)->con)
+#define DEP_ORIGINAL_CON(D) ((D)->original_con)
 #define DEP_TYPE(D) ((D)->type)
 #define DEP_STATUS(D) ((D)->status)
 #define DEP_COST(D) ((D)->cost)

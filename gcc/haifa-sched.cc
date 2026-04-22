@@ -1485,7 +1485,10 @@ dep_cost_1 (dep_t link, dw_t dw)
 		cost = 1;
 	    }
 	  else if (bypass_p (insn))
-	    cost = insn_latency (insn, used);
+	    {
+	      rtx_insn *bypass_con = DEP_ORIGINAL_CON (link)
+				     ? DEP_ORIGINAL_CON (link) : used;
+	      cost = insn_latency (insn, bypass_con);
 	}
 
 

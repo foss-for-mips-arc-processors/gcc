@@ -95,6 +95,7 @@ init_dep_1 (dep_t dep, rtx_insn *pro, rtx_insn *con, enum reg_note type, ds_t ds
 {
   DEP_PRO (dep) = pro;
   DEP_CON (dep) = con;
+  DEP_ORIGINAL_CON (dep) = NULL;
   DEP_TYPE (dep) = type;
   DEP_STATUS (dep) = ds;
   DEP_COST (dep) = UNKNOWN_DEP_COST;
@@ -471,6 +472,11 @@ static int cache_size;
 
 /* True if we should mark added dependencies as a non-register deps.  */
 static bool mark_as_hard;
+
+/* When chain_to_prev_insn transfers a dep to the scheduling group head,
+   this records the original consumer so that bypass latency is computed
+   against the right insn type.  NULL when not inside such a transfer.  */
+static rtx_insn *chain_to_prev_original_con;
 
 static bool deps_may_trap_p (const_rtx);
 static void add_dependence_1 (rtx_insn *, rtx_insn *, enum reg_note);
@@ -1681,7 +1687,11 @@ chain_to_prev_insn (rtx_insn *insn)
 	} while (SCHED_GROUP_P (i) || DEBUG_INSN_P (i));
 
       if (! sched_insns_conditions_mutex_p (i, pro))
-	add_dependence (i, pro, DEP_TYPE (dep));
+	{
+	  chain_to_prev_original_con = insn;
+	  add_dependence (i, pro, DEP_TYPE (dep));
+	  chain_to_prev_original_con = NULL;
+	}
     next_link:;
     }
 
@@ -1864,6 +1874,8 @@ haifa_note_dep (rtx_insn *elem, ds_t ds)
   init_dep (dep, elem, cur_insn, ds_to_dt (ds));
   if (mark_as_hard)
     DEP_NONREG (dep) = 1;
+  if (chain_to_prev_original_con)
+    DEP_ORIGINAL_CON (dep) = chain_to_prev_original_con;
   maybe_add_or_update_dep_1 (dep, false, NULL_RTX, NULL_RTX);
 }
 
