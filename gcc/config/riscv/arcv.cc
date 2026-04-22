@@ -911,7 +911,8 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
   return priority;
 }
 
-/* Adjust scheduling cost for ARCV fusion.  */
+/* Adjust scheduling cost for ARCV fusion.
+   For true deps with sched_groups, test bypass with the actual consumer. */
 
 int
 arcv_sched_adjust_cost (rtx_insn *insn, rtx_insn *dep_insn, int dep_type, int cost)
@@ -919,6 +920,42 @@ arcv_sched_adjust_cost (rtx_insn *insn, rtx_insn *dep_insn, int dep_type, int co
   if (dump_file)
     fprintf (dump_file, "  ARCV_SCHED_ADJUST_COST called for insn uid %d from uid %d, dep_type=%d, cost=%d\n",
 	     INSN_UID (insn), INSN_UID (dep_insn), dep_type, cost);
+
+  if (dep_type == REG_DEP_TRUE)
+    {
+      rtx_insn *next = arcv_next_fusible_insn (insn);
+      if (next && SCHED_GROUP_P (next))
+	{
+	  rtx dep_set = single_set (dep_insn);
+	  if (dep_set && REG_P (SET_DEST (dep_set)))
+	    {
+	      rtx dep_dest = SET_DEST (dep_set);
+
+	      if (!reg_overlap_mentioned_p (dep_dest, PATTERN (insn)))
+		{
+		  rtx_insn *group_insn = next;
+		  while (group_insn && SCHED_GROUP_P (group_insn))
+		    {
+		      if (NONDEBUG_INSN_P (group_insn)
+			  && reg_overlap_mentioned_p (dep_dest,
+						      PATTERN (group_insn)))
+			{
+			  int new_cost = insn_latency (dep_insn, group_insn);
+			  if (dump_file)
+			    fprintf (dump_file,
+				     "  REG_DEP_TRUE sched_group redirect: "
+				     "actual consumer uid %d, "
+				     "cost %d -> %d\n",
+				     INSN_UID (group_insn), cost, new_cost);
+			  return new_cost;
+			}
+		      group_insn = arcv_next_fusible_insn (group_insn);
+		    }
+		}
+	    }
+	}
+    }
+
   if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn)) {
     if (dump_file)
       fprintf (dump_file, "  REG_DEP_ANTI, adding 1 to cost: %d + 1 = %d\n", cost, cost + 1);
