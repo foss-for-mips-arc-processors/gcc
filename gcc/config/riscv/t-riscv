@@ -121,6 +121,10 @@ riscv-fold-mem.o: $(srcdir)/config/riscv/riscv-fold-mem.cc
 	$(COMPILE) $<
 	$(POSTCOMPILE)
 
+riscv-matrix-opt.o: $(srcdir)/config/riscv/riscv-matrix-opt.cc
+	$(COMPILE) $<
+	$(POSTCOMPILE)
+
 riscv-shorten-memrefs.o: $(srcdir)/config/riscv/riscv-shorten-memrefs.cc \
   $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TARGET_H)
 	$(COMPILE) $<
