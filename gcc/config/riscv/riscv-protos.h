@@ -835,7 +835,7 @@ extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
 extern int arcv_sched_adjust_priority (rtx_insn *, int);
-extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, rtx_insn *, int, int);
 extern bool arcv_can_issue_more_p (int, int);
 extern int arcv_sched_variable_issue (rtx_insn *, int);
 

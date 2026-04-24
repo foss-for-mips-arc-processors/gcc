@@ -10367,7 +10367,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int c
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
   if (TARGET_ARCV_FUSION)
-    return arcv_sched_adjust_cost (insn, dep_type, cost);
+    return arcv_sched_adjust_cost (insn, dep_insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)

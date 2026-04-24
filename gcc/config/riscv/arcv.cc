@@ -858,7 +858,7 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
    For true deps with sched_groups, test bypass with the actual consumer. */
 
 int
-arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
+arcv_sched_adjust_cost (rtx_insn *insn, rtx_insn *dep_insn, int dep_type, int cost)
 {
   if (dep_type == REG_DEP_TRUE)
     {
