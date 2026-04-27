@@ -12,4 +12,4 @@ fusion_shift_bitextract (unsigned int x, unsigned int y, unsigned int z)
     return t + a;
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_SHIFT_BITEXTRACT" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_SHIFT_BITEXTRACT" "sched2" } } */
