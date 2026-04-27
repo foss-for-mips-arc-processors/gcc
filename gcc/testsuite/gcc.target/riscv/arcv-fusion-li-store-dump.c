@@ -9,4 +9,4 @@ fuse_li_store (int *p)
   *p = 42;
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_LI_STORE" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LI_STORE" "sched2" } } */

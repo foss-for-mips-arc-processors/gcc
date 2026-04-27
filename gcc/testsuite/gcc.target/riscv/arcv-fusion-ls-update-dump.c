@@ -12,4 +12,4 @@ fuse_ls_update (int *p, int n)
   return sum;
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_LS_UPDATE" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE" "sched2" } } */

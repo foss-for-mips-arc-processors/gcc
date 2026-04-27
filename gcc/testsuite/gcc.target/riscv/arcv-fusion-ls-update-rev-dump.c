@@ -13,4 +13,4 @@ fuse_ls_update_rev (int *p, int n, int val)
     }
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_LS_UPDATE \\(curr, prev\\)" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE \\(curr, prev\\)" "sched2" } } */

@@ -9,4 +9,4 @@ fuse_adjacent_load (int *p)
   return p[0] + p[1];
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_ADJACENT_LOAD" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_ADJACENT_LOAD" "sched2" } } */

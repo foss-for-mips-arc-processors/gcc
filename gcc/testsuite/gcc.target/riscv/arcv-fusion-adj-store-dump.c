@@ -10,4 +10,4 @@ fuse_adjacent_store (int *p, int x, int y)
   p[1] = y;
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_ADJACENT_STORE" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_ADJACENT_STORE" "sched2" } } */

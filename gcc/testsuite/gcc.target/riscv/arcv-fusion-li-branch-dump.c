@@ -11,4 +11,4 @@ fuse_li_branch (int x)
   return x;
 }
 
-/* { dg-final { scan-rtl-dump "ARCV_FUSE_LI_BRANCH" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LI_BRANCH" "sched2" } } */
