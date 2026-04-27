@@ -32,6 +32,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "emit-rtl.h"
 #include "tm_p.h"
+#include "regset.h"
+#include "basic-block.h"
+#include "insn-attr.h"
+#include "sched-int.h"
 #include "riscv-protos.h"
 
 /* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
@@ -45,7 +49,7 @@ riscv_macro_fusion_p (void)
 
 /* Return true iff the instruction fusion described by OP is enabled.  */
 
-static bool
+bool
 riscv_fusion_enabled_p(enum riscv_fusion_pairs op)
 {
   return riscv_get_fusible_ops () & op;
@@ -124,6 +128,218 @@ riscv_set_is_shNadduw (rtx set)
 	      || INTVAL (XEXP (XEXP (XEXP (SET_SRC (set), 0), 0), 1)) == 2
 	      || INTVAL (XEXP (XEXP (XEXP (SET_SRC (set), 0), 0), 1)) == 3)
 	  && REG_P (SET_DEST (set)));
+}
+
+/* Return TRUE if the target microarchitecture supports macro-op
+   fusion for two memory operations of mode MODE (the direction
+   of transfer is determined by the IS_LOAD parameter).  */
+
+static bool
+riscv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
+{
+  if (!TARGET_ARCV_RHX100)
+    return true;
+
+  return ((is_load && (mode == SImode
+		     || mode == HImode
+		     || mode == QImode))
+	 || (!is_load && mode == SImode));
+}
+
+/* Return TRUE if two addresses can be fused.  */
+
+static bool
+riscv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
+{
+  rtx base0, base1, tmp;
+  HOST_WIDE_INT off0 = 0, off1 = 0;
+
+  if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
+    addr0 = XEXP (addr0, 0);
+
+  if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
+    addr1 = XEXP (addr1, 0);
+
+  if (!MEM_P (addr0) || !MEM_P (addr1))
+    return false;
+
+  /* Require the accesses to have the same mode.  */
+  if (GET_MODE (addr0) != GET_MODE (addr1))
+    return false;
+
+  /* Check if the mode is allowed.  */
+  if (!riscv_pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
+    return false;
+
+  rtx reg0 = XEXP (addr0, 0);
+  rtx reg1 = XEXP (addr1, 0);
+
+  if (GET_CODE (reg0) == PLUS)
+    {
+      base0 = XEXP (reg0, 0);
+      tmp = XEXP (reg0, 1);
+      if (!CONST_INT_P (tmp))
+	return false;
+      off0 = INTVAL (tmp);
+    }
+  else if (REG_P (reg0))
+    base0 = reg0;
+  else
+    return false;
+
+  if (GET_CODE (reg1) == PLUS)
+    {
+      base1 = XEXP (reg1, 0);
+      tmp = XEXP (reg1, 1);
+      if (!CONST_INT_P (tmp))
+	return false;
+      off1 = INTVAL (tmp);
+    }
+  else if (REG_P (reg1))
+    base1 = reg1;
+  else
+    return false;
+
+  /* Check if we have the same base.  */
+  gcc_assert (REG_P (base0) && REG_P (base1));
+  if (REGNO (base0) != REGNO (base1))
+    return false;
+
+  /* Fuse adjacent aligned addresses.  */
+  if ((off0 % GET_MODE_SIZE (GET_MODE (addr0)).to_constant () == 0)
+      && (abs (off1 - off0) == GET_MODE_SIZE (GET_MODE (addr0)).to_constant ()))
+    return true;
+
+  return false;
+}
+
+/* Helper function to check if instruction type is arithmetic-like.  */
+
+static bool
+riscv_arith_type_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+
+  return (type == TYPE_ARITH
+	 || type == TYPE_LOGICAL
+	 || type == TYPE_SHIFT
+	 || type == TYPE_SLT
+	 || type == TYPE_BITMANIP
+	 || type == TYPE_MIN
+	 || type == TYPE_MAX
+	 || type == TYPE_MINU
+	 || type == TYPE_MAXU
+	 || type == TYPE_CLZ
+	 || type == TYPE_CTZ);
+}
+
+/* Return true if PREV and CURR constitute an ordered load/store + op/opimm
+   pair, for the purposes of macro-op fusion.
+   This is a more general form that combines load+arith and store+arith.  */
+
+static bool
+riscv_ls_update (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  enum attr_type p_type = get_attr_type (prev);
+  /* Check if the prev instruction is load or store.  */
+  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE))
+    return false;
+
+  gcc_assert (prev_set && curr_set);
+
+  if (!riscv_arith_type_insn_p (curr))
+    return false;
+
+  rtx c_src = SET_SRC (curr_set);
+  rtx c_dest = SET_DEST (curr_set);
+
+  /* Check if curr has at least one register source.  */
+  if (CONST_INT_P (c_src)
+      || (!CONST_INT_P (c_src) && !REG_P (XEXP (c_src, 0))))
+    return false;
+
+  int c_rs1 = REGNO (XEXP (c_src, 0));
+  int c_rd  = REGNO (c_dest);
+
+  /* Check if there is a second source register.  */
+  bool has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
+		  && REG_P (XEXP (c_src, 1)));
+
+  int c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
+
+  switch (p_type)
+    {
+    case TYPE_LOAD:
+      {
+	rtx p_src_addr = XEXP (SET_SRC (prev_set), 0);
+	if (!REG_P (p_src_addr))
+	  return false;
+
+	int p_rs = REGNO (p_src_addr);
+	int p_rd = REGNO (SET_DEST (prev_set));
+
+	return (p_rs == c_rs1
+		&& p_rs != p_rd
+		&& p_rd != c_rd
+		&& (!has_rs2 ||  /* Fused LD + OP.  */
+		     p_rd != c_rs2)); /* Fused LD + OP-IMM.  */
+      }
+
+    case TYPE_STORE:
+      {
+	rtx p_dst_addr = XEXP (SET_DEST (prev_set), 0);
+	if (!REG_P (p_dst_addr))
+	  return false;
+
+	int p_rs = REGNO (p_dst_addr);
+
+	return (p_rs == c_rs1
+		&& (!has_rs2 || /* Fused ST + OP.  */
+		    p_rs == c_rs2)); /* Fused ST + OP-IMM.  */
+      }
+
+    default:
+      return false;
+    }
+}
+
+/* Return true if PREV and CURR constitute an ordered load/store + lui pair, for
+   the purposes of macro-op fusion.  */
+
+static bool
+riscv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  gcc_assert (prev_set);
+  gcc_assert (curr_set);
+
+  /* Check if curr is a LUI instruction:
+     - LUI via HIGH: (set (reg:X rd) (high (const_int)))
+     - LUI via immediate: (set (reg:X rd) (const_int UPPER_IMM_20))  */
+  bool is_lui = (REG_P (SET_DEST (curr_set))
+		&& ((get_attr_type (curr) == TYPE_MOVE
+		     && GET_CODE (SET_SRC (curr_set)) == HIGH)
+		    || (CONST_INT_P (SET_SRC (curr_set))
+			&& LUI_OPERAND (INTVAL (SET_SRC (curr_set))))));
+
+  if (!is_lui)
+    return false;
+
+  /* Check for load + LUI fusion:
+     Load and LUI destinations must be different to avoid hazard.  */
+  if (get_attr_type (prev) == TYPE_LOAD)
+    return REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set));
+
+  /* Check for store + LUI fusion (always allowed).  */
+  if (get_attr_type (prev) == TYPE_STORE)
+    return true;
+
+  return false;
 }
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
@@ -758,8 +974,209 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
-	if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
-      return arcv_macro_fusion_pair_p (prev, curr);
+  /* Fuse multiply-add pair:
+     prev: (set rd_mult (mult rs1 rs2))
+     curr: (set rd_add (plus rd_mult rs3))  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+      && prev_set && curr_set
+      && GET_CODE (SET_SRC (prev_set)) == MULT
+      && GET_CODE (SET_SRC (curr_set)) == PLUS)
+    {
+      rtx curr_plus = SET_SRC (curr_set);
+      rtx mult_dest = SET_DEST (prev_set);
+      unsigned int mult_dest_regno = REGNO (mult_dest);
+
+      /* Check if multiply result is used in either operand of the addition.  */
+      if (REG_P (XEXP (curr_plus, 0))
+	 && REGNO (XEXP (curr_plus, 0)) == mult_dest_regno)
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "RISCV_FUSE_MULT_ADD (op0)\n");
+	 return true;
+       }
+
+      if (REG_P (XEXP (curr_plus, 1))
+	 && REGNO (XEXP (curr_plus, 1)) == mult_dest_regno)
+       {
+	 if (dump_file)
+	   fprintf (dump_file, "RISCV_FUSE_MULT_ADD (op1)\n");
+	 return true;
+       }
+    }
+
+  /* Fuse logical shift left with logical shift right (bit-extract pattern):
+     prev: (set rd (ashift rs imm1))
+     curr: (set rd (lshiftrt rd imm2))
+     This handles general bit-extraction patterns beyond the specific
+     ZEXTW/ZEXTH cases (32/32 and 48/48) that are handled upstream.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_SHIFT_BITEXTRACT)
+      && prev_set && curr_set
+      && GET_CODE (SET_SRC (prev_set)) == ASHIFT
+      && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
+      && REG_P (SET_DEST (prev_set))
+      && REG_P (SET_DEST (curr_set))
+      && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
+      && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0))
+      && CONST_INT_P (XEXP (SET_SRC (prev_set), 1))
+      && CONST_INT_P (XEXP (SET_SRC (curr_set), 1)))
+    {
+      HOST_WIDE_INT shift_left = INTVAL (XEXP (SET_SRC (prev_set), 1));
+      HOST_WIDE_INT shift_right = INTVAL (XEXP (SET_SRC (curr_set), 1));
+
+      /* Avoid duplicating ZEXTW (32/32) and ZEXTH (48/48) patterns
+	 which are already handled by upstream code.  */
+      if (!((shift_left == 32 && shift_right == 32)
+	    || (shift_left == 48 && shift_right == 48)))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_SHIFT_BITEXTRACT\n");
+	  return true;
+	}
+    }
+
+  /* Fuse load-immediate with a dependent conditional branch:
+     prev: (set rd imm)
+     curr: (if_then_else (cond rd ...) ...)  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_LI_BRANCH)
+      && get_attr_type (prev) == TYPE_MOVE
+      && get_attr_move_type (prev) == MOVE_TYPE_CONST
+      && any_condjump_p (curr))
+    {
+      if (!curr_set)
+       return false;
+
+      rtx comp = XEXP (SET_SRC (curr_set), 0);
+      rtx prev_dest = SET_DEST (prev_set);
+
+      if ((REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == prev_dest)
+	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == prev_dest))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_LI_BRANCH\n");
+	  return true;
+	}
+      return false;
+    }
+
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
+  /* Don't handle anything with a jump past this point.  */
+  if (!simple_sets_p)
+    return false;
+
+  /* Fuse adjacent loads.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
+      && get_attr_type (prev) == TYPE_LOAD
+      && get_attr_type (curr) == TYPE_LOAD)
+    {
+      if (riscv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_ADJACENT_LOAD\n");
+	  return true;
+	}
+    }
+
+  /* Fuse adjacent stores.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
+      && get_attr_type (prev) == TYPE_STORE
+      && get_attr_type (curr) == TYPE_STORE)
+    {
+      if (riscv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_ADJACENT_STORE\n");
+	  return true;
+	}
+    }
+
+  /* Look ahead 1 insn to prioritize adjacent load/store pairs.
+     If curr and next form a better fusion opportunity, defer this fusion.  */
+  rtx_insn *next = arcv_next_fusible_insn (curr);
+  if (next)
+    {
+      rtx next_set = single_set (next);
+
+      /* Defer if next instruction forms an adjacent load pair with curr.  */
+      if (next_set
+	 && riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
+	 && get_attr_type (curr) == TYPE_LOAD
+	 && get_attr_type (next) == TYPE_LOAD
+	 && riscv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
+	return false;
+
+      /* Defer if next instruction forms an adjacent store pair with curr.  */
+      if (next_set
+	 && riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
+	 && get_attr_type (curr) == TYPE_STORE
+	 && get_attr_type (next) == TYPE_STORE
+	 && riscv_fused_addr_p (SET_DEST (curr_set),
+				SET_DEST (next_set), false))
+	return false;
+    }
+
+  /* Fuse a pre- or post-update memory operation:
+     Examples: load+add, add+load, store+add, add+store.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_LS_UPDATE))
+    {
+      if (riscv_ls_update (prev, curr))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_LS_UPDATE (prev, curr)\n");
+	  return true;
+	}
+      if (riscv_ls_update (curr, prev))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_LS_UPDATE (curr, prev)\n");
+	  return true;
+	}
+    }
+
+  /* Fuse a memory operation preceded or followed by a LUI:
+     Examples: load+lui, lui+load, store+lui, lui+store.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_MEMOP_LUI))
+    {
+      if (riscv_memop_lui_pair_p (prev, curr))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_MEMOP_LUI (prev, curr)\n");
+	  return true;
+	}
+      if (riscv_memop_lui_pair_p (curr, prev))
+	{
+	  if (dump_file)
+	    fprintf (dump_file, "RISCV_FUSE_MEMOP_LUI (curr, prev)\n");
+	  return true;
+	}
+    }
+
+  /* Fuse load-immediate with a store of the destination register:
+     prev: (set rd imm)
+     curr: (set (mem ...) rd)  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_LI_STORE)
+      && get_attr_type (prev) == TYPE_MOVE
+      && get_attr_move_type (prev) == MOVE_TYPE_CONST
+      && get_attr_type (curr) == TYPE_STORE)
+    {
+      rtx store_src = SET_SRC (curr_set);
+      rtx load_dest = SET_DEST (prev_set);
+
+      if (REG_P (store_src) && REG_P (load_dest)
+	  && REGNO (store_src) == REGNO (load_dest))
+       {
+	 if (dump_file)
+	   {
+	     if (GET_MODE (store_src) != GET_MODE (load_dest))
+	       fprintf (dump_file, "RISCV_FUSE_LI_STORE (subreg)\n");
+	     else
+	       fprintf (dump_file, "RISCV_FUSE_LI_STORE\n");
+	   }
+	 return true;
+       }
+    }
 
   return false;
 }

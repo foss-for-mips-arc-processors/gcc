@@ -832,10 +832,18 @@ enum riscv_fusion_pairs
   RISCV_FUSE_BFEXT = (1 << 11),
   RISCV_FUSE_EXPANDED_LD = (1 << 12),
   RISCV_FUSE_B_ALUI = (1 << 13),
-  RISCV_FUSE_ARCV = (1 << 14),
+  RISCV_FUSE_MULT_ADD = (1 << 14),
+  RISCV_FUSE_LI_BRANCH = (1 << 15),
+  RISCV_FUSE_ADJACENT_LOAD = (1 << 16),
+  RISCV_FUSE_ADJACENT_STORE = (1 << 17),
+  RISCV_FUSE_LS_UPDATE = (1 << 18),
+  RISCV_FUSE_MEMOP_LUI = (1 << 19),
+  RISCV_FUSE_LI_STORE = (1 << 20),
+  RISCV_FUSE_SHIFT_BITEXTRACT = (1 << 21),
 };
 
 extern bool riscv_macro_fusion_p (void);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern unsigned int riscv_get_fusible_ops (void);
 
@@ -866,7 +874,6 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
 /* Routines implemented in arcv.cc.  */
-extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
@@ -877,6 +884,7 @@ extern int arcv_sched_variable_issue (rtx_insn *, int);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+extern rtx_insn *arcv_next_fusible_insn (rtx_insn *);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
