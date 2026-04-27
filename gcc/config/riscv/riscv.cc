@@ -320,9 +320,6 @@ unsigned riscv_stack_boundary;
 /* Whether in riscv_output_mi_thunk. */
 static bool riscv_in_thunk_func = false;
 
-/* Return true if the instruction fusion described by OP is enabled.  */
-static bool riscv_fusion_enabled_p (enum riscv_fusion_pairs op);
-
 /* If non-zero, this is an offset to be added to SP to redefine the CFA
    when restoring the FP register from the stack.  Only valid when generating
    the epilogue.  */
@@ -863,7 +860,11 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   false,					/* overlap_op_by_pieces */
   true,						/* use_zero_stride_load */
   false,					/* speculative_sched_vsetvl */
-  RISCV_FUSE_ARCV,				/* fusible_ops */
+  (RISCV_FUSE_MULT_ADD | RISCV_FUSE_LI_BRANCH
+   | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
+   | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_MEMOP_LUI
+   | RISCV_FUSE_LI_STORE
+   | RISCV_FUSE_SHIFT_BITEXTRACT),	/* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
@@ -11059,7 +11060,7 @@ riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
 
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV)
     arcv_sched_init ();
 }
 
@@ -11068,7 +11069,7 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
 
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV)
     if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
       return 0;
 
@@ -11117,7 +11118,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	}
     }
 
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV)
     return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
@@ -11300,7 +11301,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV)
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
@@ -11315,7 +11316,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
+  if (TARGET_ARCV)
     return arcv_sched_reorder2 (ready, n_readyp);
 
   return 0;
