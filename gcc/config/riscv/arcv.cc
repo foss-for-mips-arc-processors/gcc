@@ -87,8 +87,7 @@ arcv_next_fusible_insn (rtx_insn *insn)
       if (insn == 0)
 	break;
 
-      if (DEBUG_INSN_P (insn)
-	  || NOTE_P (insn))
+      if (!NONDEBUG_INSN_P (insn))
 	continue;
 
       if (NOTE_INSN_BASIC_BLOCK_P (insn))
