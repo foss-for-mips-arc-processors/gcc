@@ -665,7 +665,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	     && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
 	     && (!next_insn || !SCHED_GROUP_P (next_insn)))
-	    || (next_insn && NONDEBUG_INSN_P (next_insn)
+	    || (next_insn
 		&& recog_memoized (next_insn) >= 0
 		&& get_attr_type (next_insn) != TYPE_LOAD
 		&& get_attr_type (next_insn) != TYPE_STORE))
@@ -714,7 +714,7 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
   rtx_insn *next = arcv_next_fusible_insn (insn);
-  if (next && INSN_P (next) && SCHED_GROUP_P (next)
+  if (next && SCHED_GROUP_P (next)
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next) == TYPE_STORE)
 	 || (get_attr_type (insn) == TYPE_LOAD
@@ -861,8 +861,7 @@ int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = arcv_next_fusible_insn (insn);
-  if (next && INSN_P (next)
-      && SCHED_GROUP_P (next))
+  if (next && SCHED_GROUP_P (next))
     {
       if (get_attr_type (insn) == TYPE_LOAD
 	  || get_attr_type (insn) == TYPE_STORE
