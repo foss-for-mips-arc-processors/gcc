@@ -162,6 +162,19 @@ riscv_set_is_shNadduw (rtx set)
 	  && REG_P (SET_DEST (set)));
 }
 
+void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
+			     int *pri)
+{
+  if (TARGET_ARCV_FUSION
+      && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
+    return;
+
+  /* Default priority.  */
+  *pri = max_pri - 1;
+  *fusion_pri = max_pri - 1;
+}
+
 /* Return TRUE if two addresses can be fused.  */
 
 static bool
@@ -183,20 +196,10 @@ riscv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   if (GET_MODE (addr0) != GET_MODE (addr1))
     return false;
 
-  /* Check if the mode is allowed for ARC-V fusion restrictions.
-     Loads: allow SI, HI, and QI modes.
-     Stores: allow only SI mode.  */
-  if (TARGET_ARCV_FUSION)
-    {
-      machine_mode mode = GET_MODE (addr0);
-      bool mode_allowed = ((is_load && (mode == SImode
-					|| mode == HImode
-					|| mode == QImode))
-			    || (!is_load && mode == SImode));
-
-      if (!mode_allowed)
-	return false;
-    }
+  /* Check if the mode is allowed for ARC-V fusion restrictions.  */
+  if (TARGET_ARCV_FUSION
+	  && !arcv_pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
+    return false;
 
   rtx reg0 = XEXP (addr0, 0);
   rtx reg1 = XEXP (addr1, 0);

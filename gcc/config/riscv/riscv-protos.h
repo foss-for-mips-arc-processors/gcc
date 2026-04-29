@@ -845,6 +845,7 @@ enum riscv_fusion_pairs
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern unsigned int riscv_get_fusible_ops (void);
+extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);
@@ -871,6 +872,10 @@ extern bool th_classify_address (struct riscv_address_info *,
 extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
+
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
+extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
