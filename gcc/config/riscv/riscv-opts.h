@@ -65,6 +65,7 @@ enum riscv_microarchitecture_type {
   andes_23_series,
   andes_45_series,
   spacemit_x60,
+  arcv_rhx100
 };
 extern enum riscv_microarchitecture_type riscv_microarchitecture;
 
