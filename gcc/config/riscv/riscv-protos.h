@@ -846,6 +846,7 @@ extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern unsigned int riscv_get_fusible_ops (void);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+extern rtx_insn *riscv_next_fusible_insn (rtx_insn *);
 
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);
@@ -876,6 +877,12 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 /* Routines implemented in arcv.cc.  */
 extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
 extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+extern void arcv_sched_init (void);
+extern int arcv_sched_reorder2 (rtx_insn **, int *);
+extern int arcv_sched_adjust_priority (rtx_insn *, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern bool arcv_can_issue_more_p (int, int);
+extern int arcv_sched_variable_issue (rtx_insn *, int);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);

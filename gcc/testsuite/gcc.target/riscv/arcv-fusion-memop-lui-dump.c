@@ -13,6 +13,5 @@ fuse_memop_lui (int *p, int *q)
   return a + b + g1 + g2;
 }
 
-/* XFAIL until scheduling support for RHX-100 series is implemented.  */
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_MEMOP_LUI \\(prev, curr\\)" "sched2" { xfail *-*-* } } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_MEMOP_LUI \\(prev, curr\\)" "sched2" } } */
 /* { dg-final { scan-rtl-dump "RISCV_FUSE_MEMOP_LUI \\(curr, prev\\)" "sched2" } } */

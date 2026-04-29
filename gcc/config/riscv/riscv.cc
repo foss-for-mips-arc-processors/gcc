@@ -11010,12 +11010,19 @@ static void
 riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
+
+  if (TARGET_ARCV_FUSION)
+    arcv_sched_init ();
 }
 
 /* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
+  if (TARGET_ARCV_FUSION)
+    if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
+      return 0;
+
   if (DEBUG_INSN_P (insn))
     return more;
 
@@ -11060,6 +11067,9 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	  last_vconfig.ma = mask_agnostic_p (insn);
 	}
     }
+
+  if (TARGET_ARCV_FUSION)
+    return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
 }
@@ -11135,17 +11145,21 @@ riscv_get_fusible_ops (void)
    we currently only perform the adjustment when -madjust-lmul-cost is given.
    */
 static int
-riscv_sched_adjust_cost (rtx_insn *, int, rtx_insn *insn, int cost,
+riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 			 unsigned int)
 {
+  /* Use ARCV-specific cost adjustment for RHX-100.  */
+  if (TARGET_ARCV_RHX100)
+    return arcv_sched_adjust_cost (insn, dep_type, cost);
+
   /* Only do adjustments for the generic out-of-order scheduling model.  */
   if (!TARGET_VECTOR || riscv_microarchitecture != generic_ooo)
     return cost;
 
-  if (recog_memoized (insn) < 0)
+  if (recog_memoized (dep_insn) < 0)
     return cost;
 
-  enum attr_type type = get_attr_type (insn);
+  enum attr_type type = get_attr_type (dep_insn);
 
   if (type == TYPE_VFREDO || type == TYPE_VFWREDO)
     {
@@ -11163,7 +11177,7 @@ riscv_sched_adjust_cost (rtx_insn *, int, rtx_insn *insn, int cost,
     return cost;
 
   enum riscv_vector::vlmul_type lmul =
-    (riscv_vector::vlmul_type)get_attr_vlmul (insn);
+    (riscv_vector::vlmul_type)get_attr_vlmul (dep_insn);
 
   double factor = 1;
   switch (lmul)
@@ -11194,6 +11208,32 @@ riscv_sched_adjust_cost (rtx_insn *, int, rtx_insn *insn, int cost,
   int new_cost = MAX (cost > 0 ? 1 : 0, cost * factor);
 
   return new_cost;
+}
+
+/* Implement TARGET_SCHED_ADJUST_PRIORITY hook.  */
+
+static int
+riscv_sched_adjust_priority (rtx_insn *insn, int priority)
+{
+  if (TARGET_ARCV_FUSION)
+    return arcv_sched_adjust_priority (insn, priority);
+
+  return priority;
+}
+
+/* Implement TARGET_SCHED_REORDER2 hook.  */
+
+static int
+riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
+		      int verbose ATTRIBUTE_UNUSED,
+		      rtx_insn **ready,
+		      int *n_readyp,
+		      int clock ATTRIBUTE_UNUSED)
+{
+  if (TARGET_ARCV_FUSION)
+    return arcv_sched_reorder2 (ready, n_readyp);
+
+  return 0;
 }
 
 /* Implement TARGET_SCHED_CAN_SPECULATE_INSN hook.  Return true if insn can
@@ -15881,6 +15921,12 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 
 #undef  TARGET_SCHED_ADJUST_COST
 #define TARGET_SCHED_ADJUST_COST riscv_sched_adjust_cost
+
+#undef  TARGET_SCHED_ADJUST_PRIORITY
+#define TARGET_SCHED_ADJUST_PRIORITY riscv_sched_adjust_priority
+
+#undef  TARGET_SCHED_REORDER2
+#define TARGET_SCHED_REORDER2 riscv_sched_reorder2
 
 #undef TARGET_SCHED_CAN_SPECULATE_INSN
 #define TARGET_SCHED_CAN_SPECULATE_INSN riscv_sched_can_speculate_insn
