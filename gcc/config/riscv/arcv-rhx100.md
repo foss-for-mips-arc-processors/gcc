@@ -104,3 +104,6 @@
 
 (define_bypass 3 "arcv_rhx100_mpy32_insn" "arcv_rhx100_mpy*_insn")
 (define_bypass 3 "arcv_rhx100_mpy32_insn" "arcv_rhx100_div_insn")
+(define_bypass 1 "arcv_rhx100_mpy32_insn" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 7 "arcv_rhx100_mpy32_insn" "arcv_rhx100_store_insn")
+(define_bypass 7 "arcv_rhx100_mpy32_insn" "arcv_rhx100_load_insn")
