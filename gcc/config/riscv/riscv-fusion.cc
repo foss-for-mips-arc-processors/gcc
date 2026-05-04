@@ -240,26 +240,6 @@ riscv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
   return false;
 }
 
-/* Helper function to check if instruction type is arithmetic-like.  */
-
-static bool
-riscv_arith_type_insn_p (rtx_insn *insn)
-{
-  enum attr_type type = get_attr_type (insn);
-
-  return (type == TYPE_ARITH
-	  || type == TYPE_LOGICAL
-	  || type == TYPE_SHIFT
-	  || type == TYPE_SLT
-	  || type == TYPE_BITMANIP
-	  || type == TYPE_MIN
-	  || type == TYPE_MAX
-	  || type == TYPE_MINU
-	  || type == TYPE_MAXU
-	  || type == TYPE_CLZ
-	  || type == TYPE_CTZ);
-}
-
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of macro-op fusion.
    This is a more general form that combines load+arith and store+arith.  */
@@ -277,7 +257,18 @@ riscv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
   gcc_assert (prev_set && curr_set);
 
-  if (!riscv_arith_type_insn_p (curr))
+  /* Check if curr is an arithmetic-like instruction.  */
+  if (!(get_attr_type (curr) == TYPE_ARITH
+	|| c_type == TYPE_LOGICAL
+	|| c_type == TYPE_SHIFT
+	|| c_type == TYPE_SLT
+	|| c_type == TYPE_BITMANIP
+	|| c_type == TYPE_MIN
+	|| c_type == TYPE_MAX
+	|| c_type == TYPE_MINU
+	|| c_type == TYPE_MAXU
+	|| c_type == TYPE_CLZ
+	|| c_type == TYPE_CTZ))
     return false;
 
   rtx c_src = SET_SRC (curr_set);
