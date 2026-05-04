@@ -1,0 +1,96 @@
+name: ARC GCC test
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arc-test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.target }}-${{ matrix.cpu }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: arc
+            cpu: hs38_linux
+          - target: arc
+            cpu: em
+
+    env:
+      INSTALL_PREFIX: ${{ github.workspace }}/install
+      TARGET: ${{ matrix.target }}
+      CPU: ${{ matrix.cpu }}
+
+    steps:
+      - name: Checkout GCC
+        uses: actions/checkout@v4
+        with:
+          path: gcc
+          fetch-depth: 1
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake autotools-dev curl libmpc-dev libmpfr-dev \
+            libgmp-dev libexpat1-dev gawk build-essential libncurses-dev \
+            bison flex texinfo gperf libtool patchutils bc zlib1g-dev \
+            git python3 dejagnu expect ninja-build pkg-config \
+            libglib2.0-dev libpixman-1-dev
+
+      - name: Checkout arc-gnu-toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain
+          path: arc-gnu-toolchain
+          fetch-depth: 1
+
+      - name: Configure arc-gnu-toolchain
+        working-directory: arc-gnu-toolchain
+        run: |
+          # The arc-gnu-toolchain repo conditionally clones binutils-gdb,
+          # newlib, qemu, etc. when they don't already exist as sibling
+          # directories. We let it clone what it needs and only override
+          # the GCC source with --with-gcc-src to point at the PR checkout.
+          autoconf
+          ./configure \
+            --target="$TARGET" \
+            --prefix="$INSTALL_PREFIX" \
+            --with-gcc-src="$GITHUB_WORKSPACE/gcc" \
+            --with-cpu="$CPU" \
+            --disable-linux \
+            --disable-multilib \
+            --disable-werror \
+            --with-sim=qemu
+
+      - name: Build toolchain
+        working-directory: arc-gnu-toolchain
+        run: |
+          make -j"$(nproc)"
+          make install
+          echo "$INSTALL_PREFIX/bin" >> "$GITHUB_PATH"
+
+      - name: Run GCC testsuite
+        working-directory: arc-gnu-toolchain
+        run: |
+          # Don't fail the job on individual testsuite FAILs; we report them.
+          make -j"$(nproc)" check-gcc-baremetal || true
+
+      - name: Collect and filter results
+        uses: ./gcc/.github/actions/gcc-test-report
+        with:
+          sum-search-path: arc-gnu-toolchain
+          allowlist-dir: gcc/.github/allowlist
+          libc: newlib
+          arch: ${{ matrix.target }}-${{ matrix.cpu }}
+          artifact-name: arc-gcc-testsuite-results-${{ matrix.target }}-${{ matrix.cpu }}
