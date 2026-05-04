@@ -245,7 +245,7 @@ riscv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
    This is a more general form that combines load+arith and store+arith.  */
 
 static bool
-riscv_ls_update (rtx_insn *prev, rtx_insn *curr)
+riscv_memop_arith_fusion_p (rtx_insn *prev, rtx_insn *curr)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
@@ -1139,13 +1139,13 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
      Examples: load+add, add+load, store+add, add+store.  */
   if (riscv_fusion_enabled_p (RISCV_FUSE_LS_UPDATE))
     {
-      if (riscv_ls_update (prev, curr))
+      if (riscv_memop_arith_fusion_p (prev, curr))
        {
 	 if (dump_file)
 	   fprintf (dump_file, "RISCV_FUSE_LS_UPDATE (prev, curr)\n");
 	 return true;
        }
-      if (riscv_ls_update (curr, prev))
+      if (riscv_memop_arith_fusion_p (curr, prev))
        {
 	 if (dump_file)
 	   fprintf (dump_file, "RISCV_FUSE_LS_UPDATE (curr, prev)\n");
