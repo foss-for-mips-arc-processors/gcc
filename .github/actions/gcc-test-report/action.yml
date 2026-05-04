@@ -1,0 +1,123 @@
+name: GCC test report
+description: >
+  Collect GCC testsuite .sum results, filter them against a committed
+  allowlist of known-acceptable failures, upload them as an artifact, and
+  fail the job on any non-allowlisted result. Shared by the per-target
+  toolchain test workflows.
+
+inputs:
+  sum-search-path:
+    description: Directory tree to search for gcc/g++ .sum files.
+    required: true
+  allowlist-dir:
+    description: >
+      Base allowlist directory (contains a <tool>/ subdir of `STATUS: testpath`
+      logs). Consumed by .github/scripts/testsuite-filter.
+    required: true
+  tool:
+    description: Allowlist subdirectory / toolset.
+    required: false
+    default: gcc
+  libc:
+    description: C library tag used to select allowlist files (e.g. newlib).
+    required: false
+    default: newlib
+  arch:
+    description: Target arch used to select allowlist files (e.g. rv32gc, arc-em).
+    required: true
+  abi:
+    description: Target ABI used to select allowlist files (e.g. ilp32d). May be empty.
+    required: false
+    default: ""
+  artifact-name:
+    description: Name of the uploaded test-results artifact.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Collect test results
+      id: collect
+      shell: bash
+      env:
+        SUM_SEARCH_PATH: ${{ inputs.sum-search-path }}
+      run: |
+        set -e
+        mkdir -p test-results
+        # Locate gcc/g++ .sum files anywhere under the build tree.
+        find "$SUM_SEARCH_PATH" -name '*.sum' \
+          -exec cp -v {} test-results/ \; || true
+
+        # Aggregate pass/fail counters from the .sum files.
+        summary=test-results/summary.txt
+        : > "$summary"
+        for f in test-results/*.sum; do
+          [ -f "$f" ] || continue
+          echo "=== $(basename "$f") ===" >> "$summary"
+          grep -E '^# of ' "$f" >> "$summary" || true
+          echo "" >> "$summary"
+        done
+
+        sum_count=$(ls -1 test-results/*.sum 2>/dev/null | wc -l | tr -d ' ')
+        echo "sum_count=$sum_count" >> "$GITHUB_OUTPUT"
+        echo "Collected .sum files: $sum_count"
+        if [ "$sum_count" = "0" ]; then
+          echo "::error::No .sum files produced; treating as build failure."
+          exit 1
+        fi
+
+    - name: Filter against allowlist
+      id: filter
+      shell: bash
+      env:
+        ALLOWLIST_DIR: ${{ inputs.allowlist-dir }}
+        TOOL: ${{ inputs.tool }}
+        LIBC: ${{ inputs.libc }}
+        ARCH: ${{ inputs.arch }}
+        ABI: ${{ inputs.abi }}
+        FILTER: ${{ github.action_path }}/../../scripts/testsuite-filter
+      run: |
+        set -e
+        regressions="test-results/regressions.txt"
+        output="test-results/filter-output.txt"
+
+        sums=$(ls -1 test-results/*.sum | paste -sd ',' -)
+
+        set +e
+        python3 "$FILTER" \
+          --tool "$TOOL" \
+          --libc "$LIBC" \
+          --arch "$ARCH" \
+          --abi "$ABI" \
+          --allowlist-dir "$ALLOWLIST_DIR" \
+          --out "$regressions" \
+          "$sums" | tee "$output"
+        rc=${PIPESTATUS[0]}
+        set -e
+
+        # rc: 0 = all allowlisted, 1 = surviving results, 2 = no .sum files.
+        if [ "$rc" = "2" ]; then
+          echo "::error::testsuite-filter found no .sum files."
+          exit 1
+        fi
+
+        regression_count=$(wc -l < "$regressions" | tr -d ' ')
+        echo "regression_count=${regression_count:-0}" >> "$GITHUB_OUTPUT"
+        echo "Non-allowlisted results: ${regression_count:-0}"
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: test-results/
+        if-no-files-found: warn
+
+    - name: Fail job on non-allowlisted results
+      if: steps.filter.outputs.regression_count != '0' && steps.filter.outputs.regression_count != ''
+      shell: bash
+      env:
+        REGRESSION_COUNT: ${{ steps.filter.outputs.regression_count }}
+      run: |
+        echo "Non-allowlisted results: $REGRESSION_COUNT"
+        exit 1
