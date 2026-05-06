@@ -1235,6 +1235,45 @@ segment_loadstore_group_size (enum vect_cost_for_stmt kind,
   return 0;
 }
 
+/* Calculate LMUL-based cost scaling factor.
+   Larger LMUL values process more data but have proportionally
+   higher latency and register pressure.
+
+   Returns the cost scaling factor based on LMUL.  For LMUL > 1,
+   the factor represents the relative cost increase (2x, 4x, 8x).
+   For LMUL <= 1, returns 1 (no scaling).  */
+static unsigned
+get_lmul_cost_scaling (machine_mode mode)
+{
+  if (!riscv_vla_mode_p (mode))
+    return 1;
+
+  enum vlmul_type vlmul = get_vlmul (mode);
+
+  /* Cost scaling based on LMUL and data processed.
+     Larger LMUL values have proportionally higher latency:
+     - m1 (LMUL_1): 1x (baseline)
+     - m2 (LMUL_2): 2x (processes 2x data, ~2x latency)
+     - m4 (LMUL_4): 4x (processes 4x data, ~4x latency)
+     - m8 (LMUL_8): 8x (processes 8x data, ~8x latency)
+     - mf2/mf4/mf8: 1x (fractional LMUL, already efficient)  */
+  switch (vlmul)
+    {
+    case LMUL_2:
+      return 2;
+    case LMUL_4:
+      return 4;
+    case LMUL_8:
+      return 8;
+    case LMUL_1:
+    case LMUL_F2:
+    case LMUL_F4:
+    case LMUL_F8:
+    default:
+      return 1;
+    }
+}
+
 /* Adjust vectorization cost after calling riscv_builtin_vectorization_cost.
    For some statement, we would like to further fine-grain tweak the cost on
    top of riscv_builtin_vectorization_cost handling which doesn't have any
@@ -1379,6 +1418,17 @@ costs::adjust_stmt_cost (enum vect_cost_for_stmt kind, loop_vec_info loop,
     default:
       break;
     }
+
+  /* Apply LMUL cost scaling uniformly to all vector operations.
+     Larger LMUL values have higher latency and register pressure,
+     which affects performance regardless of loop structure.  */
+  if (vectype)
+    {
+      unsigned lmul_factor = get_lmul_cost_scaling (TYPE_MODE (vectype));
+      if (lmul_factor > 1)
+	stmt_cost *= lmul_factor;
+    }
+
   return stmt_cost;
 }
 
