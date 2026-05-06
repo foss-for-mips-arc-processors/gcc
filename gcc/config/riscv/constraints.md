@@ -344,3 +344,37 @@
   "Sequence bit extract."
   (and (match_code "const_int")
        (match_test "(ival & (ival + 1)) == 0")))
+
+(define_constraint "Os08"
+  "An 8-bit signed immediate."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -128, 127)")))
+
+;; These constraints check whether the APEX builtin instruction identified by
+;; the given subcode (an integer indexing into `riscv_apex_builtins`) has the
+;; specified instruction format enabled (APEX_XD, APEX_XS, APEX_XI, or APEX_XC).
+;;
+;; The function `arcv_apex_format_enabled_p` returns true if the instruction's
+;; supported formats include the queried format.
+;;
+;; This validation is used in instruction selection to ensure the chosen pattern
+;; matches only when the instruction supports the required format.
+(define_constraint "xAVpXD"
+  "Validate support of APEX_XD instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_apex_format_enabled_p (INTVAL (op), APEX_XD)")))
+
+(define_constraint "xAVpXS"
+  "Validate support of APEX_XS instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_apex_format_enabled_p (INTVAL (op), APEX_XS)")))
+
+(define_constraint "xAVpXI"
+  "Validate support of APEX_XI instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_apex_format_enabled_p (INTVAL (op), APEX_XI)")))
+
+(define_constraint "xAVpXC"
+  "Validate support of APEX_XC instruction format."
+  (and (match_code "const_int")
+       (match_test "arcv_apex_format_enabled_p (INTVAL (op), APEX_XC)")))

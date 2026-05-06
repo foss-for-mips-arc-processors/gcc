@@ -1346,4 +1346,44 @@ typedef enum {
     TCACHE_HINT = 3 << 3
 } CacheHint;
 
+#ifndef RISCV_APEX
+#define RISCV_APEX
+
+/* APEX instruction format flags.  */
+enum apex_insn_format {
+  APEX_NONE	= 0,
+  APEX_XD	= 1 << 0,
+  APEX_XS	= 1 << 1,
+  APEX_XI	= 1 << 2,
+  APEX_XC	= 1 << 3,
+  APEX_VOLATILE	= 1 << 4,
+  APEX_VOID	= 1 << 5,
+  APEX_NO_SRC0	= 1 << 6,
+  APEX_NO_SRC1	= 1 << 7,
+};
+
+/* APEX opcode maximums for each format.  */
+enum APEX_OPCODE_FIELD_MAX
+{
+  APEX_OP_MAX_XD = 0xFF,
+  APEX_OP_MAX_XS = 0x3F,
+  APEX_OP_MAX_XI = 0x1F,
+  APEX_OP_MAX_XC = 0x1F,
+};
+
+/* Mask to extract instruction format from format_flags.  */
+#define APEX_FORMAT_MASK 0xF
+
+/* APEX operand signature masks (3-bit patterns for void/src0/src1).  */
+enum apex_signature_mask  {
+  APEX_VOID_FTYPE	    = 0b111,
+  APEX_VOID_FTYPE_SRC0	    = 0b101,
+  APEX_VOID_FTYPE_SRC0_SRC1 = 0b001,
+  APEX_DEST_FTYPE	    = 0b110,
+  APEX_DEST_FTYPE_SRC0	    = 0b100,
+  APEX_DEST_FTYPE_SRC0_SRC1 = 0b000,
+};
+
+#endif /* ! RISCV_APEX */
+
 #endif /* ! GCC_RISCV_H */

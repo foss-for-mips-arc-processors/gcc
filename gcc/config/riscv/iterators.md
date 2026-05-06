@@ -22,6 +22,12 @@
 ;; Mode Iterators
 ;; -------------------------------------------------------------------
 
+;; APEX mode iterators for instruction operands.
+;; All APEX instructions support 32/64-bit integer and float types.
+(define_mode_iterator APEX_DEST [SI DI SF DF])   ;; Destination operand
+(define_mode_iterator APEX_SRC0 [SI DI SF DF])   ;; Source operand 0
+(define_mode_iterator APEX_SRC1 [SI DI SF DF])   ;; Source operand 1
+
 ;; This mode iterator allows 32-bit and 64-bit GPR patterns to be generated
 ;; from the same template.
 (define_mode_iterator GPR [SI (DI "TARGET_64BIT")])

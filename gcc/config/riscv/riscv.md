@@ -5163,3 +5163,4 @@
 (include "andes-25-series.md")
 (include "andes-45-series.md")
 (include "spacemit-x60.md")
+(include "arcv-apex.md")
