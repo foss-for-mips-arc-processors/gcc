@@ -10123,13 +10123,13 @@ riscv_adjust_libcall_cfi_epilogue ()
 }
 
 static void
-riscv_gen_multi_pop_insn (bool use_multi_pop_normal, unsigned mask,
+riscv_gen_multi_pop_insn (bool use_popret, unsigned mask,
 			  unsigned multipop_size)
 {
   rtx insn;
   unsigned regs_count = riscv_multi_push_regs_count (mask);
 
-  if (!use_multi_pop_normal)
+  if (!use_popret)
     insn = emit_insn (
       riscv_gen_multi_push_pop_insn (POP_IDX, multipop_size, regs_count));
   else
@@ -10158,11 +10158,8 @@ riscv_expand_epilogue (int style)
   unsigned fmask = frame->fmask;
   unsigned mask_fprs_push = 0;
   poly_int64 step2 = 0;
-  bool use_multi_pop_normal
-    = ((style == NORMAL_RETURN) && riscv_use_multi_push (frame));
-  bool use_multi_pop_sibcall
-    = ((style == SIBCALL_RETURN) && riscv_use_multi_push (frame));
-  bool use_multi_pop = use_multi_pop_normal || use_multi_pop_sibcall;
+  bool use_multi_pop = ((style == NORMAL_RETURN) || (style == SIBCALL_RETURN))
+		       && riscv_use_multi_push (frame);
 
   bool use_restore_libcall
     = !use_multi_pop
@@ -10430,9 +10427,10 @@ riscv_expand_epilogue (int style)
       /* Undo the above fib.  */
       frame->mask = mask;
       frame->fmask = fmask;
-      riscv_gen_multi_pop_insn (use_multi_pop_normal, frame->mask,
-				multipop_size);
-      if (use_multi_pop_normal)
+      bool use_popret = style == NORMAL_RETURN
+			&& !need_shadow_stack_push_pop_p ();
+      riscv_gen_multi_pop_insn (use_popret, frame->mask, multipop_size);
+      if (use_popret)
 	return;
     }
   else if (use_restore_libcall)
@@ -10456,7 +10454,8 @@ riscv_expand_epilogue (int style)
     {
       if (BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
 	  && style != SIBCALL_RETURN
-	  && !cfun->machine->interrupt_handler_p)
+	  && !cfun->machine->interrupt_handler_p
+	  && !use_multi_pop)
 	emit_insn (gen_sspopchk (Pmode, t0));
       else
 	emit_insn (gen_sspopchk (Pmode, ra));
@@ -10483,7 +10482,8 @@ riscv_expand_epilogue (int style)
       if (need_shadow_stack_push_pop_p ()
 	  && !((style == EXCEPTION_RETURN) && crtl->calls_eh_return)
 	  && BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
-	  && !cfun->machine->interrupt_handler_p)
+	  && !cfun->machine->interrupt_handler_p
+	  && !use_multi_pop)
 	emit_jump_insn (gen_simple_return_internal (t0));
       else
 	emit_jump_insn (gen_simple_return_internal (ra));
