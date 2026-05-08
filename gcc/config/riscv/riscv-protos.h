@@ -165,6 +165,7 @@ extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_ld_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_ld_2c_bypass_p (rtx_insn *, rtx_insn *);
+extern bool arcv_fmadd_acc_bypass_p (rtx_insn *, rtx_insn *);
 extern rtx riscv_gen_gpr_save_insn (struct riscv_frame_info *);
 extern bool riscv_gpr_save_operation_p (rtx);
 extern void riscv_reinit (void);
