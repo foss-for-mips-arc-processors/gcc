@@ -23,7 +23,7 @@ extern bool arc64_legitimate_store_address_p (machine_mode, rtx);
 extern bool arc64_short_access_p (rtx, machine_mode, bool);
 extern rtx arc64_eh_return_handler_rtx (void);
 extern int arc64_asm_preferred_eh_data_format (int, int);
-
+extern bool arc64_insn_has_symbol_p (rtx_insn *insn);
 extern bool arc64_check_mov_const (HOST_WIDE_INT);
 extern bool arc64_split_mov_const (rtx *);
 extern bool arc64_expand_cpymem (rtx *);
@@ -49,7 +49,7 @@ extern int set_accumulator_p (rtx_insn *, rtx_insn *);
 extern const char *arc64_output_return (void);
 extern bool arc64_hard_regno_rename_ok (unsigned, unsigned);
 extern void arc64_expand_vector_init (rtx, rtx);
-
+extern void arc64_split_move_gpf (rtx *, machine_mode);
 #endif /* RTX_CODE */
 
 #endif /* GCC_ARC64_PROTOS_H */

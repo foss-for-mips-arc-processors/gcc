@@ -673,6 +673,8 @@ xorl"
   [(eq_attr "type" "jump,branch,jl,bl,bi,branchcc,dbnz,return,bbit,brcc")
    (const_string "false")
 
+   (match_test "arc64_insn_has_symbol_p (insn)")
+   (const_string "false")
    (eq_attr "length" "2,4")
    (const_string "true")
    ]
@@ -689,18 +691,25 @@ xorl"
     ]
    (const_string "true")))
 
+;; Prevent any instruction from being bundled into a delay slot right after an FPU check
+(define_delay (and (eq_attr "type" "fcmp") (match_test "ARC64_HAS_FP_BASE"))
+  [(nil) (nil) (nil)])
+
 ;; Calls delay slots
 (define_delay (and (eq_attr "type" "jl,bl,return")
 		   (eq_attr "length" "2,4,8"))
-  [(eq_attr "call_slottable" "true") (nil) (nil)])
+  [(and (eq_attr "call_slottable" "true")
+	(not (eq_attr "length" "8,12,16")))
+   (nil) (nil)])
 
 ;; Jumps delay slots
 (define_delay (ior (eq_attr "type" "jump,branch,branchcc,dbnz,bbit")
 ;; Accordingly to PRM jumps with LIMM and delay slots are illegal.
 		   (and (eq_attr "type" "brcc")
 			(eq_attr "length" "4,12")))
-  [(eq_attr "slottable" "true") (nil) (nil)])
-
+  [(and (eq_attr "slottable" "true")
+	(not (eq_attr "length" "8,12,16")))
+   (nil) (nil)])
 ;; Is there an instruction that we are actually putting into the delay
 ;; slot?  N.B. Until after delay slot filler consider full insn size.
 ;; This is required for computing a correct loop body size.
@@ -865,8 +874,10 @@ xorl"
 
 (define_insn "*arc64_movsi"
   [(set
-    (match_operand:SI 0 "arc64_dest_operand"      "=qh,r,    q,    r,    r,h,r,    q,Ustms,Ustor,Ucnst,RBLNKq,r, Ustk<,Ustor")
-    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,i,i,Uldms,    q,S06S0,    i, Ustk>,m,RBLNKq,    r"))
+    (match_operand:SI 0 "arc64_dest_operand"      "=w,r,w,qh,r,    q,    r,
+                r,h,r,    q,Ustms,Ustor,Ucnst,RBLNKq,r, Ustk<,Ustor,w,m,m")
+    (match_operand:SI 1 "arc64_movl_operand"  "r,w,w,qhS03MV,r,U08S0,S12S0,
+     SyPic,i,i,Uldms,    q,S06S0,    i, Ustk>,m,RBLNKq,    r,m,w,G"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -874,25 +885,194 @@ xorl"
        && memory_operand (operands[0], SImode))
    || (CONST_INT_P (operands[1])
        && satisfies_constraint_Ucnst (operands[0]))"
-   "@
-    mov_s\\t%0,%1
-    mov\\t%0,%1
-    mov_s\\t%0,%1
-    mov\\t%0,%1
-    add\\t%0,pcl,%1
-    mov_s\\t%0,%1
-    mov\\t%0,%1
-    ld_s\\t%0,%1
-    st_s\\t%1,%0
-    st%U0\\t%1,%0
-    st%U0\\t%1,%0
-    pop_s\\t%0
-    ld%U1\\t%0,%1
-    push_s\\t%1
-    st%U0\\t%1,%0"
-   [(set_attr "type" "move,move,move,move,add,move,move,ld,st,st,st,ld,ld,st,st")
-    (set_attr "length" "2,4,2,4,8,6,8,2,2,*,8,2,*,2,*")]
-)
+  {
+    switch (which_alternative)
+      {
+      case 0: return "mov\\t%0,%1";
+      case 1: return "mov\\t%0,%1";
+      case 2: return "mov\\t%0,%1";
+      case 3: return "mov_s\\t%0,%1";
+      case 4: return "mov\\t%0,%1";
+      case 5: return "mov_s\\t%0,%1";
+      case 6: return "mov\\t%0,%1";
+      case 7: return "add\\t%0,pcl,%1";
+      case 8: return "mov_s\\t%0,%1";
+      case 9: return "mov\\t%0,%1";
+      case 10: return "ld_s\\t%0,%1";
+      case 11: return "st_s\\t%1,%0";
+      case 12: return "st%U0\\t%1,%0";
+      case 13: return "st%U0\\t%1,%0";
+      case 14: return "pop_s\\t%0";
+      case 15: return "ld%U1\\t%0,%1";
+      case 16: return "push_s\\t%1";
+      case 17: return "st%U0\\t%1,%0";
+
+      case 18: /* GPR to FPU Cross-Bank Move Target.  */
+	if (!TARGET_LL64 && !RTX_FRAME_RELATED_P (insn))
+	  return "#";
+	return "ld%U1\\t%0,%1";
+
+      case 19: /* FPU to GPR Cross-Bank Move Target.  */
+	if (!TARGET_LL64 && !RTX_FRAME_RELATED_P (insn))
+	  return "#";
+	return "st%U0\\t%1,%0";
+
+      case 20: /* Immediate Zero to Symbolic Memory Store.  */
+	return "st\\t0,%0";
+
+      default: gcc_unreachable ();
+      }
+  }
+  [(set_attr "type" "fmov,fmov,fmov,move,move,move,move,add,move,move,ld,st,
+		     st,st,ld,ld,st,st,ld,st,st")
+   (set_attr "length" "4,4,4,2,4,2,4,8,6,8,2,2,*,8,2,*,2,*,4,4,4")
+   (set (attr "enabled") (const_string "yes"))])
+
+;; under O0 the compiler doesnt run phases that otherwise decide to the the
+;; split
+(define_split
+  [(set (match_operand:DI 0 "nonimmediate_operand" "")
+	(match_operand:DI 1 "general_operand" ""))]
+  "reload_completed && optimize == 0 && !TARGET_LL64 && !TARGET_64BIT"
+  [(const_int 0)]
+  {
+    rtx dest = operands[0];
+    rtx src = operands[1];
+
+    if (REG_P (dest) && MEM_P (src))
+      {
+	int base_regno = REGNO (dest);
+
+	/* Enforce even register boundaries for the implicit
+	   ldd pairing track.  */
+	if (base_regno % 2 == 0)
+	  {
+	    rtx addr = XEXP (src, 0);
+	    rtx clean_mem = change_address (src, SImode, addr);
+
+	    rtx lo_mem = adjust_address (clean_mem, SImode, 0);
+	    rtx hi_mem = adjust_address (clean_mem, SImode, 4);
+
+	    rtx lo_reg = gen_rtx_REG (SImode, base_regno);
+	    rtx hi_reg = gen_rtx_REG (SImode, base_regno + 1);
+
+	    emit_move_insn (lo_reg, lo_mem);
+	    emit_move_insn (hi_reg, hi_mem);
+	    DONE;
+	  }
+      }
+
+    if (MEM_P (dest) && REG_P (src))
+      {
+	int base_regno = REGNO (src);
+
+	if (base_regno % 2 == 0)
+	  {
+	    rtx addr = XEXP (dest, 0);
+	    rtx clean_mem = change_address (dest, SImode, addr);
+
+	    rtx lo_mem = adjust_address (clean_mem, SImode, 0);
+	    rtx hi_mem = adjust_address (clean_mem, SImode, 4);
+
+	    rtx lo_reg = gen_rtx_REG (SImode, base_regno);
+	    rtx hi_reg = gen_rtx_REG (SImode, base_regno + 1);
+
+	    emit_move_insn (lo_mem, lo_reg);
+	    emit_move_insn (hi_mem, hi_reg);
+	    DONE;
+	  }
+      }
+    FAIL;
+  })
+
+;; similar to the splitter from above for O0 i needed to group back
+;; the memory accesses
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+	(match_operand:SI 1 "memory_operand" ""))
+   (set (match_operand:SI 2 "register_operand" "")
+	(match_operand:SI 3 "memory_operand" ""))]
+  "optimize == 0 && !TARGET_LL64
+   && (REGNO (operands[0]) % 2 == 0)
+   && (REGNO (operands[2]) == REGNO (operands[0]) + 1)
+   && rtx_equal_p (XEXP (operands[1], 0), XEXP (operands[3], 0))"
+  [(set (match_dup 0) (match_dup 1))]
+  {
+    /* Convert to DImode to force the native generation of ldd or ldd.as.  */
+    PUT_MODE (operands[0], DImode);
+    PUT_MODE (operands[1], DImode);
+  })
+
+(define_peephole2
+  [(set (match_operand:SI 0 "memory_operand" "")
+	(match_operand:SI 1 "register_operand" ""))
+   (set (match_operand:SI 2 "memory_operand" "")
+	(match_operand:SI 3 "register_operand" ""))]
+  "optimize == 0 && !TARGET_LL64
+   && (REGNO (operands[1]) % 2 == 0)
+   && (REGNO (operands[3]) == REGNO (operands[1]) + 1)
+   && rtx_equal_p (XEXP (operands[0], 0), XEXP (operands[2], 0))"
+  [(set (match_dup 0) (match_dup 1))]
+  {
+    PUT_MODE (operands[0], DImode);
+    PUT_MODE (operands[1], DImode);
+  })
+
+(define_insn "*subsi3_insn"
+  [(set (match_operand:SI 0 "register_operand" "=r,r,r,r")
+	(minus:SI (match_operand:SI 1 "register_operand"  "0,r,0,r")
+		  (match_operand:SI 2 "nonmemory_operand" "r,r,i,i")))]
+  ""
+  {
+    switch (which_alternative)
+      {
+      case 0:
+      case 2: return "sub\\t%0,%0,%2";
+      case 1:
+      case 3: return "sub\\t%0,%1,%2";
+      default: gcc_unreachable ();
+      }
+  }
+  [(set_attr "type" "move")
+   (set_attr "length" "4,4,4,4")])
+
+(define_split
+  [(set (match_operand:SI 0 "nonimmediate_operand" "")
+	(match_operand:SI 1 "general_operand" ""))]
+  "reload_completed && (!TARGET_64BIT && !TARGET_LL64) && !RTX_FRAME_RELATED_P (insn)"
+  [(const_int 0)]
+  {
+    /* check macro ranges explicitly if FP_REGNUM_P
+       is narrow.  */
+    int r0 = REGNO (operands[0]);
+    int r1 = REGNO (operands[1]);
+
+    bool dest_is_fp = (REG_P (operands[0]) && r0 >= F0_REGNUM
+			&& r0 <= F31_REGNUM);
+    bool src_is_fp  = (REG_P (operands[1]) && r1 >= F0_REGNUM
+			&& r1 <= F31_REGNUM);
+
+    /* If this wasnt actually an FPU-memory trade do not split.
+       More testing has to be done here.  */
+    if (!((dest_is_fp && MEM_P (operands[1])) || (MEM_P (operands[0])
+	&& src_is_fp)))
+      FAIL;
+
+    rtx scratch = gen_rtx_REG (SImode, 2);
+    if (MEM_P (operands[1]))
+      {
+	/* Memory to FPU via general purpose.  */
+	emit_move_insn (scratch, operands[1]);
+	emit_move_insn (operands[0], scratch);
+      }
+    else
+      {
+	/* FPU to Memory via general purpose.  */
+	emit_move_insn (scratch, operands[1]);
+	emit_move_insn (operands[0], scratch);
+      }
+    DONE;
+  })
 
 (define_insn "*mov<mode>_cmp0"
   [(set (reg:CC_ZN CC_REGNUM)
@@ -906,8 +1086,9 @@ xorl"
 
 ;; Softcore float move.
 (define_insn "*movsf_softfp"
-   [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,Ustms,r,Ustor")
-	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,    q,m,r"))
+   [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,
+						   Ustms,r,Ustor")
+	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,q,m,r"))
    ]
    "!ARC64_HAS_FP_BASE
    && (register_operand (operands[0], SFmode)
@@ -924,27 +1105,146 @@ xorl"
    [(set_attr "type" "move,move,move,move,ld,st,ld,st")
     (set_attr "length" "2,4,6,8,2,2,*,*")])
 
-;; For a fp move I use FSMOV.<cc> instruction. However, we can also
-;; use FSSGNJ.
-;; FIXME! add short instruction selection
+
+;; This split catches 64b double loads early before the register allocator runs.
+;; We convert a single SET into a parallel block with two clobbers using "=&r".
+;; This forces the register allocator to find and reserve 2 GPR registers.
+;; Observe that main move pattern (*mov<mode>_hardfp - see next next pattern)
+;; stays completely clean and without clobbers for the early virtual register passes.
+(define_split
+  [(set (match_operand:GPF_HF 0 "register_operand" "")
+        (match_operand:GPF_HF 1 "memory_operand" ""))]
+  "!reload_completed
+   && GET_MODE_SIZE (<MODE>mode) == 8
+   && !TARGET_LL64 && !TARGET_64BIT"
+  [(parallel [(set (match_dup 0) (match_dup 1))
+              (clobber (match_scratch:SI 2 "=&r"))
+              (clobber (match_scratch:SI 3 "=&r"))])]
+  ""
+)
+
+;; This pattern is a bridge to match the expression from the pre-reload split above.
+;; Without this the recognizer (recog) pass will crash with "unrecognizable insn"
+;; because GCC needs to find a matching instruction for every parallel block.
+;; "=&r" forces the allocator to pick free GP registers.
+;; The "=w" makes sure the target is an FPU register.
+;; We return "#" to skip normal assembly printing and send this
+;; straight to the final post-reload splitter.
+(define_insn "*mov<mode>_hardfp_split_helper"
+  [(set (match_operand:GPF_HF 0 "register_operand" "=w")
+        (match_operand:GPF_HF 1 "memory_operand"    "m"))
+   (clobber (match_scratch:SI 2 "=&r"))
+   (clobber (match_scratch:SI 3 "=&r"))]
+  "ARC64_HAS_FP_BASE && GET_MODE_SIZE (<MODE>mode) == 8 && !TARGET_LL64 && !TARGET_64BIT"
+  "#"  ;; Force hand-off directly to the post-reload data move splitter
+  [(set_attr "type" "ld")
+   (set_attr "length" "8")])
+
+
+;; This split runs after the register allocator finishes (see reload_completed).
+;; It matches the parallel block from before and uses the 
+;; two GPR scratch registers (gpr_lo and gpr_hi) that the allocator generated.
+;; Because the 32bit core cannot load memory directly into FPU registers directly,
+;; we break the 64 bit double into two 32bit steps: first we load from memory 
+;; into the GPR registers, and then we move them from GP registers into the 
+;; FPU registers.
+(define_split
+  [(set (match_operand:GPF_HF 0 "register_operand" "")
+        (match_operand:GPF_HF 1 "memory_operand" ""))
+   (clobber (match_operand:SI 2 "register_operand" ""))
+   (clobber (match_operand:SI 3 "register_operand" ""))]
+  "reload_completed
+   && GET_MODE_SIZE (<MODE>mode) == 8
+   && !TARGET_LL64 && !TARGET_64BIT"
+  [(const_int 0)]
+  {
+    rtx dest = operands[0];
+    rtx src = operands[1];
+    rtx gpr_lo = operands[2];
+    rtx gpr_hi = operands[3];
+
+    rtx addr = XEXP (src, 0);
+    if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+      addr = XEXP (addr, 0);
+
+    rtx clean_mem = change_address (src, SImode, addr);
+    rtx mem_lo = adjust_address (clean_mem, SImode, 0);
+    rtx mem_hi = adjust_address (clean_mem, SImode, 4);
+
+    rtx fpu_lo = gen_rtx_REG (SImode, REGNO (dest));
+    rtx fpu_hi = gen_rtx_REG (SImode, REGNO (dest) + 1);
+
+    start_sequence ();
+    emit_move_insn (gpr_lo, mem_lo);
+    emit_move_insn (gpr_hi, mem_hi);
+    emit_move_insn (fpu_lo, gpr_lo);
+    emit_move_insn (fpu_hi, gpr_hi);
+    rtx_insn *seq = get_insns ();
+    end_sequence ();
+    emit_insn (seq);
+    DONE;
+  })
+
+;; This splitter matches clean (set) instructions with NO clobbers.
+;; It executes fallback data splitting and overlap tracking natively.
+(define_split
+  [(set (match_operand:GPF_HF 0 "nonimmediate_operand" "")
+        (match_operand:GPF_HF 1 "general_operand" ""))]
+  "reload_completed
+   && GET_MODE_SIZE (<MODE>mode) == 8
+   && !TARGET_LL64 && !TARGET_64BIT"
+  [(const_int 0)]
+  {
+    arc64_split_move_gpf (operands, <MODE>mode); 
+    DONE;
+  })
+
+;; Split pattern needed to solve a hardware limitation on
+;; the 32bit hs5x core lacking 64bit ls unit
 (define_insn "*mov<mode>_hardfp"
   [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*Ustor")
 	(match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G,*m,    *r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
-  "@
-   f<sfxtab>mov\\t%0,%1
-   fld<sizef>%U1\\t%0,%1
-   fst<sizef>%U0\\t%1,%0
-   fmv<fmvftab>2<fmvitab>\\t%0,%1
-   fmv<fmvitab>2<fmvftab>\\t%0,%1
-   mov<mcctab>\\t%0,%1
-   mov<mcctab>\\t%0,%1
-   ld<slfp>%U1\\t%0,%1
-   st<slfp>%U0\\t%1,%0"
+  {
+    switch (which_alternative)
+      {
+      case 0:
+        return "f<sfxtab>mov\\t%0,%1";
+      case 1:
+        return "fld<sizef>%U1\\t%0,%1";
+      case 2:
+        return "fst<sizef>%U0\\t%1,%0";
+      case 3: /* GPR to FPU Move (*w, *r).  */
+      case 4: /* FPU to GPR Move (*r, *w).  */
+        /* if this is a 64 bit double precision mode on a 32bit pipeline hs5x
+           we must return # to trigger the splitter.  This forces the register
+           allocator to treat the GPR operand as a true 64bit aligned
+           register pair.  */
+        if (GET_MODE_SIZE (<MODE>mode) == 8 && !TARGET_LL64 && !TARGET_64BIT)
+          return "#";
+        return (which_alternative == 3)
+          ?"fmv<fmvftab>2<fmvitab>\\t%0,%1" :
+          "fmv<fmvitab>2<fmvftab>\\t%0,%1";
+
+      case 5:
+        return "mov<mcctab>\\t%0,%1";
+      case 6:
+        return "mov<mcctab>\\t%0,%1";
+      case 7:
+      case 8:
+        if (GET_MODE_SIZE (<MODE>mode) == 8 && !TARGET_LL64 && !TARGET_64BIT)
+          return "#";
+        return (which_alternative == 7)
+          ?"ld<slfp>%U1\\t%0,%1" :
+          "st<slfp>%U0\\t%1,%0";
+      default: gcc_unreachable ();
+      }
+  }
   [(set_attr "type" "fmov,ld,st,move,move,move,move,ld,st")
-   (set_attr "length" "4,*,*,4,4,4,8,*,*")])
+   (set_attr "length" "4,*,*,4,4,4,8,*,*")
+   (set (attr "enabled") (const_string "yes"))])
 
 ;; move 128bit
 (define_insn_and_split "*mov<mode>_insn"
@@ -960,6 +1260,7 @@ xorl"
    pushdl_s\\t%1
    stdl%U0\\t%1,%0"
    "&& reload_completed
+    && TARGET_64BIT
     && arc64_split_double_move_p (operands, <MODE>mode)"
    [(const_int 0)]
    {
@@ -968,33 +1269,188 @@ xorl"
    }
   [(set_attr "type" "move,ld,ld,st,st")
    (set_attr "length" "8,2,*,2,*")])
+
+;; stack pop with autoincrement splitter
+(define_split
+  [(set (match_operand:GPF_HF 0 "nonimmediate_operand" "")
+	(mem:GPF_HF (match_operand:SI 1 "address_operand" "")))]
+  "reload_completed
+   && GET_MODE_SIZE (<MODE>mode) == 8
+   && !TARGET_LL64 && !TARGET_64BIT"
+  [(const_int 0)]
+  {
+    rtx dest = operands[0];
+    rtx addr = operands[1];
+    rtx sp_reg = stack_pointer_rtx;
+    HOST_WIDE_INT offset_val = 8;
+
+    if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+      {
+	enum rtx_code code = GET_CODE (addr);
+	sp_reg = XEXP (addr, 0);
+
+	if (code == POST_MODIFY || code == PRE_MODIFY)
+	  offset_val = INTVAL (XEXP (XEXP (addr, 1), 1));
+	else if (code == PRE_DEC)
+	  offset_val = -8;
+
+	if (code == PRE_MODIFY || code == PRE_DEC)
+	  emit_insn (gen_addsi3 (sp_reg, sp_reg, GEN_INT (offset_val)));
+      }
+    else
+	sp_reg = addr;
+
+    rtx lo_reg = simplify_gen_subreg (SImode, dest, <MODE>mode, 0);
+    rtx hi_reg = simplify_gen_subreg (SImode, dest, <MODE>mode, 4);
+
+    emit_move_insn (lo_reg, gen_frame_mem (SImode, sp_reg));
+    emit_move_insn (hi_reg, gen_frame_mem (SImode, plus_constant (SImode,
+	sp_reg,
+	4)));
+
+    if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+      {
+	enum rtx_code code = GET_CODE (addr);
+	if (code == POST_MODIFY || code == POST_INC)
+	  emit_insn (gen_addsi3 (sp_reg, sp_reg, GEN_INT (offset_val)));
+      }
+    DONE;
+  })
+
+;; push
+(define_split
+  [(set (mem:GPF_HF (match_operand:SI 1 "address_operand" ""))
+	(match_operand:GPF_HF 0 "register_operand" ""))]
+  "reload_completed
+   && GET_MODE_SIZE (<MODE>mode) == 8
+   && !TARGET_LL64 && !TARGET_64BIT"
+  [(const_int 0)]
+  {
+    rtx src = operands[0];
+    rtx addr = operands[1];
+    rtx sp_reg = stack_pointer_rtx;
+    HOST_WIDE_INT offset_val = -8;
+
+    if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+      {
+	enum rtx_code code = GET_CODE (addr);
+	sp_reg = XEXP (addr, 0);
+
+	if (code == POST_MODIFY || code == PRE_MODIFY)
+	  offset_val = INTVAL (XEXP (XEXP (addr, 1), 1));
+	else if (code == POST_INC)
+	  offset_val = 8;
+
+	if (code == PRE_MODIFY || code == PRE_DEC)
+	  emit_insn (gen_addsi3 (sp_reg, sp_reg, GEN_INT (offset_val)));
+      }
+    else
+      {
+	sp_reg = addr;
+      }
+
+    rtx lo_reg = simplify_gen_subreg (SImode, src, <MODE>mode, 0);
+    rtx hi_reg = simplify_gen_subreg (SImode, src, <MODE>mode, 4);
+
+    emit_move_insn (gen_frame_mem (SImode, sp_reg), lo_reg);
+    emit_move_insn (gen_frame_mem (SImode, plus_constant (SImode, sp_reg,
+	4)),
+	hi_reg);
+
+    if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+      {
+	enum rtx_code code = GET_CODE (addr);
+	if (code == POST_MODIFY || code == POST_INC)
+	  emit_insn (gen_addsi3 (sp_reg, sp_reg, GEN_INT (offset_val)));
+      }
+    DONE;
+  })
+
 ;;
 ;; Short insns: movl_s g,h; movl_s b,u8
 ;; Long insns: movl, stl, ldl
 ;;
 (define_insn "*arc64_movdi"
-   [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,    r,    r,r,    r,         r,    r,    r,Ucnst,    r,r,Ustk<,Ustor")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,BCLRX,BSETX,r,S12S0,S32S0SymMV,U38S0,SyPic,S32S0,Ustk>,m,    r, r"))]
-   "TARGET_64BIT
+  [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,    r,    r,r,r,r,r,r,Ucnst,r,r,Ustk<,Ustor")
+	 (match_operand:DI 1 "arc64_movl_operand"  
+"qh,U08S0,BCLRX,BSETX,r,S12S0,S32S0SymMV,U38S0,SyPic,S32S0,Ustk>,m,    r, r"))]
+   ;; this entire block was originally made only for TARGET_64BIT.
+   ;; That caused the 32bit hs5x compiler to completely drop DImode requests
+   ;; under -O0, falling back to standalone scalar operations
+   ;; Now I allow for hs5x that supports double precision.
+   "(TARGET_64BIT || (!TARGET_64BIT && TARGET_LL64))
     && (register_operand (operands[0], DImode)
-        || register_operand (operands[1], DImode)
-        || (CONST_INT_P (operands[1])
-            && satisfies_constraint_Ucnst (operands[0])))"
-   "@
-    movl_s\\t%0,%1
-    movl_s\\t%0,%1
-    bclrl\\t%0,%q1,%t1
-    bsetl\\t%0,%L1,%T1
-    movl\\t%0,%1
-    movl\\t%0,%1
-    movl\\t%0,%1
-    vpack2wl\\t%0,%L1,%H1
-    addl\\t%0,pcl,%1
-    stl%U0\\t%1,%0
-    popl_s\\t%0
-    ldl%U1\\t%0,%1
-    pushl_s\\t%1
-    stl%U0\\t%1,%0"
+	|| register_operand (operands[1], DImode)
+	|| (CONST_INT_P (operands[1])
+	    && satisfies_constraint_Ucnst (operands[0])))"
+   {
+     static char buf[128];
+     switch (which_alternative)
+       {
+       case 0: return "movl_s\\t%0,%1";
+       case 1: return "movl_s\\t%0,%1";
+       case 2: return "bclrl\\t%0,%q1,%t1";
+       case 3: return "bsetl\\t%0,%L1,%T1";
+       case 4: return "movl\\t%0,%1";
+       case 5: return "movl\\t%0,%1";
+       case 6: return "movl\\t%0,%1";
+       case 7: return "vpack2wl\\t%0,%L1,%H1";
+       case 8: return "addl\\t%0,pcl,%1";
+
+       case 9:  /* Immediate constant store alternative.  */
+         return "stl%U0\\t%1,%0";
+
+       /* - Memory Store Alternative (Ustor, r)
+	  If we are on a 32-bit machine core native 64-bit store instructions
+	  do not exist so there is need to extract the base and
+	  calculate offset. Same happens at case 10 and 11.  */
+       case 13: /* Memory Store Alternative (Ustor, r).  */
+	  if (!TARGET_64BIT)
+	   {
+	     rtx addr = XEXP (operands[0], 0);
+	     if (GET_CODE (addr) == PLUS && CONST_INT_P (XEXP (addr, 1)))
+	       {
+		 HOST_WIDE_INT offset = INTVAL (XEXP (addr, 1));
+		 const char *src_name = reg_names[REGNO (operands[1])];
+		 const char *base_name = reg_names[REGNO (XEXP (addr, 0))];
+		 if (offset > 0 && (offset % 4 == 0))
+		   {
+		     sprintf (buf, "std.as\t%s,[%s,%ld]", src_name,
+						     base_name, offset/4);
+		     return buf;
+		   }
+	       }
+	     return "std\\t%1,%0";
+	   }
+	 /* Fallback for zero offset stores.  */
+	 return "stl%U0\\t%1,%0";
+
+       case 10: return "popl_s\\t%0";
+
+       case 11: /* - Memory Load Alternative (r, m).  */
+	  if (!TARGET_64BIT)
+	   {
+	     rtx addr = XEXP (operands[1], 0);
+	     if (GET_CODE (addr) == PLUS && CONST_INT_P (XEXP (addr, 1)))
+	       {
+		 HOST_WIDE_INT offset = INTVAL (XEXP (addr, 1));
+		 const char *dest =reg_names[REGNO (operands[0])];
+		 const char *base= reg_names[REGNO (XEXP (addr, 0))];
+		 if (offset > 0 && (offset % 4 == 0))
+		   {
+		     sprintf (buf, "ldd.as\t%s,[%s,%ld]", dest, base,offset/4);
+		     return buf;
+		   }
+	       }
+	     return "ldd\\t%0,%1";
+	   }
+	 /* Fallback for zero offset loads.  */
+	 return "ldl%U1\\t%0,%1";
+
+       case 12: return "pushl_s\\t%1";
+       default: gcc_unreachable ();
+       }
+   }
    [(set_attr "type" "move,move,bclr,bset,move,move,move,vpack,addl,st,ld,ld,st,st")
     (set_attr "length" "2,2,8,8,4,4,8,8,8,8,2,*,2,*")]
 )
