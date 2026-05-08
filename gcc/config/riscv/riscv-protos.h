@@ -932,6 +932,7 @@ extern rtx_insn *riscv_last_scheduled_insn;
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+extern bool arcv_fmadd_acc_bypass_p (rtx_insn *, rtx_insn *);
 
 /* Routines implemented for xmipstrig.  */
 extern rtx riscv_get_trig_scale_value (int flti_const_index);

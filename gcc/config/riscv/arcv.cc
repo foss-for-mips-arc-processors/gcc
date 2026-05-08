@@ -65,6 +65,16 @@ struct arcv_sched_state {
 
 static struct arcv_sched_state sched_state;
 
+/* Return true if INSN is an integer or floating-point memory access.  */
+
+static bool
+arcv_memop_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+  return (type == TYPE_LOAD || type == TYPE_STORE
+	  || type == TYPE_FPLOAD || type == TYPE_FPSTORE);
+}
+
 /* Try to reorder ready queue to promote ARCV fusion opportunities.
    Returns the number of instructions that can be issued this cycle.  */
 
@@ -81,8 +91,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   if (!sched_state.pipeB_scheduled_p && riscv_last_scheduled_insn
       && ready && *n_readyp > 0
       && !SCHED_GROUP_P (riscv_last_scheduled_insn)
-      && (get_attr_type (riscv_last_scheduled_insn) == TYPE_LOAD
-	  || get_attr_type (riscv_last_scheduled_insn) == TYPE_STORE))
+      && arcv_memop_p (riscv_last_scheduled_insn))
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
@@ -111,8 +120,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   if ((!sched_state.alu_pipe_scheduled_p || !sched_state.pipeB_scheduled_p)
       && riscv_last_scheduled_insn && ready && *n_readyp > 0
       && !SCHED_GROUP_P (riscv_last_scheduled_insn)
-      && (get_attr_type (riscv_last_scheduled_insn) != TYPE_LOAD
-	  && get_attr_type (riscv_last_scheduled_insn) != TYPE_STORE))
+      && !arcv_memop_p (riscv_last_scheduled_insn))
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
@@ -126,8 +134,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	     && riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	   {
-	     if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
-		 || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
+	     if (arcv_memop_p (ready[*n_readyp - i]))
 	     {
 	       if (sched_state.pipeB_scheduled_p)
 		 continue;
@@ -153,12 +160,10 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
       && !SCHED_GROUP_P (ready[*n_readyp - 1]))
   {
     rtx_insn *head_next = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
-    if (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
-	|| get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE
+    if (arcv_memop_p (ready[*n_readyp - 1])
 	|| (head_next && NONDEBUG_INSN_P (head_next)
 	    && SCHED_GROUP_P (head_next) && recog_memoized (head_next) >= 0
-	    && (get_attr_type (head_next) == TYPE_LOAD
-		|| get_attr_type (head_next) == TYPE_STORE)))
+	    && arcv_memop_p (head_next)))
     {
       if (sched_state.alu_pipe_scheduled_p)
 	return 0;
@@ -169,15 +174,13 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
 	 if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
 	      && recog_memoized (ready[*n_readyp - i]) >= 0
-	      && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
-	      && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
+	      && !arcv_memop_p (ready[*n_readyp - i])
 	      && !SCHED_GROUP_P (ready[*n_readyp - i])
 	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
 		  || !SCHED_GROUP_P (next_insn)))
 	     || (next_insn && NONDEBUG_INSN_P (next_insn)
 		 && recog_memoized (next_insn) >= 0
-		 && get_attr_type (next_insn) != TYPE_LOAD
-		 && get_attr_type (next_insn) != TYPE_STORE))
+		 && !arcv_memop_p (next_insn)))
 	   {
 	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	     sched_state.alu_pipe_scheduled_p = 1;
@@ -294,10 +297,7 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
   if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
       && single_set (insn) && single_set (next))
     {
-      if (get_attr_type (insn) == TYPE_LOAD
-	  || get_attr_type (insn) == TYPE_STORE
-	  || get_attr_type (next) == TYPE_LOAD
-	  || get_attr_type (next) == TYPE_STORE
+      if (arcv_memop_p (insn) || arcv_memop_p (next)
 	  || sched_state.alu_pipe_scheduled_p)
 	sched_state.pipeB_scheduled_p = 1;
       else
@@ -308,4 +308,30 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
   riscv_cached_can_issue_more = more - 1;
 
   return riscv_cached_can_issue_more;
+}
+
+/* Check whether out_insn's output reg is passed into input register 3 of
+   an fmadd instruction.  */
+bool
+arcv_fmadd_acc_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
+{
+  rtx out_set = single_set (out_insn);
+  rtx in_set  = single_set (in_insn);
+
+  if (!out_set || !in_set || !REG_P (SET_DEST (out_set)))
+    return false;
+
+  rtx src = SET_SRC (in_set);
+
+  if (GET_CODE (src) == NEG)
+    src = XEXP (src, 0);
+
+  if (GET_CODE (src) != FMA)
+    return false;
+
+  rtx acc = XEXP (src, 2);
+  if (GET_CODE (acc) == NEG)
+    acc = XEXP (acc, 0);
+
+  return REG_P (acc) && REGNO (acc) == REGNO (SET_DEST (out_set));
 }
