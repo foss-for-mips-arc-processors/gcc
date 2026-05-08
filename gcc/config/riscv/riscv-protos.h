@@ -960,6 +960,7 @@ extern rtx_insn *riscv_last_scheduled_insn;
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+extern bool arcv_fmadd_acc_bypass_p (rtx_insn *, rtx_insn *);
 
 /* Routines implemented in arcv.cc.  */
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
