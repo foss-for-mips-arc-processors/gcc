@@ -12,19 +12,19 @@ test_ld_alu (int *p, int a)
 }
 
 int
-test_st_alu (int *p, int val, int a, int b)
+test_st_alu (int *p, int val, int a)
 {
   *p = val;
-  return a + b;
+  return val + a;
 }
 
 extern void bar (void);
 
 int
-test_st_br (int *p, int val, int cond1, int cond2)
+test_st_br (int *p, int val, int cond)
 {
   *p = val;
-  if (cond1 != cond2)
+  if (val != cond)
     bar ();
   return val;
 }
@@ -45,7 +45,7 @@ test_fld_fmac_raw (double *p, double a, double b)
 }
 
 /* { dg-final { scan-rtl-dump "0-->.*a1=a1\\+0x1.*\n.*0-->.*a0=\\\[a0\\\].*\n.*1-->.*a0=a1\\+a0" "sched2" } } */
-/* { dg-final { scan-rtl-dump "0-->.*\\\[a0\\\]=a1.*\n.*0-->.*a0=a2\\+a3" "sched2" } } */
+/* { dg-final { scan-rtl-dump "0-->.*\\\[a0\\\]=a1.*\n.*0-->.*a0=a1\\+a2" "sched2" } } */
 /* { dg-final { scan-rtl-dump "0-->.*\\\[a0\\\]=a1.*\n.*0-->.*pc=" "sched2" } } */
 /* { dg-final { scan-rtl-dump "0-->.*fa5=\\\[a0\\\].*\n.*0-->.*fa0=fa0\\+fa1" "sched2" } } */
 /* { dg-final { scan-rtl-dump "0-->.*fa5=\\\[a0\\\].*\n.*2-->.*fa0=\\{fa0\\*fa1\\+fa5\\}" "sched2" } } */
