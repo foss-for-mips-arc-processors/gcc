@@ -31,8 +31,226 @@ along with GCC; see the file COPYING3.  If not see
 #include "target.h"
 #include "tm_p.h"
 #include "riscv-subset.h"
+#include "stringpool.h" /* Used for "get_identifier ()"  */
 
 #define builtin_define(TXT) cpp_define (pfile, TXT)
+
+/* Look up the user-defined function declaration by name.
+
+   Given a function name as a string, this function returns the corresponding
+   tree node for its declaration, if it exists.  If the function is not declared
+   in the current scope, an error is reported.  */
+
+tree
+arcv_apex_lookup_function (const char *fn_name)
+{
+  /* Convert the raw string to an interned IDENTIFIER_NODE.  */
+  tree id = get_identifier (fn_name);
+
+  /* Try the current scope (and outer scopes) for a matching declaration.  */
+  tree fndecl = lookup_name (id);
+
+  /* Verify that we really found a function.  */
+  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
+  {
+    error_at (input_location, "%qs is not declared as a function", fn_name);
+    return NULL_TREE;
+  }
+
+  return fndecl;
+}
+
+/* Return true if S is a valid APEX-intrinsic identifier.
+   Rules:
+     - The identifier must begin with an ASCII letter (A–Z or a–z) or
+     an underscore ('_').
+     - All remaining characters must be ASCII letters, digits (0–9) or
+     underscores ('_').
+     - Other symbols are not allowed.
+   Examples of valid identifiers:    "add", "_bar", "Mul3", "op123".
+   Examples of invalid identifiers:  "1foo", "baz.qux", "foo%".  */
+
+static bool
+arcv_apex_valid_identifier_p (const char *s)
+{
+  if (!s || !s[0])
+    return false;
+
+  if (!(ISALPHA (s[0]) || s[0] == '_'))
+    return false;
+
+  for (const char *p = s + 1; *p; ++p)
+    if (!ISALNUM (*p) && *p != '_')
+      return false;
+
+  return true;
+}
+
+/* Parses and handles `#pragma intrinsic` for APEX custom instructions.
+
+   Syntax:
+	#pragma intrinsic(fn_name, "mnemonic", opcode, "format"...)
+
+   Arguments:
+   - fn_name: C function identifier to register as an intrinsic builtin
+   - mnemonic: Assembly instruction name (e.g., "add", "mul")
+   - opcode: Instruction opcode (0-255 for XD, 0-63 for XS, 0-31 for XI/XC)
+   - format: One or more format specifiers:
+       - "XD": Default format (register-register, up to 3 operands)
+       - "XS": Two-operand with 8-bit signed immediate
+       - "XI": One-operand with immediate
+       - "XC": Accumulator format (rd is also src0)
+       - "side_effect": Mark as volatile (prevents optimization)  */
+
+static void
+arcv_apex_pragma_intrinsic (cpp_reader *)
+{
+
+  enum cpp_ttype token;
+  tree x;
+
+  /* Parse open Parenthesis '('  */
+  if (pragma_lex (&x) != CPP_OPEN_PAREN)
+  {
+    error ("missing %<(%< after %<#pragma intrinsic%<");
+    return;
+  }
+
+  /* Parse the function identifier to be marked as intrinsic.  */
+  if (pragma_lex (&x) != CPP_NAME)
+  {
+    warning (0, "expected identifier in '#pragma intrinsic' - ignoring");
+    return;
+  }
+  const char *fn_name = IDENTIFIER_POINTER (x);
+
+  /* Note: We intentionally do not validate the presence of commas strictly.
+     If a comma is missing after the function identifier or after the
+     instruction name, parsing will continue, but the following token
+     will not match the expected type (e.g., string or number), and we’ll
+     always end up reporting a missing or invalid attribute.
+
+     Because of this, explicitly diagnosing missing commas would be redundant
+     and would only clutter the error output.  This behavior is intentional.  */
+  pragma_lex (&x);
+
+  /* Parse the mnemonic string, e.g., "add", "mul".  */
+  token = pragma_lex (&x);
+  const char *mnemonic_raw = "";
+  if (token == CPP_STRING)
+    mnemonic_raw = TREE_STRING_POINTER (x);
+  else if (token == CPP_NAME)
+    mnemonic_raw = IDENTIFIER_POINTER (x);
+
+  /* If the mnemonic is empty or absent, report an error.  */
+  if (mnemonic_raw[0] == '\0')
+    error ("pragma intrinsic: APEX attribute 'name' is missing");
+  /* Reject mnemonics that do not follow APEX identifier rules.  */
+  else if (!arcv_apex_valid_identifier_p (mnemonic_raw))
+    error ("pragma intrinsic: APEX name %qs is not lexically valid",
+	    mnemonic_raw);
+
+  /* Convert mnemonic to lowercase to normalize it for the assembler.  */
+  char *mnemonic = xstrdup (mnemonic_raw);
+  for (char *p = mnemonic; *p; p++)
+    *p = TOLOWER (*p);
+
+  /* See note above regarding comma handling.  */
+  pragma_lex (&x);
+
+  /* Parse the opcode value (must be an integer).  */
+  if (pragma_lex (&x) != CPP_NUMBER)
+  {
+    error ("pragma intrinsic: APEX attribute 'opcode' is missing");
+    free (mnemonic);
+    return;
+  }
+  unsigned HOST_WIDE_INT opcode = TREE_INT_CST_LOW (x);
+
+  /* Start with no formats selected.  If none are explicitly provided,
+     formats will be determined later at "arcv_resolve_insn_format ()".  */
+  unsigned int format_flags = APEX_NONE;
+
+  const char *attribute = NULL;
+
+  /* Parse zero or more instruction format specifiers.  */
+  while (1)
+  {
+    token = pragma_lex (&x);
+
+    /* Break if end of argument list reached.  */
+    if (token == CPP_CLOSE_PAREN)
+      break;
+
+    /* Expect comma before each format string.  */
+    if (token != CPP_COMMA)
+    {
+      error ("pragma intrinsic: expected %<,%> or %<)%>");
+      return;
+    }
+
+    token = pragma_lex (&x);
+
+    switch (token)
+    {
+      case CPP_STRING:
+	attribute = TREE_STRING_POINTER (x);
+	break;
+      case CPP_NAME:
+	attribute = IDENTIFIER_POINTER (x);
+	break;
+      default:
+	error ("pragma intrinsic: expected attribute");
+	return;
+    }
+
+    /* On first valid format specifier, override the default (NONE).  */
+    if (strcmp (attribute, "XD") == 0)
+      format_flags |= APEX_XD;
+    else if (strcmp (attribute, "XS") == 0)
+      format_flags |= APEX_XS;
+    else if (strcmp (attribute, "XI") == 0)
+      format_flags |= APEX_XI;
+    else if (strcmp (attribute, "XC") == 0)
+      format_flags |= APEX_XC;
+    else if (strcmp (attribute, "side_effect") == 0)
+      format_flags |= APEX_VOLATILE;
+    else
+    {
+      error ("pragma intrinsic: APEX attribute %qs is not recognized",
+	     attribute);
+      free (mnemonic);
+      return;
+    }
+
+  }
+
+  /* Check for incompatible APEX instruction format combinations.
+     The XI format cannot be combined with XD, XS, or XC.  */
+  if ((format_flags & APEX_XI)
+      && (format_flags & (APEX_XD | APEX_XS | APEX_XC)))
+  {
+    error ("pragma intrinsic: APEX formats 'XI' and '%s' are not compatible",
+	   attribute);
+    free (mnemonic);
+    return;
+  }
+
+  /* Lookup the user-defined function declaration of the APEX intrinsic.  */
+  tree fndecl = arcv_apex_lookup_function (fn_name);
+
+  /* If lookup failed, clean up and return early.  */
+  if (fndecl == NULL_TREE)
+  {
+    free (mnemonic);
+    return;
+  }
+
+  /* Register the specified function as an APEX intrinsic.  */
+  arcv_apex_register_builtin (fndecl, fn_name, mnemonic, format_flags, opcode);
+
+  free (mnemonic);
+}
 
 static int
 riscv_ext_version_value (unsigned major, unsigned minor)
@@ -322,4 +540,5 @@ riscv_register_pragmas (void)
   targetm.check_builtin_call = riscv_check_builtin_call;
   targetm.target_option.pragma_parse = riscv_pragma_target_parse;
   c_register_pragma ("riscv", "intrinsic", riscv_pragma_intrinsic);
+  c_register_pragma_with_expansion (0, "intrinsic", arcv_apex_pragma_intrinsic);
 }

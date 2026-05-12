@@ -10093,6 +10093,7 @@ option is specified.  @xref{OpenMP}, and @ref{OpenACC}.
 * LoongArch Pragmas::
 * M32C Pragmas::
 * PRU Pragmas::
+* RISC-V Pragmas::
 * RS/6000 and PowerPC Pragmas::
 * S/390 Pragmas::
 * Darwin Pragmas::
@@ -10202,6 +10203,90 @@ entry.  For example:
 #pragma ctable_entry 2 0x4802a000
 *(unsigned int *)0x4802a010 = val;
 @end smallexample
+
+@end table
+
+@node RISC-V Pragmas
+@subsection RISC-V Pragmas
+
+@table @code
+
+@cindex pragma, intrinsic
+@item #pragma intrinsic (@var{fn}, "@var{mnemonic}", @var{opcode}, "@var{format}"@dots{})
+Register a previously declared C function @var{fn} as an APEX custom
+instruction intrinsic.  This binds the function to a specific assembly
+mnemonic and opcode at compile time, so that calls to @var{fn} emit the
+corresponding custom instruction rather than a normal function call.
+
+The arguments are:
+
+@table @var
+@item fn
+The name of a C function already declared in the current scope.  Its
+return type and parameter types determine the operand signature of the
+generated instruction: @code{void} return means no destination register;
+each @code{int}/@code{long}/@code{float}/@code{double} parameter maps to
+a source register or immediate operand.
+
+@item mnemonic
+A string giving the assembly instruction name, e.g.@: @code{"mac"} or
+@code{"crc32"}.  It is normalized to lowercase.
+
+@item opcode
+An integer opcode.  The valid range depends on the instruction format:
+0--255 for @code{XD}, 0--63 for @code{XS}, and 0--31 for @code{XI}
+and @code{XC}.
+
+@item format
+One or more format specifiers (each a separate string argument following
+a comma):
+
+@table @code
+@item "XD"
+Default register-register format (up to 3 operands, 8-bit opcode).
+
+@item "XS"
+Short-immediate format: two register operands plus an 8-bit signed
+immediate (6-bit opcode).
+
+@item "XI"
+Immediate format: one register operand plus an immediate (5-bit opcode).
+Cannot be combined with @code{XD}, @code{XS}, or @code{XC}.
+
+@item "XC"
+Accumulator format: the destination register is also used as the first
+source operand (5-bit opcode).
+
+@item "side_effect"
+Mark the instruction as having side effects.  This prevents the compiler
+from optimizing away or reordering calls to the intrinsic.
+@end table
+
+When no format specifier is given, the compiler infers the format from
+the function's signature and opcode range.  Multiple formats may be
+specified (except @code{XI}, which is exclusive); the compiler selects
+the appropriate encoding based on the operand types at each call site.
+@end table
+
+For example:
+
+@smallexample
+int mac (int, int);
+#pragma intrinsic(mac, "mac", 1, "XD", "XC", "side_effect")
+@end smallexample
+
+@noindent
+This registers @code{mac} as an intrinsic with mnemonic @code{mac},
+opcode 1, supporting both the XD and XC instruction formats, and
+marked as having side effects.  The function takes two parameters
+(source operands) and returns an @code{int} (destination register).
+
+The compiler emits an assembler @code{.extInstruction} directive for each
+registered intrinsic so that the assembler can encode the custom
+instruction.  APEX intrinsics are supported through LTO: intrinsic
+metadata is serialized into a dedicated LTO section and re-registered
+during link-time optimization, with cross-translation-unit conflicts
+(e.g.@: same opcode with different mnemonics) diagnosed as errors.
 
 @end table
 
