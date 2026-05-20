@@ -44,7 +44,7 @@
 		condmove,mvpair,zicond,cpop,clmul"))
   "((arcv_rhx100_issueA_fuse0 + arcv_rhx100_ALU_A_fuse0_early) | (arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse1_early)) | ((arcv_rhx100_issueB_fuse0 + arcv_rhx100_ALU_B_fuse0_early) | (arcv_rhx100_issueB_fuse1 + arcv_rhx100_ALU_B_fuse1_early))")
 
-(define_insn_reservation "arcv_rhx100_imul_fused" 4
+(define_insn_reservation "arcv_rhx100_mpy32_fused" 4
   (and (eq_attr "tune" "arcv_rhx100")
        (eq_attr "type" "imul_fused"))
   "(arcv_rhx100_issueA_fuse0 + arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse0_early + arcv_rhx100_ALU_A_fuse1_early + arcv_rhx100_MPY32), nothing*3")
@@ -147,11 +147,11 @@
 (define_bypass 2 "arcv_rhx100_load_insn" "arcv_rhx100_load_insn")
 (define_bypass 1 "arcv_rhx100_load_insn" "arcv_rhx100_div_insn")
 
-(define_bypass 3 "arcv_rhx100_mpy32_insn" "arcv_rhx100_mpy*_insn")
-(define_bypass 3 "arcv_rhx100_mpy32_insn" "arcv_rhx100_div_insn")
-(define_bypass 1 "arcv_rhx100_mpy32_insn" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
-(define_bypass 7 "arcv_rhx100_mpy32_insn" "arcv_rhx100_store_insn")
-(define_bypass 7 "arcv_rhx100_mpy32_insn" "arcv_rhx100_load_insn")
+(define_bypass 3 "arcv_rhx100_mpy*" "arcv_rhx100_mpy*_insn")
+(define_bypass 3 "arcv_rhx100_mpy*" "arcv_rhx100_div_insn")
+(define_bypass 1 "arcv_rhx100_mpy*" "arcv_rhx100_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 7 "arcv_rhx100_mpy*" "arcv_rhx100_store_insn")
+(define_bypass 7 "arcv_rhx100_mpy*" "arcv_rhx100_load_insn")
 
 (define_bypass 3 "arcv_rhx100_fmul"    "arcv_rhx100_fmul*")
 (define_bypass 4 "arcv_rhx100_fmul_dp" "arcv_rhx100_fmul*")
