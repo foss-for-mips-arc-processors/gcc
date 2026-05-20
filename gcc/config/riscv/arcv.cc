@@ -570,16 +570,6 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  if (TARGET_ARCV_ADVANCED_FUSION
-      && riscv_microarchitecture == arcv_rmx500
-      && prev_set && curr_set
-      && arcv_rmx500_limited_dual_issue_pair_p (prev, curr))
-    {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_RMX500_LIMITED_DUAL_ISSUE\n");
-      return true;
-    }
-
   /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
   bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
 
@@ -761,12 +751,28 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	{
 	  rtx_insn *candidate = ready[*n_readyp - i];
 	  rtx_insn *next_insn = arcv_next_fusible_insn (candidate);
+	  bool limited_dual_issue = false;
 	  if (NONDEBUG_INSN_P (candidate)
 	      && !SCHED_GROUP_P (candidate)
 	      && (!next_insn || !SCHED_GROUP_P (next_insn))
-	      && arcv_macro_fusion_pair_p
-		   (sched_state.last_scheduled_insn, candidate))
+	      && (arcv_macro_fusion_pair_p
+		   (sched_state.last_scheduled_insn, candidate)
+	      /* Limited dual issue is checked only in reorder2
+	      during sched2 to avoid breaking other fusion opportunities. 
+	      This happens easily because a sched group groups all
+	      dependencies, causing 5 unrelated registers (3 source and
+	      2 destination registers) to be stuck together for limited dual
+	      issue. This makes it harder to reorder other instructions. */
+	      || (limited_dual_issue = (reload_completed
+		  && TARGET_ARCV_ADVANCED_FUSION
+		  && single_set (sched_state.last_scheduled_insn)
+		  && single_set (candidate)
+		  && arcv_rmx500_limited_dual_issue_pair_p
+			(sched_state.last_scheduled_insn, candidate)))))
 	    {
+	      if (limited_dual_issue &&dump_file)
+		fprintf (dump_file, "ARCV_RMX500_LIMITED_DUAL_ISSUE\n");
+		
 	      std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	      SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
 	      return sched_state.cached_can_issue_more;
