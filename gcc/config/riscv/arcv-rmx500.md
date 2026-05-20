@@ -26,6 +26,7 @@
 (define_cpu_unit "arcv_rmx500_DIV"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_DMP_fuse0"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_DMP_fuse1"	"arcv_rmx500")
+(define_cpu_unit "arcv_rmx500_FPU"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_fdivsqrt"	"arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_issue_fuse0" "arcv_rmx500")
 (define_cpu_unit "arcv_rmx500_issue_fuse1" "arcv_rmx500")
@@ -74,21 +75,34 @@
        (eq_attr "type" "store,fpstore"))
   "(arcv_rmx500_issue_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_DMP_fuse1)")
 
-;; (soft) floating points
-(define_insn_reservation "arcv_rmx500_xfer" 3
+(define_insn_reservation "arcv_rmx500_fpu_fast" 1
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "mfc,mtc,fcvt,fcvt_i2f,fcvt_f2i,fmove,fcmp"))
-  "(arcv_rmx500_ALU_fuse0_early | arcv_rmx500_ALU_fuse1_early), nothing*2")
+       (eq_attr "type" "mtc,fmove,fcvt,fcvt_i2f,mfc,fcmp,fcvt_f2i,fcvt,fcvt_i2f"))
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_FPU")
+
+(define_insn_reservation "arcv_rmx500_fmul_dp" 4
+  (and (eq_attr "tune" "arcv_rmx500")
+       (and (eq_attr "type" "fadd,fmul,fmadd")
+	    (eq_attr "mode" "DF")))
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_FPU")
 
 (define_insn_reservation "arcv_rmx500_fmul" 3
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "fadd,fmul,fmadd"))
-  "(arcv_rmx500_ALU_fuse0_early | arcv_rmx500_ALU_fuse1_early), nothing*2")
+       (and (eq_attr "type" "fadd,fmul,fmadd")
+	    (not (eq_attr "mode" "DF"))))
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_FPU")
 
-(define_insn_reservation "arcv_rmx500_fdiv" 21
+(define_insn_reservation "arcv_rmx500_fdiv_dp" 10
   (and (eq_attr "tune" "arcv_rmx500")
-       (eq_attr "type" "fdiv,fsqrt"))
-  "arcv_rmx500_fdivsqrt*21")
+       (and (eq_attr "type" "fdiv,fsqrt")
+	    (eq_attr "mode" "DF")))
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_FPU + arcv_rmx500_fdivsqrt, arcv_rmx500_fdivsqrt*6")
+
+(define_insn_reservation "arcv_rmx500_fdiv" 10
+  (and (eq_attr "tune" "arcv_rmx500")
+       (and (eq_attr "type" "fdiv,fsqrt")
+	    (not (eq_attr "mode" "DF"))))
+  "(arcv_rmx500_issue_fuse0 | arcv_rmx500_issue_fuse1) + arcv_rmx500_FPU + arcv_rmx500_fdivsqrt, arcv_rmx500_fdivsqrt*6")
 
 ;; Bypasses
 (define_bypass 1 "arcv_rmx500_alu_early_arith" "arcv_rmx500_store_insn" "riscv_store_data_bypass_p")
