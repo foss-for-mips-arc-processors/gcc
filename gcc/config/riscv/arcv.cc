@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
+//#include "hard-reg-set.h"
 #define IN_TARGET_CODE 1
 
 #include "config.h"
@@ -237,6 +238,38 @@ arcv_limited_dual_issue_hazard_p (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+static void
+arcv_count_source_regs_cb (rtx *x, void *data)
+{
+  HARD_REG_SET *regs = (HARD_REG_SET *) data;
+  if (REG_P (*x))
+    {
+      SET_HARD_REG_BIT (*regs, REGNO (*x));
+      return;
+    }
+  const char *fmt = GET_RTX_FORMAT (GET_CODE (*x));
+  for (int i = GET_RTX_LENGTH (GET_CODE (*x)) - 1; i >= 0; i--)
+    {
+      if (fmt[i] == 'e')
+	arcv_count_source_regs_cb (&XEXP (*x, i), data);
+      else if (fmt[i] == 'E')
+	for (int j = XVECLEN (*x, i) - 1; j >= 0; j--)
+	  arcv_count_source_regs_cb (&XVECEXP (*x, i, j), data);
+    }
+}
+
+static bool
+arcv_too_many_source_regs_p (rtx_insn *prev, rtx_insn *curr)
+{
+  HARD_REG_SET regs;
+  CLEAR_HARD_REG_SET (regs);
+
+  note_uses (&PATTERN (prev), arcv_count_source_regs_cb, &regs);
+  note_uses (&PATTERN (curr), arcv_count_source_regs_cb, &regs);
+
+  return hard_reg_set_popcount(regs) > 3;
+}
+
 static bool
 arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
@@ -271,6 +304,9 @@ arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   if (arcv_limited_dual_issue_hazard_p (prev, curr))
+    return false;
+
+  if (arcv_too_many_source_regs_p (prev, curr))
     return false;
 
   return true;
