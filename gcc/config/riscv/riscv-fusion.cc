@@ -1080,7 +1080,12 @@ static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
     | SCHED_FUSION_LD_ZERO_EXTEND,
     false, false, RISCV_FUSION_ANY, 1 },
   { RISCV_FUSE_ADJACENT_STORE, (1U << 4) | (1U << 8),
-    SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 }
+    SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 },
+  /* Allow 2-, 4- and 8-byte FP loads and stores.  */
+  { RISCV_FUSE_ADJACENT_FP_LOAD, (1U << 2) | (1U << 4) | (1U << 8),
+    SCHED_FUSION_LD, true, false, RISCV_FUSION_ANY, 1 },
+  { RISCV_FUSE_ADJACENT_FP_STORE, (1U << 2) | (1U << 4) | (1U << 8),
+    SCHED_FUSION_ST, true, false, RISCV_FUSION_ANY, 1 }
 };
 
 /* Return true if MEM has a form, mode and register file accepted by RULE.
@@ -2037,10 +2042,11 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
 
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of macro-op fusion.
-   This is a more general form that combines load+arith and store+arith.  */
+   This is a more general form that combines load+arith and store+arith.
+   FP_P selects whether PREV accesses the floating-point register file.  */
 
 static bool
-riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
+riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr, bool fp_p)
 {
   rtx curr_set;
   if (!riscv_fuse_sets_p (prev, curr, NULL, &curr_set))
@@ -2103,7 +2109,7 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   struct riscv_fusion_mem_info mem;
-  if (!riscv_fuse_mem_p (prev, &mem) || mem.fp_p)
+  if (!riscv_fuse_mem_p (prev, &mem) || mem.fp_p != fp_p)
     return false;
 
   unsigned int base_regno = riscv_regno (mem.addr.reg);
@@ -2227,8 +2233,39 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
   if (!riscv_fuse_sets_p (prev, curr))
     return false;
 
-  return (riscv_ls_update_pair_p (prev, curr)
-	  || riscv_ls_update_pair_p (curr, prev));
+  return (riscv_ls_update_pair_p (prev, curr, false)
+	  || riscv_ls_update_pair_p (curr, prev, false));
+}
+
+/* Check for RISCV_FUSE_ADJACENT_FP_LOAD fusion.  As RISCV_FUSE_ADJACENT_LOAD,
+   but for floating-point loads.  */
+
+static bool
+riscv_fuse_adjacent_fp_load (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_FP_LOAD);
+}
+
+/* Check for RISCV_FUSE_ADJACENT_FP_STORE fusion.  As
+   RISCV_FUSE_ADJACENT_STORE, but for floating-point stores.  */
+
+static bool
+riscv_fuse_adjacent_fp_store (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_FP_STORE);
+}
+
+/* Check for RISCV_FUSE_FP_LS_UPDATE fusion.  As RISCV_FUSE_LS_UPDATE, but
+   for floating-point loads and stores.  */
+
+static bool
+riscv_fuse_fp_ls_update (rtx_insn *prev, rtx_insn *curr)
+{
+  if (!riscv_fuse_sets_p (prev, curr))
+    return false;
+
+  return (riscv_ls_update_pair_p (prev, curr, true)
+	  || riscv_ls_update_pair_p (curr, prev, true));
 }
 
 static bool
@@ -2466,6 +2503,12 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_bfext_srai, "RISCV_FUSE_BFEXT_SRAI" },
   { RISCV_FUSE_MULH_MUL,
     riscv_fuse_mulh_mul, "RISCV_FUSE_MULH_MUL" },
+  { RISCV_FUSE_ADJACENT_FP_LOAD,
+    riscv_fuse_adjacent_fp_load, "RISCV_FUSE_ADJACENT_FP_LOAD" },
+  { RISCV_FUSE_ADJACENT_FP_STORE,
+    riscv_fuse_adjacent_fp_store, "RISCV_FUSE_ADJACENT_FP_STORE" },
+  { RISCV_FUSE_FP_LS_UPDATE,
+    riscv_fuse_fp_ls_update, "RISCV_FUSE_FP_LS_UPDATE" },
 };
 
 /* Return the name of fusion operation OP.  */

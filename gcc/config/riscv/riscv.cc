@@ -1014,7 +1014,8 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
    | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
    | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
    | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
-   | RISCV_FUSE_LUI_LD_REV),			/* fusible_ops */
+   | RISCV_FUSE_LUI_LD_REV | RISCV_FUSE_ADJACENT_FP_LOAD
+   | RISCV_FUSE_ADJACENT_FP_STORE | RISCV_FUSE_FP_LS_UPDATE), /* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */

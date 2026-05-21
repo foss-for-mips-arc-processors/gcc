@@ -389,7 +389,13 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next) == TYPE_STORE)
 	  || (get_attr_type (insn) == TYPE_LOAD
-	      && get_attr_type (next) == TYPE_LOAD)))
+	      && get_attr_type (next) == TYPE_LOAD)
+	  || ((riscv_microarchitecture == arcv_rmx500
+	       || riscv_microarchitecture == arcv_rmx700)
+	      && ((get_attr_type (insn) == TYPE_FPLOAD
+		   && get_attr_type (next) == TYPE_FPLOAD)
+		  || (get_attr_type (insn) == TYPE_FPSTORE
+		      && get_attr_type (next) == TYPE_FPSTORE)))))
     return priority + 1;
 
   return priority;
