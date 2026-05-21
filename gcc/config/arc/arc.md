@@ -690,7 +690,19 @@ archs4x, archs4xd"
    stb%U0%V0\\t%1,%0
    stb%U0%V0\\t%1,%0"
   [(set_attr "type" "move,move,move,move,move,move,move,move,move,move,load,store,load,load,load,store,store,store,store,store")
-   (set_attr "iscompact" "maybe,maybe,maybe,true,true,false,false,false,maybe_limm,false,true,true,true,false,false,false,false,false,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0,1,2")
+	       (const_string "maybe")
+	       (eq_attr "alternative" "3,4")
+	       (const_string "true")
+	       (eq_attr "alternative" "8")
+	       (const_string "maybe_limm")
+	       (eq_attr "alternative" "10,11,12")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "predicable" "yes,no,yes,no,no,yes,no,yes,yes,yes,no,no,no,no,no,no,no,no,no,no")
    (set_attr "cpu_facility" "av1,av1,av1,av2,av2,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*")])
 
@@ -734,7 +746,19 @@ archs4x, archs4xd"
    st%_%U0%V0\\t%1,%0
    st%_%U0%V0\\t%1,%0"
   [(set_attr "type" "move,move,move,move,move,move,move,move,move,move,move,load,store,load,load,store,store,store,store,store")
-   (set_attr "iscompact" "maybe,maybe,maybe,true,true,false,false,false,maybe_limm,maybe_limm,false,true,true,false,false,false,false,false,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0,1,2")
+	       (const_string "maybe")
+	       (eq_attr "alternative" "3,4")
+	       (const_string "true")
+	       (eq_attr "alternative" "8,9")
+	       (const_string "maybe_limm")
+	       (eq_attr "alternative" "11,12")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "predicable" "yes,no,yes,no,no,yes,no,yes,yes,yes,yes,no,no,no,no,no,no,no,no,no")
    (set_attr "cpu_facility" "av1,av1,av1,av2,av2,*,*,*,*,*,*,*,*,*,*,*,*,*,av2,*")])
 
@@ -803,7 +827,17 @@ archs4x, archs4xd"
   "
    ;                          0     1     2     3    4    5     6     7     8     9     10     11    12   13    14   15    16    17   18   19    20   21   22    23    24    25    26    27   28
   [(set_attr "type"       "move, move, move,move,move, move, move,shift,shift,shift,binary,binary,multi,move, move,load,store,store,load,load, load,load,load, load,store,store,store,store,store")
-   (set_attr "iscompact" "maybe,maybe,maybe,true,true,false,false,false,false,false, false, false,false,true,false,true, true, true,true,true,false,true,true,false,false, true,false,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0,1,2")
+	       (const_string "maybe")
+	       (eq_attr "alternative" "3,4,13")
+	       (const_string "true")
+	       (eq_attr "alternative" "15,16,17,18,19,21,22,25")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "length"    "*,*,*,*,*,4,4,4,4,4,8,8,*,6,*,*,*,*,*,*,4,*,4,*,*,*,*,*,8")
    (set_attr "predicable" "yes,no,yes,no,no,yes,no,no,no,yes,no,no,no,yes,yes,no,no,no,no,no,no,no,no,no,no,no,no,no,no")
    (set_attr "cpu_facility" "av1,av1,av1,av2,av2,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,av2,av2,*,*,av2,*,av2,*")])
@@ -1399,7 +1433,17 @@ archs4x, archs4xd"
   [(set_attr "type" "move,move,move,move,load,store,store,load,store")
    (set_attr "predicable" "no,no,yes,yes,no,no,no,no,no")
    (set_attr "length" "*,*,4,*,*,*,*,*,*")
-   (set_attr "iscompact" "true,true_limm,false,false,true,true,false,false,false")])
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0")
+	       (const_string "true")
+	       (eq_attr "alternative" "1")
+	       (const_string "true_limm")
+	       (eq_attr "alternative" "4,5")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))])
 
 (define_expand "movdf"
   [(set (match_operand:DF 0 "move_dest_operand" "")
@@ -1887,7 +1931,17 @@ archs4x, archs4xd"
    xldb%U1\\t%0,%1
    ldb%U1\\t%0,%1"
   [(set_attr "type" "unary,unary,unary,unary,load,load,load,load")
-   (set_attr "iscompact" "maybe,true,false,false,true,true,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0")
+	       (const_string "maybe")
+	       (eq_attr "alternative" "1")
+	       (const_string "true")
+	       (eq_attr "alternative" "4,5")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "predicable" "no,no,yes,no,no,no,no,no")])
 
 (define_expand "zero_extendqisi2"
@@ -1912,7 +1966,17 @@ archs4x, archs4xd"
    xldw%U1\\t%0,%1
    ld%_%U1%V1\\t%0,%1"
   [(set_attr "type" "unary,unary,unary,unary,load,load,load,load")
-   (set_attr "iscompact" "maybe,true,false,false,true,true,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0")
+	       (const_string "maybe")
+	       (eq_attr "alternative" "1")
+	       (const_string "true")
+	       (eq_attr "alternative" "4,5")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "predicable" "no,no,yes,no,no,no,no,no")])
 
 (define_expand "zero_extendhisi2"
@@ -1978,7 +2042,15 @@ archs4x, archs4xd"
    ld%_.x%U1%V1\\t%0,%1
    ld%_.x%U1%V1\\t%0,%1"
   [(set_attr "type" "unary,unary,load,load,load")
-   (set_attr "iscompact" "true,false,true,false,false")
+   (set (attr "iscompact")
+	(cond [(eq_attr "alternative" "0")
+	       (const_string "true")
+	       (eq_attr "alternative" "2")
+	       (if_then_else (match_test "TARGET_CODE_DENSITY")
+			     (const_string "true")
+			     (const_string "false"))
+	       ]
+	      (const_string "false")))
    (set_attr "length" "*,*,*,4,8")])
 
 (define_expand "extendhisi2"
@@ -4194,6 +4266,9 @@ archs4x, archs4xd"
        (eq_attr "delay_slot_filled" "yes")
        (const_int 4)
 
+       (match_test "!TARGET_CODE_DENSITY")
+       (const_int 4)
+
        (ne
 	 (if_then_else
 	   (match_operand 1 "equality_comparison_operator" "")
@@ -4227,6 +4302,9 @@ archs4x, archs4xd"
      (attr "length")
      (cond [
        (eq_attr "delay_slot_filled" "yes")
+       (const_int 4)
+
+       (match_test "!TARGET_CODE_DENSITY")
        (const_int 4)
 
        (ne
@@ -4275,6 +4353,9 @@ archs4x, archs4xd"
 	  (const_int 4)
 
 	  (match_test "CROSSING_JUMP_P (insn)")
+	  (const_int 4)
+
+	  (match_test "!TARGET_CODE_DENSITY")
 	  (const_int 4)
 
 	  (ior (lt (minus (match_dup 0) (pc)) (const_int -512))
@@ -5230,7 +5311,8 @@ archs4x, archs4xd"
      (cond ; the outer cond does a test independent of branch shortening.
        [(match_operand 0 "brcc_nolimm_operator" "")
 	(cond
-	  [(and (match_operand:CC_Z 4 "cc_register")
+	  [(and (match_test "TARGET_CODE_DENSITY")
+		(match_operand:CC_Z 4 "cc_register")
 		(eq_attr "delay_slot_filled" "no")
 		(ge (minus (match_dup 3) (pc)) (const_int -128))
 		(le (minus (match_dup 3) (pc))
