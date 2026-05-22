@@ -11255,7 +11255,7 @@ riscv_sched_reorder (FILE *, int, rtx_insn **ready, int *nreadyp, int)
 unsigned int
 riscv_get_fusible_ops (void)
 {
-  return tune_param->fusible_ops;
+  return tune_param->fusible_ops | riscv_fusion_override_flags;
 }
 
 /* Adjust the cost/latency of instructions for scheduling.
@@ -11825,6 +11825,8 @@ riscv_option_override (void)
 
   if (flag_pic)
     riscv_cmodel = CM_PIC;
+
+  riscv_parse_fusion_string (riscv_fusion_string);
 
   /* We need to save the fp with ra for non-leaf functions with no fp and ra
      for leaf functions while no-omit-frame-pointer with

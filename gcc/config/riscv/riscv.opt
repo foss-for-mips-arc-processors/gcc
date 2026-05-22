@@ -102,6 +102,10 @@ mtune=
 Target RejectNegative Joined Var(riscv_tune_string) Save
 -mtune=PROCESSOR	Optimize the output for PROCESSOR.
 
+mfusion=
+Target Undocumented RejectNegative Joined Var(riscv_fusion_string)
+TODO
+
 mcpu=
 Target RejectNegative Joined Var(riscv_cpu_string) Save
 -mcpu=PROCESSOR	Use architecture of and optimize the output for PROCESSOR.

@@ -839,6 +839,8 @@ enum riscv_fusion_pairs
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern unsigned int riscv_get_fusible_ops (void);
+extern void riscv_parse_fusion_string (const char *);
+extern unsigned int riscv_fusion_override_flags;
 
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);

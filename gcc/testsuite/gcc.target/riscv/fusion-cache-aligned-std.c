@@ -3,8 +3,9 @@
    register comparison (changed from != to ==).  */
 /* { dg-do compile } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-Os" "-Oz" "-flto" } } */
-/* { dg-options "-march=rv64gc -mabi=lp64d -mtune=sifive-p600-series -fdump-rtl-sched1" } */
-/* No upstream mtune currently enables RISCV_FUSE_CACHE_ALIGNED_STD.  */
+/* { dg-options "-march=rv64gc -mabi=lp64d -mfusion=cache-aligned-std -fdump-rtl-sched1" } */
+/* TODO: XFAIL because extract_base_offset_in_addr does not return a
+   base/offset pair for a bare register address (offset 0).  */
 /* { dg-final { scan-rtl-dump "RISCV_FUSE_CACHE_ALIGNED_STD" "sched1" { xfail *-*-* } } } */
 
 struct pair

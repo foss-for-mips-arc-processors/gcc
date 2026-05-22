@@ -32,6 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "emit-rtl.h"
 #include "tm_p.h"
+#include "diagnostic-core.h"
 #include "riscv-protos.h"
 
 /* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
@@ -742,6 +743,60 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
   { RISCV_FUSE_B_ALUI,
     riscv_fuse_b_alui, "RISCV_FUSE_B_ALUI" },
 };
+
+/* Mapping from -mfusion= names to their RISCV_FUSE_* bits.  */
+struct riscv_fusion_name_entry
+{
+  const char *name;
+  unsigned int flag;
+};
+
+static const struct riscv_fusion_name_entry riscv_fusion_names[] =
+{
+  { "zextw",		 RISCV_FUSE_ZEXTW },
+  { "zextws",		 RISCV_FUSE_ZEXTWS },
+  { "zexth",		 RISCV_FUSE_ZEXTH },
+  { "ldindexed",	 RISCV_FUSE_LDINDEXED },
+  { "expanded-ld",	 RISCV_FUSE_EXPANDED_LD },
+  { "ldpreincrement",	 RISCV_FUSE_LDPREINCREMENT },
+  { "lui-addi",		 RISCV_FUSE_LUI_ADDI },
+  { "auipc-addi",	 RISCV_FUSE_AUIPC_ADDI },
+  { "lui-ld",		 RISCV_FUSE_LUI_LD },
+  { "auipc-ld",		 RISCV_FUSE_AUIPC_LD },
+  { "cache-aligned-std", RISCV_FUSE_CACHE_ALIGNED_STD },
+  { "aligned-std",	 RISCV_FUSE_ALIGNED_STD },
+  { "bfext",		 RISCV_FUSE_BFEXT },
+  { "b-alui",		 RISCV_FUSE_B_ALUI },
+};
+
+unsigned int riscv_fusion_override_flags;
+
+void
+riscv_parse_fusion_string (const char *arg)
+{
+  riscv_fusion_override_flags = 0;
+
+  if (arg == NULL || *arg == '\0')
+    return;
+
+  char *copy = xstrdup (arg);
+  for (char *tok = strtok (copy, ","); tok != NULL; tok = strtok (NULL, ","))
+    {
+      bool found = false;
+      for (size_t i = 0; i < ARRAY_SIZE (riscv_fusion_names); i++)
+	if (strcmp (tok, riscv_fusion_names[i].name) == 0)
+	  {
+	    riscv_fusion_override_flags |= riscv_fusion_names[i].flag;
+	    found = true;
+	    break;
+	  }
+
+      if (!found)
+	error ("unknown fusion name %qs in %<-mfusion=%>", tok);
+    }
+  free (copy);
+}
+
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
    should be kept together during scheduling.  */

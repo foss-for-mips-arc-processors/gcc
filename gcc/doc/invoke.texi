@@ -31318,6 +31318,7 @@ when @option{-Os} is specified.  It overrides the instruction cost info
 provided by @option{-mtune=}, but does not override the pipeline info.  This
 helps reduce code size while still giving good performance.
 
+
 @opindex mpreferred-stack-boundary
 @item -mpreferred-stack-boundary=@var{num}
 Attempt to keep the stack boundary aligned to a 2 raised to @var{num}
