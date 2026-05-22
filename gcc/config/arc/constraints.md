@@ -292,18 +292,21 @@
   "@internal
    A valid memory operand for ARCompact load instructions"
   (and (match_code "mem")
+       (match_test "!TARGET_V2 || TARGET_CODE_DENSITY")
        (match_test "compact_memory_operand_p (op, mode, false, false)")))
 
 (define_memory_constraint "Uts"
   "@internal
    A valid memory operand for ARCompact load instructions scaled"
   (and (match_code "mem")
-       (match_test "compact_memory_operand_p (op, mode, false, TARGET_CODE_DENSITY)")))
+       (match_test "!TARGET_V2 || TARGET_CODE_DENSITY")
+       (match_test "compact_memory_operand_p (op, mode, false, true)")))
 
 (define_memory_constraint "S"
   "@internal
    A valid memory operand for ARCompact store instructions"
   (and (match_code "mem")
+       (match_test "!TARGET_V2 || TARGET_CODE_DENSITY")
        (match_test "compact_store_memory_operand (op, VOIDmode)")))
 
 (define_memory_constraint "Uex"
@@ -317,6 +320,7 @@
    "@internal
     A valid _small-data_ memory operand for ARCompact instructions"
    (and (match_code "mem")
+	(match_test "!TARGET_V2 || TARGET_CODE_DENSITY")
 	(match_test "compact_sda_memory_operand (op, VOIDmode, true)")))
 
 ; Usc constant is only used for storing long constants, hence we can
@@ -479,7 +483,7 @@
    A valid memory operand for use with code density load ops"
   (and (match_code "mem")
        (match_test "compact_memory_operand_p (op, mode, true, false)")
-       (match_test "TARGET_V2")))
+       (match_test "TARGET_V2 && TARGET_CODE_DENSITY")))
 
 (define_register_constraint "h"
   "TARGET_V2 ? AC16_H_REGS : NO_REGS"
