@@ -65,7 +65,7 @@
        (eq_attr "type" "imul"))
   "arcv_rmx500_issue_fuse0 + arcv_rmx500_MPY32, nothing*2")
 
-(define_insn_reservation "arcv_rmx500_load_insn" 2
+(define_insn_reservation "arcv_rmx500_load_insn" 1
   (and (eq_attr "tune" "arcv_rmx500")
        (eq_attr "type" "load,fpload"))
   "(arcv_rmx500_issue_fuse0 + arcv_rmx500_DMP_fuse0) | (arcv_rmx500_issue_fuse1 + arcv_rmx500_DMP_fuse1), nothing")
