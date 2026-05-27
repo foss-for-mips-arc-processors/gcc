@@ -809,7 +809,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
       for (int i = 1; i <= *n_readyp; i++)
 	{
 	  rtx_insn *candidate = ready[*n_readyp - i];
-	  rtx_insn *next_insn = arcv_next_fusible_insn (candidate);
+	  rtx_insn *next_insn = 
+        	arcv_next_fusible_insn (sched_state.last_scheduled_insn);
 	  bool limited_dual_issue = false;
 	  if (NONDEBUG_INSN_P (candidate)
 	      && !SCHED_GROUP_P (candidate)
