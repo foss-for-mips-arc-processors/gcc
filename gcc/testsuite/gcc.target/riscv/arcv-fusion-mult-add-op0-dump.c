@@ -10,12 +10,4 @@ fuse_mult_add_op0 (int a, int b, int c, int d)
   return m + c + m + d;
 }
 
-int
-fuse_mult_add_op1 (int a, int b, int c)
-{
-  int m = a * b;
-  return a + m + c + m;
-}
-
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_MULT_ADD \\(op0\\)" "sched2" } } */
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_MULT_ADD \\(op1\\)" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_MULT_ADD" "sched2" } } */

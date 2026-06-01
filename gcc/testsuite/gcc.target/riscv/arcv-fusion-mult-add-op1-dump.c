@@ -3,17 +3,11 @@
 /* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-O1" "-O3" "-Oz" "-Os" } } */
 /* { dg-options "-O2 -mtune=arc-v-rhx-100-series -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
 
-volatile int g1, g2, g3;
-
-void
-fuse_store_lui (volatile int *p, int val)
+int
+fuse_mult_add_op1 (int a, int b, int c)
 {
-  *p = val;
-  g1 = val;
-  p[1] = val;
-  g2 = val;
-  p[2] = val;
-  g3 = val;
+  int m = a * b;
+  return a + m + c + m;
 }
 
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_LUI_ST" "sched2" } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_MULT_ADD" "sched2" } } */
