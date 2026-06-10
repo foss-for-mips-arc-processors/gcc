@@ -48,6 +48,19 @@ DEFINE_RISCV_EXT(
   /* EXTRA_EXTENSION_FLAGS */ 0)
 
 DEFINE_RISCV_EXT(
+  /* NAME */ xarcvbitstream,
+  /* UPPERCASE_NAME */ XARCVBITSTREAM,
+  /* FULL_NAME */ "ARC-V bit-stream extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ xarcv,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
   /* NAME */ xarcvvdsp,
   /* UPPERCASE_NAME */ XARCVVDSP,
   /* FULL_NAME */ "ARC-V fixed-point DSP extension",
