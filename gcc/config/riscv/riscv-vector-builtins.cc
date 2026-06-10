@@ -3922,6 +3922,7 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_##SIGNED_EEW8_INDEX,                                           \
     VECTOR_TYPE_##EEW8_INDEX,                                                  \
     VECTOR_TYPE_##EEW16_INDEX,                                                 \
@@ -3983,6 +3984,10 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_##X64_VLMUL_EXT,                                               \
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_##TUPLE_SUBPART,                                               \
+    VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_INVALID,                                                       \
   },
 #include "riscv-vector-builtins.def"
 }; // namespace riscv_vector
@@ -4123,6 +4128,18 @@ get_builtin_partition (required_ext ext, const function_instance &instance)
       return RVV_PARTITION_XANDESVPACKFPH;
     case XANDESVDOT_EXT:
       return RVV_PARTITION_XANDESVDOT;
+    case XARCVVDSP_EXT:
+      return RVV_PARTITION_XARCVVDSP;
+    case XARCVVCPLX_EXT:
+      return RVV_PARTITION_XARCVVCPLX;
+    case XARCVVSAD_EXT:
+      return RVV_PARTITION_XARCVVSAD;
+    case XARCVMXMB_EXT:
+      return RVV_PARTITION_XARCVMXMB;
+    case XARCVMXMC_EXT:
+      return RVV_PARTITION_XARCVMXMC;
+    case XARCVMXMD_EXT:
+      return RVV_PARTITION_XARCVMXMD;
     default:
       gcc_unreachable ();
     }

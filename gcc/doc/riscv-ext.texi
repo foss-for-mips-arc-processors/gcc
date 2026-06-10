@@ -758,6 +758,10 @@
 @tab 1.0
 @tab ARC-V bit-reverse addressing extension
 
+@item @samp{xarcvbitstream}
+@tab 1.0
+@tab ARC-V bit-stream extension
+
 @item @samp{xarcvvdsp}
 @tab 1.0
 @tab ARC-V fixed-point DSP extension

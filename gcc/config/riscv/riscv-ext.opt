@@ -47,6 +47,9 @@ TargetVariable
 int riscv_xandes_subext
 
 TargetVariable
+int riscv_xarcv_subext
+
+TargetVariable
 int riscv_xcv_subext
 
 TargetVariable
@@ -471,4 +474,22 @@ Mask(XANDESVPACKFPH) Var(riscv_xandes_subext)
 Mask(XANDESVDOT) Var(riscv_xandes_subext)
 
 Mask(XSMTVDOT) Var(riscv_xsmt_subext)
+
+Mask(XARCVUDSP) Var(riscv_xarcv_subext)
+
+Mask(XARCVBITREV) Var(riscv_xarcv_subext)
+
+Mask(XARCVBITSTREAM) Var(riscv_xarcv_subext)
+
+Mask(XARCVVDSP) Var(riscv_xarcv_subext)
+
+Mask(XARCVVCPLX) Var(riscv_xarcv_subext)
+
+Mask(XARCVVSAD) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMB) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMC) Var(riscv_xarcv_subext)
+
+Mask(XARCVMXMD) Var(riscv_xarcv_subext)
 
