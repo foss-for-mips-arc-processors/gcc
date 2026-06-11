@@ -11,10 +11,24 @@ jobs:
   gcc-contrib-lint:
     runs-on: ubuntu-latest
     steps:
+      # The merge base is exactly github.event.pull_request.commits commits
+      # behind the PR head, so fetch just enough history to reach it (+1 to
+      # include the merge-base commit itself). Expressions can't do arithmetic,
+      # so compute the depth in a step.
+      - name: Calculate fetch depth
+        id: depth
+        run: echo "val=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ steps.depth.outputs.val }}
+
+      - name: Generate PR patch
+        id: patch
+        run: |
+          git format-patch HEAD~${{ github.event.pull_request.commits }}..HEAD --output=pr.patch
 
       - name: Install dependencies
         run: |
@@ -28,10 +42,6 @@ jobs:
 
       - name: Run check-gnu-style
         run: |
-          # Generate patch for PR changes (merge base to HEAD)
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          BASE=$(git merge-base origin/${{ github.event.pull_request.base.ref }} HEAD)
-          git format-patch $BASE..HEAD --output=pr.patch
           if [ -s pr.patch ]; then
             echo "::group::Running check-gnu-style"
             set +e
