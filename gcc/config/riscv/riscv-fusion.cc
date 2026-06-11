@@ -255,6 +255,38 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
   return false;
 }
 
+/* Return true if CURR should not be fused with PREV because CURR and the
+   next fusible insn form a better adjacent load/store pair.  */
+
+static bool
+riscv_defer_for_adjacent_memop_p (rtx_insn *curr, rtx curr_set)
+{
+  rtx_insn *next = riscv_next_fusible_insn (curr);
+  if (!next)
+    return false;
+
+  rtx next_set = single_set (next);
+  if (!next_set)
+    return false;
+
+  /* Defer if next instruction forms an adjacent load pair with curr.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
+      && get_attr_type (curr) == TYPE_LOAD
+      && get_attr_type (next) == TYPE_LOAD
+      && riscv_adjacent_memops_p (SET_SRC (curr_set), SET_SRC (next_set), true))
+    return true;
+
+  /* Defer if next instruction forms an adjacent store pair with curr.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
+      && get_attr_type (curr) == TYPE_STORE
+      && get_attr_type (next) == TYPE_STORE
+      && riscv_adjacent_memops_p (SET_DEST (curr_set),
+				  SET_DEST (next_set), false))
+    return true;
+
+  return false;
+}
+
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of macro-op fusion.
    This is a more general form that combines load+arith and store+arith.  */
@@ -928,7 +960,7 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
+  if (!prev_set || !curr_set)
     return false;
 
   if (GET_CODE (SET_SRC (prev_set)) == MULT
@@ -959,14 +991,14 @@ static bool
 riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 {
   rtx prev_set = single_set (prev);
-  if (!prev_set || !JUMP_P (curr))
+  rtx curr_set = single_set (curr);
+  if (!prev_set || !curr_set)
     return false;
 
-  /* Check if prev is loading an immediate.  */
-  if (!CONST_INT_P (SET_SRC (prev_set)))
+  if (get_attr_type (prev) != TYPE_MOVE
+      || get_attr_move_type (prev) != MOVE_TYPE_CONST)
     return false;
 
-  /* Check if curr is a conditional branch.  */
   if (!any_condjump_p (curr))
     return false;
 
@@ -975,18 +1007,11 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Check if the loaded register is used in the branch condition.  */
-  rtx cond = XEXP (SET_SRC (PATTERN (curr)), 0);
-  if (GET_CODE (cond) == NE || GET_CODE (cond) == EQ
-      || GET_CODE (cond) == LT || GET_CODE (cond) == LE
-      || GET_CODE (cond) == GT || GET_CODE (cond) == GE
-      || GET_CODE (cond) == LTU || GET_CODE (cond) == LEU
-      || GET_CODE (cond) == GTU || GET_CODE (cond) == GEU)
-    {
-      unsigned int prev_dest_regno = REGNO (prev_dest);
-      if ((REG_P (XEXP (cond, 0)) && REGNO (XEXP (cond, 0)) == prev_dest_regno)
-	  || (REG_P (XEXP (cond, 1)) && REGNO (XEXP (cond, 1)) == prev_dest_regno))
-	return true;
-    }
+  rtx cond = XEXP (SET_SRC (curr_set), 0);
+  unsigned int prev_dest_regno = REGNO (prev_dest);
+  if ((REG_P (XEXP (cond, 0)) && REGNO (XEXP (cond, 0)) == prev_dest_regno)
+      || (REG_P (XEXP (cond, 1)) && REGNO (XEXP (cond, 1)) == prev_dest_regno))
+    return true;
 
   return false;
 }
@@ -999,15 +1024,20 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
 {
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  rtx prev_src = SET_SRC (prev_set);
-  rtx curr_src = SET_SRC (curr_set);
+  if (get_attr_type (prev) != TYPE_LOAD
+      || get_attr_type (curr) != TYPE_LOAD)
+    return false;
 
-  return riscv_adjacent_memops_p (prev_src, curr_src, true);
+  return riscv_adjacent_memops_p (SET_SRC (prev_set), SET_SRC (curr_set), true);
 }
 
 /* Check for RISCV_FUSE_ADJACENT_STORE fusion.
@@ -1018,15 +1048,20 @@ riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
 {
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  rtx prev_dest = SET_DEST (prev_set);
-  rtx curr_dest = SET_DEST (curr_set);
+  if (get_attr_type (prev) != TYPE_STORE
+      || get_attr_type (curr) != TYPE_STORE)
+    return false;
 
-  return riscv_adjacent_memops_p (prev_dest, curr_dest, false);
+  return riscv_adjacent_memops_p (SET_DEST (prev_set), SET_DEST (curr_set), false);
 }
 
 /* Check for RISCV_FUSE_LS_UPDATE fusion (load/store with address update).
@@ -1040,54 +1075,36 @@ riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 {
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  enum attr_type prev_type = get_attr_type (prev);
-  enum attr_type curr_type = get_attr_type (curr);
+  /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
+  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+    return false;
 
-  /* Pattern 1: LD + ADDI (load followed by address update).  */
-  if (prev_type == TYPE_LOAD && curr_type == TYPE_ARITH)
-    {
-      rtx prev_src = SET_SRC (prev_set);
-      if (GET_CODE (prev_src) == SIGN_EXTEND || GET_CODE (prev_src) == ZERO_EXTEND)
-	prev_src = XEXP (prev_src, 0);
+  /* Match a memory access followed by a dependent arithmetic op, or the
+     arithmetic op followed by the memory access (load+op, op+load,
+     store+op, op+store).  */
+  return (riscv_memop_arith_fusion_p (prev, curr)
+	  || riscv_memop_arith_fusion_p (curr, prev));
+}
 
-      if (MEM_P (prev_src))
-	{
-	  rtx mem_addr = XEXP (prev_src, 0);
-	  if (REG_P (mem_addr)
-	      && GET_CODE (SET_SRC (curr_set)) == PLUS
-	      && REG_P (XEXP (SET_SRC (curr_set), 0))
-	      && CONST_INT_P (XEXP (SET_SRC (curr_set), 1))
-	      && REGNO (mem_addr) == REGNO (SET_DEST (curr_set))
-	      && REGNO (mem_addr) == REGNO (XEXP (SET_SRC (curr_set), 0)))
-	    return true;
-	}
-    }
-
-  /* Pattern 2: ADDI + ST (address update followed by store).  */
-  if (prev_type == TYPE_ARITH && curr_type == TYPE_STORE)
-    {
-      if (GET_CODE (SET_SRC (prev_set)) == PLUS
-	  && REG_P (XEXP (SET_SRC (prev_set), 0))
-	  && CONST_INT_P (XEXP (SET_SRC (prev_set), 1)))
-	{
-	  rtx curr_dest = SET_DEST (curr_set);
-	  if (MEM_P (curr_dest))
-	    {
-	      rtx mem_addr = XEXP (curr_dest, 0);
-	      if (REG_P (mem_addr)
-		  && REGNO (mem_addr) == REGNO (SET_DEST (prev_set))
-		  && REGNO (mem_addr) == REGNO (XEXP (SET_SRC (prev_set), 0)))
-		return true;
-	    }
-	}
-    }
-
-  return false;
+static bool
+riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store,
+		    rtx lui_set, rtx store_set)
+{
+  return (get_attr_type (store) == TYPE_STORE
+	  && REG_P (SET_DEST (lui_set))
+	  && ((get_attr_type (lui) == TYPE_MOVE
+	       && GET_CODE (SET_SRC (lui_set)) == HIGH)
+	      || (CONST_INT_P (SET_SRC (lui_set))
+		  && LUI_OPERAND (INTVAL (SET_SRC (lui_set))))));
 }
 
 /* Check for RISCV_FUSE_LUI_ST fusion.
@@ -1100,26 +1117,25 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 {
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  /* Pattern 1: LUI + ST.  */
-  if ((GET_CODE (SET_SRC (prev_set)) == HIGH
-       || (CONST_INT_P (SET_SRC (prev_set))
-	   && LUI_OPERAND (INTVAL (SET_SRC (prev_set)))))
-      && MEM_P (SET_DEST (curr_set)))
+  /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
+  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+    return false;
+
+  /* Check for LUI + store.  */
+  if (riscv_lui_st_pair_p (prev, curr, prev_set, curr_set))
     return true;
 
-  /* Pattern 2: ST + LUI (reversed).  */
-  if (MEM_P (SET_DEST (prev_set))
-      && (GET_CODE (SET_SRC (curr_set)) == HIGH
-	  || (CONST_INT_P (SET_SRC (curr_set))
-	      && LUI_OPERAND (INTVAL (SET_SRC (curr_set))))))
-    return true;
-
-  return false;
+  /* Check for store + LUI (reversed).  */
+  return riscv_lui_st_pair_p (curr, prev, curr_set, prev_set);
 }
 
 /* Check for RISCV_FUSE_LI_STORE fusion.
@@ -1129,14 +1145,23 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
 {
+  /* Do not fuse loads/stores before sched2.  */
+  if (!reload_completed || sched_fusion)
+    return false;
+
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  if (CONST_INT_P (SET_SRC (prev_set))
-      && MEM_P (SET_DEST (curr_set))
-      && REG_P (SET_SRC (curr_set))
+  /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
+  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+    return false;
+
+  if (get_attr_type (prev) == TYPE_MOVE
+      && get_attr_move_type (prev) == MOVE_TYPE_CONST
+      && get_attr_type (curr) == TYPE_STORE
+      && REG_P (SET_SRC (curr_set)) && REG_P (SET_DEST (prev_set))
       && REGNO (SET_SRC (curr_set)) == REGNO (SET_DEST (prev_set)))
     return true;
 
