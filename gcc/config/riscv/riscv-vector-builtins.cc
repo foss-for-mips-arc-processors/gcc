@@ -3594,6 +3594,58 @@ static hash_table<registered_function_hasher> *function_table;
 static hash_table<non_overloaded_registered_function_hasher>
   *non_overloaded_function_table;
 
+struct pragma_intrinsic_flags
+{
+  int intrinsic_target_flags;
+
+  int intrinsic_riscv_vector_elen_flags;
+  int intrinsic_riscv_zvl_flags;
+};
+
+static void
+riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
+{
+  /* We already defer the required extension checking to expantion time, so we
+     only need to pollute those flags that might affect the type registration.
+
+     e.g. zvfbmin and zvfhmin are required to define the vector bf16 and f16,
+	  and VECTOR_ELEN* also required for vector interger and floating
+	  type.  */
+  flags->intrinsic_target_flags = target_flags;
+  flags->intrinsic_riscv_vector_elen_flags = riscv_vector_elen_flags;
+  flags->intrinsic_riscv_zvl_flags = riscv_zvl_flags;
+
+  target_flags = target_flags
+    | MASK_VECTOR;
+
+  riscv_zvl_flags = riscv_zvl_flags
+    | MASK_ZVL32B
+    | MASK_ZVL64B
+    | MASK_ZVL128B
+    | MASK_ZVL256B
+    | MASK_ZVL512B
+    | MASK_ZVL1024B
+    | MASK_ZVL2048B
+    | MASK_ZVL4096B;
+
+  riscv_vector_elen_flags = riscv_vector_elen_flags
+    | MASK_VECTOR_ELEN_32
+    | MASK_VECTOR_ELEN_64
+    | MASK_VECTOR_ELEN_FP_16
+    | MASK_VECTOR_ELEN_BF_16
+    | MASK_VECTOR_ELEN_FP_32
+    | MASK_VECTOR_ELEN_FP_64;
+}
+
+static void
+riscv_pragma_intrinsic_flags_restore (struct pragma_intrinsic_flags *flags)
+{
+  target_flags = flags->intrinsic_target_flags;
+
+  riscv_vector_elen_flags = flags->intrinsic_riscv_vector_elen_flags;
+  riscv_zvl_flags = flags->intrinsic_riscv_zvl_flags;
+}
+
 /* RAII class for enabling enough RVV features to define the built-in
    types and implement the riscv_vector.h pragma.
 
@@ -3606,28 +3658,65 @@ static hash_table<non_overloaded_registered_function_hasher>
 class rvv_switcher
 {
 public:
-  rvv_switcher ();
+  rvv_switcher (bool pollute_flags = true);
   ~rvv_switcher ();
 
 private:
   bool m_old_have_regs_of_mode[MAX_MACHINE_MODE];
+  struct pragma_intrinsic_flags backup_flags;
+  bool m_pollute_flags;
 };
 
-rvv_switcher::rvv_switcher ()
+static void
+register_builtin_types_on_null ();
+
+rvv_switcher::rvv_switcher (bool pollute_flags)
+  : m_pollute_flags (pollute_flags)
 {
+  if (m_pollute_flags)
+    {
+      riscv_pragma_intrinsic_flags_pollute (&backup_flags);
+      riscv_option_override ();
+    }
+
+  /* Allow all vector modes during builtin registration so that
+     vector_mode_supported_p does not reject fractional LMUL modes
+     for xtheadvector.  */
+  riscv_registering_builtins = true;
+
   /* Set have_regs_of_mode before targetm.init_builtins ().  */
   memcpy (m_old_have_regs_of_mode, have_regs_of_mode,
 	  sizeof (have_regs_of_mode));
   for (int i = 0; i < NUM_MACHINE_MODES; ++i)
     if (riscv_v_ext_vector_mode_p ((machine_mode) i))
       have_regs_of_mode[i] = true;
+
+  /* Not necessary to adjust mode and register type if we don't pollute
+     flags.  */
+  if (m_pollute_flags)
+    {
+      init_adjust_machine_modes ();
+
+      register_builtin_types_on_null ();
+    }
 }
 
 rvv_switcher::~rvv_switcher ()
 {
+  riscv_registering_builtins = false;
+
   /* Recover back have_regs_of_mode.  */
   memcpy (have_regs_of_mode, m_old_have_regs_of_mode,
 	  sizeof (have_regs_of_mode));
+
+  if (m_pollute_flags)
+    {
+      riscv_pragma_intrinsic_flags_restore (&backup_flags);
+
+      /* Re-initialize after the flags are restored.  */
+      riscv_option_override ();
+      init_adjust_machine_modes ();
+    }
 }
 
 /* Add attribute NAME to ATTRS.  */
@@ -3784,26 +3873,10 @@ register_tuple_type (vector_type_index type, vector_type_index subpart_type,
 static void
 register_builtin_types ()
 {
-  /* Get type node from get_typenode_from_name to prevent we have different type
-     node define in different target libraries, e.g. int32_t defined as
-     `long` in RV32/newlib-stdint, but `int` for RV32/glibc-stdint.h.
-     NOTE: uint[16|32|64]_type_node already defined in tree.h.  */
-  tree int8_type_node = get_typenode_from_name (INT8_TYPE);
-  tree uint8_type_node = get_typenode_from_name (UINT8_TYPE);
-  tree int16_type_node = get_typenode_from_name (INT16_TYPE);
-  tree int32_type_node = get_typenode_from_name (INT32_TYPE);
-  tree int64_type_node = get_typenode_from_name (INT64_TYPE);
-
-  machine_mode mode;
-#define DEF_RVV_TYPE(NAME, NCHARS, ABI_NAME, SCALAR_TYPE, VECTOR_MODE,         \
-		     ARGS...)                                                  \
-  mode = VECTOR_MODE##mode;                                                    \
-  register_builtin_type (VECTOR_TYPE_##NAME, SCALAR_TYPE##_type_node, mode);
-#define DEF_RVV_TUPLE_TYPE(NAME, NCHARS, ABI_NAME, SUBPART_TYPE, SCALAR_TYPE,  \
-			   NF, VECTOR_SUFFIX)                                  \
-  register_tuple_type (VECTOR_TYPE_##NAME, VECTOR_TYPE_##SUBPART_TYPE,         \
-		       SCALAR_TYPE##_type_node, NF);
-#include "riscv-vector-builtins.def"
+  /* Don't pollute flags at this stage to make sure we only register type with
+     what we want so far, we will register all type if necessary later.   */
+  rvv_switcher rvv (/* pollute_flags */ false);
+  register_builtin_types_on_null ();
 }
 
 /* Similar as register_builtin_types but perform the registration if and
@@ -3916,25 +3989,15 @@ required_extensions_p (enum rvv_base_type type)
   gcc_unreachable ();
 }
 
-static uint64_t
-get_required_extensions (vector_type_index type_idx)
-{
-  for (unsigned int i = 0; all_ops[i].index != NUM_VECTOR_TYPES; i++)
-    if (type_idx == all_ops[i].index)
-      return all_ops[i].required_extensions;
-  for (unsigned int i = 0; b_ops[i].index != NUM_VECTOR_TYPES; i++)
-    if (type_idx == b_ops[i].index)
-      return b_ops[i].required_extensions;
-  gcc_unreachable ();
-}
-
 /* Check whether all the RVV_REQUIRE_* values in REQUIRED_EXTENSIONS are
-   enabled.  */
+   enabled.
+   TODO: We defer the required extensions to expantion time, this function is
+	 only doing the legality now, and we may rename this function and moving
+	 to another layer.  */
 static bool
 check_required_extensions (const function_instance &instance)
 {
   rvv_type_info type_info = instance.type;
-  uint64_t required_extensions = type_info.required_extensions;
   const rvv_op_info *op_info = instance.op_info;
 
   if (required_extensions_p (op_info->ret.base_type))
@@ -3943,48 +4006,18 @@ check_required_extensions (const function_instance &instance)
 	= op_info->ret.get_function_type_index (type_info.index);
       if (ret_type_idx == NUM_VECTOR_TYPES)
 	return false;
-      required_extensions |= get_required_extensions (ret_type_idx);
     }
 
   for (unsigned i = 0; op_info->args[i].base_type != NUM_BASE_TYPES; ++i)
     {
       if (!required_extensions_p (op_info->args[i].base_type))
 	continue;
-
       enum vector_type_index vector_type
 	= op_info->args[i].get_function_type_index (type_info.index);
       if (vector_type == NUM_VECTOR_TYPES)
 	return false;
-      required_extensions |= get_required_extensions (vector_type);
-
-      /* According to RVV ISA, EEW=64 index of indexed loads/stores require
-	 XLEN = 64.  */
-      if (op_info->args[i].base_type == RVV_BASE_eew64_index)
-	required_extensions |= RVV_REQUIRE_RV64BIT;
     }
 
-  uint64_t riscv_isa_flags = 0;
-
-  if (TARGET_VECTOR_ELEN_BF_16)
-    riscv_isa_flags |= RVV_REQUIRE_ELEN_BF_16;
-  if (TARGET_VECTOR_ELEN_FP_16)
-    riscv_isa_flags |= RVV_REQUIRE_ELEN_FP_16;
-  if (TARGET_VECTOR_ELEN_FP_32)
-    riscv_isa_flags |= RVV_REQUIRE_ELEN_FP_32;
-  if (TARGET_VECTOR_ELEN_FP_64)
-    riscv_isa_flags |= RVV_REQUIRE_ELEN_FP_64;
-  if (TARGET_VECTOR_ELEN_64)
-    riscv_isa_flags |= RVV_REQUIRE_ELEN_64;
-  if (TARGET_64BIT)
-    riscv_isa_flags |= RVV_REQUIRE_RV64BIT;
-  if (TARGET_FULL_V)
-    riscv_isa_flags |= RVV_REQUIRE_FULL_V;
-  if (TARGET_MIN_VLEN > 32)
-    riscv_isa_flags |= RVV_REQUIRE_MIN_VLEN_64;
-
-  uint64_t missing_extensions = required_extensions & ~riscv_isa_flags;
-  if (missing_extensions != 0)
-    return false;
   return true;
 }
 
@@ -4145,6 +4178,12 @@ tree
 function_instance::get_return_type () const
 {
   return op_info->ret.get_tree_type (type.index);
+}
+
+bool
+function_instance::function_returns_void_p () const
+{
+  return get_return_type () == void_type_node;
 }
 
 tree
@@ -4419,7 +4458,7 @@ function_builder::add_function (const function_instance &instance,
      nodes and remove the target hook. For now, however, we need to appease the
      validation and return a non-NULL, non-error_mark_node node, so we
      arbitrarily choose integer_zero_node.  */
-  tree decl = placeholder_p
+  tree decl = placeholder_p || in_lto_p
 		? integer_zero_node
 		: simulate_builtin_function_decl (input_location, name, fntype,
 						  code, NULL, attrs);
@@ -4664,15 +4703,15 @@ function_expander::use_exact_insn (insn_code icode)
 
   /* The RVV floating-point only support dynamic rounding mode in the
      FRM register.  */
-  if (opno != insn_data[icode].n_generator_args)
+  if (base->may_require_frm_p ()
+      && opno < insn_data[icode].n_generator_args)
     add_input_operand (Pmode, gen_int_mode (riscv_vector::FRM_DYN, Pmode));
 
   return generate_insn (icode);
 }
 
-/* Use contiguous load INSN.  */
-rtx
-function_expander::use_contiguous_load_insn (insn_code icode)
+int
+function_expander::prepare_contiguous_load_insn ()
 {
   gcc_assert (call_expr_nargs (exp) > 0);
   machine_mode mode = TYPE_MODE (TREE_TYPE (exp));
@@ -4691,10 +4730,19 @@ function_expander::use_contiguous_load_insn (insn_code icode)
     add_vundef_operand (mode);
 
   add_mem_operand (mode, arg_offset++);
+  return arg_offset;
+}
+
+/* Use contiguous load INSN.  */
+rtx
+function_expander::use_contiguous_load_insn (insn_code icode)
+{
+  int arg_offset = prepare_contiguous_load_insn ();
 
   for (int argno = arg_offset; argno < call_expr_nargs (exp); argno++)
     add_input_operand (argno);
 
+  machine_mode mode = TYPE_MODE (TREE_TYPE (exp));
   if (GET_MODE_CLASS (mode) != MODE_VECTOR_BOOL)
     {
       add_input_operand (Pmode, get_tail_policy_for_pred (pred));
@@ -4703,8 +4751,56 @@ function_expander::use_contiguous_load_insn (insn_code icode)
 
   if (opno != insn_data[icode].n_generator_args)
     add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
-
   return generate_insn (icode);
+}
+
+/* Similar to use_contiguous_load_insn but skips the vector-length destination
+   operand that a fault-only-first load intrinsic has.  Then we add tail and
+   mask policy as well as AVL operand.  Last, add the vector-length destination
+   operand that we skipped initially.  */
+rtx
+function_expander::use_fof_load_insn ()
+{
+  int arg_offset = prepare_contiguous_load_insn ();
+
+  int vl_dest_arg = call_expr_nargs (exp) - 2;
+  for (int argno = arg_offset; argno < call_expr_nargs (exp); argno++)
+    {
+      /* Skip argument for VL destination in memory but add the others.  */
+      if (argno != vl_dest_arg)
+	add_input_operand (argno);
+    }
+
+  machine_mode mode = TYPE_MODE (TREE_TYPE (exp));
+  if (GET_MODE_CLASS (mode) != MODE_VECTOR_BOOL)
+    {
+      add_input_operand (Pmode, get_tail_policy_for_pred (pred));
+      add_input_operand (Pmode, get_mask_policy_for_pred (pred));
+    }
+
+  add_input_operand (Pmode, get_avl_type_rtx (avl_type::NONVLMAX));
+
+  tree arg = CALL_EXPR_ARG (exp, vl_dest_arg);
+
+  /* Use a regular FoF load if the user does not want to store VL.  */
+  if (integer_zerop (arg))
+    {
+      insn_code icode = code_for_pred_fault_load (mode);
+      return generate_insn (icode);
+    }
+
+  /* The VL-setting FoF load writes the new VL to VL_REG.
+     Store it to memory.  */
+  rtx vl_reg = gen_reg_rtx (Pmode);
+  add_output_operand (Pmode, vl_reg);
+  insn_code icode = code_for_pred_fault_load_set_vl (mode, Pmode);
+  rtx res = generate_insn (icode);
+
+  rtx addr = expand_normal (arg);
+  rtx mem = gen_rtx_MEM (Pmode, memory_address (Pmode, addr));
+  emit_move_insn (mem, vl_reg);
+
+  return res;
 }
 
 /* Use contiguous store INSN.  */
@@ -4849,7 +4945,8 @@ function_expander::use_ternop_insn (bool vd_accum_p, insn_code icode)
 
   /* The RVV floating-point only support dynamic rounding mode in the
      FRM register.  */
-  if (opno != insn_data[icode].n_generator_args)
+  if (base->may_require_frm_p ()
+      && opno < insn_data[icode].n_generator_args)
     add_input_operand (Pmode, gen_int_mode (riscv_vector::FRM_DYN, Pmode));
 
   return generate_insn (icode);
@@ -4890,7 +4987,8 @@ function_expander::use_widen_ternop_insn (insn_code icode)
 
   /* The RVV floating-point only support dynamic rounding mode in the
      FRM register.  */
-  if (opno != insn_data[icode].n_generator_args)
+  if (base->may_require_frm_p ()
+      && opno < insn_data[icode].n_generator_args)
     add_input_operand (Pmode, gen_int_mode (riscv_vector::FRM_DYN, Pmode));
 
   return generate_insn (icode);
@@ -5154,28 +5252,15 @@ builtin_type_p (const_tree type)
 void
 init_builtins ()
 {
-  rvv_switcher rvv;
-  if (!TARGET_VECTOR)
-    return;
-  register_builtin_types ();
   if (in_lto_p)
+    /* "pragma vector" will register type during the process. */
     handle_pragma_vector ();
-}
-
-/* Reinitialize builtins similar to init_builtins,  but only the null
-   builtin types will be registered.  */
-void
-reinit_builtins ()
-{
-  rvv_switcher rvv;
-
-  if (!TARGET_VECTOR)
-    return;
-
-  register_builtin_types_on_null ();
-
-  if (in_lto_p)
-    handle_pragma_vector ();
+  else
+    {
+      if (!TARGET_VECTOR)
+	return;
+      register_builtin_types ();
+    }
 }
 
 /* Implement TARGET_VERIFY_TYPE_CONTEXT for RVV types.  */
@@ -5341,10 +5426,7 @@ handle_pragma_vector ()
   function_table = new hash_table<registered_function_hasher> (1023);
   function_builder builder;
   for (unsigned int i = 0; i < ARRAY_SIZE (function_groups); ++i)
-  {
-    if (function_groups[i].match (function_groups[i].required_extensions))
-      builder.register_function_group (function_groups[i]);
-  }
+    builder.register_function_group (function_groups[i]);
 }
 
 /* Return the function decl with RVV function subcode CODE, or error_mark_node

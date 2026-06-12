@@ -1012,7 +1012,7 @@
    (set_attr "type" "alus_sreg")]
 )
 
-(define_insn "subvsi3_intmin"
+(define_insn "sub_cmpVsi3_intmin"
   [(set (reg:CC_V CC_REGNUM)
 	(compare:CC_V
 	  (plus:DI
@@ -1432,15 +1432,15 @@
       operands[2] = GEN_INT (-INTVAL (operands[2]));
       /* Special case for INT_MIN.  */
       if (INTVAL (operands[2]) == 0x80000000)
-	emit_insn (gen_subvsi3_intmin (operands[0], operands[1]));
+	emit_insn (gen_sub_cmpVsi3_intmin (operands[0], operands[1]));
       else
 	emit_insn (gen_addsi3_compareV_imm (operands[0], operands[1],
-					  operands[2]));
+					    operands[2]));
     }
   else if (CONST_INT_P (operands[1]))
-    emit_insn (gen_subvsi3_imm1 (operands[0], operands[1], operands[2]));
+    emit_insn (gen_sub_cmpVsi3_imm1 (operands[0], operands[1], operands[2]));
   else
-    emit_insn (gen_subvsi3 (operands[0], operands[1], operands[2]));
+    emit_insn (gen_sub_cmpVsi3 (operands[0], operands[1], operands[2]));
 
   arm_gen_unlikely_cbranch (NE, CC_Vmode, operands[3]);
   DONE;
@@ -1513,14 +1513,16 @@
     hi_op2 = force_reg (SImode, hi_op2);
   rtx ccreg = gen_rtx_REG (mode, CC_REGNUM);
   if (CONST_INT_P (hi_op2))
-    emit_insn (gen_subvsi3_borrow_imm (hi_result, hi_op1, hi_op2,
+    emit_insn (gen_sub_cmpVsi3_borrow_imm (hi_result, hi_op1, hi_op2,
+					   gen_rtx_LTU (SImode, ccreg,
+							const0_rtx),
+					   gen_rtx_LTU (DImode, ccreg,
+							const0_rtx)));
+  else
+    emit_insn (gen_sub_cmpVsi3_borrow (hi_result, hi_op1, hi_op2,
 				       gen_rtx_LTU (SImode, ccreg, const0_rtx),
 				       gen_rtx_LTU (DImode, ccreg,
 						    const0_rtx)));
-  else
-    emit_insn (gen_subvsi3_borrow (hi_result, hi_op1, hi_op2,
-				   gen_rtx_LTU (SImode, ccreg, const0_rtx),
-				   gen_rtx_LTU (DImode, ccreg, const0_rtx)));
   arm_gen_unlikely_cbranch (NE, CC_Vmode, operands[3]);
 
   DONE;
@@ -1630,15 +1632,18 @@
     hi_op2 = force_reg (SImode, hi_op2);
   rtx ccreg = gen_rtx_REG (mode, CC_REGNUM);
   if (CONST_INT_P (hi_op2))
-    emit_insn (gen_usubvsi3_borrow_imm (hi_result, hi_op1, hi_op2,
-					GEN_INT (UINTVAL (hi_op2) & 0xffffffff),
+    emit_insn (gen_usub_cmpVsi3_borrow_imm (hi_result, hi_op1, hi_op2,
+					    GEN_INT (UINTVAL (hi_op2)
+						     & 0xffffffff),
+					    gen_rtx_LTU (SImode, ccreg,
+							 const0_rtx),
+					    gen_rtx_LTU (DImode, ccreg,
+							 const0_rtx)));
+  else
+    emit_insn (gen_usub_cmpVsi3_borrow (hi_result, hi_op1, hi_op2,
 					gen_rtx_LTU (SImode, ccreg, const0_rtx),
 					gen_rtx_LTU (DImode, ccreg,
 						     const0_rtx)));
-  else
-    emit_insn (gen_usubvsi3_borrow (hi_result, hi_op1, hi_op2,
-				    gen_rtx_LTU (SImode, ccreg, const0_rtx),
-				    gen_rtx_LTU (DImode, ccreg, const0_rtx)));
   arm_gen_unlikely_cbranch (LTU, CC_Bmode, operands[3]);
 
   DONE;
@@ -1657,7 +1662,7 @@
    (set_attr "type" "alus_sreg")]
 )
 
-(define_insn "subvsi3"
+(define_insn "sub_cmpVsi3"
   [(set (reg:CC_V CC_REGNUM)
 	(compare:CC_V
 	 (minus:DI
@@ -1674,7 +1679,7 @@
    (set_attr "type" "alus_sreg")]
 )
 
-(define_insn "subvsi3_imm1"
+(define_insn "sub_cmpVsi3_imm1"
   [(set (reg:CC_V CC_REGNUM)
 	(compare:CC_V
 	 (minus:DI
@@ -2131,7 +2136,7 @@
    (set_attr "type" "alus_imm")]
 )
 
-(define_insn "usubvsi3_borrow"
+(define_insn "usub_cmpVsi3_borrow"
   [(set (reg:CC_B CC_REGNUM)
 	(compare:CC_B
 	 (zero_extend:DI (match_operand:SI 1 "s_register_operand" "0,r"))
@@ -2149,7 +2154,7 @@
    (set_attr "length" "2,4")]
 )
 
-(define_insn "usubvsi3_borrow_imm"
+(define_insn "usub_cmpVsi3_borrow_imm"
   [(set (reg:CC_B CC_REGNUM)
 	(compare:CC_B
 	 (zero_extend:DI (match_operand:SI 1 "s_register_operand" "r,r"))
@@ -2168,7 +2173,7 @@
    (set_attr "type" "alus_imm")]
 )
 
-(define_insn "subvsi3_borrow"
+(define_insn "sub_cmpVsi3_borrow"
   [(set (reg:CC_V CC_REGNUM)
 	(compare:CC_V
 	 (minus:DI
@@ -2189,7 +2194,7 @@
    (set_attr "length" "2,4")]
 )
 
-(define_insn "subvsi3_borrow_imm"
+(define_insn "sub_cmpVsi3_borrow_imm"
   [(set (reg:CC_V CC_REGNUM)
 	(compare:CC_V
 	 (minus:DI
@@ -4606,10 +4611,8 @@
       if (arm_reg_or_long_shift_imm (operands[2], GET_MODE (operands[2]))
 	  && (REG_P (operands[2]) || INTVAL(operands[2]) != 32))
         {
-	  if (!reg_overlap_mentioned_p(operands[0], operands[1]))
-	    emit_insn (gen_movdi (operands[0], operands[1]));
-
-	  emit_insn (gen_thumb2_lsll (operands[0], operands[2]));
+	  operands[2] = convert_modes (QImode, SImode, operands[2], 0);
+	  emit_insn (gen_mve_lsll (operands[0], operands[1], operands[2]));
 	  DONE;
 	}
     }
@@ -4645,10 +4648,8 @@
   if (TARGET_HAVE_MVE && !BYTES_BIG_ENDIAN
       && arm_reg_or_long_shift_imm (operands[2], GET_MODE (operands[2])))
     {
-      if (!reg_overlap_mentioned_p(operands[0], operands[1]))
-	emit_insn (gen_movdi (operands[0], operands[1]));
-
-      emit_insn (gen_thumb2_asrl (operands[0], operands[2]));
+      operands[2] = convert_modes (QImode, SImode, operands[2], 0);
+      emit_insn (gen_mve_asrl (operands[0], operands[1], operands[2]));
       DONE;
     }
 
@@ -4680,10 +4681,7 @@
   if (TARGET_HAVE_MVE && !BYTES_BIG_ENDIAN
     && long_shift_imm (operands[2], GET_MODE (operands[2])))
     {
-      if (!reg_overlap_mentioned_p(operands[0], operands[1]))
-        emit_insn (gen_movdi (operands[0], operands[1]));
-
-      emit_insn (gen_thumb2_lsrl (operands[0], operands[2]));
+      emit_insn (gen_mve_lsrl (operands[0], operands[1], operands[2]));
       DONE;
     }
 
@@ -8369,7 +8367,7 @@
 
 (define_expand "movhfcc"
   [(set (match_operand:HF 0 "s_register_operand")
-	(if_then_else:HF (match_operand 1 "arm_cond_move_operator")
+	(if_then_else:HF (match_operand 1 "expandable_comparison_operator")
 			 (match_operand:HF 2 "s_register_operand")
 			 (match_operand:HF 3 "s_register_operand")))]
   "TARGET_VFP_FP16INST"
@@ -8391,7 +8389,7 @@
 
 (define_expand "movsfcc"
   [(set (match_operand:SF 0 "s_register_operand")
-	(if_then_else:SF (match_operand 1 "arm_cond_move_operator")
+	(if_then_else:SF (match_operand 1 "expandable_comparison_operator")
 			 (match_operand:SF 2 "s_register_operand")
 			 (match_operand:SF 3 "s_register_operand")))]
   "TARGET_32BIT && TARGET_HARD_FLOAT"
@@ -8400,9 +8398,13 @@
     enum rtx_code code = GET_CODE (operands[1]);
     rtx ccreg;
 
+    /* Perverse combinations of architecture options can't be supported
+       as they need conditional instructions.  */
+    if (TARGET_THUMB2 && arm_restrict_it && !TARGET_VFP5)
+      FAIL;
     if (!arm_validize_comparison (&operands[1], &XEXP (operands[1], 0),
        				  &XEXP (operands[1], 1)))
-       FAIL;
+      FAIL;
 
     code = GET_CODE (operands[1]);
     ccreg = arm_gen_compare_reg (code, XEXP (operands[1], 0),
@@ -8413,7 +8415,7 @@
 
 (define_expand "movdfcc"
   [(set (match_operand:DF 0 "s_register_operand")
-	(if_then_else:DF (match_operand 1 "arm_cond_move_operator")
+	(if_then_else:DF (match_operand 1 "expandable_comparison_operator")
 			 (match_operand:DF 2 "s_register_operand")
 			 (match_operand:DF 3 "s_register_operand")))]
   "TARGET_32BIT && TARGET_HARD_FLOAT && TARGET_VFP_DOUBLE"
@@ -8422,9 +8424,13 @@
     enum rtx_code code = GET_CODE (operands[1]);
     rtx ccreg;
 
+    /* Perverse combinations of architecture options can't be supported
+       as they need conditional instructions.  */
+    if (TARGET_THUMB2 && arm_restrict_it && !TARGET_VFP5)
+      FAIL;
     if (!arm_validize_comparison (&operands[1], &XEXP (operands[1], 0), 
        				  &XEXP (operands[1], 1)))
-       FAIL;
+      FAIL;
     code = GET_CODE (operands[1]);
     ccreg = arm_gen_compare_reg (code, XEXP (operands[1], 0),
 				 XEXP (operands[1], 1), NULL_RTX);
@@ -10145,6 +10151,7 @@
    (set_attr "type" "multiple")]
 )
 
+;; (pred4 && pred5) != 0
 (define_insn "*cmp_ite0"
   [(set (match_operand 6 "dominant_cc_register" "")
 	(compare
@@ -10161,7 +10168,11 @@
 	        "lPy,rI,L,lPy,lPy,rI,rI,L,L")])
 	  (const_int 0))
 	 (const_int 0)))]
-  "TARGET_32BIT"
+  "TARGET_32BIT
+   && GET_MODE (operands[6]) != CCmode
+   && (GET_MODE (operands[6])
+       == arm_select_dominance_cc_mode (operands[4], operands[5],
+					DOM_CC_X_AND_Y))"
   "*
   {
     static const char * const cmp1[NUM_OF_COND_CMP][2] =
@@ -10228,6 +10239,7 @@
            (const_int 10))])]
 )
 
+;; (!pred4 || pred5) != 0
 (define_insn "*cmp_ite1"
   [(set (match_operand 6 "dominant_cc_register" "")
 	(compare
@@ -10244,7 +10256,11 @@
 	        "lPy,rI,L,lPy,lPy,rI,rI,L,L")])
 	  (const_int 1))
 	 (const_int 0)))]
-  "TARGET_32BIT"
+  "TARGET_32BIT
+   && GET_MODE (operands[6]) != CCmode
+   && (GET_MODE (operands[6])
+       == arm_select_dominance_cc_mode (operands[4], operands[5],
+					DOM_CC_NX_OR_Y))"
   "*
   {
     static const char * const cmp1[NUM_OF_COND_CMP][2] =
@@ -10327,7 +10343,11 @@
 	    (match_operand:SI 3 "arm_add_operand"
 	        "lPy,rI,L,lPy,lPy,r,rI,rI,L,L")]))
 	 (const_int 0)))]
-  "TARGET_32BIT"
+  "TARGET_32BIT
+   && GET_MODE (operands[6]) != CCmode
+   && (GET_MODE (operands[6])
+       == arm_select_dominance_cc_mode (operands[4], operands[5],
+					DOM_CC_X_AND_Y))"
   "*
   {
     static const char *const cmp1[NUM_OF_COND_CMP][2] =
@@ -10412,7 +10432,11 @@
 	    (match_operand:SI 3 "arm_add_operand"
 	        "lPy,rI,L,lPy,lPy,r,rI,rI,L,L")]))
 	 (const_int 0)))]
-  "TARGET_32BIT"
+  "TARGET_32BIT
+   && GET_MODE (operands[6]) != CCmode
+   && (GET_MODE (operands[6])
+       == arm_select_dominance_cc_mode (operands[4], operands[5],
+					DOM_CC_X_OR_Y))"
   "*
   {
     static const char *const cmp1[NUM_OF_COND_CMP][2] =
@@ -13044,7 +13068,7 @@
   "arm_coproc_builtin_available (VUNSPEC_<MCRR>)"
 {
   arm_const_bounds (operands[0], 0, 16);
-  arm_const_bounds (operands[1], 0, 8);
+  arm_const_bounds (operands[1], 0, 16);
   arm_const_bounds (operands[3], 0, (1 << 5));
   return "<mcrr>\\tp%c0, %1, %Q2, %R2, CR%c3";
 }
@@ -13059,7 +13083,7 @@
   "arm_coproc_builtin_available (VUNSPEC_<MRRC>)"
 {
   arm_const_bounds (operands[1], 0, 16);
-  arm_const_bounds (operands[2], 0, 8);
+  arm_const_bounds (operands[2], 0, 16);
   arm_const_bounds (operands[3], 0, (1 << 5));
   return "<mrrc>\\tp%c1, %2, %Q0, %R0, CR%c3";
 }

@@ -541,6 +541,7 @@ get_equiv (rtx x)
   rtx res;
 
   if (! REG_P (x) || (regno = REGNO (x)) < FIRST_PSEUDO_REGISTER
+      || regno >= ira_reg_equiv_len
       || ! ira_reg_equiv[regno].defined_p
       || ! ira_reg_equiv[regno].profitable_p
       || lra_get_regno_hard_regno (regno) >= 0)
@@ -2216,6 +2217,8 @@ process_alt_operands (int only_alternative)
   if (only_alternative >= 0)
     preferred &= ALTERNATIVE_BIT (only_alternative);
 
+  bool prefer_memory_p = false;
+ repeat:
   for (nalt = 0; nalt < n_alternatives; nalt++)
     {
       /* Loop over operands for one constraint alternative.  */
@@ -2423,14 +2426,15 @@ process_alt_operands (int only_alternative)
 			if (curr_static_id->operand[nop].type == OP_INOUT
 			    || curr_static_id->operand[m].type == OP_INOUT)
 			  break;
-			/* Operands don't match.  If the operands are
-			   different user defined explicit hard
+			/* Operands don't match.  For asm if the operands
+			   are different user defined explicit hard
 			   registers, then we cannot make them match
 			   when one is early clobber operand.  */
 			if ((REG_P (*curr_id->operand_loc[nop])
 			     || SUBREG_P (*curr_id->operand_loc[nop]))
 			    && (REG_P (*curr_id->operand_loc[m])
-				|| SUBREG_P (*curr_id->operand_loc[m])))
+				|| SUBREG_P (*curr_id->operand_loc[m]))
+			    && INSN_CODE (curr_insn) < 0)
 			  {
 			    rtx nop_reg = *curr_id->operand_loc[nop];
 			    if (SUBREG_P (nop_reg))
@@ -2547,6 +2551,11 @@ process_alt_operands (int only_alternative)
 		      || general_constant_p (op)
 		      || spilled_pseudo_p (op))
 		    win = true;
+		  if (REG_P (op) && prefer_memory_p)
+		    {
+		      badop = false;
+		      offmemok = true;
+		    }
 		  cl = GENERAL_REGS;
 		  cl_filter = nullptr;
 		  goto reg;
@@ -2663,7 +2672,7 @@ process_alt_operands (int only_alternative)
 				   (this_alternative_exclude_start_hard_regs,
 				    hard_regno[nop]))))
 			win = true;
-		      else if (hard_regno[nop] < 0)
+		      else if (hard_regno[nop] < 0 && !prefer_memory_p)
 			{
 			  if (in_class_p (op, this_alternative, NULL))
 			    win = true;
@@ -2765,6 +2774,12 @@ process_alt_operands (int only_alternative)
 	    this_alternative_match_win = true;
 	  else
 	    {
+	      if (prefer_memory_p && offmemok)
+		{
+		  winreg = false;
+		  this_alternative = NO_REGS;
+		}
+
 	      int const_to_mem = 0;
 	      bool no_regs_p;
 
@@ -3298,6 +3313,17 @@ process_alt_operands (int only_alternative)
 	       ira_class_hard_regs_num[all_this_alternative],
 	       all_used_nregs, all_reload_nregs);
 	  overall += LRA_MAX_REJECT;
+	  if (!prefer_memory_p && INSN_CODE (curr_insn) < 0)
+	    {
+	      /* asm can permit memory and reg and can be not enough regs for
+		 asm -- try now memory: */
+	      prefer_memory_p = true;
+	      if (lra_dump_file != NULL)
+		fprintf
+		  (lra_dump_file,
+		   "            Trying now memory for operands\n");
+	      goto repeat;
+	    }
 	}
       ok_p = true;
       curr_alt_dont_inherit_ops_num = 0;
@@ -3335,19 +3361,15 @@ process_alt_operands (int only_alternative)
 		  first_conflict_j = j;
 		last_conflict_j = j;
 		/* Both the earlyclobber operand and conflicting operand
-		   cannot both be user defined hard registers.  */
+		   cannot both be user defined hard registers for asm.
+		   Let curr_insn_transform diagnose it.  */
 		if (HARD_REGISTER_P (operand_reg[i])
 		    && REG_USERVAR_P (operand_reg[i])
 		    && operand_reg[j] != NULL_RTX
 		    && HARD_REGISTER_P (operand_reg[j])
-		    && REG_USERVAR_P (operand_reg[j]))
-		  {
-		    /* For asm, let curr_insn_transform diagnose it.  */
-		    if (INSN_CODE (curr_insn) < 0)
+		    && REG_USERVAR_P (operand_reg[j])
+		    && INSN_CODE (curr_insn) < 0)
 		      return false;
-		    fatal_insn ("unable to generate reloads for "
-				"impossible constraints:", curr_insn);
-		  }
 	      }
 	  if (last_conflict_j < 0)
 	    continue;
@@ -3937,6 +3959,16 @@ process_address_1 (int nop, bool check_only_p,
       enum reg_class cl;
       rtx set;
       rtx_insn *insns, *last_insn;
+
+      cl = base_reg_class (ad.mode, ad.as, ad.base_outer_code,
+			   get_index_code (&ad), curr_insn);
+
+      if (REG_P (*ad.base_term)
+	  && ira_class_subset_p[get_reg_class (REGNO (*ad.base_term))][cl])
+	/* It seems base reg is already in the base reg class and changing it
+	   does not make a progress.  So reload the whole inner address.  */
+	goto reload_inner_addr;
+
       /* Try to reload base into register only if the base is invalid
          for the address but with valid offset, case (4) above.  */
       start_sequence ();
@@ -3982,8 +4014,6 @@ process_address_1 (int nop, bool check_only_p,
 	    {
 	      *ad.base_term = XEXP (SET_SRC (set), 0);
 	      *ad.disp_term = XEXP (SET_SRC (set), 1);
-	      cl = base_reg_class (ad.mode, ad.as, ad.base_outer_code,
-				   get_index_code (&ad), curr_insn);
 	      regno = REGNO (*ad.base_term);
 	      if (regno >= FIRST_PSEUDO_REGISTER
 		  && cl != lra_get_allocno_class (regno))
@@ -4026,11 +4056,11 @@ process_address_1 (int nop, bool check_only_p,
     }
   else
     {
-      enum reg_class cl = base_reg_class (ad.mode, ad.as,
-					  SCRATCH, SCRATCH,
-					  curr_insn);
-      rtx addr = *ad.inner;
-
+      enum reg_class cl;
+      rtx addr;
+    reload_inner_addr:
+      cl = base_reg_class (ad.mode, ad.as, SCRATCH, SCRATCH, curr_insn);
+      addr = *ad.inner;
       new_reg = lra_create_new_reg (Pmode, NULL_RTX, cl, NULL, "addr");
       /* addr => new_base.  */
       lra_emit_move (new_reg, addr);
@@ -4052,14 +4082,21 @@ process_address (int nop, bool check_only_p,
 		 rtx_insn **before, rtx_insn **after)
 {
   bool res = false;
-
-  while (process_address_1 (nop, check_only_p, before, after))
+  /* Use enough iterations to process all address parts:  */
+  for (int i = 0; i < 10; i++)
     {
-      if (check_only_p)
-	return true;
-      res = true;
+      if (!process_address_1 (nop, check_only_p, before, after))
+	{
+	  return res;
+	}
+      else
+	{
+	  if (check_only_p)
+	    return true;
+	  res = true;
+	}
     }
-  return res;
+  fatal_insn ("unable to reload address in ", curr_insn);
 }
 
 /* Override the generic address_reload_context in order to
@@ -5380,6 +5417,10 @@ lra_constraints (bool first_p)
      some pseudos during elimination.  */
   lra_eliminate (false, first_p);
   auto_bitmap equiv_insn_bitmap (&reg_obstack);
+
+  /* Register elimination can create new pseudos via the addptr pattern,
+     so make sure the equivalency tables are resized appropriately.  */
+  ira_expand_reg_equiv ();
   for (i = FIRST_PSEUDO_REGISTER; i < new_regno_start; i++)
     if (lra_reg_info[i].nrefs != 0)
       {
@@ -5578,6 +5619,7 @@ lra_constraints (bool first_p)
 		   && loc_equivalence_change_p (&PATTERN (curr_insn)))
 	    {
 	      lra_update_insn_regno_info (curr_insn);
+	      lra_push_insn_by_uid (INSN_UID (curr_insn));
 	      changed_p = true;
 	    }
 	}

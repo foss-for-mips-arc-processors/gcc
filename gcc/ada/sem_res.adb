@@ -278,12 +278,6 @@ package body Sem_Res is
    --  is the context type, which is used when the operation is a protected
    --  function with no arguments, and the return value is indexed.
 
-   procedure Resolve_Implicit_Dereference (P : Node_Id);
-   --  Called when P is the prefix of an indexed component, or of a selected
-   --  component, or of a slice. If P is of an access type, we unconditionally
-   --  rewrite it as an explicit dereference. This ensures that the expander
-   --  and the code generator have a fully explicit tree to work with.
-
    procedure Resolve_Intrinsic_Operator (N : Node_Id; Typ : Entity_Id);
    --  A call to a user-defined intrinsic operator is rewritten as a call to
    --  the corresponding predefined operator, with suitable conversions. Note
@@ -11433,16 +11427,16 @@ package body Sem_Res is
                T := It.Typ;
             end if;
 
-            --  Locate selected component. For a private prefix the selector
+            --  Find the selected component. For a private prefix, the selector
             --  can denote a discriminant.
 
             if Is_Record_Type (T) or else Is_Private_Type (T) then
 
-               --  The visible components of a class-wide type are those of
-               --  the root type.
+               --  If the prefix has a class-wide type, the visible components
+               --  are those of the root type.
 
                if Is_Class_Wide_Type (T) then
-                  T := Etype (T);
+                  T := Root_Type (T);
                end if;
 
                Comp := First_Entity (T);

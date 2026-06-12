@@ -1,3 +1,900 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-06-05  Jason Merrill  <jason@redhat.com>
+
+	Revert:
+	2026-05-14  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+		    Jason Merrill  <jason@redhat.com>
+
+	PR c++/123346
+	* constexpr.cc (init_subob_ctx): Do initialize new_ctx.ctor
+	for an empty union member.
+
+2026-06-05  Jason Merrill  <jason@redhat.com>
+
+	Revert:
+	2026-05-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/125315
+	* constexpr.cc (init_subob_ctx): Allow both ctor and object
+	to be null for an empty subobject.
+
+2026-06-03  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-10-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122163
+	* expr.cc (mark_use): When processing a reference, always return
+	an lvalue reference when !rvalue_p.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-05-21  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/125376
+	* coroutines.cc (register_local_var_uses): Ignore DECL_NAME for
+	name independent decls.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-15  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/124850
+	* typeck.cc (cxx_mark_addressable): For DECL_ANON_UNION_VAR_P vars
+	also mark their DECL_VALUE_EXPR.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-08  Jakub Jelinek  <jakub@redhat.com>
+
+	* parser.cc (cp_parser_omp_loop_nest): Write orig_declv, not incrv.
+
+2026-06-01  Yang Kun  <yangkun@disroot.org>
+
+	Backported from master:
+	2026-04-08  Yang Kun  <yangkun@disroot.org>
+
+	* parser.cc (cp_parser_omp_clause_proc_bind): Fix error message
+	(cp_parser_omp_clause_device_type): Likewise.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-07  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/124487
+	* mangle.cc (write_type) <case PACK_INDEX_TYPE>: Handle even
+	the case of partially substituted pack.
+	(write_expression): Similarly for PACK_INDEX_EXPR.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/124487
+	* mangle.cc (write_type) <case PACK_INDEX_TYPE>: Handle pack index
+	mangling unless (for now) PACK_INDEX_PACK is a TREE_VEC.
+	(write_expression): Handle PACK_INDEX_EXPR.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-04  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/124198
+	* parser.cc (cp_parser_pack_index): If index is not type dependent,
+	call build_converted_constant_expr on it.  Return error_mark_node
+	if index is error_operand_p.
+	* pt.cc (tsubst_pack_index): Likewise.
+
+2026-06-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/124531
+	* init.cc (build_vec_init): Call braced_lists_to_strings for
+	array CONSTRUCTORs.  Handle RAW_DATA_CST and handle RANGE_EXPR
+	correctly.
+
+2026-05-15  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2026-05-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/125315
+	* constexpr.cc (init_subob_ctx): Allow both ctor and object
+	to be null for an empty subobject.
+
+2026-05-14  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2026-04-17  Jason Merrill  <jason@redhat.com>
+
+	PR c++/124632
+	* constexpr.cc (cxx_eval_call_expression): Unshare bindings
+	sooner.
+
+2026-05-14  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	Backported from master:
+	2026-04-16  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+		    Jason Merrill  <jason@redhat.com>
+
+	PR c++/123346
+	* constexpr.cc (init_subob_ctx): Do initialize new_ctx.ctor
+	for an empty union member.
+
+2026-05-01  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2026-03-01  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/123143
+	* pt.cc (tsubst_expr) <case COMPONENT_REF>: Check identifier_p
+	before doing lookup for a template function.
+
+2026-04-16  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2026-04-15  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/120338
+	* decl.cc (cp_finish_decl): Set DECL_INITIAL to error_mark_node
+	instead of NULL_TREE for deleted main.
+
+2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/121643
+	PR c++/123975
+	* coroutines.cc (build_co_await): Pass rvalue to await_suspend.
+	(expand_one_await_expression): Fix await_suspend surgery.
+
+2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/121961
+	* coroutines.cc (build_actor_fn): Move the delete label before
+	the refcount handling.
+	(cp_coroutine_transform::build_ramp_function): Decrement refcount
+	after destroying gro.
+
+2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2026-04-15  Jason Merrill  <jason@redhat.com>
+
+	PR c++/117133
+	PR c++/124768
+	PR c++/124773
+	* mangle.cc (unmangled_name_p): Don't mangle internal extern "C"
+	variables.
+
+2026-04-07  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-04-07  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123700
+	* pt.cc (dependent_opaque_alias_p): Return true for a
+	template-id typedef with a lambda targ.
+
+2026-04-07  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-04-07  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123529
+	PR c++/98930
+	* pt.cc (has_value_dependent_address): Correct context
+	dependence check for a static local variable.
+
+2026-04-07  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-04-06  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/118630
+	* module.cc (depset::hash::add_dependency): Correct entry point
+	corection for recursive clusters.
+
+2026-04-07  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-04-06  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124735
+	* module.cc (trees_in::is_matching_decl): Handle importing
+	undeduced auto when existing is already deduced.
+
+2026-04-07  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-04-06  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124781
+	* module.cc (set_originating_module): Add a function comment,
+	only set attachment/exporting for entities with non-NULL
+	DECL_CONTEXT.
+	(check_module_decl_linkage): Use decl_anon_ns_mem_p instead of
+	decl_internal_context_p.
+
+2026-04-07  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-04-06  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124785
+	* module.cc (trees_in::is_matching_decl): Narrow condition for
+	when noexcept propagation occurs; assert that we don't propagate
+	noexcept-specs for TEMPLATE_DECLs.
+
+2026-04-02  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-04-02  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124477
+	* module.cc (trees_in::read_function_def): Set DECL_ARGUMENTS if
+	installing and otherwise missing.
+
+2026-03-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-03-03  Patrick Palka  <ppalka@redhat.com>
+
+	* constraint.cc (struct sat_entry): New data member inst_entry.
+	(satisfaction_cache::satisfaction_cache): Initialize inst_entry.
+	(satisfaction_cache::get): Use it to prefer printing the
+	instantiated atom in case of constraint recursion.
+	(satisfy_atom): Set inst_entry of the first cache entry to point
+	to the second entry.
+
+2026-03-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-03-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123665
+	PR c++/123408
+	* pt.cc (build_extra_args): If TREE_STATIC was set on the
+	arguments, keep it set.
+	(add_extra_args): Set TREE_STATIC on the resulting arguments
+	when substituting templated arguments into a full set of
+	deferred arguments.
+	(tsubst_lambda_expr): Always defer templated substitution if
+	LAMBDA_EXPR_EXTRA_ARGS was set.
+
+2026-03-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-02-10  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122621
+	* pt.cc (tsubst_pack_expansion): Use tf_partial instead of
+	tf_none, except when substituting outer (non-dependent) template
+	arguments.
+
+2026-03-17  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2026-03-16  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/124489
+	* error.cc (dump_type) <case NULLPTR_TYPE>: Use pp_cxx_ws_string
+	instead of pp_string.
+
+2026-03-17  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-03-16  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120039
+	PR c++/122559
+	* pt.cc (tsubst_expr) <case VAR_DECL>: Don't call lookup_name on
+	DECL_NAME (t) if it is NULL_TREE.
+
+2026-03-14  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-03-12  Jakub Jelinek  <jakub@redhat.com>
+
+	* parser.cc (cp_parser_omp_taskwait): Set TREE_TYPE of OMP_TASK
+	to void_type_node rather than void_node.
+	(cp_parser_omp_dispatch): Likewise.
+
+2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124309
+	* module.cc (enum module_directness): Fix inconsistent
+	capitalisation.
+	(module_state::read_imports): Reparent module locations newly
+	seen as direct via partition.
+
+2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124311
+	* module.cc (trees_in::key_mergeable): Check DECL_DEFAULTED_FN
+	instead of DECL_ARTIFICIAL.
+
+2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2026-03-12  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/124431
+	* module.cc (trees_in::key_mergeable): Allow merging members of
+	template specialisations.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-02-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120685
+	* typeck2.cc (build_functional_cast_1): For C++23 auto(x)
+	without tf_warning or tf_error return error_mark_node instead of
+	emitting pedwarn and handling it.
+	* semantics.cc (finish_compound_literal): Similarly for C++26
+	auto{x}.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-02-09  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123889
+	* constexpr.cc (explain_invalid_constexpr_fn): Diagnose
+	NULL or error_mark_node massaged on non-constructor.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123578
+	* tree.cc (cxx_printable_name_internal): Call lang_decl_name before
+	finding the slot to cache it in and repeat search in the cache
+	after the call.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123737
+	* parser.cc (cp_parser_expression): Don't handle CPP_EMBED just
+	as the last byte in it if expression has or might have overloaded
+	type.  In that case call build_x_compound_expr for each byte
+	in CPP_EMBED separately.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123667
+	* semantics.cc (finish_decltype_type): Allow a structured binding
+	for ptds.saved to have DECL_HAS_VALUE_EXPR_P cleared, if it is
+	not within current_function_decl, but in that case assert that
+	lookup_decomp_type succeeded.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-24  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123684
+	* name-lookup.cc (handle_namespace_attrs): Only handle visibility and
+	abi_tag attributes in the gnu namespace and deprecated attribute in
+	the standard or gnu namespaces.
+
+2026-03-03  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-01-30  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123845
+	PR libstdc++/114865
+	* constexpr.cc (build_data_member_initialization): Remove
+	C++11-specific recognition of MODIFY_EXPR.
+	(check_constexpr_ctor_body): Relax error diagnostic to a
+	pedwarn and don't clear DECL_DECLARED_CONSTEXPR_P upon
+	error.  Return true if complaining.
+
+2026-02-19  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-02-12  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123989
+	* cp-gimplify.cc (cp_gimplify_expr) <case CALL_EXPR>: Evaluate
+	the object argument of an xobj memfn call first too.
+
+2026-02-17  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-02-17  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121822
+	* cvt.cc (convert_to_void): Don't evaluate a concept-id
+	in an unevaluated context.
+
+2026-02-17  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-02-17  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122318
+	PR c++/101670
+	* pt.cc (unify) <default>: Accept LAMBDA_EXPR.
+
+2026-02-05  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-02-05  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122169
+	* pt.cc (tsubst_pack_index): Propagate cv-qualifiers of
+	PACK_INDEX_TYPE.
+
+2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/123676
+	* pt.cc (tsubst_pack_expansion): Relax unsubsituted_packs
+	assert to allow !processing_template_decl when args is
+	NULL_TREE.
+
+2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-01-27  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122494
+	PR c++/123814
+	* constexpr.cc (cxx_eval_outermost_constant_expr): Clear
+	uid_sensitive_constexpr_evaluation_value when mce_true.
+
+2026-01-23  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-23  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123597
+	* parser.cc (substitute_in_tree_walker, substitute_in_tree): Don't
+	consider BIND_EXPRs with !BIND_EXPR_VARS redundant if
+	processing_template_decl.
+
+2026-01-20  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	Backported from master:
+	2025-12-23  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	PR c++/122550
+	* decl.cc (member_like_constrained_friend_p): Check that the
+	friend's enclosing class is an implicit instantiation.
+
+2026-01-20  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+
+	Backported from master:
+	2025-12-18  Egas Ribeiro  <egas.g.ribeiro@gmail.com>
+		    Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122070
+	* pt.cc (type_targs_deducible_from): Fall back to
+	TYPE_TEMPLATE_INFO when TYPE_TEMPLATE_INFO_MAYBE_ALIAS is NULL.
+
+2026-01-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-01-03  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/123331
+	* constexpr.cc (cxx_eval_vec_init_1): Don't build INIT_EXPR if
+	eltinit is erroneous.
+
+2026-01-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-12-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/91388
+	* semantics.cc (finish_static_assert): Suppress -Wreturn-type warnings
+	in functions with failed assertions.
+
+2026-01-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-12-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/122772
+	* tree.cc (cp_stabilize_bitfield_reference): New function.
+	(cp_stabilize_reference): Use it for stabilization of
+	clk_bitfield or clk_packed lvalues.
+
+2026-01-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-12-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/122834
+	* typeck.cc (cp_compare_floating_point_conversion_ranks): Return
+	3 if fmt2->b is 10 except for _Float16 vs. _Decimal128, in that
+	case return -2.
+
+2026-01-14  David Malcolm  <dmalcolm@redhat.com>
+
+	Backported from master:
+	2025-09-17  David Malcolm  <dmalcolm@redhat.com>
+
+	PR c++/121966
+	* call.cc (print_z_candidates): Copy the filtering logic on viable
+	candidates from the printing loop to the counting loop, so that
+	num_candidates matches the number of iterations of the latter
+	loop.
+
+2026-01-09  Eczbek  <eczbek.void@gmail.com>
+
+	Backported from master:
+	2025-11-29  Eczbek  <eczbek.void@gmail.com>
+		    Jason Merrill  <jason@redhat.com>
+
+	PR c++/116952
+	* parser.cc (cp_parser_lambda_expression): Revert
+	r11-8166-ge1666ebd9ad31d change prohibiting lambda in non-type
+	parameter.
+
+2026-01-09  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-09-27  Jason Merrill  <jason@redhat.com>
+
+	PR c++/122048
+	* pt.cc (tsubst_expr): Don't use a lambda current_class_ptr.
+
+2026-01-09  Jason Merrill  <jason@redhat.com>
+
+	PR c++/121854
+	* lambda.cc (lambda_expr_this_capture): Don't assume
+	current_class_ref.
+
+2025-12-23  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-12-19  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122922
+	* module.cc (trees_in::post_types): New member.
+	(trees_in::trees_in): Initialize it.
+	(trees_in::~trees_in): Clean it up.
+	(trees_in::post_process_type): New functions.
+	(trees_in::tree_node): Save incomplete ARRAY_TYPEs for later
+	post-processing.
+	(module_state::read_cluster): Attempt to complete any
+	ARRAY_TYPEs we saved earlier.
+
+2025-12-16  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-12-15  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122752
+	* pt.cc (tsubst) <case TYPENAME_TYPE>: Allow TYPENAME_TYPE
+	resolving to another wildcard type.
+
+2025-12-16  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-11-19  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122668
+	PR c++/114764
+	* pt.cc (dependentish_scope_p): Return true for the current
+	instantiation from within an immediately parsed noexcept-spec.
+
+2025-12-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-11-21  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/121445
+	* constexpr.cc (build_data_member_initialization): Just return
+	false if member is COMPONENT_REF of COMPONENT_REF with
+	VAR_P get_base_address.
+
+2025-12-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-11-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/120876
+	* pt.cc (tsubst_baselink): Move maybe_incomplete handling after
+	!baselink handling.
+
+2025-11-28  Daniele Sahebi  <daniele@mkryss.me>
+
+	Backported from master:
+	2025-11-22  Daniele Sahebi  <daniele@mkryss.me>
+		    Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/122658
+	* call.cc (build_over_call): Don't call build_cplus_new in
+	template declarations.
+
+2025-11-26  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2025-11-26  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/121325
+	* pt.cc (tsubst_tree_vec): New.
+	(tsubst_pack_index): Call it.
+
+2025-11-25  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-11-25  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122789
+	* module.cc (trees_out::core_vals): Treat REQUIRES_EXPR
+	specially and stream the chained decls of its first operand.
+	(trees_in::core_vals): Likewise.
+	(trees_out::tree_node): Check the PARM_DECLs we see are what we
+	expect.
+
+2025-11-21  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2025-11-21  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/120529
+	* call.cc (ref_conv_binds_to_temporary): Don't ignore access control.
+
+2025-11-19  Marek Polacek  <polacek@redhat.com>
+
+	Backported from master:
+	2025-11-19  Marek Polacek  <polacek@redhat.com>
+
+	PR c++/119580
+	* pt.cc (tsubst_baselink): Return error_mark_node if
+	tsubst_template_args returned error_mark_node.
+
+2025-11-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2025-11-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR c++/122677
+	* module.cc (create_dirs): Skip past any leading slashes.
+
+2025-11-16  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-11-16  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122625
+	* module.cc (trees_in::read_var_def): Also track class-scope
+	primary template specialisations.
+
+2025-11-04  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-11-04  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122253
+	* decl2.cc (min_vis_expr_r): Don't mark no-linkage declarations
+	as VISIBILITY_ANON.
+
+2025-11-02  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-11-02  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122421
+	* module.cc (trees_in::read_var_def): Don't handle class-scope
+	variables anymore.
+	(trees_in::read_class_def): Handle them here instead.
+
+2025-11-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-11-01  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122381
+	* module.cc (trees_out::core_vals): Write BASELINK_OPTYPE (aka
+	TREE_CHAIN).
+	(trees_in::core_vals): Read it.
+
+2025-10-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-10-14  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122192
+	* parser.cc (cp_parser_mem_initializer_id): Pass class_type
+	instead of typename_type to cp_parser_class_name in the
+	nested-name-specifier case.
+
+2025-10-28  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-10-10  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/122192
+	* decl.cc (make_typename_type): Document base-specifier as
+	another type-only lookup case.
+	* parser.cc (cp_parser_class_name): Propagate tag_type to
+	make_typename_type instead of hardcoding typename_type.
+	(cp_parser_base_specifier): Pass class_type instead of
+	typename_type as tag_type to cp_parser_class_name.
+
+2025-10-28  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-10-27  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122310
+	* module.cc (get_keyed_decl_scope): New function.
+	(trees_out::get_merge_kind): Use it.
+	(trees_out::key_mergeable): Use it.
+	(maybe_key_decl): Key to the containing type for all members.
+
+2025-10-14  Jason Merrill  <jason@redhat.com>
+
+	Backported from master:
+	2025-08-21  Jason Merrill  <jason@redhat.com>
+
+	PR c++/120757
+	* pt.cc (tsubst_expr) [OFFSET_REF]: Don't tsubst the type.
+
+2025-09-25  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-09-25  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122015
+	PR c++/122019
+	* module.cc (trees_in::install_entity): Remove incorrect
+	assertion.
+
+2025-09-24  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-09-20  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121981
+	* pt.cc (any_template_parm_r) <case TEMPLATE_TYPE_PARM>:
+	Don't walk TREE_TYPE.
+
+2025-09-24  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-08-14  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/121524
+	* tree.cc (build_cplus_array_type): Don't reuse variant type
+	if it has TREE_DEPRECATED or TREE_UNAVAILABLE flags set or,
+	unless elt_type has TYPE_USER_ALIGN set and TYPE_ALIGN is
+	TYPE_ALIGN of elt_type, TYPE_USER_ALIGN is not set.
+
+2025-09-24  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-09-24  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122019
+	* module.cc (trees_in::install_entity): Don't be affected by
+	global language linkage state.
+	(trees_in::is_matching_decl): Check mismatching language linkage
+	for variables too.
+	(module_may_redeclare): Report the correct module name for
+	partitions and implementation units.
+
+2025-09-23  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-09-22  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/122015
+	* cp-tree.h (make_auto_pack): Declare.
+	* lambda.cc (lambda_capture_field_type): Use make_auto_pack to
+	ensure TYPE_CANONICAL is set correctly.
+	* pt.cc (make_auto_pack): New function.
+
+2025-09-15  Matthias Kretz  <m.kretz@gsi.de>
+
+	Backported from master:
+	2025-09-09  Matthias Kretz  <m.kretz@gsi.de>
+
+	PR c++/121801
+	* mangle.cc (write_real_cst): Handle 16-bit real and assert
+	that reals have 16 bits or a multiple of 32 bits.
+
+2025-09-12  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-09-12  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121795
+	* pt.cc (unify) <case PACK_INDEX_TYPE>: New non-deduced context
+	case.
+
+2025-09-11  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-09-03  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/97740
+	* pt.cc (tsubst_expr) <case COMPONENT_REF>: Don't check access
+	when the given member is already a FIELD_DECL.
+
+2025-09-04  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-09-04  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/121724
+	* name-lookup.cc (push_namespace): Mark inline namespace
+	contexts as purview if needed.
+
+2025-08-27  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	Backported from master:
+	2025-08-23  Nathaniel Shead  <nathanieloshead@gmail.com>
+
+	PR c++/120499
+	* method.cc (synthesize_method): Set the instantiating module.
+
+2025-08-26  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-08-19  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121351
+	* class.cc (add_method): Use outer_template_args when
+	substituting outer template arguments into constraints.
+
+2025-08-08  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-08-04  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/121351
+	PR c++/119859
+	* class.cc (add_method): Substitute outer template arguments
+	into constraints before comparing them if the declarations are
+	from different classes.
+
+2025-08-08  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2025-08-04  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/120620
+	* constexpr.cc (cxx_dynamic_cast_fn_p): Return true only
+	for synthesized __dynamic_cast.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

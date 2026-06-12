@@ -344,6 +344,9 @@ poly_uint16 riscv_vector_chunks;
 /* The number of bytes in a vector chunk.  */
 unsigned riscv_bytes_per_vector_chunk;
 
+/* Whether we are currently registering builtins.  */
+bool riscv_registering_builtins;
+
 /* Index R is the smallest register class that contains register R.  */
 const enum reg_class riscv_regno_to_class[FIRST_PSEUDO_REGISTER] = {
   GR_REGS,	GR_REGS,	GR_REGS,	GR_REGS,
@@ -1099,16 +1102,16 @@ riscv_build_integer_1 (struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS],
 	  /* Now iterate over the bits we want to clear until the cost is
 	     too high or we're done.  */
 	  nval = value ^ HOST_WIDE_INT_C (-1);
-	  nval &= HOST_WIDE_INT_C (~0x7fffffff);
+	  nval &= ~HOST_WIDE_INT_C (0x7fffffff);
 	  while (nval && alt_cost < cost)
 	    {
 	      HOST_WIDE_INT bit = ctz_hwi (nval);
 	      alt_codes[alt_cost].code = AND;
-	      alt_codes[alt_cost].value = ~(1UL << bit);
+	      alt_codes[alt_cost].value = ~(HOST_WIDE_INT_UC (1) << bit);
 	      alt_codes[alt_cost].use_uw = false;
 	      alt_codes[alt_cost].save_temporary = false;
 	      alt_cost++;
-	      nval &= ~(1UL << bit);
+	      nval &= ~(HOST_WIDE_INT_UC (1) << bit);
 	    }
 
 	  if (nval == 0 && alt_cost <= cost)
@@ -3688,7 +3691,9 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
       /* This test can fail if (for example) we want a HF and Z[v]fh is
 	 not enabled.  In that case we just want to let the standard
 	 expansion path run.  */
-      if (riscv_vector::get_vector_mode (smode, nunits).exists (&vmode))
+      if (riscv_vector::get_vector_mode (smode, nunits).exists (&vmode)
+	  && convert_optab_handler (vec_extract_optab, vmode, smode)
+	  && gen_lowpart_common (vmode, SUBREG_REG (src)))
 	{
 	  rtx v = gen_lowpart (vmode, SUBREG_REG (src));
 	  rtx int_reg = dest;
@@ -12031,7 +12036,17 @@ static bool
 riscv_vector_mode_supported_p (machine_mode mode)
 {
   if (TARGET_VECTOR)
-    return riscv_v_ext_mode_p (mode);
+    {
+      /* Avoid fractional LMUL modes for xtheadvector with the exception
+	 of builtin registration time.  During registration, all modes
+	 must be available so the order and numbering is consistent,
+	 see PR123279.  */
+      if (TARGET_XTHEADVECTOR && !riscv_registering_builtins
+	  && maybe_lt (GET_MODE_SIZE (mode), BYTES_PER_RISCV_VECTOR))
+	return false;
+
+      return riscv_v_ext_mode_p (mode);
+    }
 
   return false;
 }
@@ -12113,6 +12128,13 @@ riscv_dwarf_poly_indeterminate_value (unsigned int i, unsigned int *factor,
   */
   gcc_assert (i == 1);
   *factor = BYTES_PER_RISCV_VECTOR.coeffs[1];
+
+  /* The factor will be zero if vector is not enabled.  That ultimately
+     causes problems in the dwarf2 emitter as the factor is used for
+     a division, causing a divide by zero.  */
+  if (*factor == 0)
+    *factor = 1;
+
   *offset = 1;
   return RISCV_DWARF_VLENB;
 }
@@ -12938,8 +12960,6 @@ extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset)
 static bool
 riscv_vector_mode_supported_any_target_p (machine_mode)
 {
-  if (TARGET_XTHEADVECTOR)
-    return false;
   return true;
 }
 
@@ -13313,7 +13333,7 @@ riscv_expand_ustrunc (rtx dest, rtx src)
   gcc_assert (precision < 64);
 
   uint64_t max = ((uint64_t)1u << precision) - 1u;
-  rtx xmode_src = gen_lowpart (Xmode, src);
+  rtx xmode_src = riscv_extend_to_xmode_reg (src, GET_MODE (src), ZERO_EXTEND);
   rtx xmode_dest = gen_reg_rtx (Xmode);
   rtx xmode_lt = gen_reg_rtx (Xmode);
 

@@ -1539,21 +1539,18 @@ package body Checks is
          return;
       end if;
 
-      --  Suppress checks if the subtypes are the same. The check must be
-      --  preserved in an assignment to a formal, because the constraint is
-      --  given by the actual.
+      --  Suppress checks if the subtypes are the same and constrained. The
+      --  check must be preserved in an assignment to a formal, because the
+      --  constraint is given by the actual.
 
       if Nkind (Original_Node (N)) /= N_Allocator
+        and then (if Do_Access then Designated_Type (Typ) else Typ) = S_Typ
+        and then Is_Constrained (S_Typ)
         and then (No (Lhs)
                    or else not Is_Entity_Name (Lhs)
                    or else No (Param_Entity (Lhs)))
       then
-         if (Etype (N) = Typ
-              or else (Do_Access and then Designated_Type (Typ) = S_Typ))
-           and then (No (Lhs) or else not Is_Aliased_View (Lhs))
-         then
-            return;
-         end if;
+         return;
 
       --  We can also eliminate checks on allocators with a subtype mark that
       --  coincides with the context type. The context type may be a subtype
@@ -2534,6 +2531,10 @@ package body Checks is
                     Chars      => Name_Check,
                     Expression => Expr)));
 
+            --  The check is enabled unconditionally
+
+            Set_Is_Checked (Prag);
+
             --  Add a message unless exception messages are suppressed
 
             if not Exception_Locations_Suppressed then
@@ -2591,9 +2592,12 @@ package body Checks is
          if Is_Scalar_Type (Typ) then
             Nam := Name_Valid;
 
-         --  For any non-scalar with scalar parts, generate 'Valid_Scalars test
+         --  For non-scalars with scalar parts, generate 'Valid_Scalars test,
+         --  except for unchecked unions since we cannot know where they are.
 
-         elsif Scalar_Part_Present (Typ) then
+         elsif Scalar_Part_Present (Typ)
+           and then not Is_Unchecked_Union (Typ)
+         then
             Nam := Name_Valid_Scalars;
 
          --  No test needed for other cases (no scalars to test)
@@ -2685,8 +2689,7 @@ package body Checks is
          return;
       end if;
 
-      --  Inspect all the formals applying aliasing and scalar initialization
-      --  checks where applicable.
+      --  Apply scalar initialization checks to formals where applicable
 
       Formal := First_Formal (Subp);
       while Present (Formal) loop

@@ -11620,6 +11620,7 @@ package body Sem_Attr is
                end if;
 
                Resolve (Prefix (P));
+               Resolve_Implicit_Dereference (Prefix (P));
 
                if not Is_Overloaded (P) then
                   Generate_Reference (Entity (Selector_Name (P)), P);
@@ -12723,7 +12724,10 @@ package body Sem_Attr is
                end Proper_Op;
 
             begin
-               Resolve (Init_Value_Exp, Typ);
+               --  First try to resolve the reducer and then, if this succeeds,
+               --  resolve the initial value.  This nicely deals with confused
+               --  programmers who swap the two items.
+
                if Is_Overloaded (Reducer_Subp_Name) then
                   Outer :
                   for Retry in Boolean loop
@@ -12745,14 +12749,18 @@ package body Sem_Attr is
                then
                   Op := Reducer_Subp_Name;
 
-               elsif Proper_Op (Entity (Reducer_Subp_Name)) then
+               elsif Is_Entity_Name (Reducer_Subp_Name)
+                 and then Proper_Op (Entity (Reducer_Subp_Name))
+               then
                   Op := Entity (Reducer_Subp_Name);
                   Set_Etype (N, Typ);
                end if;
 
                if No (Op) then
-                  Error_Msg_N ("No suitable reducer subprogram found",
+                  Error_Msg_N ("no suitable reducer subprogram found",
                     Reducer_Subp_Name);
+               else
+                  Resolve (Init_Value_Exp, Typ);
                end if;
             end;
 

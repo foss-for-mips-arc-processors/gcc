@@ -12,6 +12,7 @@
 #include <testsuite_allocator.h>
 #include <testsuite_hooks.h>
 #include <testsuite_iterators.h>
+#include <string>
 #include <tuple>
 
 struct Gt {
@@ -261,6 +262,31 @@ test08()
   m[k] = 0;
 }
 
+void
+test09()
+{
+  // PR libstdc++/122921 - The value_type of flat_map's iterator should be
+  // pair<Key, T> instead of pair<const Key, T>
+  using type = std::flat_map<int, int>;
+  using value_type = std::ranges::range_value_t<type>;
+  using value_type = type::value_type;
+  using value_type = std::pair<int, int>;
+}
+
+void
+test10()
+{
+  // PR libstdc++/125374 - flat_map unconditionally moves from lvalue keys in
+  // _M_try_emplace
+  std::flat_map<std::string, int, std::less<>> m;
+  std::string k = "hello";
+  m[k] = 1;
+  VERIFY (k == "hello");
+  k = "world";
+  m.try_emplace(k, 2);
+  VERIFY (k == "world");
+}
+
 int
 main()
 {
@@ -275,4 +301,6 @@ main()
   test06();
   test07();
   test08();
+  test09();
+  test10();
 }

@@ -294,9 +294,12 @@ public:
     : m_to_int_mode (to_int_mode)
   {}
 
-  unsigned int call_properties (const function_instance &) const override
+  unsigned int call_properties (const function_instance &fi) const override
   {
-    return CP_WRITE_MEMORY;
+    if (fi.mode_suffix_id == MODE_wb)
+      return CP_WRITE_MEMORY | CP_READ_MEMORY;
+    else
+      return CP_WRITE_MEMORY;
   }
 
   machine_mode memory_vector_mode (const function_instance &fi) const override
@@ -478,6 +481,14 @@ public:
     unsigned int element_bits = fi.type_suffix (0).element_bits;
     type_suffix_index suffix = find_type_suffix (TYPE_unsigned, element_bits);
     return type_suffixes[suffix].vector_mode;
+  }
+
+  unsigned int call_properties (const function_instance &fi) const override
+  {
+    if (fi.mode_suffix_id == MODE_wb)
+      return CP_WRITE_MEMORY | CP_READ_MEMORY;
+    else
+      return CP_READ_MEMORY;
   }
 
   rtx expand (function_expander &e) const override
@@ -1167,6 +1178,48 @@ public:
   }
 };
 
+
+/* Map the function directly to the appropriate scalar shift builtin.  */
+enum which_scalar_shift {
+  ss_ASRL,
+  ss_LSLL,
+};
+
+class mve_function_scalar_shift : public function_base
+{
+public:
+  CONSTEXPR mve_function_scalar_shift (enum which_scalar_shift shl)
+    : m_scalar_shift (shl)
+  {}
+
+  /* Which scalar_shift builtin to map.  */
+  enum which_scalar_shift m_scalar_shift;
+
+  rtx
+  expand (function_expander &e) const override
+  {
+    insn_code code;
+
+    switch (m_scalar_shift)
+      {
+      case ss_ASRL:
+	e.args[1] = simplify_gen_subreg (QImode, e.args[1], SImode, 0);
+	code = CODE_FOR_mve_asrl;
+	break;
+
+      case ss_LSLL:
+	e.args[1] = simplify_gen_subreg (QImode, e.args[1], SImode, 0);
+	code = CODE_FOR_mve_lsll;
+	break;
+
+      default:
+	gcc_unreachable ();
+      }
+
+    return e.use_unpred_insn (code);
+  }
+};
+
 } /* end anonymous namespace */
 
 namespace arm_mve {
@@ -1334,6 +1387,8 @@ namespace arm_mve {
    (-1, -1, UNSPEC##_F,							\
     -1, -1, UNSPEC##_P_F))
 
+FUNCTION (asrl, mve_function_scalar_shift, (ss_ASRL))
+FUNCTION (lsll, mve_function_scalar_shift, (ss_LSLL))
 FUNCTION_PRED_P_S_U (vabavq, VABAVQ)
 FUNCTION_WITHOUT_N (vabdq, VABDQ)
 FUNCTION (vabsq, unspec_based_mve_function_exact_insn, (ABS, ABS, ABS, -1, -1, -1, VABSQ_M_S, -1, VABSQ_M_F, -1, -1, -1))

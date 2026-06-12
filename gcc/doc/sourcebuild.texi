@@ -1975,6 +1975,9 @@ at plain @option{-O2}.
 @item tls
 Target supports thread-local storage.
 
+@item tls_link
+Target supports linking TLS executables.
+
 @item tls_native
 Target supports native (rather than emulated) thread-local storage.
 
@@ -2378,6 +2381,9 @@ AArch64 target that is able to generate and execute SVE2 code (regardless of
 whether it does so by default).
 @item aarch64_sve2p1_hw
 AArch64 target that is able to generate and execute SVE2.1 code (regardless of
+whether it does so by default).
+@item aarch64_sme_hw
+AArch64 target that is able to generate and execute SME code (regardless of
 whether it does so by default).
 
 @item aarch64_fjcvtzs_hw

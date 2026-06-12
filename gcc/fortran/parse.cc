@@ -3675,11 +3675,8 @@ check_component (gfc_symbol *sym, gfc_component *c, gfc_component **lockp,
                "of type LOCK_TYPE, which must have a codimension or be a "
                "subcomponent of a coarray", c->name, &c->loc);
 
-  if (lock_type && allocatable && !coarray)
-    gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
-               "a codimension", c->name, &c->loc);
-  else if (lock_type && allocatable && c->ts.type == BT_DERIVED
-           && c->ts.u.derived->attr.lock_comp)
+  if (lock_type && allocatable && !coarray && c->ts.type == BT_DERIVED
+      && c->ts.u.derived->attr.lock_comp)
     gfc_error ("Allocatable component %s at %L must have a codimension as "
                "it has a noncoarray subcomponent of type LOCK_TYPE",
                c->name, &c->loc);
@@ -6728,6 +6725,28 @@ parse_executable (gfc_statement st)
 }
 
 
+/* Update statement function formal argument lists that reference OLD_SYM
+   to point to NEW_SYM instead.  This prevents use-after-free when
+   gfc_fixup_sibling_symbols replaces and frees a symbol that is also
+   used as a statement function dummy argument (PR95879).  */
+
+static void
+fixup_st_func_formals (gfc_symtree *st, gfc_symbol *old_sym,
+		       gfc_symbol *new_sym)
+{
+  if (st == NULL)
+    return;
+
+  fixup_st_func_formals (st->left, old_sym, new_sym);
+  fixup_st_func_formals (st->right, old_sym, new_sym);
+
+  if (st->n.sym && st->n.sym->attr.proc == PROC_ST_FUNCTION)
+    for (gfc_formal_arglist *fa = st->n.sym->formal; fa; fa = fa->next)
+      if (fa->sym == old_sym)
+	fa->sym = new_sym;
+}
+
+
 /* Fix the symbols for sibling functions.  These are incorrectly added to
    the child namespace as the parser didn't know about this procedure.  */
 
@@ -6778,6 +6797,11 @@ gfc_fixup_sibling_symbols (gfc_symbol *sym, gfc_namespace *siblings)
 	  /* Replace it with the symbol from the parent namespace.  */
 	  st->n.sym = sym;
 	  sym->refs++;
+
+	  /* Update statement function formal argument lists that still
+	     reference old_sym before releasing it (PR95879).  */
+	  fixup_st_func_formals (ns->sym_root, old_sym, sym);
+
 
 	  gfc_release_symbol (old_sym);
 	}

@@ -1,3 +1,24 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-05-03  Marian Buschsieweke  <maribu@users.noreply.github.com>
+
+	Backported from master:
+	2026-04-21  Marian Buschsieweke  <maribu@users.noreply.github.com>
+
+	PR sanitizer/124248
+	* sanitizer_common/sanitizer_platform_limits_posix.cpp (struct_sock_fprog_sz):
+	Make available on non-glibc Linux systems.
+
+2026-04-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-04-29  Jakub Jelinek  <jakub@redhat.com>
+
+	* sanitizer_common/sanitizer_platform_limits_posix.cpp: Cherry picked
+	from LLVM commit 3dc4fd6dd41100f051a63642f449b16324389c96.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

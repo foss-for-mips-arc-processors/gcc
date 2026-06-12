@@ -1517,9 +1517,8 @@ vect_recog_abd_pattern (vec_info *vinfo,
       int dummy_int;
       auto_vec<tree> dummy_vec;
       if (mid_vectype
-	  && supportable_widening_operation (vinfo, IFN_VEC_WIDEN_ABD,
-					     stmt_vinfo, mid_vectype,
-					     vectype_in,
+	  && supportable_widening_operation (IFN_VEC_WIDEN_ABD,
+					     mid_vectype, vectype_in, false,
 					     &dummy_code, &dummy_code,
 					     &dummy_int, &dummy_vec))
 	{
@@ -1639,8 +1638,7 @@ vect_recog_widen_op_pattern (vec_info *vinfo,
   if (!vectype
       || !vecitype
       || !vecctype
-      || !supportable_widening_operation (vinfo, wide_code, last_stmt_info,
-					  vecitype, vectype,
+      || !supportable_widening_operation (wide_code, vecitype, vectype, true,
 					  &dummy_code, &dummy_code,
 					  &dummy_int, &dummy_vec))
     return NULL;
@@ -1740,8 +1738,8 @@ vect_recog_widen_abd_pattern (vec_info *vinfo, stmt_vec_info stmt_vinfo,
   code_helper dummy_code;
   int dummy_int;
   auto_vec<tree> dummy_vec;
-  if (!supportable_widening_operation (vinfo, IFN_VEC_WIDEN_ABD, stmt_vinfo,
-				       vectype_out, vectype_in,
+  if (!supportable_widening_operation (IFN_VEC_WIDEN_ABD, vectype_out,
+				       vectype_in, false,
 				       &dummy_code, &dummy_code,
 				       &dummy_int, &dummy_vec))
     return NULL;

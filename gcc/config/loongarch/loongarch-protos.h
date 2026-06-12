@@ -223,4 +223,5 @@ extern void loongarch_register_pragmas (void);
 extern bool loongarch_process_target_attr (tree args, tree fndecl);
 extern rtx loongarch_gen_stepped_int_parallel (unsigned int nelts, int base,
 					       int step);
+extern void loongarch_output_asm_load_canary (rtx reg, rtx canary, rtx tmp);
 #endif /* ! GCC_LOONGARCH_PROTOS_H */

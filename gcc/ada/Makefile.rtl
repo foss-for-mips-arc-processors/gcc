@@ -26,12 +26,6 @@ ifndef ADAC
 ADAC=$(CC)
 endif
 
-ifeq ($(LLVM_CONFIG),)
-LLVM_BUILD := $(shell $(ADAC) -v | grep ^llvm-gcc)
-else
-LLVM_BUILD := llvm-gcc
-endif
-
 # Objects needed only for tasking
 GNATRTL_TASKING_OBJS= \
   a-dispat$(objext) \
@@ -2036,6 +2030,7 @@ ifeq ($(strip $(filter-out s390% linux%,$(target_cpu) $(target_os))),)
   EXTRA_GNATRTL_TASKING_OBJS=s-linux.o
   EH_MECHANISM=-gcc
   THREADSLIB = -lpthread
+  MISCLIB = -ldl
   GNATLIB_SHARED = gnatlib-shared-dual
   LIBRARY_VERSION := $(LIB_VERSION)
 endif
@@ -2530,6 +2525,7 @@ ifeq ($(strip $(filter-out arm% linux-gnueabi%,$(target_cpu) $(target_os))),)
   EXTRA_GNATRTL_TASKING_OBJS=s-linux.o
   EH_MECHANISM=-arm
   THREADSLIB = -lpthread
+  MISCLIB = -ldl
   GNATLIB_SHARED = gnatlib-shared-dual
   GMEM_LIB = gmemlib
   LIBRARY_VERSION := $(LIB_VERSION)
@@ -2971,6 +2967,7 @@ ifeq ($(strip $(filter-out %x32 linux%,$(target_cpu) $(target_os))),)
   EXTRA_GNATRTL_TASKING_OBJS=s-linux.o a-exetim.o
   EH_MECHANISM=-gcc
   THREADSLIB=-lpthread -lrt
+  MISCLIB = -ldl
   GNATLIB_SHARED=gnatlib-shared-dual
   GMEM_LIB = gmemlib
   LIBRARY_VERSION := $(LIB_VERSION)
@@ -3040,7 +3037,7 @@ ifeq ($(strip $(filter-out darwin%,$(target_os))),)
     s-inmaop.adb<libgnarl/s-inmaop__posix.adb \
     s-osinte.adb<libgnarl/s-osinte__darwin.adb \
     s-osinte.ads<libgnarl/s-osinte__darwin.ads \
-    s-oslock.ads<libgnat/s-oslock__posix.ads \
+    s-oslock.ads<libgnat/s-oslock__darwin.ads \
     s-taprop.adb<libgnarl/s-taprop__posix.adb \
     s-taspri.ads<libgnarl/s-taspri__posix.ads \
     g-sercom.adb<libgnat/g-sercom__linux.adb \

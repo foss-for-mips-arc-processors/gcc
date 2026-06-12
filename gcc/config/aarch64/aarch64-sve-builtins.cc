@@ -92,7 +92,7 @@ public:
 };
 
 /* Hash traits for registered_function.  */
-struct registered_function_hasher : nofree_ptr_hash <registered_function>
+struct registered_function_hasher : ggc_ptr_hash <registered_function>
 {
   typedef function_instance compare_type;
 
@@ -1022,12 +1022,12 @@ tree acle_svprfop;
 static GTY(()) vec<registered_function *, va_gc> *registered_functions;
 
 /* Stores the starting function index for each pragma handler.  */
-static unsigned int initial_indexes[NUM_PRAGMA_HANDLERS];
+static  GTY(()) unsigned int initial_indexes[NUM_PRAGMA_HANDLERS];
 
 /* All registered function decls, hashed on the function_instance
    that they implement.  This is used for looking up implementations of
    overloaded functions.  */
-static hash_table<registered_function_hasher> *function_table;
+static GTY(()) hash_table<registered_function_hasher> *function_table;
 
 /* Index 0 maps all overloaded function names that we've registered so far to
    their associated function_instances.  Index 1 does the same for functions
@@ -3630,24 +3630,22 @@ gimple_folder::redirect_pred_x ()
 gimple *
 gimple_folder::fold_pfalse ()
 {
-  if (pred == PRED_none)
+  tree gp = gp_value (call);
+  /* If there isn't a GP then we can't do any folding as the instruction isn't
+     predicated.  */
+  if (!gp)
     return nullptr;
-  tree arg0 = gimple_call_arg (call, 0);
+
   if (pred == PRED_m)
     {
-      /* Unary function shapes with _m predication are folded to the
-	 inactive vector (arg0), while other function shapes are folded
-	 to op1 (arg1).  */
-      tree arg1 = gimple_call_arg (call, 1);
-      if (is_pfalse (arg1))
-	return fold_call_to (arg0);
-      if (is_pfalse (arg0))
-	return fold_call_to (arg1);
+      tree val = inactive_values (call);
+      if (is_pfalse (gp))
+	return fold_call_to (val);
       return nullptr;
     }
-  if ((pred == PRED_x || pred == PRED_z) && is_pfalse (arg0))
+  if ((pred == PRED_x || pred == PRED_z) && is_pfalse (gp))
     return fold_call_to (build_zero_cst (TREE_TYPE (lhs)));
-  if (pred == PRED_implicit && is_pfalse (arg0))
+  if (pred == PRED_implicit && is_pfalse (gp))
     {
       unsigned int flags = call_properties ();
       /* Folding to lhs = {0, ...} is not appropriate for intrinsics with
@@ -3799,6 +3797,7 @@ gimple_folder::fold_active_lanes_to (tree x)
 
   gimple_seq stmts = NULL;
   tree pred = convert_pred (stmts, vector_type (0), 0);
+  x = force_vector (stmts, TREE_TYPE (lhs), x);
   gsi_insert_seq_before (gsi, stmts, GSI_SAME_STMT);
   return gimple_build_assign (lhs, VEC_COND_EXPR, pred, x, vec_inactive);
 }
@@ -4351,7 +4350,11 @@ function_expander::use_cond_insn (insn_code icode, unsigned int merge_argno)
   add_input_operand (icode, pred);
   for (unsigned int i = 0; i < nops; ++i)
     add_input_operand (icode, args[opno + i]);
-  add_input_operand (icode, fallback_arg);
+  if (fallback_arg == CONST0_RTX (mode)
+      && insn_operand_matches (icode, m_ops.length (), fallback_arg))
+    add_fixed_operand (fallback_arg);
+  else
+    add_input_operand (icode, fallback_arg);
   return generate_insn (icode);
 }
 
@@ -4586,8 +4589,9 @@ function_expander::expand ()
     {
       /* The last element of these functions is always an fpm_t that must be
          written to FPMR before the call to the instruction itself. */
-      gcc_assert (args.last ()->mode == DImode);
-      emit_move_insn (gen_rtx_REG (DImode, FPM_REGNUM), args.last ());
+      rtx fpm = args.last ();
+      gcc_assert (CONST_INT_P (fpm) || GET_MODE (fpm) == DImode);
+      emit_move_insn (gen_rtx_REG (DImode, FPM_REGNUM), fpm);
     }
   return base->expand (*this);
 }
@@ -4850,7 +4854,7 @@ handle_arm_sve_h (bool function_nulls_p)
   register_svprfop ();
 
   /* Define the functions.  */
-  function_table = new hash_table<registered_function_hasher> (1023);
+  function_table = hash_table<registered_function_hasher>::create_ggc (1023);
   function_builder builder (arm_sve_handle, function_nulls_p);
   for (unsigned int i = 0; i < ARRAY_SIZE (function_groups); ++i)
     builder.register_function_group (function_groups[i]);

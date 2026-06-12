@@ -128,5 +128,6 @@ test_parse()
 int main()
 {
   test_ostream();
+  test_format();
   test_parse();
 }

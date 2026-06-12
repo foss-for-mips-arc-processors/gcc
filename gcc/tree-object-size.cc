@@ -322,9 +322,11 @@ object_sizes_set_temp (struct object_size_info *osi, unsigned varno)
   tree val = object_sizes_get (osi, varno);
 
   if (size_initval_p (val, osi->object_size_type))
-    object_sizes_set (osi, varno,
-		      make_ssa_name (sizetype),
-		      make_ssa_name (sizetype));
+    {
+      val = make_ssa_name (sizetype);
+      tree wholeval = make_ssa_name (sizetype);
+      object_sizes_set (osi, varno, val, wholeval);
+    }
 }
 
 /* Initialize OFFSET_LIMIT variable.  */
@@ -2153,12 +2155,11 @@ check_for_plus_in_loops (struct object_size_info *osi, tree var)
       && gimple_assign_rhs_code (stmt) == POINTER_PLUS_EXPR)
     {
       tree basevar = gimple_assign_rhs1 (stmt);
-      tree cst = gimple_assign_rhs2 (stmt);
-
-      gcc_assert (TREE_CODE (cst) == INTEGER_CST);
+      tree offset = gimple_assign_rhs2 (stmt);
 
       /* Skip non-positive offsets.  */
-      if (integer_zerop (cst) || compare_tree_int (cst, offset_limit) > 0)
+      if (TREE_CODE (offset) != INTEGER_CST
+	  || integer_zerop (offset) || compare_tree_int (offset, offset_limit) > 0)
         return;
 
       osi->depths[SSA_NAME_VERSION (basevar)] = 1;

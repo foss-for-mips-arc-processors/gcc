@@ -1244,7 +1244,7 @@ Same as @uref{#with-as,,@option{--with-as}}
 but for the debug linker (only used on Darwin platforms so far).
 
 @item --with-tls=@var{dialect}
-Specify the default TLS dialect, for systems were there is a choice.
+Specify the default TLS dialect, for systems where there is a choice.
 For ARM targets, possible values for @var{dialect} are @code{gnu} or
 @code{gnu2}, which select between the original GNU dialect and the GNU TLS
 descriptor-based dialect.
@@ -4821,7 +4821,7 @@ This configuration is intended for embedded systems.
 @heading riscv32-*-elf
 The RISC-V RV32 instruction set.
 This configuration is intended for embedded systems.
-This (and all other RISC-V) targets require the binutils 2.30 release.
+This (and all other RISC-V) targets require the binutils 2.40 release.
 
 @html
 <hr />
@@ -4829,7 +4829,7 @@ This (and all other RISC-V) targets require the binutils 2.30 release.
 @anchor{riscv32-x-linux}
 @heading riscv32-*-linux
 The RISC-V RV32 instruction set running GNU/Linux.
-This (and all other RISC-V) targets require the binutils 2.30 release.
+This (and all other RISC-V) targets require the binutils 2.40 release.
 
 @html
 <hr />
@@ -4838,7 +4838,7 @@ This (and all other RISC-V) targets require the binutils 2.30 release.
 @heading riscv64-*-elf
 The RISC-V RV64 instruction set.
 This configuration is intended for embedded systems.
-This (and all other RISC-V) targets require the binutils 2.30 release.
+This (and all other RISC-V) targets require the binutils 2.40 release.
 
 @html
 <hr />
@@ -4846,7 +4846,7 @@ This (and all other RISC-V) targets require the binutils 2.30 release.
 @anchor{riscv64-x-linux}
 @heading riscv64-*-linux
 The RISC-V RV64 instruction set running GNU/Linux.
-This (and all other RISC-V) targets require the binutils 2.30 release.
+This (and all other RISC-V) targets require the binutils 2.40 release.
 
 @html
 <hr />

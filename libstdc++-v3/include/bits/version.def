@@ -1669,6 +1669,22 @@ ftms = {
 };
 
 ftms = {
+  name = stdbit_h;
+  values = {
+    v = 202603;
+    cxxmin = 26;
+  };
+};
+
+ftms = {
+  name = stdckdint_h;
+  values = {
+    v = 202603;
+    cxxmin = 26;
+  };
+};
+
+ftms = {
   name = adaptor_iterator_pair_constructor;
   values = {
     v = 202106;
@@ -1690,6 +1706,14 @@ ftms = {
   values = {
     v = 202207;
     cxxmin = 23;
+  };
+};
+
+ftms = {
+  name = common_reference;
+  values = {
+    v = 202302;
+    cxxmin = 20; // We treat P2655R3 as a DR against C++20.
   };
 };
 

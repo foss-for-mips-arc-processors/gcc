@@ -570,7 +570,6 @@ or any notes about the implementation.
     </row>
 
     <row>
-      <?dbhtml bgcolor="#C8B0B0" ?>
       <entry>
 	<code>common_reference_t</code> of <code>reference_wrapper</code>
 	Should Be a Reference Type
@@ -580,7 +579,7 @@ or any notes about the implementation.
         P2655R3
         </link>
       </entry>
-      <entry align="center"> </entry>
+      <entry align="center"> 15.3 </entry>
       <entry> <code>__cpp_lib_common_reference &gt;= 202302L</code> </entry>
     </row>
 

@@ -1,3 +1,16 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-04-15  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-04-13  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	PR target/69639
+	* mh-cygwin: Increase to 64MB stack reserve.
+	* mh-mingw: Likewise.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

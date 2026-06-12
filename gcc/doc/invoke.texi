@@ -1710,14 +1710,18 @@ the next @option{-x} option.  Possible values for @var{language} are:
 @smallexample
 c  c-header  cpp-output
 c++  c++-header  c++-system-header c++-user-header c++-cpp-output
-objective-c  objective-c-header  objective-c-cpp-output
-objective-c++ objective-c++-header objective-c++-cpp-output
+objective-c  objective-c-header  objective-c-cpp-output  objc-cpp-output
+objective-c++  objective-c++-header  objective-c++-cpp-output
+objc++-cpp-output
 assembler  assembler-with-cpp
-ada
+ada  adascil  adawhy
 cobol
 d
-f77  f77-cpp-input f95  f95-cpp-input
+f77  f77-cpp-input  f95  f95-cpp-input
 go
+modula-2  modula-2-cpp-output
+rust
+lto
 @end smallexample
 
 Note that @option{-x} does not imply a particular language standard.
@@ -7194,7 +7198,7 @@ switch (cond)
 @end group
 @end smallexample
 
-C++17 provides a standard way to suppress the @option{-Wimplicit-fallthrough}
+C++17 and C23 provide a standard way to suppress the @option{-Wimplicit-fallthrough}
 warning using @code{[[fallthrough]];} instead of the GNU attribute.  In C++11
 or C++14 users can use @code{[[gnu::fallthrough]];}, which is a GNU extension.
 Instead of these attributes, it is also possible to add a fallthrough comment
@@ -15765,7 +15769,7 @@ as a parameter of @code{free} call or compared with @code{NULL}.  If
 with @option{-fmalloc-dce=2} also comparisons with @code{NULL} pointer are
 considered safe to remove.
 
-The default is @option{-fmalloc-dce=2}.  See also @option{-fallocation-dce}. 
+The default is @option{-fmalloc-dce=2}.  See also @option{-fallocation-dce}.
 
 @opindex fmove-loop-invariants
 @item -fmove-loop-invariants
@@ -21986,7 +21990,7 @@ and the features that they enable by default:
 @item @samp{armv9.2-a} @tab Armv9.2-A @tab @samp{armv9.1-a}, @samp{+wfxt}, @samp{+xs}
 @item @samp{armv9.3-a} @tab Armv9.3-A @tab @samp{armv9.2-a}, @samp{+mops}
 @item @samp{armv9.4-a} @tab Armv9.4-A @tab @samp{armv9.3-a}, @samp{+sve2p1}
-@item @samp{armv9.5-a} @tab Armv9.4-A @tab @samp{armv9.4-a}, @samp{cpa}, @samp{+faminmax}, @samp{+lut}
+@item @samp{armv9.5-a} @tab Armv9.5-A @tab @samp{armv9.4-a}, @samp{cpa}, @samp{+faminmax}, @samp{+lut}
 @item @samp{armv8-r} @tab Armv8-R @tab @samp{armv8-r}
 @end multitable
 
@@ -22031,7 +22035,7 @@ performance of the code.  Permissible values for this option are:
 @samp{octeontx2f95mm},
 @samp{a64fx}, @samp{fujitsu-monaka},
 @samp{thunderx}, @samp{thunderxt88},
-@samp{thunderxt88p1}, @samp{thunderxt81}, @samp{tsv110},
+@samp{thunderxt88p1}, @samp{thunderxt81}, @samp{tsv110}, @samp{hip12},
 @samp{thunderxt83}, @samp{thunderx2t99}, @samp{thunderx3t110}, @samp{zeus},
 @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
 @samp{cortex-a73.cortex-a35}, @samp{cortex-a73.cortex-a53},
@@ -35291,8 +35295,8 @@ SSSE3, SSE4.1, SSE4.2, POPCNT, AES, PREFETCHW, PCLMUL, RDRND, XSAVE, XSAVEC,
 XSAVES, XSAVEOPT, FSGSBASE, PTWRITE, RDPID, SGX, GFNI-SSE, CLWB, MOVDIRI,
 MOVDIR64B, WAITPKG, ADCX, AVX, AVX2, BMI, BMI2, F16C, FMA, LZCNT, PCONFIG, PKU,
 VAES, VPCLMULQDQ, SERIALIZE, HRESET, AVX-VNNI, UINTR, AVXIFMA, AVXVNNIINT8,
-AVXNECONVERT, CMPCCXADD, AVXVNNIINT16, SHA512, SM3, SM4 and PREFETCHI
-instruction set support.
+AVXNECONVERT, CMPCCXADD, AVXVNNIINT16, SHA512, SM3 and SM4 instruction set
+support.
 
 @item sapphirerapids
 @itemx emeraldrapids
@@ -35339,8 +35343,7 @@ MOVDIRI, MOVDIR64B, ENQCMD, CLDEMOTE, PTWRITE, WAITPKG, SERIALIZE, TSXLDTRK,
 UINTR, AMX-BF16, AMX-TILE, AMX-INT8, AVX-VNNI, AVX512FP16, AVX512BF16, AMX-FP16,
 PREFETCHI, AMX-COMPLEX, AVX10.1-512, AVX-IFMA, AVX-NE-CONVERT, AVX-VNNI-INT16,
 AVX-VNNI-INT8, CMPccXADD, SHA512, SM3, SM4, AVX10.2-512, APX_F, AMX-AVX512,
-AMX-FP8, AMX-TF32, AMX-TRANSPOSE, MOVRS, AMX-MOVRS and USER_MSR instruction set
-support.
+AMX-FP8, AMX-TF32, MOVRS and AMX-MOVRS instruction set support.
 
 @item bonnell
 @itemx atom

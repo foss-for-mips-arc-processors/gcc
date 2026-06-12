@@ -1340,9 +1340,7 @@ package body Sem_Ch13 is
       --  at the ends of certain declaration lists (like visible-part lists),
       --  not when this procedure is called at arbitrary freeze points.
 
-      if not Nonoverridable_Only
-        and then not Scope_Within_Or_Same (Current_Scope, Scope (E))
-      then
+      if not Nonoverridable_Only and then not In_Open_Scopes (Scope (E)) then
          if Is_Type (E) and then From_Nested_Package (E) then
             declare
                Pack : constant Entity_Id := Scope (E);
@@ -4878,14 +4876,28 @@ package body Sem_Ch13 is
                         goto Continue;
                      end;
 
-                  --  All other cases, generate attribute definition
+                  --  Generate an attribute definition for access types
 
-                  else
+                  elsif Is_Access_Type (E) then
                      Aitem :=
                        Make_Attribute_Definition_Clause (Loc,
                          Name       => Ent,
                          Chars      => Name_Storage_Size,
                          Expression => Relocate_Node (Expr));
+
+                  --  This is likely a misplaced aspect. Create a pragma to
+                  --  emit the actual error.
+
+                  else
+                     Aitem :=
+                       Make_Aitem_Pragma
+                         (Pragma_Argument_Associations =>
+                            New_List
+                              (Make_Pragma_Argument_Association
+                                 (Loc, Expression => Relocate_Node (Expr))),
+                          Pragma_Name                  => Name_Storage_Size);
+                     Insert_Pragma (Aitem);
+                     goto Continue;
                   end if;
 
                when Aspect_External_Initialization =>
@@ -7109,17 +7121,17 @@ package body Sem_Ch13 is
                            Set_Class_Wide_Equivalent_Type (Etyp,
                              Make_CW_Equivalent_Type (Etyp, Empty, Actions));
 
-                           --  Add a Compile_Time_Error sizing check as a hint
-                           --  to the backend.
+                           --  Insert its declaration immediately after that of
+                           --  the root type.
 
-                           Append_To (Actions,
-                             Make_CW_Size_Compile_Check
-                               (Etype (Etyp), U_Ent));
+                           Insert_Actions_After
+                             (Declaration_Node (Etype (Etyp)), Actions);
 
-                           --  Set the expansion to occur during freezing when
-                           --  everything is analyzed
+                           --  Add a Compile_Time_Error size check for the root
+                           --  type at the freeze point.
 
-                           Append_Freeze_Actions (Etyp, Actions);
+                           Append_Freeze_Action (Etype (Etyp),
+                             Make_CW_Size_Compile_Check (Etype (Etyp), U_Ent));
 
                            Set_Is_Mutably_Tagged_Type (Etyp);
                         end;
@@ -16873,6 +16885,7 @@ package body Sem_Ch13 is
       begin
          return Ekind (E) = E_Procedure
            and then Scope (E) = Scope (Typ)
+           and then Is_Primitive (E)
            and then Present (First_Formal (E))
            and then Ekind (First_Formal (E)) = E_In_Out_Parameter
            and then Etype (First_Formal (E)) = Typ
@@ -16926,7 +16939,7 @@ package body Sem_Ch13 is
       end if;
 
       Error_Msg_N
-        ("finalizable primitive must be local procedure whose only formal " &
+        ("subprogram must denote primitive procedure whose only formal " &
          "parameter has mode `IN OUT` and is of the finalizable type", N);
    end Resolve_Finalizable_Argument;
 
@@ -17224,15 +17237,12 @@ package body Sem_Ch13 is
       -----------------------
 
       procedure Resolve_Operation (Subp_Id : Node_Id) is
-         Subp : Entity_Id;
-
          I  : Interp_Index;
          It : Interp;
 
       begin
          if not Is_Overloaded (Subp_Id) then
-            Subp := Entity (Subp_Id);
-            if not Pred (Subp) then
+            if not Pred (Entity (Subp_Id)) then
                Error_Msg_NE
                  ("improper aggregate operation for&", Subp_Id, Typ);
             end if;
@@ -17242,9 +17252,21 @@ package body Sem_Ch13 is
             Get_First_Interp (Subp_Id, I, It);
             while Present (It.Nam) loop
                if Pred (It.Nam) then
+                  if Present (Entity (Subp_Id)) then
+                     --  ??? Cope with the obsolete renaming of Append_Vector
+                     --  in Ada.Containers.Vectors retained for compatibility.
+
+                     if No (Alias (Entity (Subp_Id)))
+                       and then No (Alias (It.Nam))
+                     then
+                        Error_Msg_N
+                          ("& must denote exactly one subprogram", Subp_Id);
+                     end if;
+
+                     exit;
+                  end if;
                   Set_Is_Overloaded (Subp_Id, False);
                   Set_Entity (Subp_Id, It.Nam);
-                  exit;
                end if;
 
                Get_Next_Interp (I, It);

@@ -97,6 +97,7 @@
 #include "ipa-prop.h"
 #include "ipa-fnsummary.h"
 #include "hash-map.h"
+#include "ifcvt.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -407,6 +408,7 @@ static const struct aarch64_flag_desc aarch64_tuning_flags[] =
 #include "tuning_models/thunderxt88.h"
 #include "tuning_models/thunderx.h"
 #include "tuning_models/tsv110.h"
+#include "tuning_models/hip12.h"
 #include "tuning_models/xgene1.h"
 #include "tuning_models/emag.h"
 #include "tuning_models/qdf24xx.h"
@@ -2096,6 +2098,116 @@ aarch64_preferred_else_value (unsigned, tree, unsigned int nops, tree *ops)
   return nops == 3 ? ops[2] : ops[0];
 }
 
+/* Implement TARGET_MAX_NOCE_IFCVT_SEQ_COST.  If an explicit max was set then
+   honor it, otherwise apply a tuning specific scale to branch costs.  */
+
+static unsigned int
+aarch64_max_noce_ifcvt_seq_cost (edge e)
+{
+  bool predictable_p = predictable_edge_p (e);
+  if (predictable_p)
+    {
+      if (OPTION_SET_P (param_max_rtl_if_conversion_predictable_cost))
+	return param_max_rtl_if_conversion_predictable_cost;
+    }
+  else
+    {
+      if (OPTION_SET_P (param_max_rtl_if_conversion_unpredictable_cost))
+	return param_max_rtl_if_conversion_unpredictable_cost;
+    }
+
+  /* For modern machines with long speculative execution chains and modern
+     branch prediction the penalty of the branch misprediction needs to weighed
+     against the cost of executing the instructions unconditionally.  RISC cores
+     tend to not have that deep pipelines and so the cost of mispredictions can
+     be reasonably cheap.  */
+
+  bool speed_p = optimize_function_for_speed_p (cfun);
+  return BRANCH_COST (speed_p, predictable_p)
+	 * aarch64_tune_params.branch_costs->br_mispredict_factor;
+}
+
+/* Return true if SEQ is a good candidate as a replacement for the
+   if-convertible sequence described in IF_INFO.  AArch64 has a range of
+   branchless statements and not all of them are potentially problematic.  For
+   instance a cset is usually beneficial whereas a csel is more complicated.  */
+
+static bool
+aarch64_noce_conversion_profitable_p (rtx_insn *seq,
+				      struct noce_if_info *if_info)
+{
+  /* If not in a loop, just accept all if-conversion as the branch predictor
+     won't have anything to train on.  So assume sequences are essentially
+     unpredictable.  ce1 is in CFG mode still while ce2 is outside.  For ce2
+     accept limited if-conversion based on the shape of the instruction.  */
+  if (current_loops
+      && (!if_info->test_bb->loop_father
+	  || !if_info->test_bb->loop_father->header
+	  || bb_loop_depth (if_info->test_bb->loop_father->header) == 0))
+    return true;
+
+  /* For now we only care about csel speciifcally.  */
+  bool is_csel_p = true;
+
+  if (if_info->then_simple
+      && if_info->a != NULL_RTX
+      && !REG_P (if_info->a)
+      && !SUBREG_P (if_info->a))
+    is_csel_p = false;
+
+  if (if_info->else_simple
+      && if_info->b != NULL_RTX
+      && !REG_P (if_info->b)
+      && !SUBREG_P (if_info->b))
+    is_csel_p = false;
+
+  for (rtx_insn *insn = seq; is_csel_p && insn; insn = NEXT_INSN (insn))
+    {
+      rtx set = single_set (insn);
+      if (!set)
+	continue;
+
+      rtx src = SET_SRC (set);
+      rtx dst = SET_DEST (set);
+      machine_mode mode = GET_MODE (src);
+      if (GET_MODE_CLASS (mode) != MODE_INT)
+	continue;
+
+      switch (GET_CODE (src))
+	{
+	case PLUS:
+	case MINUS:
+	  {
+	    /* Likely a CINC.  */
+	    if (REG_P (dst)
+		&& (REG_P (XEXP (src, 0)) || SUBREG_P (XEXP (src, 0)))
+		&& (XEXP (src, 1) == CONST1_RTX (mode)
+		    || XEXP (src, 1) == CONSTM1_RTX (mode)))
+	      is_csel_p = false;
+	    break;
+	  }
+	default:
+	  break;
+	}
+    }
+
+  /* For now accept every variant but csel unconditionally because CSEL usually
+     means you have to wait for two values to be computed.  */
+  if (!is_csel_p)
+    return true;
+
+  /* TODO: Add detecting of csel, cinc, cset etc and take profiling in
+	   consideration.  For now this basic costing is enough to cover
+	   most cases.  */
+  if (if_info->speed_p)
+    {
+      unsigned cost = seq_cost (seq, true);
+      return cost <= if_info->max_seq_cost;
+    }
+
+  return default_noce_conversion_profitable_p (seq, if_info);
+}
+
 /* Implement TARGET_HARD_REGNO_NREGS.  */
 
 static unsigned int
@@ -2608,10 +2720,23 @@ aarch64_hard_regno_call_part_clobbered (unsigned int abi_id,
 {
   if (FP_REGNUM_P (regno) && abi_id != ARM_PCS_SVE)
     {
-      poly_int64 per_register_size = GET_MODE_SIZE (mode);
-      unsigned int nregs = hard_regno_nregs (regno, mode);
-      if (nregs > 1)
-	per_register_size = exact_div (per_register_size, nregs);
+      poly_int64 per_register_size;
+      if (aarch64_sve_mode_p (mode))
+	/* SVE instructions operate on the full SVE register, even for
+	   partial modes like VNx2SF whose GET_MODE_SIZE is only 8 bytes
+	   under -msve-vector-bits=128.  The elements of such partial
+	   modes are strided across the register and can lie outside the
+	   callee-preserved low 64 bits.  Compare against the full SVE
+	   vector size so that V8-V15 are correctly recognised as
+	   partially clobbered for any SVE mode under AAPCS64/AAPCS_SIMD.  */
+	per_register_size = BYTES_PER_SVE_VECTOR;
+      else
+	{
+	  per_register_size = GET_MODE_SIZE (mode);
+	  unsigned int nregs = hard_regno_nregs (regno, mode);
+	  if (nregs > 1)
+	    per_register_size = exact_div (per_register_size, nregs);
+	}
       if (abi_id == ARM_PCS_SIMD || abi_id == ARM_PCS_TLSDESC)
 	return maybe_gt (per_register_size, 16);
       return maybe_gt (per_register_size, 8);
@@ -5943,7 +6068,7 @@ aarch64_sve_move_pred_via_while (rtx target, machine_mode mode,
   target = aarch64_target_reg (target, mode);
   emit_insn (gen_while (UNSPEC_WHILELO, DImode, mode,
 			target, const0_rtx, limit));
-  return target;
+  return gen_lowpart (VNx16BImode, target);
 }
 
 static rtx
@@ -6088,8 +6213,7 @@ aarch64_expand_sve_const_pred_trn (rtx target, rtx_vector_builder &builder,
      operands but permutes them as though they had mode MODE.  */
   machine_mode mode = aarch64_sve_pred_mode (permute_size).require ();
   target = aarch64_target_reg (target, GET_MODE (a));
-  rtx type_reg = CONST0_RTX (mode);
-  emit_insn (gen_aarch64_sve_trn1_conv (mode, target, a, b, type_reg));
+  emit_insn (gen_aarch64_sve_acle (UNSPEC_TRN1, mode, target, a, b));
   return target;
 }
 
@@ -10108,6 +10232,20 @@ aarch64_use_return_insn_p (void)
     return false;
 
   return known_eq (cfun->machine->frame.frame_size, 0);
+}
+
+/* Return false for locally streaming functions in order to avoid
+   shrink-wrapping them.  Shrink-wrapping is unsafe when the function prologue
+   and epilogue contain streaming state change, because these implicitly change
+   the meaning of poly_int values.  */
+
+bool
+aarch64_use_simple_return_insn_p (void)
+{
+  if (aarch64_cfun_enables_pstate_sm ())
+    return false;
+
+  return true;
 }
 
 /* Generate the epilogue instructions for returning from a function.
@@ -25085,20 +25223,41 @@ aarch64_asm_preferred_eh_data_format (int code ATTRIBUTE_UNUSED, int global)
    return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
 }
 
+/* Return true if function declaration FNDECL needs to be marked as
+   having a variant PCS.  */
+
+static bool
+aarch64_is_variant_pcs (tree fndecl)
+{
+  /* Check for ABIs that preserve more registers than usual.  */
+  arm_pcs pcs = (arm_pcs) fndecl_abi (fndecl).id ();
+  if (pcs == ARM_PCS_SIMD || pcs == ARM_PCS_SVE)
+    return true;
+
+  /* Check for ABIs that allow PSTATE.SM to be 1 on entry.  */
+  tree fntype = TREE_TYPE (fndecl);
+  if (aarch64_fntype_pstate_sm (fntype) != AARCH64_ISA_MODE_SM_OFF)
+    return true;
+
+  /* Check for ABIs that require PSTATE.ZA to be 1 on entry, either because
+     of ZA or ZT0.  */
+  if (aarch64_fntype_pstate_za (fntype) != 0)
+    return true;
+
+  return false;
+}
+
 /* Output .variant_pcs for aarch64_vector_pcs function symbols.  */
 
 static void
 aarch64_asm_output_variant_pcs (FILE *stream, const tree decl, const char* name)
 {
-  if (TREE_CODE (decl) == FUNCTION_DECL)
+  if (TREE_CODE (decl) == FUNCTION_DECL
+      && aarch64_is_variant_pcs (decl))
     {
-      arm_pcs pcs = (arm_pcs) fndecl_abi (decl).id ();
-      if (pcs == ARM_PCS_SIMD || pcs == ARM_PCS_SVE)
-	{
-	  fprintf (stream, "\t.variant_pcs\t");
-	  assemble_name (stream, name);
-	  fprintf (stream, "\n");
-	}
+      fprintf (stream, "\t.variant_pcs\t");
+      assemble_name (stream, name);
+      fprintf (stream, "\n");
     }
 }
 
@@ -31957,6 +32116,13 @@ aarch64_libgcc_floating_mode_supported_p
 #undef TARGET_ATOMIC_ASSIGN_EXPAND_FENV
 #define TARGET_ATOMIC_ASSIGN_EXPAND_FENV \
   aarch64_atomic_assign_expand_fenv
+
+/* If-conversion costs.  */
+#undef TARGET_MAX_NOCE_IFCVT_SEQ_COST
+#define TARGET_MAX_NOCE_IFCVT_SEQ_COST aarch64_max_noce_ifcvt_seq_cost
+
+#undef TARGET_NOCE_CONVERSION_PROFITABLE_P
+#define TARGET_NOCE_CONVERSION_PROFITABLE_P aarch64_noce_conversion_profitable_p
 
 /* Section anchor support.  */
 

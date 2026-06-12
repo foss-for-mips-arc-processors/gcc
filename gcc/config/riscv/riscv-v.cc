@@ -1966,14 +1966,19 @@ get_lmul_mode (scalar_mode mode, int lmul)
   return E_VOIDmode;
 }
 
-/* Return the appropriate M1 mode for MODE.  */
+/* Return the appropriate LMUL1 mode for MODE.
+   If VLS_P is specified, get a VLS mode that represents a full
+   vector.  */
 
-static opt_machine_mode
-get_m1_mode (machine_mode mode)
+opt_machine_mode
+get_m1_mode (machine_mode mode, bool vls_p)
 {
   scalar_mode smode = GET_MODE_INNER (mode);
   unsigned int bytes = GET_MODE_SIZE (smode);
-  poly_uint64 m1_nunits = exact_div (BYTES_PER_RISCV_VECTOR, bytes);
+  poly_uint64 bytes_vector = BYTES_PER_RISCV_VECTOR;
+  if (vls_p)
+    bytes_vector = constant_lower_bound (bytes_vector);
+  poly_uint64 m1_nunits = exact_div (bytes_vector, bytes);
   return get_vector_mode (smode, m1_nunits);
 }
 
@@ -3053,15 +3058,17 @@ expand_vec_perm (rtx target, rtx op0, rtx op1, rtx sel)
   mask_mode = get_mask_mode (data_mode);
   rtx mask = gen_reg_rtx (mask_mode);
   rtx max_sel = gen_const_vector_dup (sel_mode, nunits);
+  bool overlap = reg_overlap_mentioned_p (target, op1);
+  rtx tmp_target = overlap ? gen_reg_rtx (data_mode) : target;
 
   /* Step 1: generate a mask that should select everything >= nunits into the
    * mask.  */
   expand_vec_cmp (mask, GEU, sel_mod, max_sel);
 
-  /* Step2: gather every op0 values indexed by sel into target,
+  /* Step2: gather every op0 values indexed by sel into TMP_TARGET,
 	    we don't need to care about the result of the element
 	    whose index >= nunits.  */
-  emit_vlmax_gather_insn (target, op0, sel_mod);
+  emit_vlmax_gather_insn (tmp_target, op0, sel_mod);
 
   /* Step3: shift the range from (nunits, max_of_mode] to
 	    [0, max_of_mode - nunits].  */
@@ -3071,7 +3078,10 @@ expand_vec_perm (rtx target, rtx op0, rtx op1, rtx sel)
 
   /* Step4: gather those into the previously masked-out elements
 	    of target.  */
-  emit_vlmax_masked_gather_mu_insn (target, op1, tmp, mask);
+  emit_vlmax_masked_gather_mu_insn (tmp_target, op1, tmp, mask);
+
+  if (overlap)
+    emit_move_insn (target, tmp_target);
 }
 
 /* Implement TARGET_VECTORIZE_VEC_PERM_CONST for RVV.  */
@@ -3941,6 +3951,9 @@ shuffle_series_patterns (struct expand_vec_perm_d *d)
   bool need_insert = false;
   bool have_series = false;
 
+  poly_int64 len = d->perm.length ();
+  bool need_modulo = !len.is_constant ();
+
   /* Check for a full series.  */
   if (known_ne (step1, 0) && d->perm.series_p (0, 1, el1, step1))
     have_series = true;
@@ -3952,7 +3965,33 @@ shuffle_series_patterns (struct expand_vec_perm_d *d)
       need_insert = true;
     }
 
-  if (!have_series)
+  /* A permute like {0, 3, 2, 1} is recognized as series because series_p also
+     allows wrapping/modulo of the permute index.  The step would be 3 and the
+     indices are correct modulo 4.  As noted in expand_vec_perm vrgather does
+     not handle wrapping but rather zeros out-of-bounds indices.
+     This means we would need to emit an explicit modulo operation here which
+     does not seem worth it.  We rather defer to the generic handling instead.
+     Even in the non-wrapping case it is doubtful whether
+      vid
+      vmul
+      vrgather
+     is preferable over
+      vle
+      vrgather.
+     If the permute mask can be reused there shouldn't be any difference and
+     otherwise it becomes a question of load bandwidth.  */
+  if (have_series && len.is_constant ())
+    {
+      int64_t step = need_insert ? step2.to_constant () : step1.to_constant ();
+      int prec = GET_MODE_PRECISION (GET_MODE_INNER (d->vmode));
+      wide_int wlen = wide_int::from (len.to_constant (), prec * 2, SIGNED);
+      wide_int wstep = wide_int::from (step, prec * 2, SIGNED);
+      wide_int result = wi::mul (wlen, wstep);
+      if (wi::gt_p (result, wlen, SIGNED))
+	need_modulo = true;
+    }
+
+  if (!have_series || (len.is_constant () && need_modulo))
     return false;
 
   /* Disable shuffle if we can't find an appropriate integer index mode for
@@ -3970,6 +4009,13 @@ shuffle_series_patterns (struct expand_vec_perm_d *d)
   rtx series = gen_reg_rtx (sel_mode);
   expand_vec_series (series, gen_int_mode (need_insert ? el2 : el1, eltmode),
 		     gen_int_mode (need_insert ? step2 : step1, eltmode));
+
+  if (need_modulo)
+    {
+      rtx mod = gen_const_vector_dup (sel_mode, len - 1);
+      series = expand_simple_binop (sel_mode, AND, series, mod, NULL,
+				    0, OPTAB_DIRECT);
+    }
 
   /* Insert the remaining element if necessary.  */
   if (need_insert)

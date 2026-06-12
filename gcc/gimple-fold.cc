@@ -5913,6 +5913,10 @@ gimple_fold_call (gimple_stmt_iterator *gsi, bool inplace)
   if (inplace)
     return changed;
 
+  /* Don't constant fold functions which can change the control. */
+  if (gimple_call_ctrl_altering_p (stmt))
+    return changed;
+
   /* Check for builtins that CCP can handle using information not
      available in the generic fold routines.  */
   if (gimple_call_builtin_p (stmt, BUILT_IN_NORMAL))
@@ -6636,14 +6640,12 @@ fold_stmt_1 (gimple_stmt_iterator *gsi, bool inplace, tree (*valueize) (tree),
       gimple_seq seq = NULL;
       gimple_match_op res_op;
       if (gimple_simplify (stmt, &res_op, inplace ? NULL : &seq,
-			   valueize, valueize))
-	{
-	  if (replace_stmt_with_simplification (gsi, &res_op, &seq, inplace,
-						dce_worklist))
-	    changed = true;
-	  else
-	    gimple_seq_discard (seq);
-	}
+			   valueize, valueize)
+	  && replace_stmt_with_simplification (gsi, &res_op, &seq, inplace,
+					       dce_worklist))
+	changed = true;
+      else
+	gimple_seq_discard (seq);
     }
 
   stmt = gsi_stmt (*gsi);

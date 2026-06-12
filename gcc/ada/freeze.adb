@@ -4811,6 +4811,8 @@ package body Freeze is
                  and then Convention (F_Type) = Convention_Ada
                  and then not Has_Warnings_Off (F_Type)
                  and then not Has_Size_Clause (F_Type)
+                 and then Present (Esize (F_Type))
+                 and then Esize (F_Type) = 8
                then
                   Error_Msg_N
                     ("& is an 8-bit Ada Boolean?x?", Formal);
@@ -7353,6 +7355,15 @@ package body Freeze is
 
          elsif Ekind (E) in E_Record_Type | E_Record_Subtype then
             if not In_Generic_Scope (E) then
+               --  If this is a class-wide equivalent type for a non-interface
+               --  root type, freeze the root type.
+
+               if Is_Class_Wide_Equivalent_Type (E)
+                 and then Present (Parent_Subtype (E))
+               then
+                  Freeze_And_Append (Parent_Subtype (E), N, Result);
+               end if;
+
                Freeze_Record_Type (E);
             end if;
 
