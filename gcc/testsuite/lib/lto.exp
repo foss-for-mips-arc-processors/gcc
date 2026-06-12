@@ -174,6 +174,40 @@ proc lto_prune_warns { text } {
     return $text
 }
 
+# Run BODY, capturing the exit status of the linker's remote_exec invocation.
+# DejaGnu's target_compile returns only compiler output, not exit status.
+# Returns a list {exit_status compiler_output}.
+
+proc lto-with-captured-exit { body } {
+    if { [info procs remote_exec_lto_saved] != "" } {
+	error "lto-with-captured-exit: remote_exec already wrapped"
+    }
+
+    set ::lto_capture_link_exit_status -1
+
+    rename remote_exec remote_exec_lto_saved
+    proc remote_exec { args } {
+	set result [eval [concat remote_exec_lto_saved $args]]
+	set ::lto_capture_link_exit_status [lindex $result 0]
+	return $result
+    }
+
+    if { [catch { uplevel 1 $body } comp_output] } {
+	rename remote_exec ""
+	rename remote_exec_lto_saved remote_exec
+	unset -nocomplain ::lto_capture_link_exit_status
+	return -code error $comp_output
+    }
+
+    set link_exit_status $::lto_capture_link_exit_status
+    unset -nocomplain ::lto_capture_link_exit_status
+
+    rename remote_exec ""
+    rename remote_exec_lto_saved remote_exec
+
+    return [list $link_exit_status $comp_output]
+}
+
 # lto_init -- called at the start of each subdir of tests
 
 proc lto_init { args } {
@@ -406,9 +440,32 @@ proc lto-link-and-maybe-run { testname objlist dest optall optfile optstr } {
 	set board_info($target_board,ldscript) ""
     }
 
-    # Link the objects into an executable.
-    set comp_output [${tool}_target_compile "$objlist" $dest executable \
-		     "$options"]
+    # Link the objects into an executable.  When dg-lto-error is present,
+    # capture the linker exit status (DejaGnu's target_compile does not
+    # return it).
+    set expect_link_error 0
+    if { [info exists dg_lto_has_error] && $dg_lto_has_error } {
+	set expect_link_error 1
+    }
+    if { $expect_link_error } {
+	set link_result [lto-with-captured-exit [list ${tool}_target_compile \
+	    "$objlist" $dest executable "$options"]]
+	set link_exit_status [lindex $link_result 0]
+	set comp_output [lindex $link_result 1]
+	if { $link_exit_status < 0 } {
+	    if { [regexp {^exit status is ([0-9]+)$} $comp_output \
+		      -> link_exit_status] } {
+		verbose "lto.exp: inferred link exit status $link_exit_status" 2
+	    } elseif { ![file_on_host exists $dest] } {
+		set link_exit_status 1
+	    } else {
+		set link_exit_status 0
+	    }
+	}
+    } else {
+	set comp_output [${tool}_target_compile "$objlist" $dest executable \
+			 "$options"]
+    }
 
     if { $relocatable } {
 	set board_info($target_board,ldscript) $saved_ldscript
@@ -421,9 +478,10 @@ proc lto-link-and-maybe-run { testname objlist dest optall optfile optstr } {
     set comp_output [lto_prune_warns $comp_output]
 
     # Handle dg-lto-error: expect link failure and check pattern if specified.
-    if { [info exists dg_lto_has_error] && $dg_lto_has_error } {
+    if { $expect_link_error } {
 	verbose "lto.exp: dg-lto-error present, expecting link failure" 2
-	set link_failed [expr {![file_on_host exists $dest] || $comp_output != ""}]
+	verbose "lto.exp: link exit status $link_exit_status" 2
+	set link_failed [expr {$link_exit_status != 0}]
 	
 	global dg_lto_error_line
 	global dg_lto_error_comment

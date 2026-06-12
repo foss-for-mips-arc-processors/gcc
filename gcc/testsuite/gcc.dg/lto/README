@@ -11,7 +11,10 @@ The LTO harness recognizes the following special DejaGnu directives:
  *  dg-lto-warning - the equivalent of dg-warning for diagnostics expected
       to be emitted at LTO link time,
  *  dg-lto-message - the equivakent of dg-message for informational notes
-      expected to be emitted at LTO link time.
+      expected to be emitted at LTO link time,
+ *  dg-lto-error - the equivalent of dg-error for fatal diagnostics expected
+      to cause the LTO link to fail (non-zero linker exit status).  Use
+      dg-lto-warning or dg-lto-message for non-fatal link-time diagnostics.
 
 === Test Names ===
 
