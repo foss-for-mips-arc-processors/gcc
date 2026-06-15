@@ -52,6 +52,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: foss-for-synopsys-dwc-arc-processors/arc-gnu-toolchain
+          # TODO Testing with master is broken
+          ref: 80c68c7b7f156cf2ade4e2a85e300c13ef78f547
           path: arc-gnu-toolchain
           fetch-depth: 1
 
