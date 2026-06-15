@@ -2344,7 +2344,7 @@
   [(set (match_operand:W2xI 0 "register_operand" "=r")
 	(DOPF:W2xI (match_operand:W2xI 1 "register_operand" "r")
 		   (match_operand:W2xI 2 "register_operand" "r")))]
-  "TARGET_64BIT"
+  "TARGET_64BIT && TARGET_WIDE_LDST"
   "#"
   "&& reload_completed"
   [(const_int 0)]
@@ -2366,7 +2366,7 @@
   [(set (match_operand:W2x2 0 "register_operand" "=r")
 	(ADDSUB:W2x2 (match_operand:W2x2 1 "register_operand" "r")
 		     (match_operand:W2x2 2 "register_operand" "r")))]
-  "TARGET_SIMD && TARGET_64BIT"
+  "TARGET_SIMD && TARGET_64BIT && TARGET_WIDE_LDST"
   "#"
   "&& reload_completed"
   [(const_int 0)]
@@ -2388,7 +2388,7 @@
   [(set (match_operand:V4SI 0 "register_operand" "=r")
 	(MINMAX:V4SI (match_operand:V4SI 1 "register_operand" "r")
 		     (match_operand:V4SI 2 "register_operand" "r")))]
-  "TARGET_SIMD && TARGET_64BIT"
+  "TARGET_SIMD && TARGET_64BIT && TARGET_WIDE_LDST"
   "#"
   "&& reload_completed"
   [(const_int 0)]
