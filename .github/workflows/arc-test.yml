@@ -25,6 +25,10 @@ jobs:
             cpu: hs38_linux
           - target: arc
             cpu: em
+          - target: arc64
+            cpu: hs6x
+          - target: arc
+            cpu: archs
 
     env:
       INSTALL_PREFIX: ${{ github.workspace }}/install
