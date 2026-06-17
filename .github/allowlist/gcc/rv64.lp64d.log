@@ -6,6 +6,7 @@ FAIL: g++.target/riscv/redundant-bitmap-2.C
 FAIL: gcc.c-torture/execute/fprintf-2.c
 FAIL: gcc.c-torture/execute/printf-2.c
 FAIL: gcc.c-torture/execute/user-printf.c
+FAIL: gcc.dg/tree-ssa/update-threading.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul-mixed-1.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul1-1.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul1-2.c

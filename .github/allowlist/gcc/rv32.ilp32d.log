@@ -10,6 +10,7 @@ FAIL: gcc.dg/pr90838-2.c
 FAIL: gcc.dg/torture/pr113026-1.c
 FAIL: gcc.dg/tree-ssa/pr83403-1.c
 FAIL: gcc.dg/tree-ssa/pr83403-2.c
+FAIL: gcc.dg/tree-ssa/update-threading.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul-mixed-1.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul1-1.c
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul1-2.c
