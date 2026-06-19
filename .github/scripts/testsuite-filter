@@ -19,14 +19,22 @@ Differences from the upstream script:
   * `--out` writes the surviving (non-allowlisted) results to a file so the
     workflow can upload them as an artifact.
 
-Allowlist file selection, given (libc, arch, abi), includes every file below
-that exists under <allowlist-dir>/<tool>/:
+Allowlist file selection, given (libc, arch, abi, tune), includes every file
+below that exists under <allowlist-dir>/<tool>/:
 
     common.log
     <libc>.log
     <base_arch>.log              <abi>.log              <base_arch>.<abi>.log
     <libc>.<base_arch>.log       <libc>.<abi>.log       <libc>.<base_arch>.<abi>.log
   and, for each RISC-V extension <ext>, the corresponding <ext> permutations.
+
+When an mtune is given, a more specific layer is added on top: a tune-wide
+<tune>.log (this mtune across all arches) plus a `.<tune>` qualified sibling of
+each tune-agnostic file above (e.g. <base_arch>.<abi>.<tune>.log). The
+tune-agnostic files keep applying to every mtune - like common.log, but scoped
+to an arch/abi - while the tune files add failures seen only under that mtune.
+A result is accepted if it is listed in any selected file, so the layers are
+cumulative: common, then <base_arch>..., then the mtune-specific files.
 """
 
 from __future__ import print_function
@@ -73,16 +81,23 @@ class Arch:
                 i += 1
 
 
-def get_allowlist_files(arch, abi, libc, base_dir):
-    """Return existing allowlist files applicable to (arch, abi, libc)."""
-    files = []
+def get_allowlist_files(arch, abi, libc, tune, base_dir):
+    """Return existing allowlist files applicable to (arch, abi, libc, tune).
+
+    The tune-agnostic layer (common.log plus the libc/arch/abi/ext
+    permutations) applies to every mtune. When a tune is given, a more specific
+    layer is added on top: a `.<tune>` qualified sibling of each tune-agnostic
+    file plus a tune-wide <tune>.log. A result is accepted if it is listed in
+    any selected file, so the layers are cumulative.
+    """
     a = Arch(arch)
+    names = []
 
     def add(name):
-        path = os.path.join(base_dir, name)
-        if os.path.exists(path):
-            files.append(path)
+        if name not in names:
+            names.append(name)
 
+    # --- tune-agnostic layer (applies to all mtunes) ---
     add("common.log")
     if libc:
         add("%s.log" % libc)
@@ -109,6 +124,19 @@ def get_allowlist_files(arch, abi, libc, base_dir):
                 add("%s.%s.%s.log" % (libc, ext, abi))
                 add("%s.%s.%s.%s.log" % (libc, a.base_arch, ext, abi))
 
+    # --- tune-specific layer (applies only to this mtune) ---
+    if tune:
+        for name in list(names):
+            if name == "common.log":
+                continue
+            add("%s.%s.log" % (name[:-len(".log")], tune))
+        add("%s.log" % tune)
+
+    files = []
+    for name in names:
+        path = os.path.join(base_dir, name)
+        if os.path.exists(path):
+            files.append(path)
     return files
 
 
@@ -153,6 +181,8 @@ def main():
                    help="target arch, e.g. rv32gc or an ARC cpu name")
     p.add_argument("--abi", default="",
                    help="target ABI, e.g. ilp32d (default: none)")
+    p.add_argument("--tune", default="",
+                   help="target mtune, e.g. arc-v-rhx-100-series (default: none)")
     p.add_argument("--allowlist-dir", required=True,
                    help="base allowlist directory (contains <tool>/)")
     p.add_argument("--out", default="",
@@ -166,7 +196,8 @@ def main():
         sum_files.extend(part for part in s.split(",") if part)
 
     base_dir = os.path.join(args.allowlist_dir, args.tool)
-    allow_files = get_allowlist_files(args.arch, args.abi, args.libc, base_dir)
+    allow_files = get_allowlist_files(args.arch, args.abi, args.libc,
+                                      args.tune, base_dir)
     print("Allowlist files applied (%d):" % len(allow_files))
     for f in allow_files:
         print("  %s" % os.path.relpath(f))

@@ -12,14 +12,21 @@ results on those same files.
 Usage:
 
     gen-allowlist --allowlist-dir .github/allowlist \\
-        --target rv64gc:lp64d   results/rv64 \\
-        --target rv32gc:ilp32d  results/rv32 \\
-        --target arc-em         results/arc-em \\
-        --target arc-hs38_linux results/arc-hs38_linux
+        --target rv64gc:lp64d:rocket                results/rv64 \\
+        --target rv32gc:ilp32d:rocket               results/rv32 \\
+        --target rv32gc:ilp32d:arc-v-rhx-100-series results/rv32-rhx \\
+        --target arc-em                             results/arc-em \\
+        --target arc-hs38_linux                     results/arc-hs38_linux
 
-Each `--target` takes a SPEC (`arch[:abi]`) and a PATH that is either a
+Each `--target` takes a SPEC (`arch[:abi[:tune]]`) and a PATH that is either a
 .sum/.log file or a directory searched recursively for *.sum files. Repeat
 `--target` with the same SPEC to add more inputs for that target.
+
+Results are split across three levels of generality: `common.log` (shared by
+every target), a tune-agnostic `<base_arch>[.<abi>].log` (shared by all mtunes
+of that arch/abi), and a per-mtune `<base_arch>[.<abi>].<tune>.log`. A target
+whose SPEC omits the tune writes straight to the tune-agnostic file, so it
+applies to all mtunes.
 
 `common.log` is the intersection across *all* supplied targets, so you must
 pass every target in a single invocation for it to be correct: passing a subset
@@ -51,10 +58,10 @@ def base_arch(arch):
     return m.group(0) if m else arch
 
 
-def leaf_name(arch, abi):
-    """Most-specific allowlist file testsuite-filter selects for (arch, abi)."""
+def stem_name(arch, abi):
+    """Tune-agnostic allowlist stem testsuite-filter selects for (arch, abi)."""
     b = base_arch(arch)
-    return "%s.%s.log" % (b, abi) if abi else "%s.log" % b
+    return "%s.%s" % (b, abi) if abi else b
 
 
 def iter_sum_files(path):
@@ -100,7 +107,8 @@ def parse_spec(spec):
     parts = spec.split(":")
     arch = parts[0]
     abi = parts[1] if len(parts) > 1 and parts[1] else ""
-    return arch, abi
+    tune = parts[2] if len(parts) > 2 and parts[2] else ""
+    return arch, abi, tune
 
 
 def main():
@@ -124,36 +132,67 @@ def main():
     if not os.path.isdir(out_dir):
         p.error("allowlist dir does not exist: %s" % out_dir)
 
-    # Group inputs per target leaf; a leaf may receive several PATHs.
-    by_leaf = OrderedDict()
+    # Group inputs by tune-agnostic stem, then by mtune within each stem.
+    # A (stem, tune) cell may receive several PATHs.
+    groups = OrderedDict()
     for spec, path in args.targets:
-        arch, abi = parse_spec(spec)
-        leaf = leaf_name(arch, abi)
-        by_leaf.setdefault(leaf, {"label": spec, "paths": []})
-        by_leaf[leaf]["paths"].append(path)
+        arch, abi, tune = parse_spec(spec)
+        stem = stem_name(arch, abi)
+        cell = groups.setdefault(stem, OrderedDict())
+        cell.setdefault(tune, {"label": spec, "paths": []})
+        cell[tune]["paths"].append(path)
 
-    # Collect each target's normalised result set.
-    sets = OrderedDict()
-    for leaf, info in by_leaf.items():
-        entries, scanned = collect(info["paths"])
-        if scanned == 0:
-            p.error("no .sum files found for target %s under: %s"
-                    % (info["label"], ", ".join(info["paths"])))
-        sets[leaf] = entries
-        print("%-22s %-26s %5d results from %d .sum file(s)"
-              % (info["label"], leaf, len(entries), scanned))
+    # Collect each (stem, tune) target's normalised result set.
+    collected = OrderedDict()   # stem -> [(tune, entries), ...]
+    all_sets = []
+    for stem, cell in groups.items():
+        for tune, info in cell.items():
+            entries, scanned = collect(info["paths"])
+            if scanned == 0:
+                p.error("no .sum files found for target %s under: %s"
+                        % (info["label"], ", ".join(info["paths"])))
+            collected.setdefault(stem, []).append((tune, entries))
+            all_sets.append(entries)
+            disp = "%s.%s.log" % (stem, tune) if tune else "%s.log" % stem
+            print("%-26s %-34s %5d results from %d .sum file(s)"
+                  % (info["label"], disp, len(entries), scanned))
 
-    # common.log = failures present in *every* target; leaves = the remainder.
-    common = set.intersection(*sets.values()) if sets else set()
+    # common.log = failures present in *every* target.
+    common = set.intersection(*all_sets) if all_sets else set()
+    write_log(os.path.join(out_dir, "common.log"), common)
+    print("\ncommon.log                         %5d shared result(s)"
+          % len(common))
 
-    common_path = os.path.join(out_dir, "common.log")
-    write_log(common_path, common)
-    print("\ncommon.log              %5d shared result(s)" % len(common))
+    # Within each stem, a tune-agnostic <stem>.log holds failures shared by all
+    # of that stem's tunes (minus common); each tune's remainder goes to
+    # <stem>.<tune>.log. A lone untuned target writes straight to <stem>.log.
+    for stem, members in collected.items():
+        tuned = [(t, e) for t, e in members if t]
+        untuned = [e for t, e in members if not t]
 
-    for leaf, entries in sets.items():
-        remainder = entries - common
-        write_log(os.path.join(out_dir, leaf), remainder)
-        print("%-22s  %5d unique result(s)" % (leaf, len(remainder)))
+        if len(members) == 1 and tuned:
+            tune, entries = tuned[0]
+            name = "%s.%s.log" % (stem, tune)
+            remainder = entries - common
+            write_log(os.path.join(out_dir, name), remainder)
+            print("%-34s %5d unique result(s)" % (name, len(remainder)))
+            continue
+
+        if tuned:
+            shared = set.intersection(*[e for _, e in tuned]) - common
+        else:
+            shared = set()
+        for e in untuned:               # untuned targets apply to all mtunes
+            shared |= e - common
+
+        stem_log = "%s.log" % stem
+        write_log(os.path.join(out_dir, stem_log), shared)
+        print("%-34s %5d shared result(s)" % (stem_log, len(shared)))
+        for tune, entries in tuned:
+            name = "%s.%s.log" % (stem, tune)
+            remainder = entries - common - shared
+            write_log(os.path.join(out_dir, name), remainder)
+            print("%-34s %5d unique result(s)" % (name, len(remainder)))
 
 
 if __name__ == "__main__":
