@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.arch }}/${{ matrix.abi }}
+    name: ${{ matrix.label }}/${{ matrix.abi }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
@@ -21,15 +21,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: rv64gc
+          - label: rv64gc
+            arch: rv64gc
             abi: lp64d
-          - arch: rv32gc
+            tune: rocket
+          - label: rv32gc
+            arch: rv32gc
             abi: ilp32d
+            tune: rocket
+          - label: rv32-rhx
+            arch: rv32i_zicsr_zifencei_zihintpause_a_zca_zcf_d_f_m_zcb_zcmp_zcmt_zba_zbb_zbc_zbs_zicond_zicbom_zicbop_zihintntl
+            abi: ilp32d
+            tune: arc-v-rhx-100-series
 
     env:
       RISCV: ${{ github.workspace }}/install
       TARGET_ARCH: ${{ matrix.arch }}
       TARGET_ABI: ${{ matrix.abi }}
+      TARGET_TUNE: ${{ matrix.tune }}
 
     steps:
       - name: Checkout GCC
@@ -69,10 +78,16 @@ jobs:
       - name: Configure riscv-gnu-toolchain
         working-directory: riscv-gnu-toolchain
         run: |
+          # Only pass --with-tune when the matrix sets one. An explicit
+          # --with-tune="" would override riscv-gnu-toolchain's default rather
+          # than fall back to it, so an unset tune must omit the flag entirely.
+          tune_arg=()
+          [ -n "$TARGET_TUNE" ] && tune_arg=(--with-tune="$TARGET_TUNE")
           ./configure \
             --prefix="$RISCV" \
             --with-arch="$TARGET_ARCH" \
             --with-abi="$TARGET_ABI" \
+            "${tune_arg[@]}" \
             --with-gcc-src="$GITHUB_WORKSPACE/gcc" \
             --disable-linux \
             --disable-gdb \
@@ -96,6 +111,7 @@ jobs:
           sum-search-path: riscv-gnu-toolchain/build-gcc-newlib-stage2
           allowlist-dir: gcc/.github/allowlist
           libc: newlib
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.label }}
           abi: ${{ matrix.abi }}
-          artifact-name: gcc-testsuite-results-${{ matrix.arch }}-${{ matrix.abi }}
+          tune: ${{ matrix.tune }}
+          artifact-name: gcc-testsuite-results-${{ matrix.label }}-${{ matrix.abi }}

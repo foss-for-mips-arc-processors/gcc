@@ -28,7 +28,7 @@ jobs:
       - name: Generate PR patch
         id: patch
         run: |
-          git format-patch HEAD~${{ github.event.pull_request.commits }}..HEAD --output=pr.patch
+          git diff HEAD~${{ github.event.pull_request.commits }}..HEAD > pr.patch
 
       - name: Install dependencies
         run: |
