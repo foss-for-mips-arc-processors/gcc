@@ -29,6 +29,13 @@ inputs:
     description: Target ABI used to select allowlist files (e.g. ilp32d). May be empty.
     required: false
     default: ""
+  tune:
+    description: >
+      Target mtune used to select the mtune-specific allowlist layer
+      (e.g. arc-v-rhx-100-series). May be empty, in which case only the
+      tune-agnostic allowlist files apply.
+    required: false
+    default: ""
   artifact-name:
     description: Name of the uploaded test-results artifact.
     required: true
@@ -75,6 +82,7 @@ runs:
         LIBC: ${{ inputs.libc }}
         ARCH: ${{ inputs.arch }}
         ABI: ${{ inputs.abi }}
+        TUNE: ${{ inputs.tune }}
         FILTER: ${{ github.action_path }}/../../scripts/testsuite-filter
       run: |
         set -e
@@ -89,6 +97,7 @@ runs:
           --libc "$LIBC" \
           --arch "$ARCH" \
           --abi "$ABI" \
+          --tune "$TUNE" \
           --allowlist-dir "$ALLOWLIST_DIR" \
           --out "$regressions" \
           "$sums" | tee "$output"
