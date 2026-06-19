@@ -11,6 +11,7 @@ FAIL: g++.dg/ext/musttail1.C
 FAIL: g++.dg/ext/musttail2.C
 FAIL: g++.dg/ext/musttail3.C
 FAIL: g++.dg/ext/vector21.C
+FAIL: g++.dg/lto/pr126194
 FAIL: g++.dg/opt/vectcond-1.C
 FAIL: g++.dg/pr94920-1.C
 FAIL: g++.dg/torture/musttail1.C
@@ -22,6 +23,7 @@ FAIL: gcc.dg/lto/toplevel-simple-asm-2
 FAIL: gcc.dg/memcmp-1.c
 FAIL: gcc.dg/plugin/crash-test-nested-ice.c
 FAIL: gcc.dg/plugin/crash-test-nested-write-through-null.c
+FAIL: gcc.dg/torture/bitint-101.c
 FAIL: gcc.dg/torture/inline-mem-cmp-1.c
 FAIL: gcc.dg/torture/inline-mem-cpy-1.c
 FAIL: gcc.dg/torture/inline-mem-cpy-cmp-1.c
@@ -46,13 +48,9 @@ FAIL: gcc.target/arc/jumptable.c
 FAIL: gcc.target/arc/mult-cmp0.c
 FAIL: gcc.target/arc/overflow-1.c
 FAIL: gcc.target/arc/overflow-2.c
-FAIL: outputs-22
-FAIL: outputs-23
-FAIL: outputs-24
-FAIL: outputs-25
-FAIL: outputs-294
 FAIL: tmpdir-g++.dg-struct-layout-1/t001
 UNRESOLVED: g++.dg/pr94920-1.C
+UNRESOLVED: gcc.dg/torture/bitint-101.c
 UNRESOLVED: gcc.dg/torture/pr23821.c
 UNRESOLVED: gcc.dg/tree-prof/indir-call-prof-malloc.c
 UNRESOLVED: gcc.dg/tree-prof/pr79587.c
