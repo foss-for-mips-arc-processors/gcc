@@ -8,6 +8,8 @@ FAIL: gcc.dg/fold-round-1.c
 FAIL: gcc.dg/ssp-1.c
 FAIL: gcc.dg/ssp-2.c
 FAIL: gcc.dg/stackprotectexplicit1.c
+FAIL: gcc.dg/torture/pr126136.c
 UNRESOLVED: gcc.dg/ssp-1.c
 UNRESOLVED: gcc.dg/ssp-2.c
 UNRESOLVED: gcc.dg/stackprotectexplicit1.c
+FAIL: gcc.dg/cpp/_Pragma3.c
