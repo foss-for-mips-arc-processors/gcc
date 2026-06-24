@@ -4954,10 +4954,13 @@ archs4x, archs4xd"
   "ld<mALLI>%U1.di\\t%0,%1"
   [(set_attr "type" "load")])
 
+; Direct store pattern utilizing arc_stdi_memory_operand to
+; reject [reg+reg] on ARCv2. This prevents the combiner from
+; optimizing separate pointer additions back into illegal encodings.
 (define_insn "stdi<mode>"
-  [(unspec_volatile [(match_operand:ALLI 0 "memory_operand"    "m,m,Usc")
-		     (match_operand:ALLI 1 "nonmemory_operand" "r,Cm3,i")]
-		    VUNSPEC_ARC_STDI)]
+  [(unspec_volatile [(match_operand:ALLI 0 "arc_stdi_memory_operand" "m,m,Usc")  
+                     (match_operand:ALLI 1 "nonmemory_operand"       "r,Cm3,i")]
+                    VUNSPEC_ARC_STDI)]
   ""
   "st<mALLI>%U0.di\\t%1,%0"
   [(set_attr "length" "*,*,8")
