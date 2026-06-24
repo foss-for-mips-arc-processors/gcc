@@ -4954,8 +4954,9 @@ archs4x, archs4xd"
   "ld<mALLI>%U1.di\\t%0,%1"
   [(set_attr "type" "load")])
 
+; Direct store pattern
 (define_insn "stdi<mode>"
-  [(unspec_volatile [(match_operand:ALLI 0 "memory_operand"    "m,m,Usc")
+  [(unspec_volatile [(match_operand:ALLI 0 "move_dest_operand" "m,m,Usc")
 		     (match_operand:ALLI 1 "nonmemory_operand" "r,Cm3,i")]
 		    VUNSPEC_ARC_STDI)]
   ""
@@ -4964,7 +4965,7 @@ archs4x, archs4xd"
    (set_attr "type" "store")])
 
 (define_insn_and_split "*stdidi_split"
-  [(unspec_volatile [(match_operand:DI 0 "memory_operand"   "m")
+  [(unspec_volatile [(match_operand:DI 0 "non_incdec_memory_operand"   "m")
 		     (match_operand:DI 1 "register_operand" "r")]
 		    VUNSPEC_ARC_STDI)]
   "!TARGET_LL64"
@@ -4980,7 +4981,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
-  )
+  [(set_attr "type" "store")])
 
 (define_insn_and_split "*lddidi_split"
   [(set (match_operand:DI 0 "register_operand" "=r")
@@ -4999,6 +5000,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
+  [(set_attr "type" "load")]
   )
 
 (define_insn "trap_s"
