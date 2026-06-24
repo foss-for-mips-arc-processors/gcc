@@ -349,6 +349,8 @@ Mask(SHVSATPA) Var(riscv_sh_subext)
 
 Mask(SMAIA) Var(riscv_sm_subext)
 
+Mask(SMCDELEG) Var(riscv_sm_subext)
+
 Mask(SMCNTRPMF) Var(riscv_sm_subext)
 
 Mask(SMCSRIND) Var(riscv_sm_subext)

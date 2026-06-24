@@ -1690,6 +1690,19 @@ DEFINE_RISCV_EXT(
   /* EXTRA_EXTENSION_FLAGS */ 0)
 
 DEFINE_RISCV_EXT(
+  /* NAME */ smcdeleg,
+  /* UPPERCASE_NAME */ SMCDELEG,
+  /* FULL_NAME */ "Machine-mode counter delegation extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"ssccfg"}),
+  /* SUPPORTED_VERSIONS */ ({{1, 0}}),
+  /* FLAG_GROUP */ sm,
+  /* BITMASK_GROUP_ID */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION*/ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
   /* NAME */ smcntrpmf,
   /* UPPERCASE_NAME */ SMCNTRPMF,
   /* FULL_NAME */ "Cycle and instret privilege mode filtering",
