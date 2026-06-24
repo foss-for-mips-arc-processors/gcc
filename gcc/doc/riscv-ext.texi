@@ -534,6 +534,10 @@
 @tab 1.0
 @tab Advanced interrupt architecture extension for supervisor mode
 
+@item @samp{ssccfg}
+@tab 1.0
+@tab Supervisor-mode counter configuration extension
+
 @item @samp{ssccptr}
 @tab 1.0
 @tab Main memory supports page table reads
