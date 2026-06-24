@@ -9282,16 +9282,33 @@ prepare_move_operands (rtx *operands, machine_mode mode)
 	      return true;
 	    }
 	}
-      /* Second, we check for the uncached.  */
+
+      /* Second, handle uncached stores.  */
       if (arc_is_uncached_mem_p (operands[0]))
 	{
-	  if (!REG_P (operands[1]))
-	    operands[1] = force_reg (mode, operands[1]);
+	   if (!REG_P (operands[1]))
+	   operands[1] = force_reg (mode, operands[1]);
+
+	   /* Direct uncached stores (st.di) dont support register index
+	      [reg + reg] addressing.  Check and fix the address before
+	      emitting VUNSPEC_ARC_STDI.  */
+	  if (!move_dest_operand (operands[0], mode))
+	    {
+	      /* Force the [reg + reg] in the base register as a separate
+		 insn.  */
+	      rtx tmp0 = copy_to_mode_reg (Pmode, XEXP (operands[0], 0));
+	      rtx tmp1 = change_address (operands[0], mode, tmp0);
+	      MEM_COPY_ATTRIBUTES (tmp1, operands[0]);
+	      operands[0] = tmp1;
+	    }
+
 	  emit_insn (gen_rtx_UNSPEC_VOLATILE
 		     (VOIDmode, gen_rtvec (2, operands[0], operands[1]),
 		      VUNSPEC_ARC_STDI));
 	  return true;
 	}
+
+      /* Third, handle uncached loads.  */
       if (arc_is_uncached_mem_p (operands[1]))
 	{
 	  rtx tmp = operands[0];
