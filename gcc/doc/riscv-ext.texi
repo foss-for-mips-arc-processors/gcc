@@ -498,6 +498,10 @@
 @tab 1.0
 @tab Advanced interrupt architecture extension
 
+@item @samp{smcdeleg}
+@tab 1.0
+@tab Machine-mode counter delegation extension
+
 @item @samp{smcntrpmf}
 @tab 1.0
 @tab Cycle and instret privilege mode filtering
