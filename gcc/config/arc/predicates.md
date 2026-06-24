@@ -174,6 +174,28 @@
   }
 )
 
+;; This predicate is made for direct uncached stores (like ld.di).
+;; It prevents ARCv2 (TARGET_V2) direct stores from using [reg+reg]
+;; memory indexing. Remark that for loads (ld.di) there is support for
+;; register indexing. The predicate blocks the combine optimization
+;; pass from fusing pointer additions back into direct stores preventing
+;; in this way illegal hardware encodings.
+(define_predicate "arc_stdi_memory_operand"
+  (match_code "mem")
+{
+  rtx addr = XEXP (op, 0);
+
+  if (TARGET_V2
+      && GET_CODE (addr) == PLUS
+      && REG_P (XEXP (addr, 0))
+      && REG_P (XEXP (addr, 1)))
+    {
+      return false;
+    }
+
+  return memory_operand (op, mode);
+})
+
 ;; Return true if OP is an acceptable memory operand for ARCompact
 ;; 16-bit store instructions
 (define_predicate "compact_store_memory_operand"
