@@ -1062,20 +1062,17 @@
 ;; 64 + (signe) 32 x (signe) 32 -> 64
 (define_expand "<ANY_EXTEND:su_optab>maddsidi4"
   [(set (match_operand: DI 0 "register_operand")
-	(plus:DI
-	 (mult:DI
-	  (ANY_EXTEND:DI (match_operand:SI 1 "register_operand"))
-	  (ANY_EXTEND:DI (match_operand:SI 2 "register_operand")))
-	 (match_operand:DI 3 "register_operand")))]
+        (plus:DI
+         (mult:DI
+          (ANY_EXTEND:DI (match_operand:SI 1 "register_operand"))
+          (ANY_EXTEND:DI (match_operand:SI 2 "register_operand")))
+         (match_operand:DI 3 "register_operand")))]
   "TARGET_SIMD"
   {
-   rtx acc = gen_rtx_REG (DImode, R58_REGNUM);
-
-   emit_move_insn (acc, operands[3]);
    emit_insn (gen_<ANY_EXTEND:su_optab>macd (operands[0], operands[1],
-                                            operands[2], acc));
+                                            operands[2], operands[3]));
    DONE;
-   })
+  })
 
 (define_insn "<ANY_EXTEND:su_optab>macd0"
  [(set (reg:DI R58_REGNUM)
