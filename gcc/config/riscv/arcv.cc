@@ -338,16 +338,17 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
+  if (!prev_set || !curr_set)
+    return false;
 
-  enum attr_type p_type = get_attr_type (prev);
   /*Check if the prev instruction is a fusible load or store.  */
   if (!arcv_fusible_memop_p (prev))
     return false;
 
-  gcc_assert (prev_set && curr_set);
-
   if (!arcv_arith_type_insn_p (curr))
     return false;
+
+  enum attr_type p_type = get_attr_type (prev);
 
   rtx c_src = SET_SRC (curr_set);
   rtx c_dest = SET_DEST (curr_set);
@@ -355,63 +356,99 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   if (CONSTANT_P (c_src))
     return false;
 
-  int c_rs1;
-  int c_rs2;
-  bool has_rs2;
+  int c_rs1 = INVALID_REGNUM;
+  int c_rs2 = INVALID_REGNUM;
 
-  // Move
   if (REG_P (c_src))
-    {
-      c_rs1 = REGNO (c_src);
-      has_rs2 = false;
-    }
-  // Arithmetic
-  else if ((REG_P (XEXP (c_src, 0))))
-    {
-      c_rs1 = REGNO (XEXP (c_src, 0));
-      /* Check if there is a second source register.  */
-      has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
-		  && REG_P (XEXP (c_src, 1)));
-      c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
-    }
+    c_rs1 = REGNO (c_src);
   else
     {
-      return false;
-    }
+      rtx op = c_src;
+      if (GET_CODE (op) == NOT && BINARY_P (XEXP (op, 0)))
+	op = XEXP (op, 0);
 
-  int c_rd  = REGNO (c_dest);
+      const char *fmt = GET_RTX_FORMAT (GET_CODE (op));
+      for (int i = 0; i < GET_RTX_LENGTH (GET_CODE (op)); i++)
+	{
+	  if (fmt[i] != 'e')
+	    continue;
+
+	  rtx x = XEXP (op, i);
+	  if (GET_CODE (x) == NOT)
+	    x = XEXP (x, 0);
+	  if (SUBREG_P (x))
+	    x = SUBREG_REG (x);
+	  if (!REG_P (x))
+	    continue;
+
+	  if (c_rs1 == (int) INVALID_REGNUM)
+	    c_rs1 = REGNO (x);
+	  else
+	    {
+	      c_rs2 = REGNO (x);
+	      break;
+	    }
+	}
+
+      if (c_rs1 == (int) INVALID_REGNUM)
+	return false;
+    }
 
   switch (p_type)
     {
     case TYPE_LOAD:
     case TYPE_FPLOAD:
       {
-	rtx p_src_addr = XEXP (SET_SRC (prev_set), 0);
-	if (!REG_P (p_src_addr))
+	if (!REG_P (c_dest))
+	  return false;
+	int c_rd = REGNO (c_dest);
+
+	rtx p_mem = SET_SRC (prev_set);
+
+	/* TODO: sign/zero-extending loads */
+	if (!MEM_P (p_mem))
 	  return false;
 
-	int p_rs = REGNO (p_src_addr);
-	int p_rd = REGNO (SET_DEST (prev_set));
+	rtx p_dest = SET_DEST (prev_set);
+	rtx base, offset;
+	if (!extract_base_offset_in_addr (p_mem, &base, &offset)
+	    || !REG_P (p_dest))
+	  return false;
 
-	return (p_rs == c_rs1
+	int p_rs = REGNO (base);
+	int p_rd = REGNO (p_dest);
+
+	return ((p_rs == c_rs1 || p_rs == c_rs2)
 		&& p_rs != p_rd
 		&& p_rd != c_rd
-		&& (!has_rs2 ||  /* Fused LD + OP.  */
-		     p_rd != c_rs2)); /* Fused LD + OP-IMM.  */
+		&& !reg_overlap_mentioned_p (p_dest, c_src));
       }
 
     case TYPE_STORE:
     case TYPE_FPSTORE:
       {
-	rtx p_dst_addr = XEXP (SET_DEST (prev_set), 0);
-	if (!REG_P (p_dst_addr))
+	rtx p_mem = SET_DEST (prev_set);
+	if (!MEM_P (p_mem))
 	  return false;
 
-	int p_rs = REGNO (p_dst_addr);
+	rtx base, offset;
+	if (!extract_base_offset_in_addr (p_mem, &base, &offset))
+	  return false;
 
-	return (p_rs == c_rs1
-		&& (!has_rs2 || /* Fused ST + OP.  */
-		    p_rs == c_rs2)); /* Fused ST + OP-IMM.  */
+	int p_rs = REGNO (base);
+
+	if (p_rs != c_rs1 && p_rs != c_rs2)
+	  return false;
+
+	if (c_rs2 == -1)
+	  return true;
+
+	rtx data = SET_SRC (prev_set);
+	if (!REG_P (data))
+	  return false;
+
+	int p_rs2 = REGNO (data);
+	return (p_rs2 == c_rs1 || p_rs2 == c_rs2);
       }
 
     default:
@@ -544,11 +581,12 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (TARGET_ARCV_ADVANCED_FUSION
       && prev_set && curr_set
       && GET_CODE (SET_SRC (prev_set)) == MULT
-      && GET_CODE (SET_SRC (curr_set)) == PLUS)
+      && GET_CODE (SET_SRC (curr_set)) == PLUS
+      && REG_P (SET_DEST (prev_set)))
     {
       rtx curr_plus = SET_SRC (curr_set);
-      rtx mult_dest = SET_DEST (prev_set);
-      unsigned int mult_dest_regno = REGNO (mult_dest);
+
+      unsigned int mult_dest_regno = REGNO (SET_DEST (prev_set));
 
       /* Check if multiply result is used in either operand of the addition.  */
       if (REG_P (XEXP (curr_plus, 0))
@@ -574,6 +612,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (prev_set && curr_set
       && GET_CODE (SET_SRC (prev_set)) == ASHIFT
       && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
+      && REG_P (SET_DEST (prev_set)) == REG_P (SET_DEST (curr_set))
+      && REG_P (SET_DEST (prev_set)) == REG_P (XEXP (SET_SRC (curr_set), 0))
       && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
       && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0)))
     {
@@ -587,11 +627,9 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
      curr: (if_then_else (cond rd ...) ...)  */
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
+      && curr_set
       && any_condjump_p (curr))
     {
-      if (!curr_set)
-       return false;
-
       rtx comp = XEXP (SET_SRC (curr_set), 0);
       rtx prev_dest = SET_DEST (prev_set);
 

@@ -30,4 +30,8 @@ fuse_ls_update_d (double *p, int n)
   return sum;
 }
 
-/* { dg-final { scan-rtl-dump-times "ARCV_FUSE_LS_UPDATE \\(prev, curr\\)" 3 "sched2" } } */
+/* All three FP loads fuse with their pointer bump.  The scheduler may realise
+   the pair in either order (a plain post-increment, or an addi followed by a
+   displaced load), and Fused_LD_OP is interchangeable, so match both
+   directions.  */
+/* { dg-final { scan-rtl-dump-times "ARCV_FUSE_LS_UPDATE" 3 "sched2" } } */
