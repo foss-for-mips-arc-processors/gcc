@@ -91,6 +91,7 @@ jobs:
             --with-gcc-src="$GITHUB_WORKSPACE/gcc" \
             --disable-linux \
             --disable-gdb \
+            --enable-gcc-checking=rtl \
             --disable-multilib
 
       - name: Build newlib toolchain
