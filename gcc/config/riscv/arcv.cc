@@ -422,6 +422,7 @@ arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
 		&& ((get_attr_type (curr) == TYPE_MOVE
 		&& GET_CODE (SET_SRC (curr_set)) == HIGH)
 		|| (CONST_INT_P (SET_SRC (curr_set))
+		&& SET_SRC (curr_set) != CONST0_RTX (GET_MODE (SET_DEST (curr_set)))
 		&& LUI_OPERAND (INTVAL (SET_SRC (curr_set))))));
 
   if (!is_lui)
