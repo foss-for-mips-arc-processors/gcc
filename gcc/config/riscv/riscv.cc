@@ -10971,6 +10971,16 @@ riscv_override_options_internal (struct gcc_options *opts)
     {
       opts->x_target_flags &= ~MASK_ARCV_ADVANCED_FUSION;
     }
+
+  /* Enable adjacent load/store fusion on ARC-V cores unless explicitly
+     disabled.  */
+  if ((riscv_microarchitecture == arcv_rmx500
+       || riscv_microarchitecture == arcv_rhx100
+       || riscv_microarchitecture == arcv_rpx100)
+      && (target_flags_explicit & MASK_ARCV_ADJACENT_MEM_FUSION) == 0)
+    opts->x_target_flags |= MASK_ARCV_ADJACENT_MEM_FUSION;
+  else if ((target_flags_explicit & MASK_ARCV_ADJACENT_MEM_FUSION) == 0)
+    opts->x_target_flags &= ~MASK_ARCV_ADJACENT_MEM_FUSION;
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */

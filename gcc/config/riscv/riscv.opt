@@ -736,3 +736,7 @@ Use 128-bit long double.
 marc-v-rmx-500-series-advanced-fusion
 Target Mask(ARCV_ADVANCED_FUSION)
 Explicitly disable or enable advanced fusion for the RMX-500 core.
+
+marc-v-adjacent-mem-fusion
+Target Mask(ARCV_ADJACENT_MEM_FUSION)
+Enable or disable adjacent load/store macro-op fusion on ARC-V cores.
