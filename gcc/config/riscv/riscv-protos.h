@@ -863,7 +863,6 @@ extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern unsigned int riscv_get_fusible_ops (void);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
-extern rtx_insn *riscv_next_fusible_insn (rtx_insn *);
 
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);
