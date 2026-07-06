@@ -238,14 +238,15 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
    next fusible insn form a better adjacent load/store pair.  */
 
 static bool
-riscv_defer_for_adjacent_memop_p (rtx_insn *curr, rtx curr_set)
+riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (curr);
   if (!next)
     return false;
 
+  rtx curr_set = single_set (curr);
   rtx next_set = single_set (next);
-  if (!next_set)
+  if (!curr_set || !next_set)
     return false;
 
   /* Defer if next instruction forms an adjacent load pair with curr.  */
@@ -1064,7 +1065,7 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
-  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+  if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
   /* Match a memory access followed by a dependent arithmetic op, or the
@@ -1105,7 +1106,7 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
-  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+  if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
   /* Check for LUI + store.  */
@@ -1133,7 +1134,7 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Look ahead 1 insn to prioritize adjacent load/store pairs.  */
-  if (riscv_defer_for_adjacent_memop_p (curr, curr_set))
+  if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
   if (get_attr_type (prev) == TYPE_MOVE
