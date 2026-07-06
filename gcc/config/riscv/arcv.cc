@@ -216,13 +216,14 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
-	 rtx_insn* next_insn = riscv_next_fusible_insn (ready[*n_readyp - i]);
+	 rtx_insn* next_insn = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
 	 /* Try to fuse the last_scheduled_insn with.  */
 	 /* Fuse only with nondebug insn.  */
 	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
 	     /* Which have not been already fused.  */
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
-	     && (!next_insn || !SCHED_GROUP_P (next_insn))
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
 	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	   {
@@ -244,17 +245,16 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
-	 rtx_insn* next_insn = riscv_next_fusible_insn (ready[*n_readyp - i]);
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
 	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
 	     && active_insn_p (ready[*n_readyp - i])
-	     && (!next_insn || !SCHED_GROUP_P (next_insn))
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
 	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	   {
-	     if (GET_CODE (PATTERN (ready[*n_readyp - i])) == USE)
-	       continue;
-
 	     if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
 		 || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
 	     {
@@ -288,13 +288,15 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
     for (int i = 2; i <= *n_readyp; i++)
       {
-       rtx_insn* next_insn = riscv_next_fusible_insn (ready[*n_readyp - i]);
+       rtx_insn* next_insn
+	 = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
        if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
 	    && recog_memoized (ready[*n_readyp - i]) >= 0
 	    && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
 	    && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
 	    && !SCHED_GROUP_P (ready[*n_readyp - i])
-	    && (!next_insn || !SCHED_GROUP_P (next_insn)))
+	    && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		|| !SCHED_GROUP_P (next_insn)))
 	   || (next_insn && NONDEBUG_INSN_P (next_insn)
 	       && recog_memoized (next_insn) >= 0
 	       && get_attr_type (next_insn) != TYPE_LOAD
@@ -336,15 +338,11 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 int
 arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
-      || GET_CODE (PATTERN (insn)) == CLOBBER)
-    return priority;
-
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
-     rtx_insn *next = riscv_next_fusible_insn (insn);
-  if (next && INSN_P (next)
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && single_set (insn) && single_set (next)
       && SCHED_GROUP_P (next)
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next) == TYPE_STORE)
@@ -390,8 +388,9 @@ arcv_can_issue_more_p (int issue_rate, int more)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
-  rtx_insn *next = riscv_next_fusible_insn (insn);
-  if (next && SCHED_GROUP_P (next))
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && single_set (insn) && single_set (next)
+      && SCHED_GROUP_P (next))
     {
       if (get_attr_type (insn) == TYPE_LOAD
 	  || get_attr_type (insn) == TYPE_STORE
