@@ -324,11 +324,13 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
        && (insn_type == TYPE_LOAD || insn_type == TYPE_STORE))
     {
       sched_state.pipeB_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
     }
     /* Non-memory operations go to ALU pipe.  */
     else if (insn_type != TYPE_LOAD && insn_type != TYPE_STORE)
     {
       sched_state.alu_pipe_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
     }
   }
 
