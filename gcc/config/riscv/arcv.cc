@@ -343,12 +343,13 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
-  if (next_insn (insn) && INSN_P (next_insn (insn))
-      && SCHED_GROUP_P (next_insn (insn))
+     rtx_insn *next = riscv_next_fusible_insn (insn);
+  if (next && INSN_P (next)
+      && SCHED_GROUP_P (next)
       && ((get_attr_type (insn) == TYPE_STORE
-	   && get_attr_type (next_insn (insn)) == TYPE_STORE)
+	   && get_attr_type (next) == TYPE_STORE)
 	  || (get_attr_type (insn) == TYPE_LOAD
-	      && get_attr_type (next_insn (insn)) == TYPE_LOAD)))
+	      && get_attr_type (next) == TYPE_LOAD)))
     return priority + 1;
 
   return priority;
@@ -389,16 +390,16 @@ arcv_can_issue_more_p (int issue_rate, int more)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
-  if (next_insn (insn) && INSN_P (next_insn (insn))
-      && SCHED_GROUP_P (next_insn (insn)))
+  rtx_insn *next = riscv_next_fusible_insn (insn);
+  if (next && SCHED_GROUP_P (next))
     {
       if (get_attr_type (insn) == TYPE_LOAD
 	  || get_attr_type (insn) == TYPE_STORE
-	  || get_attr_type (next_insn (insn)) == TYPE_LOAD
-	  || get_attr_type (next_insn (insn)) == TYPE_STORE)
-       sched_state.pipeB_scheduled_p = 1;
+	  || get_attr_type (next) == TYPE_LOAD
+	  || get_attr_type (next) == TYPE_STORE)
+	sched_state.pipeB_scheduled_p = 1;
       else
-       sched_state.alu_pipe_scheduled_p = 1;
+	sched_state.alu_pipe_scheduled_p = 1;
     }
 
   if (get_attr_type (insn) == TYPE_ALU_FUSED
