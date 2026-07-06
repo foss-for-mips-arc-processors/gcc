@@ -1075,8 +1075,7 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 }
 
 static bool
-riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store,
-		    rtx lui_set, rtx store_set)
+riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
 {
   return (get_attr_type (store) == TYPE_STORE
 	  && REG_P (SET_DEST (lui_set))
@@ -1110,11 +1109,11 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Check for LUI + store.  */
-  if (riscv_lui_st_pair_p (prev, curr, prev_set, curr_set))
+  if (riscv_lui_st_pair_p (prev, curr, prev_set))
     return true;
 
   /* Check for store + LUI (reversed).  */
-  return riscv_lui_st_pair_p (curr, prev, curr_set, prev_set);
+  return riscv_lui_st_pair_p (curr, prev, curr_set);
 }
 
 /* Check for RISCV_FUSE_LI_STORE fusion.
