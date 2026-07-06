@@ -1,4 +1,4 @@
-;; DFA scheduling description of the Synopsys RHX-100 cpu
+;; DFA scheduling description of the ARC-V RHX-100 cpu
 ;; for GNU C compiler
 ;; Copyright (C) 2026 Free Software Foundation, Inc.
 

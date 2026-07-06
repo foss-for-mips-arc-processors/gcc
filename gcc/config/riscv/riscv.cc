@@ -839,7 +839,7 @@ static const struct riscv_tune_param andes_45_tune_info = {
   true,						/* prefer-agnostic.  */
 };
 
-/* Costs to use when optimizing for Synopsys RHX-100.  */
+/* Costs to use when optimizing for ARC-V RHX-100.  */
 static const struct riscv_tune_param arcv_rhx100_tune_info = {
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},      /* fp_add */
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},      /* fp_mul */
@@ -869,7 +869,7 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
 };
 
 
-/* Costs to use when optimizing for Synopsys RMX-100.  */
+/* Costs to use when optimizing for ARC-V RMX-100.  */
 static const struct riscv_tune_param arcv_rmx100_tune_info = {
   {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_add */
   {COSTS_N_INSNS (2), COSTS_N_INSNS (2)},	/* fp_mul */
