@@ -1,4 +1,4 @@
-;; DFA scheduling description of the Synopsys RMX-100 cpu
+;; DFA scheduling description of the ARC-V RMX-100 cpu
 ;; for GNU C compiler
 ;; Copyright (C) 2026 Free Software Foundation, Inc.
 
