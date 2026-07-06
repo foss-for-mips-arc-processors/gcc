@@ -55,30 +55,6 @@ riscv_fusion_enabled_p (enum riscv_fusion_pairs op)
   return riscv_get_fusible_ops () & op;
 }
 
-/* Return the next possible fusible insn.  */
-
-rtx_insn *
-riscv_next_fusible_insn (rtx_insn *insn)
-{
-  while (insn)
-    {
-      insn = NEXT_INSN (insn);
-
-      if (insn == 0)
-	break;
-
-      if (NOTE_INSN_BASIC_BLOCK_P (insn) || JUMP_TABLE_DATA_P (insn))
-	return NULL;
-
-      if (!NONDEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE)
-	continue;
-
-      break;
-    }
-
-  return insn;
-}
-
 /* Return true if PREV_SET and CURR_SET satisfy the same-dest constraint
    required by most fusion rules: when we are past register allocation
    (i.e. can_create_pseudo_p () is false), the destination registers of
@@ -264,7 +240,7 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
 static bool
 riscv_defer_for_adjacent_memop_p (rtx_insn *curr, rtx curr_set)
 {
-  rtx_insn *next = riscv_next_fusible_insn (curr);
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (curr);
   if (!next)
     return false;
 
