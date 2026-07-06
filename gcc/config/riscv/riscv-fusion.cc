@@ -948,6 +948,8 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
     {
       rtx curr_plus = SET_SRC (curr_set);
       rtx mult_dest = SET_DEST (prev_set);
+      if (!REG_P (mult_dest))
+	return false;
       unsigned int mult_dest_regno = REGNO (mult_dest);
 
       /* Check if multiply result is used in either operand of the addition.  */
