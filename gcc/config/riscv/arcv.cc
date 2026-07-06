@@ -1,4 +1,4 @@
-/* Subroutines used for code generation for ARC-V processors.
+/* Subroutines used for code generation for Synopsys ARC-V processors.
    Copyright (C) 2025 Free Software Foundation, Inc.
 
 This file is part of GCC.
