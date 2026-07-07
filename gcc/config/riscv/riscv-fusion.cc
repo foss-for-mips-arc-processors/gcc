@@ -1025,7 +1025,7 @@ riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
 /* Check for RISCV_FUSE_ADJACENT_STORE fusion.
    prev (st) == (set (mem:SI (plus:DI (reg:DI rB) (const_int OFF1))) (reg:SI rS1))
    curr (st) == (set (mem:SI (plus:DI (reg:DI rB) (const_int OFF2))) (reg:SI rS2))
-   where OFF2 == OFF1 + 4 or OFF2 == OFF1 - 4  */
+   where OFF2 == OFF1 + MODE_SIZE or OFF2 == OFF1 - MODE_SIZE  */
 
 static bool
 riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
