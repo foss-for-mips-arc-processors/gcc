@@ -28,7 +28,7 @@ TEST (short,   255)
 TEST (int,     255)
 TEST (int64_t, 127)
 
-/* { dg-final { scan-assembler "ldb(_s)?\\s+r0,\\\[gp,@a@sda\\+255\\\]" } } */
+/* { dg-final { scan-assembler "ldb_s\\s+r0,\\\[gp,@a@sda\\+255\\\]" } } */
 /* { dg-final { scan-assembler "ldb\\s+r0,\\\[@a\\+256\\\]" } } */
 /* { dg-final { scan-assembler "ldb\\s+r4,\\\[gp,@a@sda\\+255\\\]" } } */
 /* { dg-final { scan-assembler "ldb\\s+r4,\\\[@a\\+256\\\]" } } */
@@ -38,7 +38,7 @@ TEST (int64_t, 127)
 /* { dg-final { scan-assembler "ld\[hw\].x.as\\s+r4,\\\[gp,@a@sda\\+510\\\]" } } */
 /* { dg-final { scan-assembler "ld\[hw\].x\\s+r4,\\\[@a\\+512\\\]" } } */
 
-/* { dg-final { scan-assembler "ld(_s|\\.as)?\\s+r0,\\\[gp,@a@sda\\+1020\\\]" } } */
+/* { dg-final { scan-assembler "ld_s\\s+r0,\\\[gp,@a@sda\\+1020\\\]" } } */
 /* { dg-final { scan-assembler "ld\\s+r0,\\\[@a\\+1024\\\]" } } */
 /* { dg-final { scan-assembler "ld.as\\s+r4,\\\[gp,@a@sda\\+1020\\\]" } } */
 /* { dg-final { scan-assembler "ld\\s+r4,\\\[@a\\+1024\\\]" } } */
