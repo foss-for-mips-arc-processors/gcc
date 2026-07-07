@@ -299,6 +299,8 @@ struct riscv_tune_param
   const char *jump_align;
   const char *loop_align;
   bool prefer_agnostic;
+  unsigned int small_loop_unroll_ninsns = 4;
+  unsigned int small_loop_unroll_factor = 2;
 };
 
 
@@ -713,6 +715,8 @@ static const struct riscv_tune_param xt_c9501_tune_info = {
   "8",						/* jump_align */
   "16",						/* loop_align */
   true,						/* prefer-agnostic.  */
+  4,	/* small_loop_unroll_ninsns.  */
+  8,	/* small_loop_unroll_factor.  */
 };
 
 /* Costs to use when optimizing for Tenstorrent Ascalon 8 wide.  */
@@ -5022,6 +5026,22 @@ riscv_insn_cost (rtx_insn *insn, bool speed)
 	}
     }
   return cost;
+}
+
+/* This function adjusts the unroll factor based on
+   the current tune parameters.  */
+
+static unsigned
+riscv_loop_unroll_adjust (unsigned nunroll, class loop *loop)
+{
+  if (riscv_unroll_only_small_loops && !loop->unroll)
+    {
+      if (loop->ninsns <= tune_param->small_loop_unroll_ninsns)
+	return MIN (tune_param->small_loop_unroll_factor, nunroll);
+      else
+	return 1;
+    }
+  return nunroll;
 }
 
 /* Implement TARGET_MAX_NOCE_IFCVT_SEQ_COST.  Like the default implementation,
@@ -12247,6 +12267,16 @@ riscv_option_override (void)
 
   flag_pcc_struct_return = 0;
 
+  /* Explicit -funroll-loops or -funroll-all-loops turns
+     -munroll-only-small-loops off, allowing the unroller to handle
+     all loops without the conservative small-loop restriction.  */
+  if ((OPTION_SET_P (flag_unroll_loops) && flag_unroll_loops)
+      || (OPTION_SET_P (flag_unroll_all_loops) && flag_unroll_all_loops))
+    {
+      if (!OPTION_SET_P (riscv_unroll_only_small_loops))
+	riscv_unroll_only_small_loops = 0;
+    }
+
   if (flag_pic)
     g_switch_value = 0;
 
@@ -16669,6 +16699,8 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 #define TARGET_RTX_COSTS riscv_rtx_costs
 #undef TARGET_ADDRESS_COST
 #define TARGET_ADDRESS_COST riscv_address_cost
+#undef TARGET_LOOP_UNROLL_ADJUST
+#define TARGET_LOOP_UNROLL_ADJUST riscv_loop_unroll_adjust
 #undef TARGET_INSN_COST
 #define TARGET_INSN_COST riscv_insn_cost
 
