@@ -932,8 +932,13 @@ riscv_fuse_b_alui (rtx_insn *prev, rtx_insn *curr)
 }
 
 /* Check for RISCV_FUSE_MULT_ADD fusion.
-   prev (mult) == (set (reg:DI rD_mult) (mult:DI (reg:DI rS1) (reg:DI rS2)))
-   curr (add)  == (set (reg:DI rD_add) (plus:DI (reg:DI rD_mult) (reg:DI rS3)))  */
+   On RV32:
+   prev (mul) == (set (reg rD) (mult:SI (reg:SI rS1) (reg:SI rS2)))
+   curr (add) == (set (reg rD) (plus:SI (reg:SI rD) (reg:SI rS3)))
+
+   On RV64 the result may be sign-extended to DI:
+   prev (mul) == (set (reg:DI rD) (sign_extend:DI (mult:SI ...)))
+   curr (add) == (set (reg:DI rD) (sign_extend:DI (plus:SI ...)))  */
 
 static bool
 riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
@@ -943,24 +948,34 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set)
     return false;
 
-  if (GET_CODE (SET_SRC (prev_set)) == MULT
-      && GET_CODE (SET_SRC (curr_set)) == PLUS)
-    {
-      rtx curr_plus = SET_SRC (curr_set);
-      rtx mult_dest = SET_DEST (prev_set);
-      if (!REG_P (mult_dest))
-	return false;
-      unsigned int mult_dest_regno = REGNO (mult_dest);
+  rtx prev_src = SET_SRC (prev_set);
+  rtx curr_src = SET_SRC (curr_set);
+  if (GET_CODE (prev_src) == SIGN_EXTEND
+      && GET_MODE (prev_src) == DImode
+      && GET_MODE (XEXP (prev_src, 0)) == SImode)
+    prev_src = XEXP (prev_src, 0);
+  if (GET_CODE (curr_src) == SIGN_EXTEND
+      && GET_MODE (curr_src) == DImode
+      && GET_MODE (XEXP (curr_src, 0)) == SImode)
+    curr_src = XEXP (curr_src, 0);
 
-      /* Check if multiply result is used in either operand of the addition.  */
-      if (REG_P (XEXP (curr_plus, 0))
-	  && REGNO (XEXP (curr_plus, 0)) == mult_dest_regno)
-	return true;
+  if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
+      || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
+    return false;
 
-      if (REG_P (XEXP (curr_plus, 1))
-	  && REGNO (XEXP (curr_plus, 1)) == mult_dest_regno)
-	return true;
-    }
+  rtx mult_dest = SET_DEST (prev_set);
+  if (!REG_P (mult_dest))
+    return false;
+  unsigned int mult_dest_regno = REGNO (mult_dest);
+
+  /* Check if multiply result is used in either operand of the addition.  */
+  if (REG_P (XEXP (curr_src, 0))
+      && REGNO (XEXP (curr_src, 0)) == mult_dest_regno)
+    return true;
+
+  if (REG_P (XEXP (curr_src, 1))
+      && REGNO (XEXP (curr_src, 1)) == mult_dest_regno)
+    return true;
 
   return false;
 }
