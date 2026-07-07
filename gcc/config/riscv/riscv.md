@@ -4797,12 +4797,15 @@
      if (REGNO (operands[0]) == REGNO (operands[3]))
        {
 	 emit_insn (gen_mulsi3_extended (operands[4], operands[1], operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0], operands[3], operands[4]));
+	 emit_insn (gen_addsi3_extended (operands[0], operands[3],
+					 gen_lowpart (SImode, operands[4])));
        }
      else
        {
 	 emit_insn (gen_mulsi3_extended (operands[0], operands[1], operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0], operands[0], operands[3]));
+	 emit_insn (gen_addsi3_extended (operands[0],
+					 gen_lowpart (SImode, operands[0]),
+					 operands[3]));
        }
     DONE;
    }"
