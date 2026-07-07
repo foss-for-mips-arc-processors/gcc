@@ -481,3 +481,7 @@ Ensure double alignment for load/store pair instructions.
 mprefer-lrsc
 Target Var(TARGET_PREFER_LRSC) Init(0)
 Prefer to emit LR/SC instead of AMO for atomic builtin functions.
+
+munroll-only-small-loops
+Target Var(riscv_unroll_only_small_loops) Init(0) Save
+Enable conservative small loop unrolling.
