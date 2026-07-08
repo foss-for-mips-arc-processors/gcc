@@ -281,10 +281,10 @@
   "arcv.vclr.v.i\t%0,%4%p1"
   [(set_attr "type" "viwmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "vl_op_idx" "4")
+   (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[5])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[6])"))
-   (set (attr "avl_type_idx") (const_int 7))])
+   (set (attr "avl_type_idx") (const_int 8))])
 
 (define_insn "@pred_arcv_vsra<mode>"
   [(set (match_operand:V_VLSI 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
