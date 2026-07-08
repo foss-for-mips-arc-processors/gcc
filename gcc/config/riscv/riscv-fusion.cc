@@ -302,7 +302,8 @@ riscv_memop_arith_fusion_p (rtx_insn *prev, rtx_insn *curr)
 	|| c_type == TYPE_MINU
 	|| c_type == TYPE_MAXU
 	|| c_type == TYPE_CLZ
-	|| c_type == TYPE_CTZ))
+	|| c_type == TYPE_CTZ
+	|| c_type == TYPE_MOVE))
     return false;
 
   rtx c_src = SET_SRC (curr_set);
@@ -312,23 +313,31 @@ riscv_memop_arith_fusion_p (rtx_insn *prev, rtx_insn *curr)
   if (!REG_P (c_dest))
     return false;
 
-  /* Check if curr has at least one register source.  */
-  if (CONST_INT_P (c_src))
+  if (CONSTANT_P (c_src))
     return false;
 
-  /* For non-immediate sources, check for a register operand.  */
-  if (!REG_P (c_src) && !REG_P (XEXP (c_src, 0)))
+  int c_rs1;
+  int c_rs2;
+  bool has_rs2;
+
+  /* Move.  */
+  if (REG_P (c_src))
+    {
+      c_rs1 = REGNO (c_src);
+      has_rs2 = false;
+    }
+  /* Arithmetic.  */
+  else if (REG_P (XEXP (c_src, 0)))
+    {
+      c_rs1 = REGNO (XEXP (c_src, 0));
+      has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
+		 && REG_P (XEXP (c_src, 1)));
+      c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
+    }
+  else
     return false;
 
-  int c_rs1 = REG_P (c_src) ? REGNO (c_src) : REGNO (XEXP (c_src, 0));
-  int c_rd  = REGNO (c_dest);
-
-  /* Check if there is a second source register.  */
-  bool has_rs2 = (!REG_P (c_src)
-		  && GET_RTX_LENGTH (GET_CODE (c_src)) > 1
-		  && REG_P (XEXP (c_src, 1)));
-
-  int c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
+  int c_rd = REGNO (c_dest);
 
   switch (p_type)
     {
