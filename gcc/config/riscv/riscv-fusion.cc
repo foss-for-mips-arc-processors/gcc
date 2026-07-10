@@ -49,7 +49,7 @@ riscv_macro_fusion_p (void)
 
 /* Return true iff the instruction fusion described by OP is enabled.  */
 
-static bool
+bool
 riscv_fusion_enabled_p (enum riscv_fusion_pairs op)
 {
   return riscv_get_fusible_ops () & op;

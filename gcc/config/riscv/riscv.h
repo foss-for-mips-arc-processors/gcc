@@ -977,10 +977,6 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
 #define TARGET_ARCV_RHX100 \
   (riscv_microarchitecture == arcv_rhx100)
 
-/* True if the target is an ARC-V core with fusion support.  */
-#define TARGET_ARCV_FUSION \
-  (riscv_microarchitecture == arcv_rhx100)
-
 /* True if the target supports misaligned vector loads and stores.  */
 #define TARGET_VECTOR_MISALIGN_SUPPORTED \
    riscv_vector_unaligned_access_p

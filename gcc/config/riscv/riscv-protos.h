@@ -861,6 +861,7 @@ enum riscv_fusion_pairs
 
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern unsigned int riscv_get_fusible_ops (void);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 
