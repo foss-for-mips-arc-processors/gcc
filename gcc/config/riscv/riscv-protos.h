@@ -948,6 +948,10 @@ extern rtx riscv_get_trig_scale_value (int flti_const_index);
 extern rtx riscv_get_trig_const (int index);
 extern rtx riscv_output_asinf_hz (rtx dest, rtx src);
 
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
+extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
 extern bool riscv_use_divmod_expander (void);

@@ -1017,6 +1017,12 @@ void
 riscv_sched_fusion_priority (rtx_insn *insn, int max_pri,
 			     int *fusion_pri, int *pri)
 {
+  /* RHX-100 groups adjacent scalar pairs itself.  Other tunes use the
+     generic load/store-pair priority below.  */
+  if (TARGET_ARCV_RHX100
+      && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
+    return;
+
   struct riscv_fusion_mem_info mem;
   unsigned int base_regno;
   bool isload_p, fp_p, inc_p;
@@ -2048,21 +2054,9 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
   if (GET_MODE (mem0) != GET_MODE (mem1))
     return false;
 
-  /* Check if the mode is allowed for ARC-V fusion restrictions.
-     Loads: allow SI, HI, and QI modes.
-     Stores: allow only SI mode.  */
-  if (TARGET_ARCV_RHX100)
-    {
-      machine_mode mode = GET_MODE (mem0);
-      bool mode_allowed = ((is_load
-			    && (mode == SImode
-				|| mode == HImode
-				|| mode == QImode))
-			   || (!is_load && mode == SImode));
-
-      if (!mode_allowed)
-	return false;
-    }
+  if (TARGET_ARCV_RHX100
+      && !arcv_pair_fusion_mode_allowed_p (GET_MODE (mem0), is_load))
+    return false;
 
   rtx mem_addr0 = XEXP (mem0, 0);
   rtx mem_addr1 = XEXP (mem1, 0);
