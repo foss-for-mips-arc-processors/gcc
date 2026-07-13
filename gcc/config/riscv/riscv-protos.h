@@ -883,6 +883,17 @@ enum riscv_fusion_pairs
   RISCV_FUSE_LDST_PAIR_DEC = HOST_WIDE_INT_1U << 24,
   RISCV_FUSE_FLDFST_PAIR_INC = HOST_WIDE_INT_1U << 25,
   RISCV_FUSE_FLDFST_PAIR_DEC = HOST_WIDE_INT_1U << 26,
+  /* ARC-V RHX-100.  Bits above the Jin Ma set so the masks do not alias.  */
+  RISCV_FUSE_MULT_ADD = HOST_WIDE_INT_1U << 27,
+  RISCV_FUSE_LI_BRANCH = HOST_WIDE_INT_1U << 28,
+  RISCV_FUSE_ADJACENT_LOAD = HOST_WIDE_INT_1U << 29,
+  RISCV_FUSE_ADJACENT_STORE = HOST_WIDE_INT_1U << 30,
+  RISCV_FUSE_LS_UPDATE = HOST_WIDE_INT_1U << 31,
+  RISCV_FUSE_LUI_ST = HOST_WIDE_INT_1U << 32,
+  RISCV_FUSE_LI_STORE = HOST_WIDE_INT_1U << 33,
+  RISCV_FUSE_LUI_LD_REV = HOST_WIDE_INT_1U << 34,
+  RISCV_FUSE_BFEXT_SRLI = HOST_WIDE_INT_1U << 35,
+  RISCV_FUSE_BFEXT_SRAI = HOST_WIDE_INT_1U << 36,
 };
 
 /* Possible directions for a memory-pair candidate.  */
@@ -896,6 +907,7 @@ enum riscv_fusion_direction
 
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern enum riscv_fusion_pairs riscv_get_fusion_pair_type (rtx_insn *,
 						    rtx_insn *);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
