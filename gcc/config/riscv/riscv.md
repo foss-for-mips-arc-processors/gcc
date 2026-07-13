@@ -4781,8 +4781,63 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC"
-)
+  "TARGET_XTHEADMAC || (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+			&& !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
+{
+  if (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+      && !TARGET_XTHEADMAC)
+    {
+      rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+      emit_insn (gen_extendhisi2 (tmp0, operands[1]));
+      emit_insn (gen_extendhisi2 (tmp1, operands[2]));
+
+      if (TARGET_64BIT)
+	{
+	  rtx op0 = gen_reg_rtx (DImode);
+	  emit_insn (gen_madd_fused_extended (op0, tmp0, tmp1, operands[3]));
+	  op0 = gen_lowpart (SImode, op0);
+	  SUBREG_PROMOTED_VAR_P (op0) = 1;
+	  SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+	  emit_move_insn (operands[0], op0);
+	}
+      else
+	{
+	  emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
+	}
+
+      DONE;
+    }
+})
+
+(define_expand "umaddhisi4"
+  [(set (match_operand:SI 0 "register_operand")
+	(plus:SI
+	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
+		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
+	  (match_operand:SI 3 "register_operand")))]
+  "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+{
+  rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+  emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
+  emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
+
+  if (TARGET_64BIT)
+    {
+      rtx op0 = gen_reg_rtx (DImode);
+      emit_insn (gen_madd_fused_extended (op0, tmp0, tmp1, operands[3]));
+      op0 = gen_lowpart (SImode, op0);
+      SUBREG_PROMOTED_VAR_P (op0) = 1;
+      SUBREG_PROMOTED_SET (op0, SRP_SIGNED);
+      emit_move_insn (operands[0], op0);
+    }
+  else
+    {
+      emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
+    }
+
+  DONE;
+})
 
 (define_expand "msubhisi4"
   [(set (match_operand:SI 0 "register_operand")
@@ -4792,6 +4847,63 @@
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))))]
   "TARGET_XTHEADMAC"
 )
+
+(define_insn_and_split "madd_fused"
+  [(set (match_operand:SI 0 "register_operand" "=&r")
+     (plus:SI
+	(mult:SI (match_operand:SI 1 "register_operand" "r")
+		 (match_operand:SI 2 "register_operand" "r"))
+	(match_operand:SI 3 "register_operand" "r")))]
+  "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && !TARGET_XTHEADMAC
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+  "{
+     rtx addend = operands[3];
+     if (can_create_pseudo_p ()
+	 && reg_overlap_mentioned_p (operands[0], operands[3]))
+       {
+	 addend = gen_reg_rtx (SImode);
+	 emit_move_insn (addend, operands[3]);
+       }
+
+     emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
+     emit_insn (gen_addsi3 (operands[0], operands[0], addend));
+     DONE;
+   }"
+  [(set_attr "type" "imul")])
+
+(define_insn_and_split "madd_fused_extended"
+  [(set (match_operand:DI 0 "register_operand" "=&r")
+     (sign_extend:DI
+      (plus:SI
+	(mult:SI (match_operand:SI 1 "register_operand" "r")
+		 (match_operand:SI 2 "register_operand" "r"))
+	(match_operand:SI 3 "register_operand" "r"))))]
+  "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && !TARGET_XTHEADMAC
+   && (TARGET_ZMMUL || TARGET_MUL)"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+  "{
+     rtx addend = operands[3];
+     if (can_create_pseudo_p ()
+	 && reg_overlap_mentioned_p (operands[0], operands[3]))
+       {
+	 addend = gen_reg_rtx (SImode);
+	 emit_move_insn (addend, operands[3]);
+       }
+
+     emit_insn (gen_mulsi3_extended (operands[0], operands[1], operands[2]));
+     emit_insn (gen_addsi3_extended (operands[0],
+				     gen_lowpart (SImode, operands[0]),
+				     addend));
+     DONE;
+   }"
+  [(set_attr "type" "imul")])
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)

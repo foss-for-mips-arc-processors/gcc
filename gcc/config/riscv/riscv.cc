@@ -4712,11 +4712,22 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
 	  return true;
 	}
-      gcc_fallthrough ();
-    case SIGN_EXTRACT:
-      if (TARGET_XTHEADBB && outer_code == SET
+      if (riscv_fusion_enabled_p (RISCV_FUSE_BFEXT_SRLI)
+	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
+	{
+	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
+	  return true;
+	}
+      gcc_fallthrough ();
+    case SIGN_EXTRACT:
+      if (outer_code == SET
+	  && CONST_INT_P (XEXP (x, 1))
+	  && CONST_INT_P (XEXP (x, 2))
+	  && ((GET_CODE (x) == SIGN_EXTRACT
+	       && riscv_fusion_enabled_p (RISCV_FUSE_BFEXT_SRAI))
+	      || TARGET_XTHEADBB))
 	{
 	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
 	  return true;
