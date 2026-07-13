@@ -864,13 +864,23 @@ enum riscv_fusion_pairs
   RISCV_FUSE_LDPREINCREMENT = (1 << 8),
   RISCV_FUSE_ALIGNED_STD = (1 << 9),
   RISCV_FUSE_CACHE_ALIGNED_STD = (1 << 10),
-  RISCV_FUSE_BFEXT = (1 << 11),
+  RISCV_FUSE_BFEXT_SRLI = (1 << 11),
   RISCV_FUSE_EXPANDED_LD = (1 << 12),
   RISCV_FUSE_B_ALUI = (1 << 13),
+  RISCV_FUSE_MULT_ADD = (1 << 14),
+  RISCV_FUSE_LI_BRANCH = (1 << 15),
+  RISCV_FUSE_ADJACENT_LOAD = (1 << 16),
+  RISCV_FUSE_ADJACENT_STORE = (1 << 17),
+  RISCV_FUSE_LS_UPDATE = (1 << 18),
+  RISCV_FUSE_LUI_ST = (1 << 19),
+  RISCV_FUSE_LI_STORE = (1 << 20),
+  RISCV_FUSE_LUI_LD_REV = (1 << 21),
+  RISCV_FUSE_BFEXT_SRAI = (1 << 22),
 };
 
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern unsigned int riscv_get_fusible_ops (void);
 
 /* Routines implemented in thead.cc.  */
