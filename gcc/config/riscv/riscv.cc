@@ -4714,7 +4714,9 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if (TARGET_XTHEADBB && outer_code == SET
+      if ((TARGET_XTHEADBB
+	   || riscv_fusion_enabled_p (RISCV_FUSE_BFEXT))
+	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
 	{
