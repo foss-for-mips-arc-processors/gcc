@@ -944,6 +944,10 @@ extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
 
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
+extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
 extern bool riscv_use_divmod_expander (void);
