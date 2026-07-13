@@ -4781,8 +4781,35 @@
 	  (mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))
 	  (match_operand:SI 3 "register_operand")))]
-  "TARGET_XTHEADMAC"
-)
+  "TARGET_XTHEADMAC || (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+			&& !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL))"
+{
+  if (riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+      && !TARGET_XTHEADMAC)
+    {
+      rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+      emit_insn (gen_extendhisi2 (tmp0, operands[1]));
+      emit_insn (gen_extendhisi2 (tmp1, operands[2]));
+      emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
+      DONE;
+    }
+})
+
+(define_expand "umaddhisi4"
+  [(set (match_operand:SI 0 "register_operand")
+	(plus:SI
+	  (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand"))
+		   (zero_extend:SI (match_operand:HI 2 "register_operand")))
+	  (match_operand:SI 3 "register_operand")))]
+  "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+{
+  rtx tmp0 = gen_reg_rtx (SImode), tmp1 = gen_reg_rtx (SImode);
+  emit_insn (gen_zero_extendhisi2 (tmp0, operands[1]));
+  emit_insn (gen_zero_extendhisi2 (tmp1, operands[2]));
+  emit_insn (gen_madd_fused (operands[0], tmp0, tmp1, operands[3]));
+  DONE;
+})
 
 (define_expand "msubhisi4"
   [(set (match_operand:SI 0 "register_operand")
@@ -4792,6 +4819,33 @@
 		   (sign_extend:SI (match_operand:HI 2 "register_operand")))))]
   "TARGET_XTHEADMAC"
 )
+
+(define_insn_and_split "madd_fused"
+  [(set (match_operand:SI 0 "register_operand" "=&r")
+     (plus:SI
+	(mult:SI (match_operand:SI 1 "register_operand" "r")
+		 (match_operand:SI 2 "register_operand" "r"))
+	(match_operand:SI 3 "register_operand" "r")))]
+  "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
+   && !TARGET_XTHEADMAC
+   && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+  "{
+     rtx addend = operands[3];
+     if (can_create_pseudo_p ()
+	 && reg_overlap_mentioned_p (operands[0], operands[3]))
+       {
+	 addend = gen_reg_rtx (SImode);
+	 emit_move_insn (addend, operands[3]);
+       }
+
+     emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
+     emit_insn (gen_addsi3 (operands[0], operands[0], addend));
+     DONE;
+   }"
+  [(set_attr "type" "imul")])
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)
