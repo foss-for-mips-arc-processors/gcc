@@ -12,5 +12,4 @@ fuse_ls_update (int *p, int n)
   return sum;
 }
 
-/* XFAIL until scheduling support for RHX-100 series is implemented.  */
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE" "sched2" { xfail *-*-* } } } */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE" "sched2" } } */
