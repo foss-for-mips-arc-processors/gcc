@@ -1,5 +1,5 @@
-/* Subroutines used for code generation for Synopsys ARC-V processors.
-   Copyright (C) 2025 Free Software Foundation, Inc.
+/* Subroutines used for code generation for ARC-V processors.
+   Copyright (C) 2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -49,477 +49,231 @@ along with GCC; see the file COPYING3.  If not see
 #include "sched-int.h"
 #include "tm-constrs.h"
 
-/* Return TRUE if the target microarchitecture supports macro-op
-   fusion for two memory operations of mode MODE (the direction
-   of transfer is determined by the IS_LOAD parameter).  */
+/* Scheduler state tracking for dual-pipe ARCV architectures.  */
 
-static bool
-arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
+struct arcv_sched_state {
+  /* True if the ALU pipe has been scheduled for the current cycle.
+     The ALU pipe handles arithmetic, logical, and other computational
+     instructions.  */
+  int alu_pipe_scheduled_p;
+
+  /* True if pipe B has been scheduled for the current cycle.
+     Pipe B is the second execution pipe, typically used for memory
+     operations (loads/stores) but can also handle other instructions.  */
+  int pipeB_scheduled_p;
+};
+
+static struct arcv_sched_state sched_state;
+
+/* Try to reorder ready queue to promote ARCV fusion opportunities.
+   Returns the number of instructions that can be issued this cycle.  */
+
+int
+arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
-  if (!TARGET_ARCV_RHX100)
-    return true;
+  if (sched_fusion)
+    return riscv_cached_can_issue_more;
 
-  return ((is_load && (mode == SImode
-		     || mode == HImode
-		     || mode == QImode))
-	 || (!is_load && mode == SImode));
-}
+  if (!riscv_cached_can_issue_more)
+    return 0;
 
-/* Return TRUE if two addresses can be fused.  */
-
-static bool
-arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
-{
-  rtx base0, base1, tmp;
-  HOST_WIDE_INT off0 = 0, off1 = 0;
-
-  if (GET_CODE (addr0) == SIGN_EXTEND || GET_CODE (addr0) == ZERO_EXTEND)
-    addr0 = XEXP (addr0, 0);
-
-  if (GET_CODE (addr1) == SIGN_EXTEND || GET_CODE (addr1) == ZERO_EXTEND)
-    addr1 = XEXP (addr1, 0);
-
-  if (!MEM_P (addr0) || !MEM_P (addr1))
-    return false;
-
-  /* Require the accesses to have the same mode.  */
-  if (GET_MODE (addr0) != GET_MODE (addr1))
-    return false;
-
-  /* Check if the mode is allowed.  */
-  if (!arcv_pair_fusion_mode_allowed_p (GET_MODE (addr0), is_load))
-    return false;
-
-  rtx reg0 = XEXP (addr0, 0);
-  rtx reg1 = XEXP (addr1, 0);
-
-  if (GET_CODE (reg0) == PLUS)
+  /* Fuse double load/store instances missed by sched_fusion.  */
+  if (!sched_state.pipeB_scheduled_p && riscv_last_scheduled_insn
+      && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (riscv_last_scheduled_insn)
+      && (get_attr_type (riscv_last_scheduled_insn) == TYPE_LOAD
+	  || get_attr_type (riscv_last_scheduled_insn) == TYPE_STORE))
     {
-      base0 = XEXP (reg0, 0);
-      tmp = XEXP (reg0, 1);
-      if (!CONST_INT_P (tmp))
-	return false;
-      off0 = INTVAL (tmp);
+      for (int i = 1; i <= *n_readyp; i++)
+       {
+	 rtx_insn *next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 /* Try to fuse the last_scheduled_insn with.  */
+	 /* Fuse only with nondebug insn.  */
+	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
+	     /* Which have not been already fused.  */
+	     && !SCHED_GROUP_P (ready[*n_readyp - i])
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
+	     && riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
+					   ready[*n_readyp - i]))
+	   {
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	     sched_state.pipeB_scheduled_p = 1;
+	     return riscv_cached_can_issue_more;
+	  }
+       }
+      sched_state.pipeB_scheduled_p = 1;
     }
-  else if (REG_P (reg0))
-    base0 = reg0;
-  else
-    return false;
 
-  if (GET_CODE (reg1) == PLUS)
+  /* Try to fuse a non-memory last_scheduled_insn.  */
+  if ((!sched_state.alu_pipe_scheduled_p || !sched_state.pipeB_scheduled_p)
+      && riscv_last_scheduled_insn && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (riscv_last_scheduled_insn)
+      && (get_attr_type (riscv_last_scheduled_insn) != TYPE_LOAD
+	  && get_attr_type (riscv_last_scheduled_insn) != TYPE_STORE))
     {
-      base1 = XEXP (reg1, 0);
-      tmp = XEXP (reg1, 1);
-      if (!CONST_INT_P (tmp))
-	return false;
-      off1 = INTVAL (tmp);
+      for (int i = 1; i <= *n_readyp; i++)
+       {
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
+	     && !SCHED_GROUP_P (ready[*n_readyp - i])
+	     && active_insn_p (ready[*n_readyp - i])
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
+	     && riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
+					   ready[*n_readyp - i]))
+	   {
+	     if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
+		 || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
+	     {
+	       if (sched_state.pipeB_scheduled_p)
+		 continue;
+	       else
+		 sched_state.pipeB_scheduled_p = 1;
+	     }
+	     else if (!sched_state.alu_pipe_scheduled_p)
+	       sched_state.alu_pipe_scheduled_p = 1;
+	     else
+	       sched_state.pipeB_scheduled_p = 1;
+
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	     return riscv_cached_can_issue_more;
+	   }
+       }
+      sched_state.alu_pipe_scheduled_p = 1;
     }
-  else if (REG_P (reg1))
-    base1 = reg1;
-  else
-    return false;
+  /* When pipe B is scheduled, we can have no more memops this cycle.  */
+  if (sched_state.pipeB_scheduled_p && *n_readyp > 0
+      && NONDEBUG_INSN_P (ready[*n_readyp - 1])
+      && recog_memoized (ready[*n_readyp - 1]) >= 0
+      && !SCHED_GROUP_P (ready[*n_readyp - 1]))
+  {
+    rtx_insn *head_next = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
+    if (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
+	|| get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE
+	|| (head_next && NONDEBUG_INSN_P (head_next)
+	    && SCHED_GROUP_P (head_next) && recog_memoized (head_next) >= 0
+	    && (get_attr_type (head_next) == TYPE_LOAD
+		|| get_attr_type (head_next) == TYPE_STORE)))
+    {
+      if (sched_state.alu_pipe_scheduled_p)
+	return 0;
 
-  /* Check if we have the same base.  */
-  gcc_assert (REG_P (base0) && REG_P (base1));
-  if (REGNO (base0) != REGNO (base1))
-    return false;
+      for (int i = 2; i <= *n_readyp; i++)
+	{
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
+	      && recog_memoized (ready[*n_readyp - i]) >= 0
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
+	      && !SCHED_GROUP_P (ready[*n_readyp - i])
+	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		  || !SCHED_GROUP_P (next_insn)))
+	     || (next_insn && NONDEBUG_INSN_P (next_insn)
+		 && recog_memoized (next_insn) >= 0
+		 && get_attr_type (next_insn) != TYPE_LOAD
+		 && get_attr_type (next_insn) != TYPE_STORE))
+	   {
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     sched_state.alu_pipe_scheduled_p = 1;
+	     riscv_cached_can_issue_more = 1;
+	     return 1;
+	   }
+	}
+      return 0;
+    }
+  }
 
-  /* Fuse adjacent aligned addresses.  */
-  if ((off0 % GET_MODE_SIZE (GET_MODE (addr0)).to_constant () == 0)
-      && (abs (off1 - off0) == GET_MODE_SIZE (GET_MODE (addr0)).to_constant ()))
-    return true;
+  /* If all else fails, schedule a single (fused) instruction.  */
+  if (ready && *n_readyp > 0
+      && NONDEBUG_INSN_P (ready[*n_readyp - 1])
+      && recog_memoized (ready[*n_readyp - 1]) >= 0)
+  {
+    rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
 
-  return false;
+    riscv_cached_can_issue_more
+      = next_insn && NONDEBUG_INSN_P (next_insn) && SCHED_GROUP_P (next_insn)
+	? 2 : 1;
+  }
+
+  return riscv_cached_can_issue_more;
 }
 
-/* Helper function to check if instruction type is arithmetic-like.  */
-
-static bool
-arcv_arith_type_insn_p (rtx_insn *insn)
+int
+arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  enum attr_type type = get_attr_type (insn);
+  /* Bump the priority of fused load-store pairs for easier
+     scheduling of the memory pipe.  The specific increase
+     value is determined empirically.  */
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && single_set (insn) && single_set (next)
+      && SCHED_GROUP_P (next)
+      && ((get_attr_type (insn) == TYPE_STORE
+	   && get_attr_type (next) == TYPE_STORE)
+	  || (get_attr_type (insn) == TYPE_LOAD
+	      && get_attr_type (next) == TYPE_LOAD)))
+    return priority + 1;
 
-  return (type == TYPE_ARITH
-	 || type == TYPE_LOGICAL
-	 || type == TYPE_SHIFT
-	 || type == TYPE_SLT
-	 || type == TYPE_BITMANIP
-	 || type == TYPE_MIN
-	 || type == TYPE_MAX
-	 || type == TYPE_MINU
-	 || type == TYPE_MAXU
-	 || type == TYPE_CLZ
-	 || type == TYPE_CTZ);
+  return priority;
 }
 
-/* Helper to check if curr's source operand is valid for fusion.  */
+/* Adjust scheduling cost for ARCV fusion.  */
 
-static bool
-arcv_arith_src_p (rtx curr_set)
+int
+arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
 {
-  rtx src = SET_SRC (curr_set);
+  if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
+    return cost + 1;
 
-  /* Immediate operand or register operand.  */
-  return CONST_INT_P (src) || REG_P (XEXP (src, 0));
+  return cost;
 }
-
-/* Helper to check if curr operation is compatible with load's destination.  */
-
-static bool
-arcv_load_arith_pair_p (rtx prev_set, rtx curr_set)
-{
-  rtx load_addr = XEXP (SET_SRC (prev_set), 0);
-  rtx load_dest = SET_DEST (prev_set);
-  rtx arith_src = XEXP (SET_SRC (curr_set), 0);
-  rtx arith_dest = SET_DEST (curr_set);
-
-  /* Address register must be a register.  */
-  if (!REG_P (load_addr))
-    return false;
-
-  /* Address register must match first source operand of arithmetic op.  */
-  if (REGNO (load_addr) != REGNO (arith_src))
-    return false;
-
-  /* Address register must not be the load destination (no clobber).  */
-  if (REGNO (load_addr) == REGNO (load_dest))
-    return false;
-
-  /* Load and arithmetic destinations must be different.  */
-  if (REGNO (load_dest) == REGNO (arith_dest))
-    return false;
-
-  /* Check operand constraints for different arithmetic formats.  */
-  rtx src = SET_SRC (curr_set);
-
-  /* Unary operation: (set (reg:X rd1) (not (reg:X rs1))).  */
-  if (GET_RTX_LENGTH (GET_CODE (src)) == 1)
-    return true;
-
-  /* Immediate operation: (set (reg:X rd2) (op (reg:X rs1) (const_int))).  */
-  if (CONST_INT_P (XEXP (src, 1)))
-    return true;
-
-  /* Binary register operation: ensure load dest != second source register.  */
-  if (REGNO (load_dest) != REGNO (XEXP (src, 1)))
-    return true;
-
-  return false;
-}
-
-/* Helper to check if curr operation is compatible with store's address.  */
-
-static bool
-arcv_store_arith_pair_p (rtx prev_set, rtx curr_set)
-{
-  rtx store_addr = XEXP (SET_DEST (prev_set), 0);
-  rtx arith_src = XEXP (SET_SRC (curr_set), 0);
-
-  /* Address register must be a register.  */
-  if (!REG_P (store_addr))
-    return false;
-
-  /* Address register must match first source operand of arithmetic op.  */
-  if (REGNO (store_addr) != REGNO (arith_src))
-    return false;
-
-  /* Check operand constraints for different arithmetic formats.  */
-  rtx src = SET_SRC (curr_set);
-
-  /* Unary operation.  */
-  if (GET_RTX_LENGTH (GET_CODE (src)) == 1)
-    return true;
-
-  /* Immediate operation.  */
-  if (CONST_INT_P (XEXP (src, 1)))
-    return true;
-
-  /* Binary register operation: store addr == second source is OK.  */
-  if (REGNO (store_addr) == REGNO (XEXP (src, 1)))
-    return true;
-
-  return false;
-}
-
-/* Return true if PREV and CURR constitute an ordered load/store + op/opimm
-   pair, for the purposes of ARCV-specific macro-op fusion.  */
-static bool
-arcv_memop_arith_pair_p (rtx_insn *prev, rtx_insn *curr)
-{
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-
-  gcc_assert (prev_set);
-  gcc_assert (curr_set);
-
-  /* Check if curr is an arithmetic-type instruction.  */
-  if (!arcv_arith_type_insn_p (curr))
-    return false;
-
-  /* Check if curr has valid source operands.  */
-  if (!arcv_arith_src_p (curr_set))
-    return false;
-
-  /* Check for load + arithmetic fusion.  */
-  if (get_attr_type (prev) == TYPE_LOAD)
-    return arcv_load_arith_pair_p (prev_set, curr_set);
-
-  /* Check for store + arithmetic fusion.  */
-  if (get_attr_type (prev) == TYPE_STORE)
-    return arcv_store_arith_pair_p (prev_set, curr_set);
-
-  return false;
-}
-
-
-/* Return true if PREV and CURR constitute an ordered load/store + lui pair, for
-   the purposes of ARCV-specific macro-op fusion.  */
-
-static bool
-arcv_memop_lui_pair_p (rtx_insn *prev, rtx_insn *curr)
-{
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-
-  gcc_assert (prev_set);
-  gcc_assert (curr_set);
-
-  /* Check if curr is a LUI instruction:
-     - LUI via HIGH: (set (reg:X rd) (high (const_int)))
-     - LUI via immediate: (set (reg:X rd) (const_int UPPER_IMM_20))  */
-  bool is_lui = (REG_P (curr)
-		&& ((get_attr_type (curr) == TYPE_MOVE
-		&& GET_CODE (SET_SRC (curr_set)) == HIGH)
-		|| (CONST_INT_P (SET_SRC (curr_set))
-		&& LUI_OPERAND (INTVAL (SET_SRC (curr_set))))));
-
-  if (!is_lui)
-    return false;
-
-  /* Check for load + LUI fusion:
-     Load and LUI destinations must be different to avoid hazard.  */
-  if (get_attr_type (prev) == TYPE_LOAD)
-    return REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set));
-
-  /* Check for store + LUI fusion (always allowed).  */
-  if (get_attr_type (prev) == TYPE_STORE)
-    return true;
-
-  return false;
-}
-
-
-/* Return true if PREV and CURR should be kept together during scheduling.  */
 
 bool
-arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
+arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-
-  /* Fuse multiply-add pair:
-     prev: (set rd_mult (mult rs1 rs2))
-     curr: (set rd_add (plus rd_mult rs3))  */
-  if (prev_set && curr_set
-      && GET_CODE (SET_SRC (prev_set)) == MULT
-      && GET_CODE (SET_SRC (curr_set)) == PLUS)
+  /* Beginning of cycle - reset variables.  */
+  if (more == issue_rate)
     {
-      rtx curr_plus = SET_SRC (curr_set);
-      rtx mult_dest = SET_DEST (prev_set);
-      unsigned int mult_dest_regno = REGNO (mult_dest);
-
-      /* Check if multiply result is used in either operand of the addition.  */
-      if (REG_P (XEXP (curr_plus, 0))
-	 && REGNO (XEXP (curr_plus, 0)) == mult_dest_regno)
-       {
-	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_MULT_ADD (op0)\n");
-	 return true;
-       }
-
-      if (REG_P (XEXP (curr_plus, 1))
-	 && REGNO (XEXP (curr_plus, 1)) == mult_dest_regno)
-       {
-	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_MULT_ADD (op1)\n");
-	 return true;
-       }
+      sched_state.alu_pipe_scheduled_p = 0;
+      sched_state.pipeB_scheduled_p = 0;
     }
 
-  /* Fuse logical shift left with logical shift right (bit-extract pattern):
-     prev: (set rd (ashift rs imm1))
-     curr: (set rd (lshiftrt rd imm2))  */
-  if (prev_set && curr_set
-      && GET_CODE (SET_SRC (prev_set)) == ASHIFT
-      && GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
-      && REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set))
-      && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (SET_SRC (curr_set), 0)))
+  if (!(insn && NONDEBUG_INSN_P (insn) && SCHED_GROUP_P (insn))
+      && sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
     {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_FUSE_SHIFT_BITEXTRACT\n");
-      return true;
-    }
-
-  /* Fuse load-immediate with a dependent conditional branch:
-     prev: (set rd imm)
-     curr: (if_then_else (cond rd ...) ...)  */
-  if (get_attr_type (prev) == TYPE_MOVE
-      && get_attr_move_type (prev) == MOVE_TYPE_CONST
-      && any_condjump_p (curr))
-    {
-      if (!curr_set)
-       return false;
-
-      rtx comp = XEXP (SET_SRC (curr_set), 0);
-      rtx prev_dest = SET_DEST (prev_set);
-
-      if ((REG_P (XEXP (comp, 0)) && XEXP (comp, 0) == prev_dest)
-	  || (REG_P (XEXP (comp, 1)) && XEXP (comp, 1) == prev_dest))
-	{
-	  if (dump_file)
-	    fprintf (dump_file, "ARCV_FUSE_LI_BRANCH\n");
-	  return true;
-	}
+      riscv_cached_can_issue_more = 0;
       return false;
     }
 
-  /* Do not fuse loads/stores before sched2.  */
-  if (!reload_completed || sched_fusion)
-    return false;
+  riscv_cached_can_issue_more = more;
 
-  /* prev and curr are simple SET insns i.e. no flag setting or branching.  */
-  bool simple_sets_p = prev_set && curr_set && !any_condjump_p (curr);
-
-  /* Don't handle anything with a jump past this point.  */
-  if (!simple_sets_p)
-    return false;
-
-  /* Fuse adjacent loads.  */
-  if (get_attr_type (prev) == TYPE_LOAD
-      && get_attr_type (curr) == TYPE_LOAD)
-    {
-      if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
-	{
-	  if (dump_file)
-	    fprintf (dump_file, "ARCV_FUSE_ADJACENT_LOAD\n");
-	  return true;
-	}
-    }
-
-  /* Fuse adjacent stores.  */
-  if (get_attr_type (prev) == TYPE_STORE
-      && get_attr_type (curr) == TYPE_STORE)
-    {
-      if (arcv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
-	{
-	  if (dump_file)
-	    fprintf (dump_file, "ARCV_FUSE_ADJACENT_STORE\n");
-	  return true;
-	}
-    }
-
-  /* Look ahead 1 insn to prioritize adjacent load/store pairs.
-     If curr and next form a better fusion opportunity, defer this fusion.  */
-  rtx_insn *next = next_insn (curr);
-  if (next)
-    {
-      rtx next_set = single_set (next);
-
-      /* Defer if next instruction forms an adjacent load pair with curr.  */
-      if (next_set
-	 && get_attr_type (curr) == TYPE_LOAD
-	 && get_attr_type (next) == TYPE_LOAD
-	 && arcv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
-	return false;
-
-      /* Defer if next instruction forms an adjacent store pair with curr.  */
-      if (next_set
-	 && get_attr_type (curr) == TYPE_STORE
-	 && get_attr_type (next) == TYPE_STORE
-	 && arcv_fused_addr_p (SET_DEST (curr_set), SET_DEST (next_set), false))
-	return false;
-    }
-
-  /* Fuse a pre- or post-update memory operation:
-     Examples: load+add, add+load, store+add, add+store.  */
-  if (arcv_memop_arith_pair_p (prev, curr))
-    {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (prev, curr)\n");
-      return true;
-    }
-  if (arcv_memop_arith_pair_p (curr, prev))
-    {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_FUSE_MEMOP_ARITH (curr, prev)\n");
-      return true;
-    }
-
-  /* Fuse a memory operation preceded or followed by a LUI:
-     Examples: load+lui, lui+load, store+lui, lui+store.  */
-  if (arcv_memop_lui_pair_p (prev, curr))
-    {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (prev, curr)\n");
-      return true;
-    }
-  if (arcv_memop_lui_pair_p (curr, prev))
-    {
-      if (dump_file)
-	fprintf (dump_file, "ARCV_FUSE_MEMOP_LUI (curr, prev)\n");
-      return true;
-    }
-
-  /* Fuse load-immediate with a store of the destination register:
-     prev: (set rd imm)
-     curr: (set (mem ...) rd)  */
-  if (get_attr_type (prev) == TYPE_MOVE
-      && get_attr_move_type (prev) == MOVE_TYPE_CONST
-      && get_attr_type (curr) == TYPE_STORE)
-    {
-      rtx store_src = SET_SRC (curr_set);
-      rtx load_dest = SET_DEST (prev_set);
-
-      if (REG_P (store_src) && store_src == load_dest)
-       {
-	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_LI_STORE\n");
-	 return true;
-       }
-
-      if (SUBREG_P (store_src) && SUBREG_REG (store_src) == load_dest)
-       {
-	 if (dump_file)
-	   fprintf (dump_file, "ARCV_FUSE_LI_STORE (subreg)\n");
-	 return true;
-       }
-    }
-
-  return false;
+  return true;
 }
 
-/* Check whether out_insn's output reg is passed into input register 3 of
-   an fmadd instruction.  */
-bool
-arcv_fmadd_acc_bypass_p (rtx_insn *out_insn, rtx_insn *in_insn)
+int
+arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
-  rtx out_set = single_set (out_insn);
-  rtx in_set  = single_set (in_insn);
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
+      && single_set (insn) && single_set (next))
+    {
+      if (get_attr_type (insn) == TYPE_LOAD
+	  || get_attr_type (insn) == TYPE_STORE
+	  || get_attr_type (next) == TYPE_LOAD
+	  || get_attr_type (next) == TYPE_STORE
+	  || sched_state.alu_pipe_scheduled_p)
+	sched_state.pipeB_scheduled_p = 1;
+      else
+	sched_state.alu_pipe_scheduled_p = 1;
+    }
 
-  if (!out_set || !in_set || !REG_P (SET_DEST (out_set)))
-    return false;
+  riscv_last_scheduled_insn = insn;
+  riscv_cached_can_issue_more = more - 1;
 
-  rtx src = SET_SRC (in_set);
-
-  if (GET_CODE (src) == NEG)
-    src = XEXP (src, 0);
-
-  if (GET_CODE (src) != FMA)
-    return false;
-
-  rtx acc = XEXP (src, 2);
-  if (GET_CODE (acc) == NEG)
-    acc = XEXP (acc, 0);
-
-  return REG_P (acc) && REGNO (acc) == REGNO (SET_DEST (out_set));
+  return riscv_cached_can_issue_more;
 }
