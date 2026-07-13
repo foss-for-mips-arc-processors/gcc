@@ -937,9 +937,19 @@ extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
+extern int riscv_cached_can_issue_more;
+extern rtx_insn *riscv_last_scheduled_insn;
+
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+
+/* Routines implemented in arcv.cc.  */
+extern int arcv_sched_reorder2 (rtx_insn **, int *);
+extern int arcv_sched_adjust_priority (rtx_insn *, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern bool arcv_can_issue_more_p (int, int, rtx_insn *);
+extern int arcv_sched_variable_issue (rtx_insn *, int);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);

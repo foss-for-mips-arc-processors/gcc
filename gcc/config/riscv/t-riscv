@@ -194,6 +194,12 @@ riscv-zicfilp.o: $(srcdir)/config/riscv/riscv-zicfilp.cc \
 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
 		$(srcdir)/config/riscv/riscv-zicfilp.cc
 
+arcv.o: $(srcdir)/config/riscv/arcv.cc \
+  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TARGET_H) $(BACKEND_H) $(RTL_H) \
+  memmodel.h $(EMIT_RTL_H) $(TM_H) output.h
+	$(COMPILE) $<
+	$(POSTCOMPILE)
+
 PASSES_EXTRA += $(srcdir)/config/riscv/riscv-passes.def
 
 $(common_out_file): $(srcdir)/config/riscv/riscv-cores.def \
