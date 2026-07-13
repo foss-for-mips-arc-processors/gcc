@@ -907,6 +907,7 @@ enum riscv_fusion_direction
 
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern enum riscv_fusion_direction riscv_fuse_mem_direction (rtx_insn *);
 extern enum riscv_fusion_pairs riscv_get_fusion_pair_type (rtx_insn *,
