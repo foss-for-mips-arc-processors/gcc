@@ -2941,6 +2941,47 @@ riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y)
   return riscv_emit_set (dest, gen_rtx_fmt_ee (code, GET_MODE (dest), x, y));
 }
 
+/* Emit a bitwise NOT of SRC (a packed-SIMD vector) into DEST.
+   On RV32 a 64-bit packed value lives in a register pair, so each half
+   must be negated separately; other cases go through the generic optab.  */
+
+void
+riscv_emit_packed_not (rtx dest, rtx src, machine_mode mode)
+{
+  if (!TARGET_64BIT && maybe_gt (GET_MODE_SIZE (mode), UNITS_PER_WORD))
+    {
+      rtx dst_lo = operand_subword (dest, 0, 1, mode);
+      rtx dst_hi = operand_subword (dest, 1, 1, mode);
+      rtx src_lo = operand_subword_force (src, 0, mode);
+      rtx src_hi = operand_subword_force (src, 1, mode);
+      emit_insn (gen_rtx_SET (dst_lo,
+			      gen_rtx_XOR (SImode, src_lo, constm1_rtx)));
+      emit_insn (gen_rtx_SET (dst_hi,
+			      gen_rtx_XOR (SImode, src_hi, constm1_rtx)));
+    }
+  else
+    {
+      /* Treat the packed value as an integer so we can use the scalar
+	 xori (not) instruction.  */
+      scalar_int_mode int_mode;
+      if (int_mode_for_mode (mode).exists (&int_mode))
+	{
+	  rtx tmp = gen_reg_rtx (int_mode);
+	  emit_insn (gen_rtx_SET (tmp,
+				  gen_rtx_XOR (int_mode,
+					       gen_lowpart (int_mode, src),
+					       constm1_rtx)));
+	  emit_move_insn (dest, gen_lowpart (mode, tmp));
+	}
+      else
+	{
+	  rtx tmp = expand_simple_unop (mode, NOT, src, dest, false);
+	  if (tmp != dest)
+	    riscv_emit_move (dest, tmp);
+	}
+    }
+}
+
 /* Compute (CODE X Y) and store the result in a new register
    of mode MODE.  Return that new register.  */
 

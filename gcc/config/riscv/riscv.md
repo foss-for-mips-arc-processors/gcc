@@ -498,6 +498,7 @@
 ;; sf_vfnrclip     vector fp32 to int8 ranged clip instructions
 ;; sf_vc vector coprocessor interface without side effect
 ;; sf_vc_se vector coprocessor interface with side effect
+;; RISC-V P extension instructions.
 (define_attr "type"
   "unknown,branch,jump,jalr,ret,call,load,fpload,store,fpstore,
    mtc,mfc,const,arith,logical,shift,slt,imul,idiv,move,fmove,fadd,fmul,
@@ -520,7 +521,7 @@
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
    vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,vfncvtbf16,vfwcvtbf16,vfwmaccbf16,
-   sf_vc,sf_vc_se,imul_fused,alu_fused,arcv_dsp_vector"
+   sf_vc,sf_vc_se,imul_fused,alu_fused,arcv_dsp_vector,simd"
   (cond [(eq_attr "got" "load") (const_string "load")
 
 	 ;; If a doubleword move uses these expensive instructions,
@@ -5175,6 +5176,7 @@
 ;; Standard extensions and pattern for optimization
 (include "bitmanip.md")
 (include "crypto.md")
+(include "p.md")
 (include "sync.md")
 (include "sync-rvwmo.md")
 (include "sync-ztso.md")

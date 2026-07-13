@@ -345,6 +345,7 @@
   (and (match_code "const_int")
        (match_test "(ival & (ival + 1)) == 0")))
 
+
 ;; ARC-V Constraints
 (define_register_constraint "xAVp06" "GENERAL_REGS"
   "Even-odd register pair suitable as a 64-bit operand of some uDSP instructions."
@@ -459,3 +460,54 @@
   "Validate support of APEX_XC instruction format."
   (and (match_code "const_int")
        (match_test "arcv_apex_format_supports_p (INTVAL (op), APEX_XC)")))
+
+;; =================================================================
+;; RISC-V P-Extension Immediate Constraints
+;; =================================================================
+(define_constraint "Wpb"
+  "An 8-bit immediate for pli.b / pli.db (-128 to 255)."
+  (and (match_code "const_int")
+       ;; Include both the signed and unsigned 8-bit ranges, since unsigned
+       ;; constants can reach this predicate after sign extension.
+       (match_test "IN_RANGE (ival, -128, 255)")))
+
+(define_constraint "Wpi"
+  "A 10-bit signed immediate for pli.h (-512 to 511)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -512, 511)")))
+
+(define_constraint "Wpu"
+  "A 10-bit unsigned immediate shifted left by 6 for plui.h."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3F) == 0 && IN_RANGE (ival, 0, 65472)")))
+
+(define_constraint "Wpw"
+  "A 10-bit signed immediate shifted left by 22 for plui.w (RV64 only)."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3FFFFF) == 0
+		    && IN_RANGE (ival >> 22, -512, 511)")))
+
+(define_constraint "u3"
+  "A 3-bit unsigned immediate for P-extension instructions (0-7)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 7)")))
+
+(define_constraint "u4"
+  "A 4-bit unsigned immediate for P-extension instructions (0-15)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 15)")))
+
+(define_constraint "w4"
+  "A 4-bit negative immediate for P-extension instructions (-15 to -1)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -15, -1)")))
+
+(define_constraint "u5"
+  "A 5-bit unsigned immediate (0-31)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 31)")))
+
+(define_constraint "w5"
+  "A 5-bit negative immediate (-31 to -1)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -31, -1)")))

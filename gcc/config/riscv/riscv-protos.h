@@ -153,6 +153,7 @@ extern void riscv_expand_float_scc (rtx, enum rtx_code, rtx, rtx,
 extern void riscv_expand_conditional_branch (rtx, enum rtx_code, rtx, rtx);
 extern rtx riscv_emit_unary (enum rtx_code code, rtx dest, rtx x);
 extern rtx riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y);
+extern void riscv_emit_packed_not (rtx dest, rtx src, machine_mode mode);
 #endif
 extern bool riscv_expand_conditional_move (rtx, rtx, rtx, rtx);
 extern rtx riscv_legitimize_call_address (rtx);
