@@ -49,6 +49,32 @@ along with GCC; see the file COPYING3.  If not see
 #include "sched-int.h"
 #include "tm-constrs.h"
 
+/* Scheduler state tracking for dual-pipe ARCV architectures.  */
+
+struct arcv_sched_state {
+  /* True if the ALU pipe has been scheduled for the current cycle.
+     The ALU pipe handles arithmetic, logical, and other computational
+     instructions.  */
+  int alu_pipe_scheduled_p;
+
+  /* True if pipe B has been scheduled for the current cycle.
+     Pipe B is the second execution pipe, typically used for memory
+     operations (loads/stores) but can also handle other instructions.  */
+  int pipeB_scheduled_p;
+
+  /* The last instruction that was scheduled.  Used to detect fusion
+     opportunities by looking ahead at the next instruction to be
+     scheduled.  */
+  rtx_insn *last_scheduled_insn;
+
+  /* Cached value of how many more instructions can be issued in the
+     current cycle.  Updated as instructions are scheduled and pipes
+     become occupied.  */
+  short cached_can_issue_more;
+};
+
+static struct arcv_sched_state sched_state;
+
 /* If INSN is a load or store of address in the form of [base+offset],
    extract the two parts and set to BASE and OFFSET.  IS_LOAD is set
    to TRUE if it's a load.  Return TRUE if INSN is such an instruction,
@@ -159,4 +185,234 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
   *pri = priority;
 
   return true;
+}
+
+/* Initialize ARCV scheduler state at the beginning of scheduling.  */
+
+void
+arcv_sched_init (void)
+{
+  sched_state.last_scheduled_insn = 0;
+}
+
+/* Try to reorder ready queue to promote ARCV fusion opportunities.
+   Returns the number of instructions that can be issued this cycle.  */
+
+int
+arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
+{
+  if (sched_fusion)
+    return sched_state.cached_can_issue_more;
+
+  if (!sched_state.cached_can_issue_more)
+    return 0;
+
+  /* Fuse double load/store instances missed by sched_fusion.  */
+  if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn
+      && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
+      && (get_attr_type (sched_state.last_scheduled_insn) == TYPE_LOAD
+	  || get_attr_type (sched_state.last_scheduled_insn) == TYPE_STORE))
+    {
+      for (int i = 1; i <= *n_readyp; i++)
+       {
+	 rtx_insn *next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 /* Try to fuse the last_scheduled_insn with.  */
+	 /* Fuse only with nondebug insn.  */
+	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
+	     /* Which have not been already fused.  */
+	     && !SCHED_GROUP_P (ready[*n_readyp - i])
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
+	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+					   ready[*n_readyp - i]))
+	   {
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	     sched_state.pipeB_scheduled_p = 1;
+	     return sched_state.cached_can_issue_more;
+	  }
+       }
+      sched_state.pipeB_scheduled_p = 1;
+    }
+
+  /* Try to fuse a non-memory last_scheduled_insn.  */
+  if ((!sched_state.alu_pipe_scheduled_p || !sched_state.pipeB_scheduled_p)
+      && sched_state.last_scheduled_insn && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
+      && (get_attr_type (sched_state.last_scheduled_insn) != TYPE_LOAD
+	  && get_attr_type (sched_state.last_scheduled_insn) != TYPE_STORE))
+    {
+      for (int i = 1; i <= *n_readyp; i++)
+       {
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 if (NONDEBUG_INSN_P (ready[*n_readyp - i])
+	     && !SCHED_GROUP_P (ready[*n_readyp - i])
+	     && active_insn_p (ready[*n_readyp - i])
+	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		 || !SCHED_GROUP_P (next_insn))
+	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+					   ready[*n_readyp - i]))
+	   {
+	     if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
+		 || get_attr_type (ready[*n_readyp - i]) == TYPE_STORE)
+	     {
+	       if (sched_state.pipeB_scheduled_p)
+		 continue;
+	       else
+		 sched_state.pipeB_scheduled_p = 1;
+	     }
+	     else if (!sched_state.alu_pipe_scheduled_p)
+	       sched_state.alu_pipe_scheduled_p = 1;
+	     else
+	       sched_state.pipeB_scheduled_p = 1;
+
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
+	     return sched_state.cached_can_issue_more;
+	   }
+       }
+      sched_state.alu_pipe_scheduled_p = 1;
+    }
+  /* When pipe B is scheduled, we can have no more memops this cycle.  */
+  if (sched_state.pipeB_scheduled_p && *n_readyp > 0
+      && NONDEBUG_INSN_P (ready[*n_readyp - 1])
+      && recog_memoized (ready[*n_readyp - 1]) >= 0
+      && !SCHED_GROUP_P (ready[*n_readyp - 1])
+      && (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
+	  || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE))
+  {
+    if (sched_state.alu_pipe_scheduled_p)
+      return 0;
+
+    for (int i = 2; i <= *n_readyp; i++)
+      {
+       rtx_insn* next_insn
+	 = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+       if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
+	    && recog_memoized (ready[*n_readyp - i]) >= 0
+	    && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
+	    && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
+	    && !SCHED_GROUP_P (ready[*n_readyp - i])
+	    && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		|| !SCHED_GROUP_P (next_insn)))
+	   || (next_insn && NONDEBUG_INSN_P (next_insn)
+	       && recog_memoized (next_insn) >= 0
+	       && get_attr_type (next_insn) != TYPE_LOAD
+	       && get_attr_type (next_insn) != TYPE_STORE))
+	 {
+	   std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	   sched_state.alu_pipe_scheduled_p = 1;
+	   sched_state.cached_can_issue_more = 1;
+	   return 1;
+	 }
+      }
+    return 0;
+  }
+
+  /* If all else fails, schedule a single instruction.  */
+  if (ready && *n_readyp > 0
+      && NONDEBUG_INSN_P (ready[*n_readyp - 1])
+      && recog_memoized (ready[*n_readyp - 1]) >= 0)
+  {
+    rtx_insn *insn = ready[*n_readyp - 1];
+    enum attr_type insn_type = get_attr_type (insn);
+
+    /* Memory operations go to pipeB if available.  */
+    if (!sched_state.pipeB_scheduled_p
+       && (insn_type == TYPE_LOAD || insn_type == TYPE_STORE))
+    {
+      sched_state.pipeB_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
+    }
+    /* Non-memory operations go to ALU pipe.  */
+    else if (insn_type != TYPE_LOAD && insn_type != TYPE_STORE)
+    {
+      sched_state.alu_pipe_scheduled_p = 1;
+      sched_state.cached_can_issue_more = 1;
+    }
+  }
+
+  return sched_state.cached_can_issue_more;
+}
+
+int
+arcv_sched_adjust_priority (rtx_insn *insn, int priority)
+{
+  /* Bump the priority of fused load-store pairs for easier
+     scheduling of the memory pipe.  The specific increase
+     value is determined empirically.  */
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && single_set (insn) && single_set (next)
+      && SCHED_GROUP_P (next)
+      && ((get_attr_type (insn) == TYPE_STORE
+	   && get_attr_type (next) == TYPE_STORE)
+	  || (get_attr_type (insn) == TYPE_LOAD
+	      && get_attr_type (next) == TYPE_LOAD)))
+    return priority + 1;
+
+  return priority;
+}
+
+/* Adjust scheduling cost for ARCV fusion.  */
+
+int
+arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
+{
+  if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
+    return cost + 1;
+
+  return cost;
+}
+
+bool
+arcv_can_issue_more_p (int issue_rate, int more)
+{
+  /* Beginning of cycle - reset variables.  */
+  if (more == issue_rate)
+    {
+      sched_state.alu_pipe_scheduled_p = 0;
+      sched_state.pipeB_scheduled_p = 0;
+    }
+
+  if (sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
+    {
+      sched_state.cached_can_issue_more = 0;
+      return false;
+    }
+
+  sched_state.cached_can_issue_more = more;
+
+  return true;
+}
+
+int
+arcv_sched_variable_issue (rtx_insn *insn, int more)
+{
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  if (next && single_set (insn) && single_set (next)
+      && SCHED_GROUP_P (next))
+    {
+      if (get_attr_type (insn) == TYPE_LOAD
+	  || get_attr_type (insn) == TYPE_STORE
+	  || get_attr_type (next) == TYPE_LOAD
+	  || get_attr_type (next) == TYPE_STORE)
+	sched_state.pipeB_scheduled_p = 1;
+      else
+	sched_state.alu_pipe_scheduled_p = 1;
+    }
+
+  if (get_attr_type (insn) == TYPE_ALU_FUSED
+      || get_attr_type (insn) == TYPE_IMUL_FUSED)
+    {
+      sched_state.alu_pipe_scheduled_p = 1;
+      more -= 1;
+    }
+
+  sched_state.last_scheduled_insn = insn;
+  sched_state.cached_can_issue_more = more - 1;
+
+  return sched_state.cached_can_issue_more;
 }
