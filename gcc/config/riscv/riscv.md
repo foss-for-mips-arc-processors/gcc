@@ -5177,6 +5177,7 @@
 (include "bitmanip.md")
 (include "crypto.md")
 (include "p.md")
+(include "p-compare.md")
 (include "sync.md")
 (include "sync-rvwmo.md")
 (include "sync-ztso.md")
