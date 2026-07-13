@@ -155,6 +155,19 @@ riscv_set_is_shNadduw_p (rtx set)
 	  && REG_P (SET_DEST (set)));
 }
 
+void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
+			     int *pri)
+{
+  if (TARGET_ARCV_RHX100
+      && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
+    return;
+
+  /* Default priority.  */
+  *pri = max_pri - 1;
+  *fusion_pri = max_pri - 1;
+}
+
 /* Return TRUE if two memory operands can be fused based on their addresses.
    Checks if MEM0 and MEM1 have the same base register with adjacent offsets,
    making them suitable for fusion (e.g., adjacent load/store pairs).  */
@@ -178,21 +191,9 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
   if (GET_MODE (mem0) != GET_MODE (mem1))
     return false;
 
-  /* Check if the mode is allowed for ARC-V fusion restrictions.
-     Loads: allow SI, HI, and QI modes.
-     Stores: allow only SI mode.  */
-  if (TARGET_ARCV_RHX100)
-    {
-      machine_mode mode = GET_MODE (mem0);
-      bool mode_allowed = ((is_load
-			    && (mode == SImode
-				|| mode == HImode
-				|| mode == QImode))
-			   || (!is_load && mode == SImode));
-
-      if (!mode_allowed)
-	return false;
-    }
+  if (TARGET_ARCV_RHX100
+      && !arcv_pair_fusion_mode_allowed_p (GET_MODE (mem0), is_load))
+    return false;
 
   rtx mem_addr0 = XEXP (mem0, 0);
   rtx mem_addr1 = XEXP (mem1, 0);

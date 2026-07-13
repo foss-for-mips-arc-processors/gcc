@@ -16541,6 +16541,9 @@ riscv_memtag_tag_bitsize ()
 #undef TARGET_SCHED_MACRO_FUSION_PAIR_P
 #define TARGET_SCHED_MACRO_FUSION_PAIR_P riscv_macro_fusion_pair_p
 
+#undef TARGET_SCHED_FUSION_PRIORITY
+#define TARGET_SCHED_FUSION_PRIORITY riscv_sched_fusion_priority
+
 #undef TARGET_SCHED_INIT
 #define TARGET_SCHED_INIT riscv_sched_init
 
