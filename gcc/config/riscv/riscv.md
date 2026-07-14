@@ -517,7 +517,7 @@
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
    vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,vfncvtbf16,vfwcvtbf16,vfwmaccbf16,
-   sf_vc,sf_vc_se,imul_fused,alu_fused"
+   sf_vc,sf_vc_se,imul_fused"
   (cond [(eq_attr "got" "load") (const_string "load")
 
 	 ;; If a doubleword move uses these expensive instructions,
@@ -3164,8 +3164,6 @@
      && (INTVAL (operands[2]) == 1))
    && !TARGET_XTHEADBB
    && !TARGET_XANDESPERF
-   && !(riscv_fusion_enabled_p (RISCV_FUSE_BFEXT)
-	&& <any_extract:is_zero_extract>)
    && !(TARGET_64BIT
         && (INTVAL (operands[3]) > 0)
         && (INTVAL (operands[2]) + INTVAL (operands[3]) == 32))"
@@ -4872,25 +4870,6 @@
     DONE;
    }"
   [(set_attr "type" "imul_fused")])
-
-(define_insn_and_split "*zero_extract_fused"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(zero_extract:SI (match_operand:SI 1 "register_operand" "r")
-			 (match_operand 2 "const_int_operand")
-			 (match_operand 3 "const_int_operand")))]
-  "riscv_fusion_enabled_p (RISCV_FUSE_BFEXT) && !TARGET_64BIT
-     && (INTVAL (operands[2]) > 1 || !TARGET_ZBS)"
-  "#"
-  "&& reload_completed"
-  [(set (match_dup 0) (ashift:SI   (match_dup 1) (match_dup 2)))
-   (set (match_dup 0) (lshiftrt:SI (match_dup 0) (match_dup 3)))]
-  "{
-     int amount = INTVAL (operands[2]);
-     int end = INTVAL (operands[3]) + amount;
-     operands[2] = GEN_INT (BITS_PER_WORD - end);
-     operands[3] = GEN_INT (BITS_PER_WORD - amount);
-   }"
-  [(set_attr "type" "alu_fused")])
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)

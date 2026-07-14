@@ -404,8 +404,7 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 	sched_state.alu_pipe_scheduled_p = 1;
     }
 
-  if (get_attr_type (insn) == TYPE_ALU_FUSED
-      || get_attr_type (insn) == TYPE_IMUL_FUSED)
+  if (get_attr_type (insn) == TYPE_IMUL_FUSED)
     {
       sched_state.alu_pipe_scheduled_p = 1;
       more -= 1;

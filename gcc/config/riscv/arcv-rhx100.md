@@ -47,11 +47,6 @@
        (eq_attr "type" "imul_fused"))
   "(arcv_rhx100_issueA_fuse0 + arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse0_early + arcv_rhx100_ALU_A_fuse1_early + arcv_rhx100_MPY)")
 
-(define_insn_reservation "arcv_rhx100_alu_fused" 1
-   (and (eq_attr "tune" "arcv_rhx100")
-       (eq_attr "type" "alu_fused"))
-  "(arcv_rhx100_issueA_fuse0 + arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse0_early + arcv_rhx100_ALU_A_fuse1_early) | (arcv_rhx100_issueB_fuse0 + arcv_rhx100_issueB_fuse1 + arcv_rhx100_ALU_B_fuse0_early + arcv_rhx100_ALU_B_fuse1_early)")
-
 (define_insn_reservation "arcv_rhx100_jmp_insn" 1
   (and (eq_attr "tune" "arcv_rhx100")
        (eq_attr "type" "branch,jump,call,jalr,ret,trap"))
