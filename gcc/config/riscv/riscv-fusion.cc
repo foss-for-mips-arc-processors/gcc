@@ -349,10 +349,6 @@ riscv_memop_arith_fusion_p (rtx_insn *prev, rtx_insn *curr)
        if (!REG_P (p_dest))
 	 return false;
 
-       /* Handle loads with sign/zero extension.  */
-       if (GET_CODE (p_src) == SIGN_EXTEND || GET_CODE (p_src) == ZERO_EXTEND)
-	 p_src = XEXP (p_src, 0);
-
        /* Load source must be a memory operand.  */
        if (!MEM_P (p_src))
 	 return false;
