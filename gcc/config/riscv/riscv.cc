@@ -642,7 +642,7 @@ static const struct riscv_tune_param xiangshan_nanhu_tune_info = {
   true,						/* prefer-agnostic.  */
 };
 
-/* Costs to use when optimizing for Synopsys RPX-100.  */
+/* Costs to use when optimizing for ARC-V RPX-100.  */
 static const struct riscv_tune_param arcv_rpx100_tune_info = {
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
@@ -657,11 +657,14 @@ static const struct riscv_tune_param arcv_rpx100_tune_info = {
   false,					/* vector_unaligned_access */
   false,					/* use_divmod_expansion */
   false,					/* overlap_op_by_pieces */
-  RISCV_FUSE_ARCV,				/* fusible_ops */
+  true,						/* use_zero_stride_load */
+  false,					/* speculative_sched_vsetvl */
+  RISCV_FUSE_NOTHING,				/* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
   NULL,						/* loop_align */
+  true,					/* prefer-agnostic.  */
 };
 
 /* Costs to use when optimizing for a generic ooo profile.  */
