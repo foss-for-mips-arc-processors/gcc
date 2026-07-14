@@ -359,7 +359,9 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   int c_rs1 = INVALID_REGNUM;
   int c_rs2 = INVALID_REGNUM;
 
-  if (REG_P (c_src))
+  if (REG_P (c_src) && riscv_compressed_reg_p (REGNO (c_src)) && riscv_compressed_reg_p (REGNO (c_dest)))
+    c_rs2 = REGNO (c_src);
+  else if (REG_P (c_src))
     c_rs1 = REGNO (c_src);
   else
     {

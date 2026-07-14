@@ -2380,7 +2380,7 @@ riscv_legitimate_address_p (machine_mode mode, rtx x, bool strict_p,
 
 /* Return true if hard reg REGNO can be used in compressed instructions.  */
 
-static bool
+bool
 riscv_compressed_reg_p (int regno)
 {
   /* x8-x15/f8-f15 are compressible registers.  */
