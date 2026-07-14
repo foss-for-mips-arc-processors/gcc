@@ -360,7 +360,10 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   int c_rs2 = INVALID_REGNUM;
 
   if (REG_P (c_src) && riscv_compressed_reg_p (REGNO (c_src)) && riscv_compressed_reg_p (REGNO (c_dest)))
-    c_rs2 = REGNO (c_src);
+    {
+      c_rs1 = GP_REG_FIRST;
+      c_rs2 = REGNO (c_src);
+    }
   else if (REG_P (c_src))
     c_rs1 = REGNO (c_src);
   else
@@ -420,7 +423,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 	int p_rs = REGNO (base);
 	int p_rd = REGNO (p_dest);
 
-	return (p_rs == c_rs1
+	return ((p_rs == c_rs1 || c_rs1 == GP_REG_FIRST)
 		&& p_rs != p_rd
 		&& p_rd != c_rd
 		&& !reg_overlap_mentioned_p (p_dest, c_src));
@@ -439,7 +442,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
 	int p_rs = REGNO (base);
 
-	if (p_rs != c_rs1)
+	if (p_rs != c_rs1 && c_rs1 != GP_REG_FIRST)
 	  return false;
 
 	if (c_rs2 == -1)
