@@ -418,7 +418,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 	int p_rs = REGNO (base);
 	int p_rd = REGNO (p_dest);
 
-	return ((p_rs == c_rs1 || p_rs == c_rs2)
+	return (p_rs == c_rs1
 		&& p_rs != p_rd
 		&& p_rd != c_rd
 		&& !reg_overlap_mentioned_p (p_dest, c_src));
@@ -437,7 +437,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
 	int p_rs = REGNO (base);
 
-	if (p_rs != c_rs1 && p_rs != c_rs2)
+	if (p_rs != c_rs1)
 	  return false;
 
 	if (c_rs2 == -1)
@@ -448,7 +448,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 	  return false;
 
 	int p_rs2 = REGNO (data);
-	return (p_rs2 == c_rs1 || p_rs2 == c_rs2);
+	return (p_rs2 == c_rs2);
       }
 
     default:
