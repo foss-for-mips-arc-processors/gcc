@@ -517,7 +517,7 @@
    vgather,vcompress,vmov,vector,vandn,vbrev,vbrev8,vrev8,vclz,vctz,vcpop,vrol,vror,vwsll,
    vclmul,vclmulh,vghsh,vgmul,vaesef,vaesem,vaesdf,vaesdm,vaeskf1,vaeskf2,vaesz,
    vsha2ms,vsha2ch,vsha2cl,vsm4k,vsm4r,vsm3me,vsm3c,vfncvtbf16,vfwcvtbf16,vfwmaccbf16,
-   sf_vc,sf_vc_se,imul_fused"
+   sf_vc,sf_vc_se"
   (cond [(eq_attr "got" "load") (const_string "load")
 
 	 ;; If a doubleword move uses these expensive instructions,
@@ -4812,64 +4812,44 @@
 )
 
 (define_insn_and_split "madd_fused"
-  [(set (match_operand:SI 0 "register_operand" "=&r,r")
+  [(set (match_operand:SI 0 "register_operand" "=r")
      (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
-		 (match_operand:SI 2 "register_operand" "r,r"))
-	(match_operand:SI 3 "register_operand" "r,?0")))
-    (clobber (match_scratch:SI 4 "=&r,&r"))]
+	(mult:SI (match_operand:SI 1 "register_operand" "r")
+		 (match_operand:SI 2 "register_operand" "r"))
+	(match_operand:SI 3 "register_operand" "r")))]
   "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
    && !TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
-  "&& reload_completed"
+  "&& 1"
   [(const_int 0)]
   "{
-     if (REGNO (operands[0]) == REGNO (operands[3]))
-       {
-	 emit_insn (gen_mulsi3 (operands[4], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[3], operands[4]));
-       }
-     else
-       {
-	 emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
-	 emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
-       }
-    DONE;
+     emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
+     emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
+     DONE;
    }"
-  [(set_attr "type" "imul_fused")])
+  [(set_attr "type" "imul")])
 
 (define_insn_and_split "madd_fused_extended"
-  [(set (match_operand:DI 0 "register_operand" "=&r,r")
+  [(set (match_operand:DI 0 "register_operand" "=r")
      (sign_extend:DI
       (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
-		 (match_operand:SI 2 "register_operand" "r,r"))
-	(match_operand:SI 3 "register_operand" "r,?0"))))
-    (clobber (match_scratch:SI 4 "=&r,&r"))]
+	(mult:SI (match_operand:SI 1 "register_operand" "r")
+		 (match_operand:SI 2 "register_operand" "r"))
+	(match_operand:SI 3 "register_operand" "r"))))]
   "riscv_fusion_enabled_p (RISCV_FUSE_MULT_ADD)
    && (TARGET_ZMMUL || TARGET_MUL)"
   "#"
-  "&& reload_completed"
+  "&& 1"
   [(const_int 0)]
   "{
-     if (REGNO (operands[0]) == REGNO (operands[3]))
-       {
-	 emit_insn (gen_mulsi3_extended (operands[4], operands[1],
-					 operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0], operands[3],
-					 gen_lowpart (SImode, operands[4])));
-       }
-     else
-       {
-	 emit_insn (gen_mulsi3_extended (operands[0], operands[1],
-					 operands[2]));
-	 emit_insn (gen_addsi3_extended (operands[0],
-					 gen_lowpart (SImode, operands[0]),
-					 operands[3]));
-       }
-    DONE;
+     emit_insn (gen_mulsi3_extended (operands[0], operands[1],
+				     operands[2]));
+     emit_insn (gen_addsi3_extended (operands[0],
+				     gen_lowpart (SImode, operands[0]),
+				     operands[3]));
+     DONE;
    }"
-  [(set_attr "type" "imul_fused")])
+  [(set_attr "type" "imul")])
 
 ;; String compare with length insn.
 ;; Argument 0 is the target (result)
