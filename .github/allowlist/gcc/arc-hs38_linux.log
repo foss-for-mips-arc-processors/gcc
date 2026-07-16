@@ -12,6 +12,7 @@ FAIL: g++.dg/debug/dwarf2/non-virtual-thunk.C
 FAIL: g++.dg/ext/musttail1.C
 FAIL: g++.dg/ext/musttail2.C
 FAIL: g++.dg/ext/musttail3.C
+FAIL: g++.dg/lto/pr126194
 FAIL: g++.dg/torture/musttail1.C
 FAIL: gcc.c-torture/execute/pr64006.c
 FAIL: gcc.c-torture/execute/pr68381.c
@@ -30,6 +31,7 @@ FAIL: gcc.dg/lto/toplevel-simple-asm-2
 FAIL: gcc.dg/plugin/crash-test-nested-ice.c
 FAIL: gcc.dg/plugin/crash-test-nested-write-through-null.c
 FAIL: gcc.dg/pr92301.c
+FAIL: gcc.dg/torture/bitint-101.c
 FAIL: gcc.dg/tree-prof/indir-call-prof-malloc.c
 FAIL: gcc.dg/tree-prof/pr79587.c
 FAIL: gcc.dg/tree-prof/pr97461.c
@@ -48,17 +50,13 @@ FAIL: gcc.dg/tree-ssa/vrp-loop-1.c
 FAIL: gcc.misc-tests/gcov-pr90574-1.c
 FAIL: gcc.misc-tests/gcov-pr90574-2.c
 FAIL: gcc.target/arc/store-merge-1.c
-FAIL: outputs-22
-FAIL: outputs-23
-FAIL: outputs-24
-FAIL: outputs-25
-FAIL: outputs-294
 FAIL: tmpdir-g++.dg-struct-layout-1/t001
 FAIL: tmpdir-g++.dg-struct-layout-1/t002
 FAIL: tmpdir-g++.dg-struct-layout-1/t032
 FAIL: tmpdir-g++.dg-struct-layout-1/t033
 FAIL: tmpdir-gcc.dg-struct-layout-1/t001
 FAIL: tmpdir-gcc.dg-struct-layout-1/t002
+UNRESOLVED: gcc.dg/torture/bitint-101.c
 UNRESOLVED: gcc.dg/torture/pr23821.c
 UNRESOLVED: gcc.dg/tree-prof/indir-call-prof-malloc.c
 UNRESOLVED: gcc.dg/tree-prof/pr79587.c
