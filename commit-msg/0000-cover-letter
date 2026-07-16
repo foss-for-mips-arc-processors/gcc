@@ -1,0 +1,74 @@
+From ab7bc51b4d040fb24e3444d5d0faf705d873b0be Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Thu, 16 Jul 2026 17:12:59 +0100
+Subject: [PATCH 0/4] RISC-V: ARC-V RHX-100 fusion and scheduling
+
+Hi,
+
+This is v2 of the RHX-100 fusion/scheduling series.  v1 was:
+
+  https://gcc.gnu.org/pipermail/gcc-patches/2026-January/705022.html
+
+v1 had five patches (pipeline description, fusion, fusion priority,
+scheduling, and RTL patterns).  The pipeline description is already
+upstream, so this series is four patches around the generic table in
+riscv-fusion.cc:
+
+  1/4  RHX-100 fusion cases
+  2/4  TARGET_SCHED_FUSION_PRIORITY
+  3/4  dual-issue scheduling hooks
+  4/4  RTL patterns for mul+add (and BFEXT costs)
+
+Regtested for rv32 with --with-tune=arc-v-rhx-100-series and
+--enable-checking=rtl.
+
+Changes since v1:
+
+Drop arcv_macro_fusion_pair_p / RISCV_FUSE_ARCV.  Each pair is its own
+riscv_fuse_* checker and RISCV_FUSE_* bit, selected from the RHX-100
+fusible_ops field.  Hooks that are RHX-specific use TARGET_ARCV_RHX100.
+
+arcv.cc holds the RHX fusion-priority and scheduling code.  It is
+introduced in patch 2 with the config.gcc / t-riscv bits (v1 created
+that file earlier in the series).
+
+Patch 1 adds the RHX fusion checkers to the table, splits BFEXT into
+BFEXT_SRLI / BFEXT_SRAI (RHX enables SRLI only), and enables LUI_LD_REV
+for independent load+lui either order (not address-formation LUI_LD).
+Dump tests are new.  Fused_MAC only matches mul rd; add rd,rd,rs
+(product in rs1).
+
+Patch 2 puts riscv_sched_fusion_priority in riscv-fusion.cc; it calls
+arcv_sched_fusion_priority and falls back when that returns false.
+The load/store mode limit is arcv_pair_fusion_mode_allowed_p.
+
+Patch 3 walks with next_nonnote_nondebug_insn_bb and calls
+riscv_macro_fusion_pair_p, mimicking the scheduler more precisely.
+Missing checks were added so scheduling is more correct.  The
+ls-update dump XFAILs are removed.  riscv_sched_reorder2 preserves the
+remaining issue count for non-RHX (cached_can_issue_more) so defining
+TARGET_SCHED_REORDER2 does not force single-issue on other tunes.
+
+Patch 4 adds madd_fused (separate mul+add for the scheduler) on RV32,
+gated on RISCV_FUSE_MULT_ADD, !TARGET_XTHEADMAC, and !TARGET_64BIT.
+riscv_rtx_costs cheapens zero_extract / sign_extract when
+RISCV_FUSE_BFEXT_SRLI / RISCV_FUSE_BFEXT_SRAI is on.
+v1's imul_fused/alu_fused type attrs and pipeline reservations are gone:
+the fused madd patterns split before scheduling, so those types are not
+needed.  *zero_extract_fused and the extract split guard on
+*<any_extract:optab><GPR:mode>3 are also dropped; the generic extract
+pattern already handles the destination the same way.
+v1's madd_fused_extended / unreachable RV64 expand path is dropped.
+
+Thanks,
+Luis
+
+Luis Silva (4):
+  RISC-V: Implement riscv_macro_fusion_pair_p for ARC-V RHX-100 series.
+  RISC-V: Implement TARGET_SCHED_FUSION_PRIORITY for ARC-V RHX-100
+    series.
+  RISC-V: Implement scheduling for ARC-V RHX-100 series.
+  RISC-V: define_insn_and_split for multiply-add and bit-extract fusion.
+
+-- 
+2.47.3

@@ -1,0 +1,30 @@
+From 6f4e73a1fd76f10402a85268e8abcdd4218fe168 Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:46:34 +0100
+Subject: [PATCH 4/4] RISC-V: define_insn_and_split for multiply-add and
+ bit-extract fusion.
+
+Introduce RTL patterns for multiply-add fusion on RV32.
+
+Also cheapen zero_extract / sign_extract in riscv_rtx_costs when
+RISCV_FUSE_BFEXT_SRLI / RISCV_FUSE_BFEXT_SRAI is enabled.
+
+gcc/ChangeLog:
+
+	* config/riscv/riscv.cc (riscv_rtx_costs): Cheapen zero_extract /
+	sign_extract when BFEXT_SRLI / BFEXT_SRAI is enabled.
+	* config/riscv/riscv.md (maddhisi4): Emit separate mul/add when
+	RISCV_FUSE_MULT_ADD, not TARGET_XTHEADMAC, and not TARGET_64BIT.
+	(umaddhisi4): New expand.
+	(madd_fused): New insn_and_split.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/fusion-bfext-2.c: New test.
+	* gcc.target/riscv/fusion-limm-condbr.c: New test.
+	* gcc.target/riscv/fusion-madd.c: New test.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+---
