@@ -1,0 +1,96 @@
+From 13824e9e44a82d37a9b67de0c15ddec3d52eb5b3 Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:16:01 +0100
+Subject: [PATCH 1/4] RISC-V: Implement riscv_macro_fusion_pair_p for ARC-V
+ RHX-100 series.
+
+Add the RHX-100 macro-op fusion cases to the table in riscv-fusion.cc
+and enable them from the tune's fusible_ops field.  Also split BFEXT into
+SRLI / SRAI.
+
+Pairs that compete with adjacent load/store (ls-update, lui-st,
+li-store) bail out when the next insn is a better adjacent memop
+candidate.  Those, plus adjacent load/store themselves, wait until after
+reload.
+
+Fused_MAC only matches when the product is rs1 of the add:
+  mul rd,...; add rd,rd,rs
+
+I1->I2 means fusion only in that order; I1<->I2 means the two
+instructions are interchangeable with regards to order.
+
+RHX-100 enables:
+
+  RISCV_FUSE_MULT_ADD       (riscv_fuse_mult_add, I1->I2)
+      I1: mul rd,...; I2: add rd,rd,rs3 reading the mul result in rd
+      (on RV64, mulw+addw with the result sign-extended to DImode).
+  RISCV_FUSE_LI_BRANCH      (riscv_fuse_li_branch, I1->I2)
+      I1: li rd; I2: conditional branch that uses rd.
+  RISCV_FUSE_LI_STORE       (riscv_fuse_li_store, I1->I2)
+      I1: li rt; I2: store of rt.
+  RISCV_FUSE_LUI_ST         (riscv_fuse_lui_st, I1<->I2)
+      I1/I2: lui and store.
+  RISCV_FUSE_LUI_LD_REV     (riscv_fuse_lui_ld_reversible, I1<->I2)
+      I1/I2: independent load and lui with distinct destinations.
+  RISCV_FUSE_LS_UPDATE      (riscv_fuse_ls_update, I1<->I2)
+      I1/I2: load or store with an addi that updates the access base.
+  RISCV_FUSE_BFEXT_SRLI     (riscv_fuse_bfext_srli, I1->I2)
+      I1: slli rd,rs; I2: srli rd,rd (bitfield extract).
+  RISCV_FUSE_ADJACENT_LOAD  (riscv_fuse_adjacent_load, I1<->I2)
+      I1/I2: two loads, same base, offsets |off1-off2| == XLEN/8.
+  RISCV_FUSE_ADJACENT_STORE (riscv_fuse_adjacent_store, I1<->I2)
+      I1/I2: two stores, same base, offsets |off1-off2| == XLEN/8.
+
+Also rename RISCV_FUSE_BFEXT to RISCV_FUSE_BFEXT_SRLI and add
+RISCV_FUSE_BFEXT_SRAI for other tunes.
+
+gcc/ChangeLog:
+
+	* config/riscv/riscv-fusion.cc (LUI_NONZERO_OPERAND): New macro.
+	(riscv_fusion_enabled_p): Make non-static.
+	(riscv_adjacent_memops_p): New function.
+	(riscv_defer_for_adjacent_memop_p): New function.
+	(riscv_ls_update_pair_p): New function.
+	(riscv_fuse_lui_ld_pair_p): New function.
+	(riscv_fuse_lui_ld): Use riscv_fuse_lui_ld_pair_p.
+	(riscv_fuse_bfext_shift_p): New function.
+	(riscv_fuse_bfext_srli): New function.
+	(riscv_fuse_bfext_srai): New function.
+	(riscv_fuse_mult_add): New function.
+	(riscv_fuse_li_branch): New function.
+	(riscv_fuse_adjacent_load): New function.
+	(riscv_fuse_adjacent_store): New function.
+	(riscv_fuse_ls_update): New function.
+	(riscv_lui_st_pair_p): New function.
+	(riscv_fuse_lui_st): New function.
+	(riscv_fuse_li_store): New function.
+	(riscv_fuse_lui_ld_reversible): New function.
+	* config/riscv/riscv-protos.h (enum riscv_fusion_pairs): Rename
+	RISCV_FUSE_BFEXT to RISCV_FUSE_BFEXT_SRLI; add the RHX-100 fusion
+	bits and RISCV_FUSE_BFEXT_SRAI.
+	(riscv_fusion_enabled_p): Declare.
+	* config/riscv/riscv.cc (arcv_rhx100_tune_info): Set fusible_ops.
+	* config/riscv/riscv.h (TARGET_ARCV_RHX100): New.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/fusion-adjacent-load.c: New test.
+	* gcc.target/riscv/fusion-adjacent-store.c: New test.
+	* gcc.target/riscv/fusion-bfext-srai.c: New test.
+	* gcc.target/riscv/fusion-bfext.c: New test.
+	* gcc.target/riscv/fusion-li-branch.c: New test.
+	* gcc.target/riscv/fusion-li-store.c: New test.
+	* gcc.target/riscv/fusion-ls-update-2.c: New test.
+	* gcc.target/riscv/fusion-ls-update-3.c: New test.
+	* gcc.target/riscv/fusion-ls-update-4.c: New test.
+	* gcc.target/riscv/fusion-ls-update-5.c: New test.
+	* gcc.target/riscv/fusion-ls-update.c: New test.
+	* gcc.target/riscv/fusion-lui-ld.c: New test.
+	* gcc.target/riscv/fusion-lui-st.c: New test.
+	* gcc.target/riscv/fusion-mult-add.c: New test.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Co-authored-by: Loeka Rogge <loeka.rogge@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+---
