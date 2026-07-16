@@ -1,0 +1,85 @@
+From 16984dae8710924e7b292dee650a01d4e8f0ceab Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:42:43 +0100
+Subject: [PATCH 3/4] RISC-V: Implement scheduling for ARC-V RHX-100 series.
+
+This patch implements instruction scheduling support for the dual-issue
+ARC-V RHX-100 processor by adding scheduler hooks and state tracking for
+the two execution pipes.
+
+These hooks address microarchitectural details not covered by the
+pipeline description.
+
+The riscv_sched_variable_issue () and riscv_sched_reorder2 () hooks work
+together to make sure that:
+  - the critical path and the instruction priorities are respected;
+  - both pipes are filled (taking advantage of parallel dispatch within
+    the microarchitectural constraints);
+  - there is as much fusion going on as possible;
+  - the existing fusion pairs are not broken up.
+
+riscv_sched_adjust_priority () slightly bumps the priority of load/store
+pairs.  As a result it becomes easier for riscv_sched_reorder2 () to
+schedule instructions in the memory pipe.
+
+gcc/ChangeLog:
+
+	* config/riscv/arcv.cc (struct arcv_sched_state): New struct.
+	(arcv_sched_init): New function.
+	(arcv_sched_reorder2): New function.
+	(arcv_sched_adjust_priority): New function.
+	(arcv_sched_adjust_cost): New function.
+	(arcv_can_issue_more_p): New function.
+	(arcv_sched_variable_issue): New function.
+	* config/riscv/riscv-protos.h (arcv_sched_init): Declare.
+	(arcv_sched_reorder2): Declare.
+	(arcv_sched_adjust_priority): Declare.
+	(arcv_sched_adjust_cost): Declare.
+	(arcv_can_issue_more_p): Declare.
+	(arcv_sched_variable_issue): Declare.
+	* config/riscv/riscv.cc (riscv_sched_init): Add call to
+	arcv_sched_init.
+	(riscv_sched_variable_issue): Add ARC-V-specific handling.
+	(riscv_sched_adjust_cost): Add ARC-V-specific cost adjustment and fix
+	parameter names.
+	(riscv_sched_adjust_priority): New function.
+	(riscv_sched_reorder2): New function.
+	(TARGET_SCHED_ADJUST_PRIORITY): Define hook.
+	(TARGET_SCHED_REORDER2): Define hook.
+	* config/riscv/riscv.md (type): Add imul_fused and alu_fused.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/arcv-fusion-ls-update-dump.c: Remove XFAIL now
+	that RHX-100 scheduling is implemented.
+	* gcc.target/riscv/arcv-fusion-ls-update-rev-dump.c: Likewise, and
+	fix the scan-rtl-dump pattern.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Co-authored-by: Alex Turjan <alex.turjan@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+
+===
+
+Changes since v1:
+  - Gate the scheduler hooks on TARGET_ARCV_RHX100 directly instead of
+    riscv_fusion_enabled_p (RISCV_FUSE_ARCV); dropped the RISCV_FUSE_ARCV
+    umbrella and the riscv_fusion_enabled_p forward declaration in
+    riscv.cc.
+  - Removed the custom arcv_next_fusible_insn helper and use the generic
+    next_nonnote_nondebug_insn_bb instead.
+  - Call the generic riscv_macro_fusion_pair_p (the table dispatcher)
+    instead of arcv_macro_fusion_pair_p, which no longer exists after the
+    fusion rework.
+  - arcv_sched_adjust_priority and arcv_sched_variable_issue now use
+    next_nonnote_nondebug_insn_bb + single_set instead of next_insn +
+    INSN_P, dropping the manual DEBUG/USE/CLOBBER guards.
+  - reorder2's single-instruction fallback now updates
+    cached_can_issue_more in both the memory and ALU branches.
+  - Dropped the bogus riscv.h ChangeLog entry: TARGET_ARCV_RHX100 is now
+    defined by the fusion patch, so this patch no longer touches riscv.h.
+  - Un-XFAIL'd arcv-fusion-ls-update-dump.c and
+    arcv-fusion-ls-update-rev-dump.c now that RHX-100 scheduling is
+    implemented (no test changes in v1).
+---

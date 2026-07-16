@@ -1,0 +1,53 @@
+From 474a9bacdb2ace0f70732faf7b089a2000ff6a44 Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:24:28 +0100
+Subject: [PATCH 2/4] RISC-V: Implement TARGET_SCHED_FUSION_PRIORITY for ARC-V
+ RHX-100 series.
+
+This patch implements the TARGET_SCHED_FUSION_PRIORITY hook for the
+ARC-V RHX-100 to improve scheduling by prioritizing fusible memory
+operations.
+
+To take better advantage of double load/store fusion, make use of the
+sched_fusion pass that assigns unique "fusion priorities" to load/store
+instructions and schedules operations on adjacent addresses together.
+This maximizes the probability that loads/stores are fused with each
+other rather than with other instructions.
+
+The ARC-V specific helpers live in a new arcv.cc; the generic wrapper
+riscv_sched_fusion_priority in riscv-fusion.cc dispatches to it and
+falls back to a default priority for other tunes.
+
+gcc/ChangeLog:
+
+	* config.gcc: Add arcv.o to extra_objs.
+	* config/riscv/riscv-fusion.cc (riscv_sched_fusion_priority): New function.
+	(riscv_adjacent_memops_p): Use arcv_pair_fusion_mode_allowed_p for the
+	ARC-V mode restriction.
+	* config/riscv/riscv-protos.h (riscv_sched_fusion_priority): Declare.
+	(arcv_pair_fusion_mode_allowed_p): Declare.
+	(arcv_sched_fusion_priority): Declare.
+	* config/riscv/riscv.cc (TARGET_SCHED_FUSION_PRIORITY): Define hook.
+	* config/riscv/t-riscv: Add arcv.o build rule.
+	* config/riscv/arcv.cc: New file.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+
+===
+
+Changes since v1:
+  - arcv.cc is now introduced by this patch (v1 added it in patch 2/5,
+    which no longer creates it), so the config.gcc / t-riscv / arcv.o
+    plumbing moved here.
+  - The riscv_sched_fusion_priority wrapper now lives in riscv-fusion.cc
+    and dispatches to arcv_sched_fusion_priority; riscv.cc only defines
+    the hook macro.
+  - arcv_sched_fusion_priority now returns bool so the generic wrapper
+    can fall back to the default priority.
+  - Factored the ARC-V load/store mode restriction into
+    arcv_pair_fusion_mode_allowed_p and used it from
+    riscv_adjacent_memops_p (replacing the inline TARGET_ARCV_FUSION
+    check; umbrella flag replaced by TARGET_ARCV_RHX100).
+---
