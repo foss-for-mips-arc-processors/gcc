@@ -5,10 +5,9 @@
 const float b = 7.8539818525e01;
 extern const float a;
 
-/* Check if the fma operation is generated correctly.  */
-
-int foo (void)
+float foo (void)
 {
   return (float)3.0 * b + a;
 }
+
 /* { dg-final { scan-assembler "fsmadd" } } */
