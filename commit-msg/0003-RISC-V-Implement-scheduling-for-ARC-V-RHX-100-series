@@ -1,0 +1,66 @@
+From 16984dae8710924e7b292dee650a01d4e8f0ceab Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:42:43 +0100
+Subject: [PATCH 3/4] RISC-V: Implement scheduling for ARC-V RHX-100 series.
+
+This patch implements instruction scheduling support for the dual-issue
+ARC-V RHX-100 processor by adding scheduler hooks and state tracking for
+the two execution pipes.
+
+These hooks address microarchitectural details not covered by the
+pipeline description.
+
+The riscv_sched_variable_issue () and riscv_sched_reorder2 () hooks work
+together to make sure that:
+  - the critical path and the instruction priorities are respected;
+  - both pipes are filled (taking advantage of parallel dispatch within
+    the microarchitectural constraints);
+  - there is as much fusion going on as possible;
+  - the existing fusion pairs are not broken up.
+
+riscv_sched_adjust_priority () slightly bumps the priority of load/store
+pairs.  As a result it becomes easier for riscv_sched_reorder2 () to
+schedule instructions in the memory pipe.
+
+TARGET_SCHED_REORDER2 is defined for all RISC-V tunes, so
+riscv_sched_reorder2 must preserve the remaining issue count for non-RHX
+(via cached_can_issue_more from riscv_sched_variable_issue).
+
+gcc/ChangeLog:
+
+	* config/riscv/arcv.cc (struct arcv_sched_state): New.
+	(arcv_sched_init): New function.
+	(arcv_sched_reorder2): New function.
+	(arcv_sched_adjust_priority): New function.
+	(arcv_sched_adjust_cost): New function.
+	(arcv_can_issue_more_p): New function.
+	(arcv_sched_variable_issue): New function.
+	* config/riscv/riscv-protos.h (arcv_sched_init): Declare.
+	(arcv_sched_reorder2): Declare.
+	(arcv_sched_adjust_priority): Declare.
+	(arcv_sched_adjust_cost): Declare.
+	(arcv_can_issue_more_p): Declare.
+	(arcv_sched_variable_issue): Declare.
+	* config/riscv/riscv.cc (cached_can_issue_more): New.
+	(riscv_sched_init): Call arcv_sched_init.
+	(riscv_sched_variable_issue): Handle RHX-100; cache the returned
+	issue count.
+	(riscv_sched_adjust_cost): Handle RHX-100.
+	(riscv_sched_adjust_priority): New function.
+	(riscv_sched_reorder2): New function.  Return cached_can_issue_more
+	for non-RHX.
+	(TARGET_SCHED_ADJUST_PRIORITY): Define.
+	(TARGET_SCHED_REORDER2): Define.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/fusion-ls-update-2.c: Remove XFAIL, and fix the
+	scan pattern.
+	* gcc.target/riscv/fusion-ls-update.c: Remove XFAIL.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Co-authored-by: Alex Turjan <alex.turjan@globalfoundries.com>
+Co-authored-by: Loeka Rogge <loeka.rogge@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+---

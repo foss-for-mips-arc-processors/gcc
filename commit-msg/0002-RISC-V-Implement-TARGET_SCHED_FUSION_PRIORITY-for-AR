@@ -1,0 +1,32 @@
+From 474a9bacdb2ace0f70732faf7b089a2000ff6a44 Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:24:28 +0100
+Subject: [PATCH 2/4] RISC-V: Implement TARGET_SCHED_FUSION_PRIORITY for ARC-V
+ RHX-100 series.
+
+To take better advantage of double load/store fusion, make use of the
+sched_fusion pass that assigns unique "fusion priorities" to load/store
+instructions and schedules operations on adjacent addresses together.
+This maximizes the probability that loads/stores are fused with each
+other rather than with other instructions.
+
+The ARC-V specific helpers live in a new arcv.cc; the generic wrapper
+riscv_sched_fusion_priority in riscv-fusion.cc dispatches to it and
+falls back to a default priority for other tunes.
+
+gcc/ChangeLog:
+
+	* config.gcc: Build arcv.o.
+	* config/riscv/riscv-fusion.cc (riscv_sched_fusion_priority): New.
+	(riscv_adjacent_memops_p): Call arcv_pair_fusion_mode_allowed_p.
+	* config/riscv/riscv-protos.h (riscv_sched_fusion_priority): Declare.
+	(arcv_pair_fusion_mode_allowed_p): Declare.
+	(arcv_sched_fusion_priority): Declare.
+	* config/riscv/riscv.cc (TARGET_SCHED_FUSION_PRIORITY): Define.
+	* config/riscv/t-riscv: Build arcv.o.
+	* config/riscv/arcv.cc: New file.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+---
