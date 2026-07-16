@@ -308,82 +308,99 @@ riscv_memop_arith_fusion_p (rtx_insn *prev, rtx_insn *curr)
   rtx c_src = SET_SRC (curr_set);
   rtx c_dest = SET_DEST (curr_set);
 
-  /* Curr destination must be a register.  */
-  if (!REG_P (c_dest))
-    return false;
-
   if (CONSTANT_P (c_src))
     return false;
 
-  int c_rs1;
-  int c_rs2;
-  bool has_rs2;
+  int c_rs1 = INVALID_REGNUM;
+  int c_rs2 = INVALID_REGNUM;
 
-  /* Move.  */
   if (REG_P (c_src))
-    {
-      c_rs1 = REGNO (c_src);
-      has_rs2 = false;
-    }
-  /* Arithmetic.  */
-  else if (REG_P (XEXP (c_src, 0)))
-    {
-      c_rs1 = REGNO (XEXP (c_src, 0));
-      has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
-		 && REG_P (XEXP (c_src, 1)));
-      c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
-    }
+    c_rs1 = REGNO (c_src);
   else
-    return false;
+    {
+      rtx op = c_src;
+      if (GET_CODE (op) == NOT && BINARY_P (XEXP (op, 0)))
+	op = XEXP (op, 0);
 
-  int c_rd = REGNO (c_dest);
+      const char *fmt = GET_RTX_FORMAT (GET_CODE (op));
+      for (int i = 0; i < GET_RTX_LENGTH (GET_CODE (op)); i++)
+	{
+	  if (fmt[i] != 'e')
+	    continue;
+
+	  rtx x = XEXP (op, i);
+	  if (GET_CODE (x) == NOT)
+	    x = XEXP (x, 0);
+	  if (SUBREG_P (x))
+	    x = SUBREG_REG (x);
+	  if (!REG_P (x))
+	    continue;
+
+	  if (c_rs1 == (int) INVALID_REGNUM)
+	    c_rs1 = REGNO (x);
+	  else
+	    {
+	      c_rs2 = REGNO (x);
+	      break;
+	    }
+	}
+
+      if (c_rs1 == (int) INVALID_REGNUM)
+	return false;
+    }
 
   switch (p_type)
     {
     case TYPE_LOAD:
       {
-       rtx p_src = SET_SRC (prev_set);
-       rtx p_dest = SET_DEST (prev_set);
+	if (!REG_P (c_dest))
+	  return false;
+	int c_rd = REGNO (c_dest);
 
-       /* Load destination must be a register.  */
-       if (!REG_P (p_dest))
-	 return false;
+	rtx p_mem = SET_SRC (prev_set);
 
-       /* Load source must be a memory operand.  */
-       if (!MEM_P (p_src))
-	 return false;
+	if (!MEM_P (p_mem))
+	  return false;
 
-       rtx p_src_addr = XEXP (p_src, 0);
-       if (!REG_P (p_src_addr))
-	 return false;
+	rtx p_dest = SET_DEST (prev_set);
+	rtx base, offset;
+	if (!extract_base_offset_in_addr (p_mem, &base, &offset)
+	    || !REG_P (p_dest))
+	  return false;
 
-       int p_rs = REGNO (p_src_addr);
-       int p_rd = REGNO (p_dest);
+	int p_rs = REGNO (base);
+	int p_rd = REGNO (p_dest);
 
-       return (p_rs == c_rs1
-	       && p_rs != p_rd
-	       && p_rd != c_rd
-	       && (!has_rs2
-		   || p_rd != c_rs2));
+	return (p_rs == c_rs1
+		&& p_rs != p_rd
+		&& p_rd != c_rd
+		&& !reg_overlap_mentioned_p (p_dest, c_src));
       }
 
     case TYPE_STORE:
       {
-       rtx p_dest = SET_DEST (prev_set);
+	rtx p_mem = SET_DEST (prev_set);
+	if (!MEM_P (p_mem))
+	  return false;
 
-       /* Store destination must be a memory operand.  */
-       if (!MEM_P (p_dest))
-	 return false;
+	rtx base, offset;
+	if (!extract_base_offset_in_addr (p_mem, &base, &offset))
+	  return false;
 
-       rtx p_dst_addr = XEXP (p_dest, 0);
-       if (!REG_P (p_dst_addr))
-	 return false;
+	int p_rs = REGNO (base);
 
-       int p_rs = REGNO (p_dst_addr);
+	if (p_rs != c_rs1)
+	  return false;
 
-       return (p_rs == c_rs1
-	       && (!has_rs2
-		   || p_rs == c_rs2));
+	if (c_rs2 == (int) INVALID_REGNUM)
+	  return true;
+
+	rtx data = SET_SRC (prev_set);
+	if (!REG_P (data))
+	  return false;
+
+	int p_rs2 = REGNO (data);
+	return p_rs2 == c_rs2;
       }
 
     default:
@@ -861,6 +878,7 @@ riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
 	  || GET_CODE (SET_SRC (curr_set)) == ASHIFTRT)
       && REG_P (SET_DEST (prev_set))
       && REG_P (SET_DEST (curr_set))
+      && REG_P (XEXP (SET_SRC (curr_set), 0))
       && REGNO (XEXP (SET_SRC (curr_set), 0)) == REGNO (SET_DEST (prev_set))
       && CONST_INT_P (XEXP (SET_SRC (prev_set), 1))
       && CONST_INT_P (XEXP (SET_SRC (curr_set), 1)))
