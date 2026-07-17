@@ -1,64 +1,70 @@
 From ab7bc51b4d040fb24e3444d5d0faf705d873b0be Mon Sep 17 00:00:00 2001
 From: Luis Silva <luis.silva@globalfoundries.com>
 Date: Thu, 16 Jul 2026 17:12:59 +0100
-Subject: [PATCH 0/4] *** SUBJECT HERE ***
+Subject: [PATCH 0/4] RISC-V: ARC-V RHX-100 fusion and scheduling
 
-*** BLURB HERE ***
+Hi,
+
+This is v2 of the RHX-100 fusion/scheduling series.  v1 was:
+
+  https://gcc.gnu.org/pipermail/gcc-patches/2026-January/705022.html
+
+v1 had five patches (pipeline description, fusion, fusion priority,
+scheduling, and RTL patterns).  The pipeline description is already
+upstream, so this series is four patches around the generic table in
+riscv-fusion.cc:
+
+  1/4  RHX-100 fusion cases
+  2/4  TARGET_SCHED_FUSION_PRIORITY
+  3/4  dual-issue scheduling hooks
+  4/4  RTL hooks for mul+add (and BFEXT costs)
+
+Regtested for rv32 with --with-tune=arc-v-rhx-100-series. and --enable-checking=rtl.
+
+Changes since v1:
+
+Drop arcv_macro_fusion_pair_p / RISCV_FUSE_ARCV.  Each pair is its own
+riscv_fuse_* checker and RISCV_FUSE_* bit, selected from the RHX-100
+fusible_ops field.  Hooks that are RHX-specific use TARGET_ARCV_RHX100.
+
+arcv.cc holds the RHX fusion-priority and scheduling code.  It is
+introduced in patch 2 with the config.gcc / t-riscv bits (v1 created
+that file earlier in the series).
+
+#FIXME after https://github.com/foss-for-synopsys-dwc-arc-processors/gcc/pull/298 is merged
+Patch 1 reuses the existing BFEXT and LUI_LD checkers, splits the v1
+memop helpers into LS_UPDATE / LUI_ST / LUI_LD_REV, and tightens a few
+RTL checks.  Dump tests are new.  Fused_MAC only matches mul rd;
+add rd,rd,rs (product in rs1).
+
+Patch 2 puts riscv_sched_fusion_priority in riscv-fusion.cc; it calls
+arcv_sched_fusion_priority and falls back when that returns false.
+The load/store mode limit is arcv_pair_fusion_mode_allowed_p.
+
+Patch 3 walks with next_nonnote_nondebug_insn_bb and calls
+riscv_macro_fusion_pair_p, mimicking the scheduler more precisely,
+Missing checks were added so scheduling is more correct.  The
+ls-update dump XFAILs are removed.
+
+Patch 4 adds madd_fused / madd_fused_extended (separate mul+add for
+the scheduler), gated on RISCV_FUSE_MULT_ADD and !TARGET_XTHEADMAC.
+riscv_rtx_costs cheapens zero_extract when RISCV_FUSE_BFEXT is on.
+v1's imul_fused/alu_fused type attrs and pipeline reservations are gone:
+the fused madd patterns split before scheduling, so those types are not
+needed.  *zero_extract_fused and the extract split guard on
+*<any_extract:optab><GPR:mode>3 are also dropped; the generic extract
+pattern already handles the destination the same way.
+madd_fused_extended uses gen_lowpart for the RV64 case.
+
+Thanks,
+Luis
 
 Luis Silva (4):
   RISC-V: Implement riscv_macro_fusion_pair_p for ARC-V RHX-100 series.
   RISC-V: Implement TARGET_SCHED_FUSION_PRIORITY for ARC-V RHX-100
     series.
   RISC-V: Implement scheduling for ARC-V RHX-100 series.
-  RISC-V: Add instruction patterns for 32-bit multiply-add and
-    bit-extract fusion.
-
- gcc/config.gcc                                |   2 +-
- gcc/config/riscv/arcv.cc                      | 411 +++++++++++++
- gcc/config/riscv/iterators.md                 |   2 +
- gcc/config/riscv/riscv-fusion.cc              | 544 +++++++++++++++++-
- gcc/config/riscv/riscv-protos.h               |  20 +
- gcc/config/riscv/riscv.cc                     |  68 ++-
- gcc/config/riscv/riscv.h                      |   4 +
- gcc/config/riscv/riscv.md                     |  99 +++-
- gcc/config/riscv/t-riscv                      |   6 +
- .../riscv/arcv-fusion-adj-load-dump.c         |  12 +
- .../riscv/arcv-fusion-adj-store-dump.c        |  13 +
- .../riscv/arcv-fusion-li-branch-dump.c        |  14 +
- .../riscv/arcv-fusion-li-store-dump.c         |  12 +
- .../riscv/arcv-fusion-limm-condbr.c           |  12 +
- .../riscv/arcv-fusion-ls-update-dump.c        |  15 +
- .../riscv/arcv-fusion-ls-update-move-dump.c   |  13 +
- .../riscv/arcv-fusion-ls-update-ops-dump.c    |  81 +++
- .../riscv/arcv-fusion-ls-update-rev-dump.c    |  16 +
- .../riscv/arcv-fusion-ls-update-spec-dump.c   |  53 ++
- .../riscv/arcv-fusion-lui-ld-dump.c           |  26 +
- .../gcc.target/riscv/arcv-fusion-madd.c       |  12 +
- .../riscv/arcv-fusion-mult-add-op0-dump.c     |  13 +
- .../riscv/arcv-fusion-mult-add-op1-dump.c     |  13 +
- .../riscv/arcv-fusion-shift-bitextract-dump.c |  15 +
- .../riscv/arcv-fusion-store-lui-dump.c        |  19 +
- .../gcc.target/riscv/arcv-fusion-xbfu.c       |  14 +
- 26 files changed, 1498 insertions(+), 11 deletions(-)
- create mode 100644 gcc/config/riscv/arcv.cc
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-adj-load-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-adj-store-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-li-branch-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-li-store-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-limm-condbr.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-move-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-ops-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-rev-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-spec-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-lui-ld-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-madd.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-mult-add-op0-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-mult-add-op1-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-shift-bitextract-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-store-lui-dump.c
- create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-xbfu.c
+  RISC-V: Add RTL hooks for multiply-add and bit-extract fusion.
 
 -- 
 2.47.3
-
