@@ -307,7 +307,8 @@ arcv_arith_type_insn_p (rtx_insn *insn)
 	 || type == TYPE_MAXU
 	 || type == TYPE_CLZ
 	 || type == TYPE_CTZ
-	 || type == TYPE_MOVE);
+	 || type == TYPE_MOVE
+	 || type == TYPE_CONST);
 }
 
 
@@ -355,13 +356,12 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   rtx c_src = SET_SRC (curr_set);
   rtx c_dest = SET_DEST (curr_set);
 
-  if (CONSTANT_P (c_src))
-    return false;
-
   int c_rs1 = INVALID_REGNUM;
   int c_rs2 = INVALID_REGNUM;
 
-  if (REG_P (c_src) && (TARGET_RVC  || TARGET_ZCA))
+  if (CONSTANT_P (c_src) && !SMALL_OPERAND (INTVAL (c_src)))
+    return false;
+  else if (REG_P (c_src) && (TARGET_RVC  || TARGET_ZCA))
     c_rs2 = REGNO (c_src);
   else if (REG_P (c_src))
     c_rs1 = REGNO (c_src);
