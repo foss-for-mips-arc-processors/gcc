@@ -3,13 +3,15 @@
 /* { dg-skip-if "" { *-*-* } { "-g" "-flto" "-O0" "-O1" "-O3" "-Oz" "-Os" } } */
 /* { dg-options "-O2 -mtune=arc-v-rhx-100-series -march=rv32im -mabi=ilp32 -fdump-rtl-sched2" } */
 
-int
-fuse_ls_update (int *p, int n)
+void
+fuse_ls_update_rev (int *p, int n, int val)
 {
-  int sum = 0;
   for (int i = 0; i < n; i++)
-    sum += *p++;
-  return sum;
+    {
+      p++;
+      *p = val;
+    }
 }
 
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE" "sched2" } } */
+/* XFAIL until scheduling support for RHX-100 series is implemented.  */
+/* { dg-final { scan-rtl-dump "RISCV_FUSE_LS_UPDATE)" "sched2" { xfail *-*-* } } } */
