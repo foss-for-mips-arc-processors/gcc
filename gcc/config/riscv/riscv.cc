@@ -13015,6 +13015,24 @@ riscv_override_options_internal (struct gcc_options *opts)
     }
 }
 
+/* Implement TARGET_OVERRIDE_OPTIONS_AFTER_CHANGE.  */
+
+static void
+riscv_override_options_after_change (void)
+{
+  /* Explicit unrolling is not restricted to small loops.  */
+  if ((OPTION_SET_P (flag_unroll_loops) && flag_unroll_loops)
+      || (OPTION_SET_P (flag_unroll_all_loops) && flag_unroll_all_loops))
+    {
+      if (!OPTION_SET_P (riscv_unroll_only_small_loops))
+	riscv_unroll_only_small_loops = 0;
+      if (!OPTION_SET_P (flag_cunroll_grow_size))
+	flag_cunroll_grow_size = 1;
+    }
+  else if (!OPTION_SET_P (flag_cunroll_grow_size))
+    flag_cunroll_grow_size = flag_peel_loops || optimize >= 3;
+}
+
 /* Implement TARGET_OPTION_OVERRIDE.  */
 
 void
@@ -13026,15 +13044,7 @@ riscv_option_override (void)
 
   flag_pcc_struct_return = 0;
 
-  /* Explicit -funroll-loops or -funroll-all-loops turns
-     -munroll-only-small-loops off, allowing the unroller to handle
-     all loops without the conservative small-loop restriction.  */
-  if ((OPTION_SET_P (flag_unroll_loops) && flag_unroll_loops)
-      || (OPTION_SET_P (flag_unroll_all_loops) && flag_unroll_all_loops))
-    {
-      if (!OPTION_SET_P (riscv_unroll_only_small_loops))
-	riscv_unroll_only_small_loops = 0;
-    }
+  riscv_override_options_after_change ();
 
   if (flag_pic)
     g_switch_value = 0;
@@ -17406,6 +17416,9 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 
 #undef TARGET_OPTION_OVERRIDE
 #define TARGET_OPTION_OVERRIDE riscv_option_override
+
+#undef TARGET_OVERRIDE_OPTIONS_AFTER_CHANGE
+#define TARGET_OVERRIDE_OPTIONS_AFTER_CHANGE riscv_override_options_after_change
 
 #undef TARGET_OPTION_SAVE
 #define TARGET_OPTION_SAVE riscv_option_save
