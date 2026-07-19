@@ -1,0 +1,54 @@
+From ab7bc51b4d040fb24e3444d5d0faf705d873b0be Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:46:34 +0100
+Subject: [PATCH 4/4] RISC-V: Add instruction patterns for 32-bit multiply-add
+ and bit-extract fusion.
+
+This patch adds instruction patterns to support fusion of multiply-add
+and bit extraction sequences for the ARC-V RHX-100 processor.  This
+increases the likelihood that fusible sequences are produced in more
+situations.
+
+gcc/ChangeLog:
+
+	* config/riscv/arcv-rhx100.md (arcv_rhx100_imul_fused): New
+	reservation.
+	(arcv_rhx100_alu_fused): New reservation.
+	* config/riscv/iterators.md (is_zero_extract): New code attribute.
+	* config/riscv/riscv.cc (riscv_rtx_costs): Reduce the cost of
+	zero_extract when RISCV_FUSE_BFEXT fusion is enabled.
+	* config/riscv/riscv.md (*<any_extract:optab><GPR:mode>3): Disable
+	the generic split when RISCV_FUSE_BFEXT fusion is enabled.
+	(maddhisi4): Expand to a fused multiply-add when RISCV_FUSE_MULT_ADD
+	fusion is enabled.
+	(umaddhisi4): New expand.
+	(madd_fused): New insn_and_split.
+	(madd_fused_extended): New insn_and_split.
+	(*zero_extract_fused): New insn_and_split.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/arcv-fusion-limm-condbr.c: New test.
+	* gcc.target/riscv/arcv-fusion-madd.c: New test.
+	* gcc.target/riscv/arcv-fusion-xbfu.c: New test.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+
+===
+
+Changes since v1:
+  - Gate the new patterns and the zero_extract cost on the generic
+    fusion flags (riscv_fusion_enabled_p (RISCV_FUSE_BFEXT) /
+    RISCV_FUSE_MULT_ADD) instead of TARGET_ARCV_RHX100, so any tune that
+    enables those flags can use them.
+  - Moved the imul_fused/alu_fused "type" attribute addition out of this
+    patch into the scheduling patch, so riscv.md no longer touches the
+    type list here.
+  - madd_fused_extended now wraps the SImode inputs of the *_extended
+    adds with gen_lowpart (SImode, ...) for correct RV64 codegen.
+  - ChangeLog fixes: the new insns are named madd_fused /
+    madd_fused_extended (v1 listed madd_split / madd_split_extended), and
+    the iterators.md attribute is is_zero_extract.
+---

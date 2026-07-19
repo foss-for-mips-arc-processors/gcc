@@ -1,0 +1,96 @@
+From 13824e9e44a82d37a9b67de0c15ddec3d52eb5b3 Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Mon, 13 Jul 2026 13:16:01 +0100
+Subject: [PATCH 1/4] RISC-V: Implement riscv_macro_fusion_pair_p for ARC-V
+ RHX-100 series.
+
+This patch adds the macro-op fusion cases used by the ARC-V RHX-100 and
+enables them in the tune_info (fusible_ops).  Fusion rules are collected in a
+table and dispatched from riscv_macro_fusion_pair_p; each is gated by its own
+RISCV_FUSE_* flag so a tune enables only the pairs its hardware supports.
+
+Adjacent load/store fusion is prioritized: the other pairs are suppressed
+until sched2 so double load/store opportunities are not broken up.
+
+Fusion cases enabled for the RHX-100 (I1 -> I2):
+
+  RISCV_FUSE_MULT_ADD       (riscv_fuse_mult_add)
+      mul rd + add rd,rd,rs3; the add reads the mul result in the same dest
+      (on RV64 the result may be sign-extended to DImode).
+  RISCV_FUSE_LI_BRANCH      (riscv_fuse_li_branch)
+      li rd + conditional branch that uses rd.
+  RISCV_FUSE_LI_STORE       (riscv_fuse_li_store)
+      li rt + store of rt.
+  RISCV_FUSE_LUI_ST         (riscv_fuse_lui_st)
+      lui + store (either order).
+  RISCV_FUSE_LUI_LD         (riscv_fuse_lui_ld)
+      lui rd + load that uses rd as its base.
+  RISCV_FUSE_LUI_LD_REV     (riscv_fuse_lui_ld_rev)
+      load + lui (reversed lui+ld), with distinct destinations.
+  RISCV_FUSE_LS_UPDATE      (riscv_fuse_ls_update)
+      load + addi, or addi + store, updating the base register.
+  RISCV_FUSE_BFEXT          (riscv_fuse_bfext)
+      slli rd,rs + srli rd,rd (bitfield extract).
+  RISCV_FUSE_ADJACENT_LOAD  (riscv_fuse_adjacent_load)
+      two loads, same base, offsets |off1-off2| == XLEN/8.
+  RISCV_FUSE_ADJACENT_STORE (riscv_fuse_adjacent_store)
+      two stores, same base, offsets |off1-off2| == XLEN/8.
+
+riscv_fuse_bfext and riscv_fuse_lui_ld already existed; this patch adds the
+other eight checkers and enables the full set above for the RHX-100.  The
+memory pairs only fire after reload (reload_completed && !sched_fusion), which
+is why they are deferred to sched2.
+
+gcc/ChangeLog:
+
+	* config/riscv/riscv-fusion.cc (riscv_macro_fusion_p): New function.
+	(riscv_adjacent_memops_p): New function.
+	(riscv_defer_for_adjacent_memop_p): New function.
+	(riscv_memop_arith_fusion_p): New function.
+	(riscv_fuse_mult_add): New function.
+	(riscv_fuse_li_branch): New function.
+	(riscv_fuse_adjacent_load): New function.
+	(riscv_fuse_adjacent_store): New function.
+	(riscv_fuse_ls_update): New function.
+	(riscv_lui_st_pair_p): New function.
+	(riscv_fuse_lui_st): New function.
+	(riscv_fuse_li_store): New function.
+	(riscv_fuse_lui_ld_rev): New function.
+	* config/riscv/riscv-protos.h (riscv_fusion_enabled_p): Declare.
+	* config/riscv/riscv.cc: Enable RHX-100 fusible_ops.
+	* config/riscv/riscv.h (TARGET_ARCV_RHX100): New macro.
+
+gcc/testsuite/ChangeLog:
+
+	* gcc.target/riscv/arcv-fusion-adj-load-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-adj-store-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-li-branch-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-li-store-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-ls-update-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-ls-update-move-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-ls-update-rev-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-lui-ld-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-mult-add-op0-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-mult-add-op1-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-shift-bitextract-dump.c: New test.
+	* gcc.target/riscv/arcv-fusion-store-lui-dump.c: New test.
+
+Co-authored-by: Artemiy Volkov <artemiyv@acm.org>
+Co-authored-by: Michiel Derhaeg <michiel.derhaeg@globalfoundries.com>
+Signed-off-by: Luis Silva <luis.silva@globalfoundries.com>
+
+==
+
+Changes since v1:
+  - Reworked to use the generic riscv-fusion.cc table instead of a
+    separate arcv.cc with a monolithic arcv_macro_fusion_pair_p; each
+    pair is now an individual riscv_fuse_* checker.
+  - Replaced the single RISCV_FUSE_ARCV umbrella flag with per-pair
+    RISCV_FUSE_* flags, enabled via the RHX-100 tune_info fusible_ops.
+  - Reuse the existing RISCV_FUSE_BFEXT and RISCV_FUSE_LUI_LD checkers
+    instead of the custom shift-bitextract / load+lui logic from v1.
+  - Restructured the v1 memop+arith / memop+lui helpers into the more
+    specific LS_UPDATE, LUI_ST and LUI_LD_REV checkers.
+  - Dropped the config.gcc / t-riscv / arcv.o plumbing (no new file).
+  - Added 12 dump-scan tests (none in v1).
+---

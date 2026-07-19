@@ -1,0 +1,64 @@
+From ab7bc51b4d040fb24e3444d5d0faf705d873b0be Mon Sep 17 00:00:00 2001
+From: Luis Silva <luis.silva@globalfoundries.com>
+Date: Thu, 16 Jul 2026 17:12:59 +0100
+Subject: [PATCH 0/4] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+Luis Silva (4):
+  RISC-V: Implement riscv_macro_fusion_pair_p for ARC-V RHX-100 series.
+  RISC-V: Implement TARGET_SCHED_FUSION_PRIORITY for ARC-V RHX-100
+    series.
+  RISC-V: Implement scheduling for ARC-V RHX-100 series.
+  RISC-V: Add instruction patterns for 32-bit multiply-add and
+    bit-extract fusion.
+
+ gcc/config.gcc                                |   2 +-
+ gcc/config/riscv/arcv.cc                      | 411 +++++++++++++
+ gcc/config/riscv/iterators.md                 |   2 +
+ gcc/config/riscv/riscv-fusion.cc              | 544 +++++++++++++++++-
+ gcc/config/riscv/riscv-protos.h               |  20 +
+ gcc/config/riscv/riscv.cc                     |  68 ++-
+ gcc/config/riscv/riscv.h                      |   4 +
+ gcc/config/riscv/riscv.md                     |  99 +++-
+ gcc/config/riscv/t-riscv                      |   6 +
+ .../riscv/arcv-fusion-adj-load-dump.c         |  12 +
+ .../riscv/arcv-fusion-adj-store-dump.c        |  13 +
+ .../riscv/arcv-fusion-li-branch-dump.c        |  14 +
+ .../riscv/arcv-fusion-li-store-dump.c         |  12 +
+ .../riscv/arcv-fusion-limm-condbr.c           |  12 +
+ .../riscv/arcv-fusion-ls-update-dump.c        |  15 +
+ .../riscv/arcv-fusion-ls-update-move-dump.c   |  13 +
+ .../riscv/arcv-fusion-ls-update-ops-dump.c    |  81 +++
+ .../riscv/arcv-fusion-ls-update-rev-dump.c    |  16 +
+ .../riscv/arcv-fusion-ls-update-spec-dump.c   |  53 ++
+ .../riscv/arcv-fusion-lui-ld-dump.c           |  26 +
+ .../gcc.target/riscv/arcv-fusion-madd.c       |  12 +
+ .../riscv/arcv-fusion-mult-add-op0-dump.c     |  13 +
+ .../riscv/arcv-fusion-mult-add-op1-dump.c     |  13 +
+ .../riscv/arcv-fusion-shift-bitextract-dump.c |  15 +
+ .../riscv/arcv-fusion-store-lui-dump.c        |  19 +
+ .../gcc.target/riscv/arcv-fusion-xbfu.c       |  14 +
+ 26 files changed, 1498 insertions(+), 11 deletions(-)
+ create mode 100644 gcc/config/riscv/arcv.cc
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-adj-load-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-adj-store-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-li-branch-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-li-store-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-limm-condbr.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-move-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-ops-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-rev-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-ls-update-spec-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-lui-ld-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-madd.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-mult-add-op0-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-mult-add-op1-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-shift-bitextract-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-store-lui-dump.c
+ create mode 100644 gcc/testsuite/gcc.target/riscv/arcv-fusion-xbfu.c
+
+-- 
+2.47.3
+
