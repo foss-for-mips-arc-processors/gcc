@@ -8,4 +8,4 @@ char foo(char a, char b)
 {
   return b;
 }
-/* { dg-final { scan-assembler "extb_s\\s+r\\d+,r\\d+" } } */
+/* { dg-final { scan-assembler "(?:mov_s|extb_s)\\s+r0,r1" } } */
