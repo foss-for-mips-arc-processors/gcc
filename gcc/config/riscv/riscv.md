@@ -4820,7 +4820,7 @@
 )
 
 (define_insn_and_split "madd_fused"
-  [(set (match_operand:SI 0 "register_operand" "=r")
+  [(set (match_operand:SI 0 "register_operand" "=&r")
      (plus:SI
 	(mult:SI (match_operand:SI 1 "register_operand" "r")
 		 (match_operand:SI 2 "register_operand" "r"))
@@ -4831,14 +4831,22 @@
   "&& 1"
   [(const_int 0)]
   "{
+     rtx addend = operands[3];
+     if (can_create_pseudo_p ()
+	 && reg_overlap_mentioned_p (operands[0], operands[3]))
+       {
+	 addend = gen_reg_rtx (SImode);
+	 emit_move_insn (addend, operands[3]);
+       }
+
      emit_insn (gen_mulsi3 (operands[0], operands[1], operands[2]));
-     emit_insn (gen_addsi3 (operands[0], operands[0], operands[3]));
+     emit_insn (gen_addsi3 (operands[0], operands[0], addend));
      DONE;
    }"
   [(set_attr "type" "imul")])
 
 (define_insn_and_split "madd_fused_extended"
-  [(set (match_operand:DI 0 "register_operand" "=r")
+  [(set (match_operand:DI 0 "register_operand" "=&r")
      (sign_extend:DI
       (plus:SI
 	(mult:SI (match_operand:SI 1 "register_operand" "r")
@@ -4850,11 +4858,18 @@
   "&& 1"
   [(const_int 0)]
   "{
-     emit_insn (gen_mulsi3_extended (operands[0], operands[1],
-				     operands[2]));
+     rtx addend = operands[3];
+     if (can_create_pseudo_p ()
+	 && reg_overlap_mentioned_p (operands[0], operands[3]))
+       {
+	 addend = gen_reg_rtx (SImode);
+	 emit_move_insn (addend, operands[3]);
+       }
+
+     emit_insn (gen_mulsi3_extended (operands[0], operands[1], operands[2]));
      emit_insn (gen_addsi3_extended (operands[0],
 				     gen_lowpart (SImode, operands[0]),
-				     operands[3]));
+				     addend));
      DONE;
    }"
   [(set_attr "type" "imul")])
