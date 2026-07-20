@@ -10,6 +10,6 @@ void foo(void)
 {
   mem_dst = mem_src;
 }
-/* { dg-final { scan-assembler "ldh(?:\\.x)?\\s+r\[0-9\]+,\\\[" } } */
+/* { dg-final { scan-assembler "ldh\\s+r\[0-9\]+,\\\[" } } */
 /* { dg-final { scan-assembler-not "sexh" } } */
 /* { dg-final { scan-assembler "sth\[_s\\s\]+r\\d,\\\[" } } */
