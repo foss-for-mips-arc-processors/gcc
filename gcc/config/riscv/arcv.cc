@@ -196,27 +196,19 @@ arcv_sched_init (void)
 }
 
 /* If INSN is the first half of a fused macro-op, return its second half,
-   otherwise return NULL.  SCHED_GROUP_P on its own is not enough: it also
-   holds on the second half of an already-issued pair still waiting in the
-   ready queue, which may have become adjacent to an unrelated insn.  */
+   otherwise return NULL.  The two halves are adjacent and the second one
+   carries SCHED_GROUP_P.  */
 
 static rtx_insn *
 arcv_fused_partner (rtx_insn *insn)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
 
-  if (!next || !NONDEBUG_INSN_P (next) || !SCHED_GROUP_P (next)
-      || recog_memoized (next) < 0)
-    return NULL;
+  if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
+      && recog_memoized (next) >= 0)
+    return next;
 
-  /* riscv_macro_fusion_pair_p dumps its match, which was already reported
-     when the pairing was established.  */
-  FILE *saved_dump_file = dump_file;
-  dump_file = NULL;
-  bool fused = riscv_macro_fusion_pair_p (insn, next);
-  dump_file = saved_dump_file;
-
-  return fused ? next : NULL;
+  return NULL;
 }
 
 /* Return TRUE if INSN occupies the memory pipe.  */
@@ -361,23 +353,24 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     rtx_insn *insn = ready[*n_readyp - 1];
 
     /* INSN may be the first half of a fused macro-op, in which case the pipe
-       is picked for the pair as a whole and both halves need a slot.  */
+       is picked for the pair as a whole, both halves need a slot, and the
+       reservation is left to arcv_sched_variable_issue.  */
     rtx_insn *partner = arcv_fused_partner (insn);
     bool mem_p = arcv_memory_insn_p (insn)
 		 || (partner && arcv_memory_insn_p (partner));
 
-    if (mem_p)
-    {
-      if (sched_state.pipeB_scheduled_p)
-	return 0;
-      sched_state.pipeB_scheduled_p = 1;
-    }
-    else if (!sched_state.alu_pipe_scheduled_p)
-      sched_state.alu_pipe_scheduled_p = 1;
-    else if (!sched_state.pipeB_scheduled_p)
-      sched_state.pipeB_scheduled_p = 1;
-    else
+    if (mem_p ? sched_state.pipeB_scheduled_p
+	      : (sched_state.alu_pipe_scheduled_p
+		 && sched_state.pipeB_scheduled_p))
       return 0;
+
+    if (!partner)
+    {
+      if (mem_p || sched_state.alu_pipe_scheduled_p)
+	sched_state.pipeB_scheduled_p = 1;
+      else
+	sched_state.alu_pipe_scheduled_p = 1;
+    }
 
     sched_state.cached_can_issue_more = partner ? 2 : 1;
   }
@@ -424,10 +417,9 @@ arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
       sched_state.pipeB_scheduled_p = 0;
     }
 
-  /* Both halves of a fused macro-op issue in the slot reserved for the pair,
-     so neither may be held back by the pipes already looking busy.  */
-  if (insn && NONDEBUG_INSN_P (insn)
-      && (SCHED_GROUP_P (insn) || arcv_fused_partner (insn)))
+  /* The second half of a fused macro-op issues in the slot reserved for the
+     pair, so it may not be held back by the pipes already looking busy.  */
+  if (insn && NONDEBUG_INSN_P (insn) && SCHED_GROUP_P (insn))
     {
       sched_state.cached_can_issue_more = more;
       return true;
@@ -447,9 +439,8 @@ arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
-  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
-  if (next && single_set (insn) && single_set (next)
-      && SCHED_GROUP_P (next))
+  rtx_insn *next = arcv_fused_partner (insn);
+  if (next && single_set (insn) && single_set (next))
     {
       if (arcv_memory_insn_p (insn) || arcv_memory_insn_p (next))
 	sched_state.pipeB_scheduled_p = 1;
