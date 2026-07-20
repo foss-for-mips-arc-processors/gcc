@@ -195,6 +195,40 @@ arcv_sched_init (void)
   sched_state.last_scheduled_insn = 0;
 }
 
+/* If INSN is the first half of a fused macro-op, return its second half,
+   otherwise return NULL.  SCHED_GROUP_P on its own is not enough: it also
+   holds on the second half of an already-issued pair still waiting in the
+   ready queue, which may have become adjacent to an unrelated insn.  */
+
+static rtx_insn *
+arcv_fused_partner (rtx_insn *insn)
+{
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+
+  if (!next || !NONDEBUG_INSN_P (next) || !SCHED_GROUP_P (next)
+      || recog_memoized (next) < 0)
+    return NULL;
+
+  /* riscv_macro_fusion_pair_p dumps its match, which was already reported
+     when the pairing was established.  */
+  FILE *saved_dump_file = dump_file;
+  dump_file = NULL;
+  bool fused = riscv_macro_fusion_pair_p (insn, next);
+  dump_file = saved_dump_file;
+
+  return fused ? next : NULL;
+}
+
+/* Return TRUE if INSN occupies the memory pipe.  */
+
+static bool
+arcv_memory_insn_p (rtx_insn *insn)
+{
+  enum attr_type type = get_attr_type (insn);
+
+  return type == TYPE_LOAD || type == TYPE_STORE;
+}
+
 /* Try to reorder ready queue to promote ARCV fusion opportunities.
    Returns the number of instructions that can be issued this cycle.  */
 
@@ -203,6 +237,13 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
   if (sched_fusion)
     return sched_state.cached_can_issue_more;
+
+  /* The second half of a fused macro-op issues in the slot already reserved
+     for the pair, so never report the cycle as full in between.  */
+  if (ready && *n_readyp > 0
+      && NONDEBUG_INSN_P (ready[*n_readyp - 1])
+      && SCHED_GROUP_P (ready[*n_readyp - 1]))
+    return MAX (sched_state.cached_can_issue_more, 1);
 
   if (!sched_state.cached_can_issue_more)
     return 0;
@@ -312,27 +353,33 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     return 0;
   }
 
-  /* If all else fails, schedule a single instruction.  */
+  /* If all else fails, schedule a single unit.  */
   if (ready && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
       && recog_memoized (ready[*n_readyp - 1]) >= 0)
   {
     rtx_insn *insn = ready[*n_readyp - 1];
-    enum attr_type insn_type = get_attr_type (insn);
 
-    /* Memory operations go to pipeB if available.  */
-    if (!sched_state.pipeB_scheduled_p
-       && (insn_type == TYPE_LOAD || insn_type == TYPE_STORE))
+    /* INSN may be the first half of a fused macro-op, in which case the pipe
+       is picked for the pair as a whole and both halves need a slot.  */
+    rtx_insn *partner = arcv_fused_partner (insn);
+    bool mem_p = arcv_memory_insn_p (insn)
+		 || (partner && arcv_memory_insn_p (partner));
+
+    if (mem_p)
     {
+      if (sched_state.pipeB_scheduled_p)
+	return 0;
       sched_state.pipeB_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
     }
-    /* Non-memory operations go to ALU pipe.  */
-    else if (insn_type != TYPE_LOAD && insn_type != TYPE_STORE)
-    {
+    else if (!sched_state.alu_pipe_scheduled_p)
       sched_state.alu_pipe_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
-    }
+    else if (!sched_state.pipeB_scheduled_p)
+      sched_state.pipeB_scheduled_p = 1;
+    else
+      return 0;
+
+    sched_state.cached_can_issue_more = partner ? 2 : 1;
   }
 
   return sched_state.cached_can_issue_more;
@@ -368,13 +415,22 @@ arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
 }
 
 bool
-arcv_can_issue_more_p (int issue_rate, int more)
+arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
 {
   /* Beginning of cycle - reset variables.  */
   if (more == issue_rate)
     {
       sched_state.alu_pipe_scheduled_p = 0;
       sched_state.pipeB_scheduled_p = 0;
+    }
+
+  /* Both halves of a fused macro-op issue in the slot reserved for the pair,
+     so neither may be held back by the pipes already looking busy.  */
+  if (insn && NONDEBUG_INSN_P (insn)
+      && (SCHED_GROUP_P (insn) || arcv_fused_partner (insn)))
+    {
+      sched_state.cached_can_issue_more = more;
+      return true;
     }
 
   if (sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
@@ -395,13 +451,12 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
   if (next && single_set (insn) && single_set (next)
       && SCHED_GROUP_P (next))
     {
-      if (get_attr_type (insn) == TYPE_LOAD
-	  || get_attr_type (insn) == TYPE_STORE
-	  || get_attr_type (next) == TYPE_LOAD
-	  || get_attr_type (next) == TYPE_STORE)
+      if (arcv_memory_insn_p (insn) || arcv_memory_insn_p (next))
 	sched_state.pipeB_scheduled_p = 1;
-      else
+      else if (!sched_state.alu_pipe_scheduled_p)
 	sched_state.alu_pipe_scheduled_p = 1;
+      else
+	sched_state.pipeB_scheduled_p = 1;
     }
 
   sched_state.last_scheduled_insn = insn;
