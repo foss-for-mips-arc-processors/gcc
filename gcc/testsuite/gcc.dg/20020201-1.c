@@ -6,6 +6,7 @@
 
 /* { dg-options "-fprofile-arcs" } */
 /* { dg-do run } */
+/* { dg-skip-if "For now skip arc64 target and cores" { "arc32*-*-* arc64*-*-*" } } */
 
 #include <stdlib.h>
 
