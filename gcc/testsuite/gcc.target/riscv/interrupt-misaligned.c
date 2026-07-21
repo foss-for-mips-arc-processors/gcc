@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O2 -march=rv64gc -mabi=lp64d -fno-schedule-insns -fno-schedule-insns2" } */
+/* { dg-options "-O2 -march=rv64gc -mabi=lp64d -fno-schedule-insns -fno-schedule-insns2 -fno-schedule-fusion" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" } } */
 
 /*  Make sure no stack offset are misaligned.
