@@ -390,7 +390,6 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
   if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
-      && recog_memoized (next) >= 0
       && single_set (insn) && single_set (next))
     {
       if (get_attr_type (insn) == TYPE_LOAD
