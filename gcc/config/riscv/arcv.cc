@@ -276,40 +276,50 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
        }
       sched_state.alu_pipe_scheduled_p = 1;
     }
-  /* When pipe B is scheduled, we can have no more memops this cycle.  */
+  /* When pipe B is scheduled, we can have no more memops this cycle.  A memop
+     at the head of the ready list -- a plain load/store, or an ALU insn fused
+     with one -- cannot issue, but pipe A may still be free, so keep looking for
+     a pure-ALU insn to dual-issue there.  */
   if (sched_state.pipeB_scheduled_p && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
       && recog_memoized (ready[*n_readyp - 1]) >= 0
-      && !SCHED_GROUP_P (ready[*n_readyp - 1])
-      && (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
-	  || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE))
+      && !SCHED_GROUP_P (ready[*n_readyp - 1]))
   {
-    if (sched_state.alu_pipe_scheduled_p)
-      return 0;
+    rtx_insn *head_next = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
+    if (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
+	|| get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE
+	|| (head_next && NONDEBUG_INSN_P (head_next)
+	    && SCHED_GROUP_P (head_next) && recog_memoized (head_next) >= 0
+	    && (get_attr_type (head_next) == TYPE_LOAD
+		|| get_attr_type (head_next) == TYPE_STORE)))
+    {
+      if (sched_state.alu_pipe_scheduled_p)
+	return 0;
 
-    for (int i = 2; i <= *n_readyp; i++)
-      {
-       rtx_insn* next_insn
-	 = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
-       if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
-	    && recog_memoized (ready[*n_readyp - i]) >= 0
-	    && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
-	    && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
-	    && !SCHED_GROUP_P (ready[*n_readyp - i])
-	    && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		|| !SCHED_GROUP_P (next_insn)))
-	   || (next_insn && NONDEBUG_INSN_P (next_insn)
-	       && recog_memoized (next_insn) >= 0
-	       && get_attr_type (next_insn) != TYPE_LOAD
-	       && get_attr_type (next_insn) != TYPE_STORE))
-	 {
-	   std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
-	   sched_state.alu_pipe_scheduled_p = 1;
-	   sched_state.cached_can_issue_more = 1;
-	   return 1;
-	 }
-      }
-    return 0;
+      for (int i = 2; i <= *n_readyp; i++)
+	{
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
+	      && recog_memoized (ready[*n_readyp - i]) >= 0
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
+	      && !SCHED_GROUP_P (ready[*n_readyp - i])
+	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		  || !SCHED_GROUP_P (next_insn)))
+	     || (next_insn && NONDEBUG_INSN_P (next_insn)
+		 && recog_memoized (next_insn) >= 0
+		 && get_attr_type (next_insn) != TYPE_LOAD
+		 && get_attr_type (next_insn) != TYPE_STORE))
+	   {
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     sched_state.alu_pipe_scheduled_p = 1;
+	     sched_state.cached_can_issue_more = 1;
+	     return 1;
+	   }
+	}
+      return 0;
+    }
   }
 
   /* No new fusion was formed above, so account for the unit at the head of
@@ -323,22 +333,12 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     bool paired = next_insn && NONDEBUG_INSN_P (next_insn)
 		  && SCHED_GROUP_P (next_insn) && recog_memoized (next_insn) >= 0;
 
-    /* A memory unit -- either half of the pair being a load or store -- needs
-       pipe B, the only one with a DMP.  If it is taken, the unit has to wait
-       for the next cycle.  (A plain memop at the head was already handled by
-       the block above; this catches a pair whose memory half is the second
-       one.)  */
-    if (sched_state.pipeB_scheduled_p
-	&& (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
-	    || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE
-	    || (paired && (get_attr_type (next_insn) == TYPE_LOAD
-			   || get_attr_type (next_insn) == TYPE_STORE))))
-      return 0;
-
-    /* Otherwise the issue budget bounds the cycle -- two slots for a fused
-       pair, one for a single -- and that is what caps issue.  A pair's pipe is
-       reserved by arcv_sched_variable_issue; a single needs no reservation
-       here, as the budget alone ends the cycle after it.  */
+    /* Any head that needs pipe B while it is taken -- a memop, or a pair with a
+       memory half -- was already deferred by the block above.  What is left
+       here can issue, so the issue budget bounds the cycle: two slots for a
+       fused pair, one for a single.  A pair's pipe is reserved by
+       arcv_sched_variable_issue; a single needs no reservation here, as the
+       budget alone ends the cycle after it.  */
     sched_state.cached_can_issue_more = paired ? 2 : 1;
   }
 

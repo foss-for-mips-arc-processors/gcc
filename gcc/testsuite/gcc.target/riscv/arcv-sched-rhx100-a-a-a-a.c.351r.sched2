@@ -1,0 +1,111 @@
+
+;; Function f_a_a_a_a (f_a_a_a_a, funcdef_no=0, decl_uid=2418, cgraph_uid=1, symbol_order=0)
+
+starting the processing of deferred insns
+ending the processing of deferred insns
+df_analyze called
+;;   ======================================================
+;;   -- basic block 2 from 9 to 25 -- after reload
+;;   ======================================================
+
+;;	  0--> b  0: i   9 {a5=asm_operands;a4=asm_operands;a3=asm_operands;a2=asm_operands;}:nothing
+;;	  1--> b  0: i  10 t0=a5^0x3                               :alu
+;;	  2--> b  0: i  11 t1=a4^0x4                               :alu
+;;	  3--> b  0: i  12 t2=a3^0x5                               :alu
+;;	  4--> b  0: i  13 a0=a2^0x6                               :alu
+;;	  5--> b  0: i  14 {asm_operands;clobber [scratch];}       :nothing
+;;	  6--> b  0: i  25 simple_return                           :alu
+;;	Ready list (final):  
+;;   total time = 6
+;;   new head = 9
+;;   new tail = 25
+
+
+
+starting the processing of deferred insns
+ending the processing of deferred insns
+
+
+f_a_a_a_a
+
+Dataflow summary:
+;;  fully invalidated by EH 	 0 [zero] 1 [ra] 3 [gp] 4 [tp] 5 [t0] 6 [t1] 7 [t2] 10 [a0] 11 [a1] 12 [a2] 13 [a3] 14 [a4] 15 [a5] 16 [a6] 17 [a7] 28 [t3] 29 [t4] 30 [t5] 31 [t6] 32 [ft0] 33 [ft1] 34 [ft2] 35 [ft3] 36 [ft4] 37 [ft5] 38 [ft6] 39 [ft7] 40 [fs0] 41 [fs1] 42 [fa0] 43 [fa1] 44 [fa2] 45 [fa3] 46 [fa4] 47 [fa5] 48 [fa6] 49 [fa7] 50 [fs2] 51 [fs3] 52 [fs4] 53 [fs5] 54 [fs6] 55 [fs7] 56 [fs8] 57 [fs9] 58 [fs10] 59 [fs11] 60 [ft8] 61 [ft9] 62 [ft10] 63 [ft11] 66 [vl] 67 [vtype] 68 [vxrm] 69 [frm] 70 [vxsat] 71 [N/A] 72 [N/A] 73 [N/A] 74 [N/A] 75 [N/A] 76 [N/A] 77 [N/A] 78 [N/A] 79 [N/A] 80 [N/A] 81 [N/A] 82 [N/A] 83 [N/A] 84 [N/A] 85 [N/A] 86 [N/A] 87 [N/A] 88 [N/A] 89 [N/A] 90 [N/A] 91 [N/A] 92 [N/A] 93 [N/A] 94 [N/A] 95 [N/A] 96 [v0] 97 [v1] 98 [v2] 99 [v3] 100 [v4] 101 [v5] 102 [v6] 103 [v7] 104 [v8] 105 [v9] 106 [v10] 107 [v11] 108 [v12] 109 [v13] 110 [v14] 111 [v15] 112 [v16] 113 [v17] 114 [v18] 115 [v19] 116 [v20] 117 [v21] 118 [v22] 119 [v23] 120 [v24] 121 [v25] 122 [v26] 123 [v27] 124 [v28] 125 [v29] 126 [v30] 127 [v31]
+;;  hardware regs used 	 2 [sp]
+;;  regular block artificial uses 	 2 [sp]
+;;  eh block artificial uses 	 2 [sp] 64 [arg]
+;;  entry block defs 	 1 [ra] 2 [sp] 10 [a0] 11 [a1] 12 [a2] 13 [a3] 14 [a4] 15 [a5] 16 [a6] 17 [a7]
+;;  exit block uses 	 1 [ra] 2 [sp]
+;;  regs ever live 	 5 [t0] 6 [t1] 7 [t2] 10 [a0] 12 [a2] 13 [a3] 14 [a4] 15 [a5]
+;;  ref usage 	r1={1d,1u} r2={1d,2u} r5={1d,1u} r6={1d,1u} r7={1d,1u} r10={2d,1u} r11={1d} r12={2d,1u} r13={2d,1u} r14={2d,1u} r15={2d,1u} r16={1d} r17={1d} 
+;;    total ref usage 29{18d,11u,0e} in 7{7 regular + 0 call} insns.
+(note 1 0 3 NOTE_INSN_DELETED)
+(note 3 1 23 2 [bb 2] NOTE_INSN_BASIC_BLOCK)
+(note 23 3 2 2 NOTE_INSN_PROLOGUE_END)
+(note 2 23 9 2 NOTE_INSN_FUNCTION_BEG)
+(insn 9 2 10 2 (parallel [
+            (set (reg:SI 15 a5 [orig:142 x0 ] [142])
+                (asm_operands/v:SI ("") ("=r") 0 []
+                     []
+                     [] /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:29))
+            (set (reg:SI 14 a4 [orig:143 x1 ] [143])
+                (asm_operands/v:SI ("") ("=r") 1 []
+                     []
+                     [] /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:29))
+            (set (reg:SI 13 a3 [orig:144 x2 ] [144])
+                (asm_operands/v:SI ("") ("=r") 2 []
+                     []
+                     [] /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:29))
+            (set (reg:SI 12 a2 [orig:145 x3 ] [145])
+                (asm_operands/v:SI ("") ("=r") 3 []
+                     []
+                     [] /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:29))
+        ]) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":29:3 -1
+     (nil))
+(insn 10 9 11 2 (set (reg:SI 5 t0 [orig:146 r0_5 ] [146])
+        (xor:SI (reg:SI 15 a5 [orig:142 x0 ] [142])
+            (const_int 3 [0x3]))) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":30:7 106 {*xorsi3}
+     (expr_list:REG_DEAD (reg:SI 15 a5 [orig:142 x0 ] [142])
+        (nil)))
+(insn 11 10 12 2 (set (reg:SI 6 t1 [orig:147 r1_6 ] [147])
+        (xor:SI (reg:SI 14 a4 [orig:143 x1 ] [143])
+            (const_int 4 [0x4]))) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":31:7 106 {*xorsi3}
+     (expr_list:REG_DEAD (reg:SI 14 a4 [orig:143 x1 ] [143])
+        (nil)))
+(insn 12 11 13 2 (set (reg:SI 7 t2 [orig:148 r2_7 ] [148])
+        (xor:SI (reg:SI 13 a3 [orig:144 x2 ] [144])
+            (const_int 5 [0x5]))) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":32:7 106 {*xorsi3}
+     (expr_list:REG_DEAD (reg:SI 13 a3 [orig:144 x2 ] [144])
+        (nil)))
+(insn 13 12 14 2 (set (reg:SI 10 a0 [orig:149 r3_8 ] [149])
+        (xor:SI (reg:SI 12 a2 [orig:145 x3 ] [145])
+            (const_int 6 [0x6]))) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":33:7 106 {*xorsi3}
+     (expr_list:REG_DEAD (reg:SI 12 a2 [orig:145 x3 ] [145])
+        (nil)))
+(insn 14 13 34 2 (parallel [
+            (asm_operands/v ("") ("") 0 [
+                    (reg:SI 5 t0 [orig:146 r0_5 ] [146])
+                    (reg:SI 6 t1 [orig:147 r1_6 ] [147])
+                    (reg:SI 7 t2 [orig:148 r2_7 ] [148])
+                    (reg:SI 10 a0 [orig:149 r3_8 ] [149])
+                ]
+                 [
+                    (asm_input:SI ("r") /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:34)
+                    (asm_input:SI ("r") /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:34)
+                    (asm_input:SI ("r") /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:34)
+                    (asm_input:SI ("r") /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:34)
+                ]
+                 [] /home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c:34)
+            (clobber (mem:BLK (scratch) [0  A8]))
+        ]) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":34:3 -1
+     (expr_list:REG_DEAD (reg:SI 10 a0 [orig:149 r3_8 ] [149])
+        (expr_list:REG_DEAD (reg:SI 7 t2 [orig:148 r2_7 ] [148])
+            (expr_list:REG_DEAD (reg:SI 6 t1 [orig:147 r1_6 ] [147])
+                (expr_list:REG_DEAD (reg:SI 5 t0 [orig:146 r0_5 ] [146])
+                    (nil))))))
+(note 34 14 25 2 NOTE_INSN_EPILOGUE_BEG)
+(jump_insn 25 34 26 2 (simple_return) "/home/michiel/workspace/gcc/gcc/testsuite/gcc.target/riscv/arcv-sched-rhx100-a-a-a-a.c":35:1 469 {simple_return}
+     (nil)
+ -> simple_return)
+(barrier 26 25 17)
+(note 17 26 18 NOTE_INSN_DELETED)
+(note 18 17 0 NOTE_INSN_DELETED)
