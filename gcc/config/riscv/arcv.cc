@@ -330,16 +330,16 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
       && recog_memoized (ready[*n_readyp - 1]) >= 0)
   {
     rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
-    bool paired = next_insn && NONDEBUG_INSN_P (next_insn)
-		  && SCHED_GROUP_P (next_insn) && recog_memoized (next_insn) >= 0;
 
     /* Any head that needs pipe B while it is taken -- a memop, or a pair with a
        memory half -- was already deferred by the block above.  What is left
        here can issue, so the issue budget bounds the cycle: two slots for a
-       fused pair, one for a single.  A pair's pipe is reserved by
-       arcv_sched_variable_issue; a single needs no reservation here, as the
-       budget alone ends the cycle after it.  */
-    sched_state.cached_can_issue_more = paired ? 2 : 1;
+       fused pair (the second half carries SCHED_GROUP_P), one for a single.  A
+       pair's pipe is reserved by arcv_sched_variable_issue; a single needs no
+       reservation here, as the budget alone ends the cycle after it.  */
+    sched_state.cached_can_issue_more
+      = next_insn && NONDEBUG_INSN_P (next_insn) && SCHED_GROUP_P (next_insn)
+	? 2 : 1;
   }
 
   return sched_state.cached_can_issue_more;
