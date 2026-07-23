@@ -11488,7 +11488,7 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
   if (TARGET_ARCV_RHX100)
-    if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
+    if (!arcv_can_issue_more_p (riscv_issue_rate (), more, insn))
       return 0;
 
   if (DEBUG_INSN_P (insn))

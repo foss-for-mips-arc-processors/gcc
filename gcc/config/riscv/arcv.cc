@@ -280,59 +280,55 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   if (sched_state.pipeB_scheduled_p && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
       && recog_memoized (ready[*n_readyp - 1]) >= 0
-      && !SCHED_GROUP_P (ready[*n_readyp - 1])
-      && (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
-	  || get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE))
+      && !SCHED_GROUP_P (ready[*n_readyp - 1]))
   {
-    if (sched_state.alu_pipe_scheduled_p)
-      return 0;
+    rtx_insn *head_next = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
+    if (get_attr_type (ready[*n_readyp - 1]) == TYPE_LOAD
+	|| get_attr_type (ready[*n_readyp - 1]) == TYPE_STORE
+	|| (head_next && NONDEBUG_INSN_P (head_next)
+	    && SCHED_GROUP_P (head_next) && recog_memoized (head_next) >= 0
+	    && (get_attr_type (head_next) == TYPE_LOAD
+		|| get_attr_type (head_next) == TYPE_STORE)))
+    {
+      if (sched_state.alu_pipe_scheduled_p)
+	return 0;
 
-    for (int i = 2; i <= *n_readyp; i++)
-      {
-       rtx_insn* next_insn
-	 = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
-       if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
-	    && recog_memoized (ready[*n_readyp - i]) >= 0
-	    && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
-	    && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
-	    && !SCHED_GROUP_P (ready[*n_readyp - i])
-	    && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		|| !SCHED_GROUP_P (next_insn)))
-	   || (next_insn && NONDEBUG_INSN_P (next_insn)
-	       && recog_memoized (next_insn) >= 0
-	       && get_attr_type (next_insn) != TYPE_LOAD
-	       && get_attr_type (next_insn) != TYPE_STORE))
-	 {
-	   std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
-	   sched_state.alu_pipe_scheduled_p = 1;
-	   sched_state.cached_can_issue_more = 1;
-	   return 1;
-	 }
-      }
-    return 0;
+      for (int i = 2; i <= *n_readyp; i++)
+	{
+	 rtx_insn* next_insn
+	   = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	 if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
+	      && recog_memoized (ready[*n_readyp - i]) >= 0
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_LOAD
+	      && get_attr_type (ready[*n_readyp - i]) != TYPE_STORE
+	      && !SCHED_GROUP_P (ready[*n_readyp - i])
+	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
+		  || !SCHED_GROUP_P (next_insn)))
+	     || (next_insn && NONDEBUG_INSN_P (next_insn)
+		 && recog_memoized (next_insn) >= 0
+		 && get_attr_type (next_insn) != TYPE_LOAD
+		 && get_attr_type (next_insn) != TYPE_STORE))
+	   {
+	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
+	     sched_state.alu_pipe_scheduled_p = 1;
+	     sched_state.cached_can_issue_more = 1;
+	     return 1;
+	   }
+	}
+      return 0;
+    }
   }
 
-  /* If all else fails, schedule a single instruction.  */
+  /* If all else fails, schedule a single (fused) instruction.  */
   if (ready && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
       && recog_memoized (ready[*n_readyp - 1]) >= 0)
   {
-    rtx_insn *insn = ready[*n_readyp - 1];
-    enum attr_type insn_type = get_attr_type (insn);
+    rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
 
-    /* Memory operations go to pipeB if available.  */
-    if (!sched_state.pipeB_scheduled_p
-       && (insn_type == TYPE_LOAD || insn_type == TYPE_STORE))
-    {
-      sched_state.pipeB_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
-    }
-    /* Non-memory operations go to ALU pipe.  */
-    else if (insn_type != TYPE_LOAD && insn_type != TYPE_STORE)
-    {
-      sched_state.alu_pipe_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
-    }
+    sched_state.cached_can_issue_more
+      = next_insn && NONDEBUG_INSN_P (next_insn) && SCHED_GROUP_P (next_insn)
+	? 2 : 1;
   }
 
   return sched_state.cached_can_issue_more;
@@ -368,7 +364,7 @@ arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
 }
 
 bool
-arcv_can_issue_more_p (int issue_rate, int more)
+arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
 {
   /* Beginning of cycle - reset variables.  */
   if (more == issue_rate)
@@ -377,7 +373,8 @@ arcv_can_issue_more_p (int issue_rate, int more)
       sched_state.pipeB_scheduled_p = 0;
     }
 
-  if (sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
+  if (!(insn && NONDEBUG_INSN_P (insn) && SCHED_GROUP_P (insn))
+      && sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
     {
       sched_state.cached_can_issue_more = 0;
       return false;
@@ -392,13 +389,14 @@ int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
-  if (next && single_set (insn) && single_set (next)
-      && SCHED_GROUP_P (next))
+  if (next && NONDEBUG_INSN_P (next) && SCHED_GROUP_P (next)
+      && single_set (insn) && single_set (next))
     {
       if (get_attr_type (insn) == TYPE_LOAD
 	  || get_attr_type (insn) == TYPE_STORE
 	  || get_attr_type (next) == TYPE_LOAD
-	  || get_attr_type (next) == TYPE_STORE)
+	  || get_attr_type (next) == TYPE_STORE
+	  || sched_state.alu_pipe_scheduled_p)
 	sched_state.pipeB_scheduled_p = 1;
       else
 	sched_state.alu_pipe_scheduled_p = 1;
