@@ -983,7 +983,7 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   (RISCV_FUSE_MULT_ADD | RISCV_FUSE_LI_BRANCH
    | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
    | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
-   | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT
+   | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
    | RISCV_FUSE_LUI_LD_REV),  		       /* fusible_ops */
   NULL,					       /* vector cost */
   NULL,					       /* function_align */
@@ -4712,13 +4712,22 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
 	  return true;
 	}
-      gcc_fallthrough ();
-    case SIGN_EXTRACT:
-      if ((TARGET_XTHEADBB
-	   || riscv_fusion_enabled_p (RISCV_FUSE_BFEXT))
+      if (riscv_fusion_enabled_p (RISCV_FUSE_BFEXT_SRLI)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
+	{
+	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
+	  return true;
+	}
+      gcc_fallthrough ();
+    case SIGN_EXTRACT:
+      if (outer_code == SET
+	  && CONST_INT_P (XEXP (x, 1))
+	  && CONST_INT_P (XEXP (x, 2))
+	  && ((GET_CODE (x) == SIGN_EXTRACT
+	       && riscv_fusion_enabled_p (RISCV_FUSE_BFEXT_SRAI))
+	      || TARGET_XTHEADBB))
 	{
 	  *total = COSTS_N_INSNS (SINGLE_SHIFT_COST);
 	  return true;

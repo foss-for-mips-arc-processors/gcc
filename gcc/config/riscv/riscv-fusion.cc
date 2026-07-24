@@ -872,12 +872,12 @@ riscv_fuse_aligned_std (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Check for RISCV_FUSE_BFEXT fusion.
-   prev (slli) == (set (reg:DI rD) (ashift:DI (reg:DI rS) (const_int)))
-   curr (srli) == (set (reg:DI rD) (lshiftrt:DI (reg:DI rD) (const_int)))  */
+/* Check for RISCV_FUSE_BFEXT_SRLI / RISCV_FUSE_BFEXT_SRAI fusion.
+   prev (slli) == (set (reg rD) (ashift (reg rS) (const_int)))
+   curr (srli/srai) == (set (reg rD) (lshiftrt/ashiftrt (reg rD) (const_int)))  */
 
 static bool
-riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
+riscv_fuse_bfext_shift_p (rtx_insn *prev, rtx_insn *curr, enum rtx_code shift)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
@@ -888,8 +888,7 @@ riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   if (GET_CODE (SET_SRC (prev_set)) == ASHIFT
-      && (GET_CODE (SET_SRC (curr_set)) == LSHIFTRT
-	  || GET_CODE (SET_SRC (curr_set)) == ASHIFTRT)
+      && GET_CODE (SET_SRC (curr_set)) == shift
       && REG_P (SET_DEST (prev_set))
       && REG_P (SET_DEST (curr_set))
       && REG_P (XEXP (SET_SRC (curr_set), 0))
@@ -899,6 +898,26 @@ riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
     return true;
 
   return false;
+}
+
+/* Check for RISCV_FUSE_BFEXT_SRLI fusion.
+   prev (slli) == (set (reg rD) (ashift (reg rS) (const_int)))
+   curr (srli) == (set (reg rD) (lshiftrt (reg rD) (const_int)))  */
+
+static bool
+riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_bfext_shift_p (prev, curr, LSHIFTRT);
+}
+
+/* Check for RISCV_FUSE_BFEXT_SRAI fusion.
+   prev (slli) == (set (reg rD) (ashift (reg rS) (const_int)))
+   curr (srai) == (set (reg rD) (ashiftrt (reg rD) (const_int)))  */
+
+static bool
+riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_bfext_shift_p (prev, curr, ASHIFTRT);
 }
 
 /* Check for RISCV_FUSE_B_ALUI fusion.
@@ -1246,8 +1265,10 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_cache_aligned_std, "RISCV_FUSE_CACHE_ALIGNED_STD" },
   { RISCV_FUSE_ALIGNED_STD,
     riscv_fuse_aligned_std, "RISCV_FUSE_ALIGNED_STD" },
-  { RISCV_FUSE_BFEXT,
-    riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
+  { RISCV_FUSE_BFEXT_SRLI,
+    riscv_fuse_bfext_srli, "RISCV_FUSE_BFEXT_SRLI" },
+  { RISCV_FUSE_BFEXT_SRAI,
+    riscv_fuse_bfext_srai, "RISCV_FUSE_BFEXT_SRAI" },
   { RISCV_FUSE_B_ALUI,
     riscv_fuse_b_alui, "RISCV_FUSE_B_ALUI" },
   { RISCV_FUSE_MULT_ADD,
