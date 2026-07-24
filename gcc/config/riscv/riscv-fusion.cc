@@ -657,20 +657,35 @@ riscv_fuse_auipc_addi (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Check for RISCV_FUSE_LUI_LD fusion.
-   prev (lui) == (set (reg:DI rD) (const_int UPPER_IMM_20))
-   curr (ld)  == (set (reg:DI rD) (mem:DI (plus:DI (reg:DI rD) ...)))  */
+/* Common lui+ld fusion matcher.
+   SAME_DEST_REGS: if true, require same dest (via same_dest_p); if false,
+   require different dests via REGNO (same_dest_p is always true before reload).
+   MATCH_INPUT_REG: if true, load must use the lui dest as base; if false,
+   any load after a lui is enough (Fused_LD_LUI).  */
 
 static bool
-riscv_fuse_lui_ld (rtx_insn *prev, rtx_insn *curr)
+riscv_fuse_lui_ld_pair_p (rtx_insn *prev, rtx_insn *curr,
+			  bool same_dest_regs, bool match_input_reg)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  if (!riscv_fusion_same_dest_p (prev_set, curr_set))
+  if (same_dest_regs)
+    {
+      if (!riscv_fusion_same_dest_p (prev_set, curr_set))
+	return false;
+    }
+  else if (!REG_P (SET_DEST (prev_set)) || !REG_P (SET_DEST (curr_set))
+	   || REGNO (SET_DEST (prev_set)) == REGNO (SET_DEST (curr_set)))
     return false;
+
+  if (!match_input_reg)
+    return ((GET_CODE (SET_SRC (prev_set)) == HIGH
+	     || (CONST_INT_P (SET_SRC (prev_set))
+		 && LUI_NONZERO_OPERAND (INTVAL (SET_SRC (prev_set)))))
+	    && get_attr_type (curr) == TYPE_LOAD);
 
   if (CONST_INT_P (SET_SRC (prev_set))
       && LUI_NONZERO_OPERAND (INTVAL (SET_SRC (prev_set)))
@@ -703,6 +718,18 @@ riscv_fuse_lui_ld (rtx_insn *prev, rtx_insn *curr)
     return true;
 
   return false;
+}
+
+/* Check for RISCV_FUSE_LUI_LD fusion.
+   prev (lui) == (set (reg:DI rD) (const_int UPPER_IMM_20))
+   curr (ld)  == (set (reg:DI rD) (mem:DI (plus:DI (reg:DI rD) ...)))  */
+
+static bool
+riscv_fuse_lui_ld (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_lui_ld_pair_p (prev, curr,
+				   /* same_dest_regs */ true,
+				   /* match_input_reg */ true);
 }
 
 /* Check for RISCV_FUSE_AUIPC_LD fusion.
@@ -1160,30 +1187,17 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Check for RISCV_FUSE_LUI_LD_REV fusion (reversed LUI+LD).
-   prev (ld)  == (set (reg:DI rD1)
-		      (mem:DI (plus:DI (reg:DI rX) (const_int IMM12))))
-   curr (lui) == (set (reg:DI rD2) (const_int UPPER_IMM_20))
-   where rD1 != rD2  */
+/* Check for RISCV_FUSE_LUI_LD_REV fusion (reversible).  */
 
 static bool
-riscv_fuse_lui_ld_rev (rtx_insn *prev, rtx_insn *curr)
+riscv_fuse_lui_ld_reversible (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (get_attr_type (prev) == TYPE_LOAD
-      && REG_P (SET_DEST (prev_set))
-      && REG_P (SET_DEST (curr_set))
-      && (GET_CODE (SET_SRC (curr_set)) == HIGH
-	  || (CONST_INT_P (SET_SRC (curr_set))
-	      && LUI_NONZERO_OPERAND (INTVAL (SET_SRC (curr_set)))))
-      && REGNO (SET_DEST (prev_set)) != REGNO (SET_DEST (curr_set)))
-    return true;
-
-  return false;
+  return (riscv_fuse_lui_ld_pair_p (prev, curr,
+				    /* same_dest_regs */ false,
+				    /* match_input_reg */ false)
+	  || riscv_fuse_lui_ld_pair_p (curr, prev,
+				       /* same_dest_regs */ false,
+				       /* match_input_reg */ false));
 }
 
 /* Type for a fusion checker function.  Takes the two candidate insns
@@ -1251,7 +1265,7 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
   { RISCV_FUSE_LI_STORE,
     riscv_fuse_li_store, "RISCV_FUSE_LI_STORE" },
   { RISCV_FUSE_LUI_LD_REV,
-    riscv_fuse_lui_ld_rev, "RISCV_FUSE_LUI_LD_REV" },
+    riscv_fuse_lui_ld_reversible, "RISCV_FUSE_LUI_LD_REV" },
 };
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR

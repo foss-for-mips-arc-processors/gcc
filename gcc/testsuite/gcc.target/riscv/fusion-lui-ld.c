@@ -22,5 +22,4 @@ fuse_lui_ld_rev (volatile int *p, int val)
   return a + b + c + d + val;
 }
 
-/* { dg-final { scan-rtl-dump "RISCV_FUSE_LUI_LD" "sched2" } } */
 /* { dg-final { scan-rtl-dump "RISCV_FUSE_LUI_LD_REV" "sched2" } } */
