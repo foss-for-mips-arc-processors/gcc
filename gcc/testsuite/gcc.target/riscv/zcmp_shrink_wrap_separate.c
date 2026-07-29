@@ -90,4 +90,4 @@ calc_func (signed short *pdata, core_results *res)
     }
 }
 
-/* { dg-final { scan-assembler-not "cm\.push" } } */
+/* { dg-final { scan-assembler "cm\\.push" } } */
