@@ -68,6 +68,12 @@ jobs:
       - name: Initialize required submodules
         working-directory: riscv-gnu-toolchain
         run: |
+          # sourceware.org rate-limits GitHub Actions runners over HTTPS,
+          # fetch the via the git:// instead.
+          git submodule set-url binutils git://sourceware.org/git/binutils-gdb.git
+          git submodule set-url newlib git://sourceware.org/git/newlib-cygwin.git
+          git submodule sync binutils newlib
+
           # Only fetch submodules required for a newlib (--disable-linux) build:
           # binutils, newlib, dejagnu. GCC sources come from the PR checkout
           # via --with-gcc-src, so we don't initialize the gcc submodule.
