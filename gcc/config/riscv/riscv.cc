@@ -850,7 +850,7 @@ static const struct riscv_tune_param arcv_rmx100_tune_info = {
   {COSTS_N_INSNS (17), COSTS_N_INSNS (17)},	/* int_div */
   1,						/* issue_rate */
   4,						/* branch_cost */
-  2,						/* memory_cost */
+  4,						/* memory_cost */
   4,						/* fmv_cost */
   false,					/* slow_unaligned_access */
   false,					/* vector_unaligned_access */
@@ -875,7 +875,7 @@ static const struct riscv_tune_param arcv_rmx500_tune_info = {
   {COSTS_N_INSNS (21), COSTS_N_INSNS (21)},	/* int_div */
   2,						/* issue_rate */
   9,						/* branch_cost */
-  2,						/* memory_cost */
+  4,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
   false,					/* vector_unaligned_access */
@@ -900,7 +900,7 @@ static const struct riscv_tune_param arcv_rhx100_tune_info = {
   {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
   4,						/* issue_rate */
   9,						/* branch_cost */
-  2,						/* memory_cost */
+  4,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
   false,					/* vector_unaligned_access */
@@ -925,7 +925,7 @@ static const struct riscv_tune_param arcv_rpx100_tune_info = {
   {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},	/* int_div */
   4,						/* issue_rate */
   9,						/* branch_cost */
-  2,						/* memory_cost */
+  4,						/* memory_cost */
   8,						/* fmv_cost */
   false,					/* slow_unaligned_access */
   false,					/* vector_unaligned_access */
