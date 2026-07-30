@@ -6267,7 +6267,7 @@ archs4x, archs4xd"
 ;; Split sign-extension of single least significant bit as and x,$1;neg x
 (define_insn_and_split "*extvsi_1_0"
   [(set (match_operand:SI 0 "register_operand" "=r")
-	(sign_extract:SI (match_operand:SI 1 "register_operand" "0")
+	(sign_extract:SI (match_operand:SI 1 "register_operand" "r")
 			 (const_int 1)
 			 (const_int 0)))]
   "!TARGET_BARREL_SHIFTER"
@@ -6280,7 +6280,7 @@ archs4x, archs4xd"
 
 (define_insn_and_split "*extvsi_n_0"
   [(set (match_operand:SI 0 "register_operand" "=r")
-	(sign_extract:SI (match_operand:SI 1 "register_operand" "0")
+	(sign_extract:SI (match_operand:SI 1 "register_operand" "r")
 			 (match_operand:QI 2 "const_int_operand")
 			 (const_int 0)))]
   "!TARGET_BARREL_SHIFTER
