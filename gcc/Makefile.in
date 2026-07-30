@@ -1394,6 +1394,7 @@ OBJS = \
 	insn-output.o \
 	insn-peep.o \
 	insn-preds.o \
+	insn-uid-debug.o \
 	$(INSNRECOG_SEQ_O) \
 	insn-enums.o \
 	ggc-page.o \

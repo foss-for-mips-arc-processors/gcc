@@ -85,6 +85,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "diagnostic.h"
 
 #include "dwarf2out.h"
+#include "insn-uid-debug.h"
 
 /* Most ports don't need to define CC_STATUS_INIT.
    So define a null default for it to save conditionalization later.  */
@@ -1783,6 +1784,8 @@ final_start_function_1 (rtx_insn **firstp, FILE *file, int *seen,
      be emitted when NOTE_INSN_PROLOGUE_END is scanned.  */
   if (! targetm.have_prologue ())
     profile_after_prologue (file);
+
+  insn_uid_debug_begin_function ();
 }
 
 /* This is an exported final_start_function_1, callable without SEEN.  */
@@ -1855,6 +1858,8 @@ void
 final_end_function (void)
 {
   app_disable ();
+
+  insn_uid_debug_end_function ();
 
   if (!DECL_IGNORED_P (current_function_decl))
     debug_hooks->end_function (high_function_linenum);
@@ -2600,6 +2605,7 @@ final_scan_insn_1 (rtx_insn *insn, FILE *file, int optimize_p ATTRIBUTE_UNUSED,
 		if (*loc.file && loc.line)
 		  fprintf (asm_out_file, "%s %i \"%s\" 1\n",
 			   ASM_COMMENT_START, loc.line, loc.file);
+		insn_uid_debug_emit_insn_label (file, insn);
 		fprintf (asm_out_file, "\t%s\n", string);
 #if HAVE_AS_LINE_ZERO
 		if (*loc.file && loc.line)
@@ -2639,6 +2645,7 @@ final_scan_insn_1 (rtx_insn *insn, FILE *file, int optimize_p ATTRIBUTE_UNUSED,
 		if (expanded.file && expanded.line)
 		  fprintf (asm_out_file, "%s %i \"%s\" 1\n",
 			   ASM_COMMENT_START, expanded.line, expanded.file);
+		insn_uid_debug_emit_insn_label (file, insn);
 	        output_asm_insn (string, ops);
 #if HAVE_AS_LINE_ZERO
 		if (expanded.file && expanded.line)
@@ -2843,6 +2850,7 @@ final_scan_insn_1 (rtx_insn *insn, FILE *file, int optimize_p ATTRIBUTE_UNUSED,
 	  }
 
 	/* Output assembler code from the template.  */
+	insn_uid_debug_emit_insn_label (file, insn);
 	output_asm_insn (templ, recog_data.operand);
 
 	/* Some target machines need to postscan each insn after
