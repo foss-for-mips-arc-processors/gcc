@@ -85,6 +85,9 @@ arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
   if (!TARGET_ARCV_FUSION)
     return true;
 
+  if (!TARGET_ARCV_ADJACENT_MEM_FUSION)
+    return false;
+
   return ((is_load && (mode == DImode
 		     || mode == SImode
 		     || mode == HImode
