@@ -331,7 +331,9 @@ arcv_memop_p (rtx_insn *insn)
 
 /* Helper function to check if the pair of instructions prev/curr
  * are comformant with pre- or post-update memory operation.
-   Examples: load+add, add+load, store+add, add+store.  */
+   Examples: load+add, add+load, store+add, add+store.
+   ls_update requires that there is only 1 rs1 or rs2
+   used by the instructions together, except zero.  */
 
 static bool
 arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
@@ -359,7 +361,9 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   int c_rs1 = INVALID_REGNUM;
   int c_rs2 = INVALID_REGNUM;
 
-  if (REG_P (c_src))
+  if (REG_P (c_src) && (TARGET_RVC  || TARGET_ZCA))
+    c_rs2 = REGNO (c_src);
+  else if (REG_P (c_src))
     c_rs1 = REGNO (c_src);
   else
     {
@@ -417,7 +421,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 	int p_rs = REGNO (base);
 	int p_rd = REGNO (p_dest);
 
-	return p_rs == c_rs1
+	return (p_rs == c_rs1 || c_rs1 == (int) INVALID_REGNUM)
 	       && p_rs != p_rd
 	       && p_rd != c_rd
 	       && !reg_overlap_mentioned_p (p_dest, c_src);
@@ -436,7 +440,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
 	int p_rs = REGNO (base);
 
-	if (p_rs != c_rs1)
+	if (p_rs != c_rs1 && c_rs1 != (int) INVALID_REGNUM)
 	  return false;
 
 	if (c_rs2 == (int) INVALID_REGNUM)
