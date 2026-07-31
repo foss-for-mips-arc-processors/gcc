@@ -663,7 +663,7 @@ static const struct riscv_tune_param arcv_rpx100_tune_info = {
    | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
    | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
    | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
-   | RISCV_FUSE_LUI_LD_REV),			/* fusible_ops */
+   | RISCV_FUSE_LUI_LD_REV | RISCV_FUSE_BONDED_MUL), /* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
@@ -11682,9 +11682,9 @@ static int
 riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
-  /* Use ARCV-specific cost adjustment for RHX-100.  */
+  /* Use ARCV-specific cost adjustment for RHX/RPX.  */
   if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
-    return arcv_sched_adjust_cost (insn, dep_type, cost);
+    return arcv_sched_adjust_cost (insn, dep_type, dep_insn, cost);
 
   /* Only do adjustments for the generic out-of-order and spacemit_x60
      scheduling model.  */

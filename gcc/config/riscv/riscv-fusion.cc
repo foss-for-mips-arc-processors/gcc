@@ -1220,6 +1220,67 @@ riscv_fuse_lui_ld_reversible (rtx_insn *prev, rtx_insn *curr)
 				       /* match_input_reg */ false));
 }
 
+/* Check for RISCV_FUSE_BONDED_MUL fusion.
+   prev: (set rd_hi (mulh(u/su) rs1 rs2))
+   curr: (set rd_lo (mul rs1 rs2))
+   where rd_hi != rs1 && rd_hi != rs2.  */
+
+static bool
+riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  if (!prev_set || !curr_set
+      || GET_CODE (SET_SRC (curr_set)) != MULT)
+    return false;
+
+  /* Multiply-high pattern:
+     (set (reg DEST)
+	  (truncate (lshiftrt (mult (extend (OP0)) (extend (OP1)))
+			      (const_int 64)))).  */
+  rtx truncate = SET_SRC (prev_set);
+  if (GET_CODE (truncate) != TRUNCATE)
+    return false;
+
+  rtx lshiftrt = XEXP (truncate, 0);
+  if (GET_CODE (lshiftrt) != LSHIFTRT)
+    return false;
+
+  rtx shift_amount = XEXP (lshiftrt, 1);
+  rtx mult = XEXP (lshiftrt, 0);
+  if (!CONST_INT_P (shift_amount) || INTVAL (shift_amount) != 64
+      || GET_CODE (mult) != MULT)
+    return false;
+
+  rtx prev_op0 = XEXP (mult, 0);
+  rtx prev_op1 = XEXP (mult, 1);
+  rtx prev_dest = SET_DEST (prev_set);
+
+  if (GET_CODE (prev_op0) == ZERO_EXTEND || GET_CODE (prev_op0) == SIGN_EXTEND)
+    prev_op0 = XEXP (prev_op0, 0);
+  if (GET_CODE (prev_op1) == ZERO_EXTEND || GET_CODE (prev_op1) == SIGN_EXTEND)
+    prev_op1 = XEXP (prev_op1, 0);
+
+  if (GET_CODE (prev_op0) == SUBREG)
+    prev_op0 = SUBREG_REG (prev_op0);
+  if (GET_CODE (prev_op1) == SUBREG)
+    prev_op1 = SUBREG_REG (prev_op1);
+
+  if (!REG_P (prev_op0) || !REG_P (prev_op1) || !REG_P (prev_dest))
+    return false;
+
+  rtx curr_src = SET_SRC (curr_set);
+  rtx curr_op0 = XEXP (curr_src, 0);
+  rtx curr_op1 = XEXP (curr_src, 1);
+
+  return (REG_P (curr_op0) && REG_P (curr_op1)
+	  && REGNO (prev_op0) == REGNO (curr_op0)
+	  && REGNO (prev_op1) == REGNO (curr_op1)
+	  && REGNO (prev_dest) != REGNO (prev_op0)
+	  && REGNO (prev_dest) != REGNO (prev_op1));
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -1288,6 +1349,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_li_store, "RISCV_FUSE_LI_STORE" },
   { RISCV_FUSE_LUI_LD_REV,
     riscv_fuse_lui_ld_reversible, "RISCV_FUSE_LUI_LD_REV" },
+  { RISCV_FUSE_BONDED_MUL,
+    riscv_fuse_bonded_mul, "RISCV_FUSE_BONDED_MUL" },
 };
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR

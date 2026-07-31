@@ -359,8 +359,23 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 /* Adjust scheduling cost for ARCV fusion.  */
 
 int
-arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, int cost)
+arcv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
+			int cost)
 {
+  /* Bonded mulh+mul: low-part result is available 1 cycle sooner.  */
+  if (riscv_fusion_enabled_p (RISCV_FUSE_BONDED_MUL)
+      && dep_type == REG_DEP_TRUE
+      && SCHED_GROUP_P (dep_insn))
+    {
+      rtx_insn *prev_insn = prev_nondebug_insn (dep_insn);
+      if (prev_insn
+	  && recog_memoized (prev_insn) >= 0
+	  && recog_memoized (dep_insn) >= 0
+	  && get_attr_mul_part (prev_insn) == MUL_PART_HIGH
+	  && get_attr_mul_part (dep_insn) == MUL_PART_LOW)
+	return cost - 1;
+    }
+
   if (dep_type == REG_DEP_ANTI && !SCHED_GROUP_P (insn))
     return cost + 1;
 

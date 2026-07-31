@@ -876,6 +876,7 @@ enum riscv_fusion_pairs
   RISCV_FUSE_LI_STORE = (1 << 20),
   RISCV_FUSE_LUI_LD_REV = (1 << 21),
   RISCV_FUSE_BFEXT_SRAI = (1 << 22),
+  RISCV_FUSE_BONDED_MUL = (1 << 23),
 };
 
 extern bool riscv_macro_fusion_p (void);
@@ -920,7 +921,7 @@ extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
 extern int arcv_sched_adjust_priority (rtx_insn *, int);
-extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, rtx_insn *, int);
 extern bool arcv_can_issue_more_p (int, int, rtx_insn *);
 extern int arcv_sched_variable_issue (rtx_insn *, int);
 
