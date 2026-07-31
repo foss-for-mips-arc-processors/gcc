@@ -2481,6 +2481,7 @@
    #
    #"
   "&& reload_completed
+   && TARGET_64BIT
    && arc64_split_double_move_p (operands, <MODE>mode)"
   [(const_int 0)]
   {

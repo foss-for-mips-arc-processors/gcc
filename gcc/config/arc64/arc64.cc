@@ -512,7 +512,18 @@ arc64_save_reg_p (int regno)
   return false;
 }
 
-/* Compute the frame info.  */
+/* This function calculates the stack frame before the compiler outputs
+   the prologue and epilogue instructions.
+   It takes care of the stack allocation calculating frame sizes and
+   tracking memory byte offsets for every callee saved register.
+
+   On 32 bit like hs5x running double precision FPU logic without a native
+   64bit wide load/store unit (!TARGET_LL64) tje 64 bit
+   double words (DFmode) cannot be transferred atomically.  They must be split.
+   This function dynamically assigns a separate, individual 32 bit word slot
+   (UNITS_PER_WORD) to both halves of an FPU register pair sequentially.
+   By manually stepping the iterator (regno += 2) we take care that the low
+   half and high half are allocated next to eachother.  */
 
 static void
 arc64_compute_frame_info (void)
@@ -527,23 +538,41 @@ arc64_compute_frame_info (void)
 
   if (!ARC_NAKED_P(cfun->machine->fn_type))
     {
+      /* Initialize the offset tracking array to unallocated (-1) status.  */
+      for (regno = 0; regno < FIRST_PSEUDO_REGISTER; regno++)
+	frame->reg_offset[regno] = -1;
+
       /* Find out which GPR need to be saved.  */
-      for (regno = R0_REGNUM, offset = 0;
-	   regno <= F31_REGNUM;
-	   regno++)
+      /* Move the iterator step inside the loop body to control
+	 64bit FPU pairs dynamically when compiling for hs5x.  */
+      for (regno = R0_REGNUM, offset = 0; regno <= F31_REGNUM;)
 	if (arc64_save_reg_p (regno))
 	  {
-	    /* TBI: probably I need to make the saving of the FP registers
-	       separate bulk from GPIs such that I can use latter on enter/leave
-	       instruction seamlessly (i.e. first save FPregs/latter GPI, the
-	       leave return feature will not work).  */
-	    /* TBI: the FPUS only configuration is having only 32bit registers,
-	       thus I can stack 2 FP registers in one stack slot ;).  */
+	    /* Separate FPU registers when double prec is active and the
+	       hardware lacks native 64 bit load/store support
+	       (!TARGET_LL64). */
+	    if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno)
+		&& ARC64_HAS_FPUD && !TARGET_LL64)
+	      {
+		frame->reg_offset[regno] = offset;
+		offset += UNITS_PER_WORD;
+
+		frame->reg_offset[regno + 1] = offset;
+		offset += UNITS_PER_WORD;
+
+		regno += 2;
+		continue;
+	      }
+
 	    frame->reg_offset[regno] = offset;
 	    offset += UNITS_PER_WORD;
+	    regno++;
 	  }
 	else
-	  frame->reg_offset[regno] = -1;
+	  {
+	    frame->reg_offset[regno] = -1;
+	    regno++;
+	  }
 
       /* Check if we need to save the return address.  */
       if (!crtl->is_leaf
@@ -610,16 +639,41 @@ frame_stack_add (HOST_WIDE_INT offset)
 					    offset)));
 }
 
-/* Helper for prologue: emit frame store with pre_modify or pre_dec to
-   save register REG on stack.  An initial offset OFFSET can be passed
-   to the function.  If a DISPLACEMENT is defined, it will be used to
-   generate pre_modify instead of pre_dec.  */
-
 static HOST_WIDE_INT
 frame_save_reg (rtx reg, HOST_WIDE_INT offset, HOST_WIDE_INT displacement)
 {
   rtx addr, tmp;
 
+  if (!TARGET_LL64 && REG_P (reg) && FP_REGNUM_P (REGNO (reg)))
+    {
+      machine_mode mode = GET_MODE (reg);
+      HOST_WIDE_INT mode_size = GET_MODE_SIZE (mode);
+
+      HOST_WIDE_INT actual_offset = offset - 
+	      (displacement ? displacement : mode_size);
+
+      rtx flat_addr = plus_constant (Pmode, stack_pointer_rtx, actual_offset);
+      addr = gen_frame_mem (GET_MODE (reg), flat_addr);
+
+      /* stack_pointer_rtx will determined the mode of the add - depending if 
+       * the core is 64/32 bit. */
+      rtx sp_adjust = emit_insn (gen_add3_insn (stack_pointer_rtx,
+                                                stack_pointer_rtx, 
+                                                GEN_INT (actual_offset)));
+      
+      RTX_FRAME_RELATED_P (sp_adjust) = 1;
+      add_reg_note (sp_adjust, REG_CFA_ADJUST_CFA, gen_rtx_SET (
+        stack_pointer_rtx, plus_constant (Pmode,
+                stack_pointer_rtx, actual_offset)));
+
+      tmp = emit_move_insn (addr, reg);
+      RTX_FRAME_RELATED_P (tmp) = 1;
+
+      return (displacement ? displacement : GET_MODE_SIZE (GET_MODE (reg)))
+              - offset;
+    }
+
+  /* Original code for hs6x target registers.  */
   if (offset)
     {
       tmp = plus_constant (Pmode, stack_pointer_rtx,
@@ -659,21 +713,64 @@ arc64_save_callee_saves (void)
   HOST_WIDE_INT frame_allocated = 0;
   rtx reg;
 
-  for (regno = F31_REGNUM; regno >= R0_REGNUM; regno--)
+  for (regno = F31_REGNUM; regno >= R0_REGNUM;)
     {
       HOST_WIDE_INT disp = 0;
       if (frame->reg_offset[regno] == -1
 	  /* Hard frame pointer is saved in a different place.  */
 	  || (frame_pointer_needed && regno == R27_REGNUM)
-	  /* blink register is saved in a different place.  */
 	  || (regno == BLINK_REGNUM))
-	continue;
+	{
+	  regno--;
+	  continue;
+	}
 
       save_mode = word_mode;
       if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
 	{
 	  save_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
+
+	  if (save_mode == DFmode && !TARGET_LL64)
+	    {
+	      /* Force pass through general purpose registers.
+		 Move FPU data to r12:r13, allocate stack space, and
+		 store via core GPR paths.  */
+	      int even_base = (regno % 2 == 0) ? regno : regno - 1;
+	      rtx sp_reg = stack_pointer_rtx;
+
+	      rtx gpr_lo = gen_rtx_REG (SImode, R12_REGNUM); /* r12.  */
+	      rtx gpr_hi = gen_rtx_REG (SImode, R13_REGNUM); /* r13.  */
+	      rtx fpu_lo = gen_rtx_REG (SImode, even_base);
+	      rtx fpu_hi = gen_rtx_REG (SImode, even_base + 1);
+
+	      emit_move_insn (gpr_lo, fpu_lo);
+	      emit_move_insn (gpr_hi, fpu_hi);
+
+	      rtx insn_sp = emit_insn (gen_addsi3 (sp_reg, sp_reg,
+				      GEN_INT (-8)));
+	      RTX_FRAME_RELATED_P (insn_sp) = 1;
+	      add_reg_note (insn_sp, REG_CFA_ADJUST_CFA, gen_rtx_SET (sp_reg,
+				      plus_constant (SImode, sp_reg, -8)));
+
+	      rtx insn_lo = emit_move_insn (gen_frame_mem
+			      (SImode, sp_reg), gpr_lo);
+	      RTX_FRAME_RELATED_P (insn_lo) = 1;
+
+	      rtx insn_hi = emit_move_insn (gen_frame_mem (SImode,
+			    plus_constant (SImode, sp_reg, 4)), gpr_hi);
+	      RTX_FRAME_RELATED_P (insn_hi) = 1;
+
+	      add_reg_note (insn_lo, REG_CFA_OFFSET, gen_rtx_SET (
+			    gen_frame_mem (SImode, sp_reg), fpu_lo));
+	      add_reg_note (insn_hi, REG_CFA_OFFSET, gen_rtx_SET (
+	      gen_frame_mem (SImode, plus_constant (SImode, sp_reg, 4)),
+	      fpu_hi));
+
+	      frame_allocated += 8;
+	      regno = even_base - 1;
+	      continue;
+	    }
 	}
       else if (regno >= 1
 	       && (((regno - 1) % 2) == 0)
@@ -696,6 +793,7 @@ arc64_save_callee_saves (void)
       reg = gen_rtx_REG (save_mode, regno);
       frame_allocated += frame_save_reg (reg, offset, disp);
       offset = 0;
+      --regno;
     }
 
   /* Save BLINK if required.  */
@@ -723,15 +821,44 @@ arc64_save_callee_saves (void)
   return frame_allocated;
 }
 
-/* Helper for epilogue: emit frame load with post_modify or post_inc
-   to restore register REG from stack.  The initial offset is passed
-   via OFFSET.  */
+/* This function emits the individual movement instructions
+   necessary during the function epilog to restore a single callee saved
+   register from its slot in the stack frame.  It also handles the tracking
+   of stack pointer deallocation.  It returns the number of bytes out off
+   the stack.  */
 
 static HOST_WIDE_INT
 frame_restore_reg (rtx reg, HOST_WIDE_INT displacement)
 {
   rtx addr, insn, tmp;
 
+  /* Try to force flat linear pop sequences for FPU registers.  */
+  if (!TARGET_LL64 && REG_P (reg) && FP_REGNUM_P (REGNO (reg)))
+    {
+      HOST_WIDE_INT actual_disp = displacement ? displacement :
+				  GET_MODE_SIZE (GET_MODE (reg));
+
+      /* Load from the current flat frame stack slice address without
+	 post increment.  */
+      rtx flat_addr = plus_constant (Pmode, stack_pointer_rtx, displacement);
+      addr = gen_frame_mem (GET_MODE (reg), flat_addr);
+
+      insn = emit_move_insn (reg, addr);
+      RTX_FRAME_RELATED_P (insn) = 1;
+      add_reg_note (insn, REG_CFA_RESTORE, reg);
+
+      rtx sp_adjust = emit_insn (gen_addsi3 (stack_pointer_rtx,
+			  stack_pointer_rtx, GEN_INT (actual_disp)));
+      RTX_FRAME_RELATED_P (sp_adjust) = 1;
+      add_reg_note (sp_adjust, REG_CFA_ADJUST_CFA,
+		    gen_rtx_SET (stack_pointer_rtx, plus_constant (Pmode,
+				    stack_pointer_rtx, actual_disp)));
+
+      return actual_disp;
+    }
+
+  /* Original native logic continues untouched for integer and
+     hs6x target registers.  */
   if (displacement)
     {
       tmp = plus_constant (Pmode, stack_pointer_rtx, displacement);
@@ -759,8 +886,6 @@ frame_restore_reg (rtx reg, HOST_WIDE_INT displacement)
 
   return displacement ? displacement : GET_MODE_SIZE (GET_MODE (reg));
 }
-
-/* ARC' epilogue restore regs routine.  */
 
 static HOST_WIDE_INT
 arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
@@ -796,7 +921,7 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
       frame_deallocated += frame_restore_reg (reg, 0);
     }
 
-  for (regno = R0_REGNUM; regno <= F31_REGNUM; regno++)
+  for (regno = R0_REGNUM; regno <= F31_REGNUM;)
     {
       HOST_WIDE_INT disp = 0;
       bool double_load_p = false;
@@ -806,13 +931,55 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
 	  || (frame_pointer_needed && regno == R27_REGNUM)
 	  /* blink register has been restored.  */
 	  || (regno == BLINK_REGNUM))
-	continue;
+	{
+	  regno++;
+	  continue;
+	}
 
       restore_mode = word_mode;
       if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
 	{
 	  restore_mode = ARC64_HAS_FPUD ? DFmode : SFmode;
 	  disp = UNITS_PER_WORD;
+
+	  if (restore_mode == DFmode && !TARGET_LL64)
+	    {
+	      int even_base = (regno % 2 == 0) ? regno : regno - 1;
+	      rtx sp_reg = stack_pointer_rtx;
+
+	      rtx gpr_lo = gen_rtx_REG (SImode, R12_REGNUM); /* r12.  */
+	      rtx gpr_hi = gen_rtx_REG (SImode, R13_REGNUM); /* r13.  */
+	      rtx fpu_lo = gen_rtx_REG (SImode, even_base);
+	      rtx fpu_hi = gen_rtx_REG (SImode, even_base + 1);
+
+	      /* extract data back into core pipeline registers first via
+		 standard loads (ld) */
+	      rtx insn_lo = emit_move_insn (gpr_lo,
+			      gen_frame_mem (SImode, sp_reg));
+	      RTX_FRAME_RELATED_P (insn_lo) = 1;
+	      add_reg_note (insn_lo, REG_CFA_RESTORE, fpu_lo);
+
+	      rtx insn_hi = emit_move_insn (gpr_hi, gen_frame_mem (SImode,
+				      plus_constant (SImode, sp_reg, 4)));
+	      RTX_FRAME_RELATED_P (insn_hi) = 1;
+	      add_reg_note (insn_hi, REG_CFA_RESTORE, fpu_hi);
+
+	      /* Move data from GPRs back to the final FPU register halves.  */
+	      emit_move_insn (fpu_lo, gpr_lo);
+	      emit_move_insn (fpu_hi, gpr_hi);
+
+	      /* get stack allocations manually.  */
+	      rtx insn_sp = emit_insn (gen_addsi3 (sp_reg, sp_reg,
+				      GEN_INT (8)));
+	      RTX_FRAME_RELATED_P (insn_sp) = 1;
+	      add_reg_note (insn_sp, REG_CFA_ADJUST_CFA,
+			    gen_rtx_SET (sp_reg, plus_constant (
+					    SImode, sp_reg, 8)));
+
+	      frame_deallocated += 8;
+	      regno = even_base + 2;
+	      continue;
+	    }
 	}
       else if ((regno % 2) == 0
 	       && (!frame_pointer_needed || ((regno + 1) != R27_REGNUM))
@@ -837,7 +1004,9 @@ arc64_restore_callee_saves (bool sibcall_p ATTRIBUTE_UNUSED)
       frame_deallocated += frame_restore_reg (reg, disp);
 
       if (double_load_p)
-	regno++;
+	 regno += 2;
+      else
+	 regno++;
     }
 
   return frame_deallocated;
@@ -1457,6 +1626,82 @@ arc64_function_value_regno_p (const unsigned int regno)
   return false;
 }
 
+/* Helper function to split a 64bit floating point operation 
+ * into two sequential 32bit (SImode) move operations.  */
+void
+arc64_split_move_gpf (rtx *operands, machine_mode mode)
+{
+  rtx dest = operands[0];
+  rtx src = operands[1];
+  rtx hi_dest, hi_src, lo_dest, lo_src;
+
+  if (MEM_P (src))
+    {
+      rtx addr = XEXP (src, 0);
+      if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+        addr = XEXP (addr, 0);
+      rtx clean_mem = change_address (src, SImode, addr);
+      lo_src = adjust_address (clean_mem, SImode, 0);
+      hi_src = adjust_address (clean_mem, SImode, 4);
+    }
+  else if (REG_P (src))
+    {
+      lo_src = gen_rtx_REG (SImode, REGNO (src));
+      hi_src = gen_rtx_REG (SImode, REGNO (src) + 1);
+    }
+  else
+    {
+      lo_src = operand_subword_force (src, 0, mode);
+      hi_src = operand_subword_force (src, 1, mode);
+    }
+
+  if (MEM_P (dest))
+    {
+      rtx addr = XEXP (dest, 0);
+      if (GET_RTX_CLASS (GET_CODE (addr)) == RTX_AUTOINC)
+        addr = XEXP (addr, 0);
+      rtx clean_mem = change_address (dest, SImode, addr);
+      lo_dest = adjust_address (clean_mem, SImode, 0);
+      hi_dest = adjust_address (clean_mem, SImode, 4);
+    }
+  else if (REG_P (dest))
+    {
+      lo_dest = gen_rtx_REG (SImode, REGNO (dest));
+      hi_dest = gen_rtx_REG (SImode, REGNO (dest) + 1);
+    }
+  else
+    {
+      lo_dest = operand_subword_force (dest, 0, mode);
+      hi_dest = operand_subword_force (dest, 1, mode);
+    }
+
+  /* Pre-increment updates.  */
+  if (MEM_P (src) && GET_CODE (XEXP (src, 0)) == PRE_INC)
+    emit_insn (gen_adddi3 (XEXP (XEXP (src, 0), 0), XEXP (XEXP (src, 0), 0), GEN_INT (8)));
+  if (MEM_P (dest) && GET_CODE (XEXP (dest, 0)) == PRE_INC)
+    emit_insn (gen_adddi3 (XEXP (XEXP (dest, 0), 0), XEXP (XEXP (dest, 0), 0), GEN_INT (8)));
+
+  /* Emit moves with overlap protections.  */
+  if (reg_overlap_mentioned_p (lo_dest, hi_src))
+    {
+      emit_move_insn (hi_dest, hi_src);
+      emit_move_insn (lo_dest, lo_src);
+    }
+  else
+    {
+      emit_move_insn (lo_dest, lo_src);
+      emit_move_insn (hi_dest, hi_src);
+    }
+
+  /* Post-increment updates.  */
+  if (MEM_P (src) && GET_CODE (XEXP (src, 0)) == POST_INC)
+    emit_insn (gen_adddi3 (XEXP (XEXP (src, 0), 0), XEXP (XEXP (src, 0), 0), GEN_INT (8)));
+  if (MEM_P (dest) && GET_CODE (XEXP (dest, 0)) == POST_INC)
+    emit_insn (gen_adddi3 (XEXP (XEXP (dest, 0), 0), XEXP (XEXP (dest, 0), 0), GEN_INT (8)));
+
+return;
+}
+
 static bool
 arc64_split_complex_arg (const_tree)
 {
@@ -1506,6 +1751,14 @@ static unsigned int
 arc64_hard_regno_nregs (unsigned int regno,
 			machine_mode mode)
 {
+  if (ARC64_HAS_FP_BASE && FP_REGNUM_P (regno))
+    {
+      if (GET_MODE_SIZE (mode) == 8)
+        return TARGET_LL64 ? 1 : 2;
+      if (GET_MODE_SIZE (mode) == 4)
+	return 1;
+    }
+
   if (FP_REGNUM_P (regno))
     return CEIL (GET_MODE_SIZE (mode), UNITS_PER_FP_REG);
   return CEIL (GET_MODE_SIZE (mode), UNITS_PER_WORD);
@@ -1680,7 +1933,8 @@ arc64_get_effective_mode_for_address_scaling (const machine_mode mode)
 {
   if (GET_MODE_SIZE (mode) == (UNITS_PER_WORD * 2))
     {
-      gcc_assert (DOUBLE_LOAD_STORE);
+      if (!TARGET_LL64)
+	gcc_assert (DOUBLE_LOAD_STORE);
       return Pmode;
     }
   return mode;
@@ -4892,6 +5146,8 @@ arc64_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+
+/*TODO: This function needs to be refactored.  */
 static void
 arc64_override_options (void)
 {
@@ -4916,6 +5172,21 @@ arc64_override_options (void)
 	      target_flags |= MASK_LL64;
 	    }
 	}
+
+	if (strcmp (arcv3_cpu_string, "hs5x") == 0)
+	{
+	  if (!TARGET_LL64)
+	    target_flags &= ~MASK_LL64;
+	}
+        else if (strcmp (arcv3_cpu_string, "hs6x") == 0)
+        {
+          /* if the core is hs6x and -mno-ll64 wasnt specified
+	   * in the command line then enable the 64 bit ls unit.  */
+          if (!(global_options_set.x_target_flags & MASK_LL64)){
+            //target_flags |= MASK_LL64;
+	    return;
+	  }
+        }
     }
 
   if (TARGET_LL64 && TARGET_64BIT)
@@ -5546,9 +5817,17 @@ arc64_expand_prologue (void)
 
   frame_allocated = frame->frame_size;
 
-  frame_allocated -= arc64_save_callee_saves ();
+  /*TODO: In case of a core that doesnt have 
+   * 64 bit ls unit saving a 64 bit takes multiple cycles (add+st+st).
+   * Extra care needs to be done in case an interrupt arrives after the
+   * add and before the last store writes to the wbb.
+   * For this there are solutions like (disabling the intrrupts).
+   * I need to investigate if anything consume the interrupted 
+   * stack frame before the second store executes.  */
 
   /* If something left, allocate.  */
+  frame_allocated -= arc64_save_callee_saves ();
+
   if (frame_allocated > 0)
     frame_stack_add ((HOST_WIDE_INT) 0 - frame_allocated);
 
@@ -6117,7 +6396,7 @@ arc64_split_double_move_p (rtx *operands, machine_mode mode)
       return false;
     }
 
-  /* Evereything else is going for a split.  */
+  /* Everything else is going for a split. */
   return true;
 }
 
@@ -6719,6 +6998,60 @@ arc64_expand_vector_init (rtx target, rtx vals)
     default:
       gcc_unreachable ();
     }
+}
+
+bool
+arc64_insn_has_symbol_p (rtx_insn *insn)
+{
+  if (!insn || !INSN_P (insn))
+    return false;
+
+  if (JUMP_P (insn)
+      || CALL_P (insn)
+      || any_condjump_p (insn)
+      || GET_CODE (PATTERN (insn)) == RETURN
+      || GET_CODE (PATTERN (insn)) == SIMPLE_RETURN)
+    return false;
+
+  rtx pattern_to_scan = PATTERN (insn);
+
+  subrtx_iterator::array_type array;
+  FOR_EACH_SUBRTX (iter, array, pattern_to_scan, ALL)
+    {
+      const_rtx x = *iter;
+      if (x != NULL_RTX)
+	{
+	  if (GET_CODE (x) == SYMBOL_REF)
+	    return true;
+
+	  if (GET_CODE (x) == LABEL_REF)
+	    return true;
+	  if (MEM_P (x))
+	    {
+	      rtx addr = XEXP (x, 0);
+
+	      if (GET_CODE (addr) == SYMBOL_REF || CONST_INT_P (addr))
+		return true;
+
+	      if (GET_CODE (addr) == PLUS)
+		{
+		  rtx offset = XEXP (addr, 1);
+		  rtx base = XEXP (addr, 0);
+
+		  if (CONST_INT_P (offset))
+		    {
+		      HOST_WIDE_INT val = INTVAL (offset);
+		      if (val < -256 || val > 255)
+			return true;
+		    }
+
+		  if (CONST_INT_P (base) || GET_CODE (base) == SYMBOL_REF)
+		    return true;
+		}
+	    }}
+    }
+
+  return false;
 }
 
 /* Target hooks.  */
