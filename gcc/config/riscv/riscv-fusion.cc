@@ -160,7 +160,7 @@ void
 riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 			     int *pri)
 {
-  if (TARGET_ARCV_RHX100
+  if ((TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
       && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
     return;
 
@@ -191,7 +191,7 @@ riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
   if (GET_MODE (mem0) != GET_MODE (mem1))
     return false;
 
-  if (TARGET_ARCV_RHX100
+  if ((TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
       && !arcv_pair_fusion_mode_allowed_p (GET_MODE (mem0), is_load))
     return false;
 

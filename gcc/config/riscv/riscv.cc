@@ -659,7 +659,11 @@ static const struct riscv_tune_param arcv_rpx100_tune_info = {
   false,					/* overlap_op_by_pieces */
   true,						/* use_zero_stride_load */
   false,					/* speculative_sched_vsetvl */
-  RISCV_FUSE_NOTHING,				/* fusible_ops */
+  (RISCV_FUSE_MULT_ADD | RISCV_FUSE_LI_BRANCH
+   | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
+   | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
+   | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
+   | RISCV_FUSE_LUI_LD_REV),			/* fusible_ops */
   NULL,						/* vector cost */
   NULL,						/* function_align */
   NULL,						/* jump_align */
@@ -11525,7 +11529,7 @@ riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
 
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     arcv_sched_init ();
 }
 
@@ -11533,7 +11537,7 @@ riscv_sched_init (FILE *, int, int)
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     if (!arcv_can_issue_more_p (riscv_issue_rate (), more, insn))
       {
 	cached_can_issue_more = 0;
@@ -11594,7 +11598,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	}
     }
 
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     {
       more = arcv_sched_variable_issue (insn, more);
       cached_can_issue_more = more;
@@ -11679,7 +11683,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 			 int cost, unsigned int)
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     return arcv_sched_adjust_cost (insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order and spacemit_x60
@@ -11748,7 +11752,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn,
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
@@ -11763,7 +11767,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (TARGET_ARCV_RHX100)
+  if (TARGET_ARCV_RHX100 || TARGET_ARCV_RPX100)
     return arcv_sched_reorder2 (ready, n_readyp);
 
   return cached_can_issue_more;
