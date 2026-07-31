@@ -42,16 +42,6 @@
 		condmove,mvpair,zicond,cpop,clmul"))
   "((arcv_rpx100_issueA_fuse0 + arcv_rpx100_ALU_A_fuse0_early) | (arcv_rpx100_issueA_fuse1 + arcv_rpx100_ALU_A_fuse1_early)) | ((arcv_rpx100_issueB_fuse0 + arcv_rpx100_ALU_B_fuse0_early) | (arcv_rpx100_issueB_fuse1 + arcv_rpx100_ALU_B_fuse1_early))")
 
-(define_insn_reservation "arcv_rpx100_imul_fused" 4
-  (and (eq_attr "tune" "arcv_rpx100")
-       (eq_attr "type" "imul_fused"))
-  "(arcv_rpx100_issueA_fuse0 + arcv_rpx100_issueA_fuse1 + arcv_rpx100_ALU_A_fuse0_early + arcv_rpx100_ALU_A_fuse1_early + arcv_rpx100_MPY32), nothing*3")
-
-(define_insn_reservation "arcv_rpx100_alu_fused" 1
-   (and (eq_attr "tune" "arcv_rpx100")
-       (eq_attr "type" "alu_fused"))
-  "(arcv_rpx100_issueA_fuse0 + arcv_rpx100_issueA_fuse1 + arcv_rpx100_ALU_A_fuse0_early + arcv_rpx100_ALU_A_fuse1_early) | (arcv_rpx100_issueB_fuse0 + arcv_rpx100_issueB_fuse1 + arcv_rpx100_ALU_B_fuse0_early + arcv_rpx100_ALU_B_fuse1_early)")
-
 (define_insn_reservation "arcv_rpx100_jmp_insn" 1
   (and (eq_attr "tune" "arcv_rpx100")
        (eq_attr "type" "branch,jump,call,jalr,ret,trap"))
