@@ -123,10 +123,12 @@ arcv_fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset,
 bool
 arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  return ((is_load && (mode == SImode
+  return ((is_load && (mode == DImode
+		       || mode == SImode
 		       || mode == HImode
 		       || mode == QImode))
-	  || (!is_load && mode == SImode));
+	  || (!is_load && (mode == DImode
+			   || mode == SImode)));
 }
 
 bool
@@ -152,12 +154,14 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
   int priority = default_pri / 2;
 
   /* Scale priority by access width - narrower accesses get lower priority.
-     HImode: divide by 2, QImode: divide by 4.  This encourages wider
-     accesses to be scheduled together.  */
+     HImode: divide by 2, QImode: divide by 4, DImode: divide by 8.
+     This encourages wider accesses to be scheduled together.  */
   if (mode == HImode)
     priority /= 2;
   else if (mode == QImode)
     priority /= 4;
+  else if (mode == DImode)
+    priority /= 8;
 
   /* Factor in base register: instructions with smaller register numbers
      get higher priority.  The shift by 20 bits ensures this is the most
