@@ -119,3 +119,10 @@
 
 (define_bypass 3 "arcv_rpx100_mpy32_insn" "arcv_rpx100_mpy*_insn")
 (define_bypass 3 "arcv_rpx100_mpy32_insn" "arcv_rpx100_div_insn")
+(define_bypass 1 "arcv_rpx100_mpy*" "arcv_rpx100_store_insn" "riscv_store_data_bypass_p")
+(define_bypass 7 "arcv_rpx100_mpy32_insn" "arcv_rpx100_load_insn")
+(define_bypass 7 "arcv_rpx100_mpy32_insn" "arcv_rpx100_store_insn")
+(define_bypass 9 "arcv_rpx100_mpy64l_insn" "arcv_rpx100_load_insn")
+(define_bypass 9 "arcv_rpx100_mpy64l_insn" "arcv_rpx100_store_insn")
+(define_bypass 10 "arcv_rpx100_mpy64h_insn" "arcv_rpx100_load_insn")
+(define_bypass 10 "arcv_rpx100_mpy64h_insn" "arcv_rpx100_store_insn")
