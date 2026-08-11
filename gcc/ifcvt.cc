@@ -893,6 +893,10 @@ noce_emit_store_flag (struct noce_if_info *if_info, rtx x, bool reversep,
   if (cond_complex || !SCALAR_INT_MODE_P (GET_MODE (x)))
     return NULL_RTX;
 
+  /* Don't try if mode of X is more than the max fixed mode size.  */
+  if (known_le (MAX_FIXED_MODE_SIZE, GET_MODE_BITSIZE (GET_MODE (x))))
+    return NULL_RTX;
+
   return emit_store_flag (x, code, XEXP (cond, 0),
 			  XEXP (cond, 1), VOIDmode,
 			  (code == LTU || code == LEU
@@ -921,13 +925,19 @@ noce_can_force_operand (rtx x)
       switch (GET_CODE (x))
 	{
 	case MULT:
-	case DIV:
 	case MOD:
 	case UDIV:
 	case UMOD:
 	  return true;
+	case DIV:
+	  if (INTEGRAL_MODE_P (GET_MODE (x)))
+	    return true;
+	  /* FALLTHRU */
 	default:
-	  return code_to_optab (GET_CODE (x));
+	  auto optab = code_to_optab (GET_CODE (x));
+	  if (!optab)
+	    return false;
+	  return optab_handler (optab, GET_MODE (x));
 	}
     }
   if (UNARY_P (x))
@@ -947,7 +957,10 @@ noce_can_force_operand (rtx x)
 	case UNSIGNED_FLOAT:
 	  return true;
 	default:
-	  return code_to_optab (GET_CODE (x));
+	  auto optab = code_to_optab (GET_CODE (x));
+	  if (!optab)
+	    return false;
+	  return optab_handler (optab, GET_MODE (x));
 	}
     }
   return false;
@@ -4939,7 +4952,7 @@ find_if_header (basic_block test_bb, int pass)
       && cond_exec_find_if_block (&ce_info))
     goto success;
 
-  if (targetm.have_trap ()
+  if (!reload_completed && targetm.have_trap ()
       && optab_handler (ctrap_optab, word_mode) != CODE_FOR_nothing
       && find_cond_trap (test_bb, then_edge, else_edge))
     goto success;

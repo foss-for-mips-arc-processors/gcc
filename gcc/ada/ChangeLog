@@ -1,3 +1,457 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-06-10  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/125695
+	* libgnat/s-genbig.adb ("**"): Do not drop the sign on the floor.
+	(Big_Exp): Take into account the parity of the exponent for -2.
+
+2026-05-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* doc/gnat_rm/gnat_language_extensions.rst
+	(Generalized Finalization): Document the new restriction.
+	* sem_ch13.adb (Resolve_Finalizable_Argument): Adjust wording of
+	error message.
+	(Resolve_Finalization_Procedure.Is_Finalizable_Primitive): Require
+	the procedure to be a primitive operation.
+	* gnat_rm.texi: Regenerate.
+
+2026-05-10  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/125240
+	* gen_il-gen-gen_entities.adb (Enumeration_Kind): Make
+	Lit_Indexes and Lit_Strings be defined for root types only.
+	* einfo.ads (Lit_Hash): Adjust description.
+	(Lit_Indexes): Likewise.
+	(Lit_Strings): Likewise.
+	(E_Enumeration_Type): Likewise.
+	* exp_imgv.adb (Expand_Image_Attribute): Do not fetch the root type
+	for enumeration types, except for character types, and adjust.
+
+2026-04-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/125044
+	* sem_disp.adb (Check_Controlling_Formals): Apply the same massaging
+	to the result subtype as to the parameter subtypes.
+
+2026-04-29  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/125044
+	* exp_ch6.ads (Needs_BIP_Task_Actuals): Adjust description.
+	* exp_ch6.adb (Expand_N_Extended_Return_Statement): Move activation
+	chain for every build-in-place function with task formal parameters
+	when the type of the return object might have tasks.
+
+2026-04-12  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124836
+	* adaint.c [__MINGW32__]: Do not include mingw32.h twice, and also
+	include sys/param.h.
+
+2026-04-05  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* exp_ch6.adb (Expand_Simple_Function_Return): Use a constant return
+	object when the simple return is rewritten as an extended one.
+	* libgnat/s-secsta.adb (SS_Allocate): Raise Storage_Error if the
+	requested size is negative.
+	* libgnat/s-secsta__cheri.adb (SS_Allocate): Likewise.
+
+2026-03-23  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124607
+	* sem_elab.adb (Has_Body.Find_Body): Fix thinko.
+
+2026-03-23  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124606
+	* sem_ch12.adb (Find_Actual_Type): Rename formal parameter.
+	(Map_Formal_Package_Entities): Do not register base types.
+
+2026-03-14  Matthias Klose  <doko@gcc.gnu.org>
+
+	PR ada/107475
+	* Makefile.rtl (s390% linux%): Define MISCLIB.
+	(arm% linux-gnueabi%): Likewise.
+	(%x32 linux%): Likewise.
+
+2026-02-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124285
+	* gcc-interface/decl.cc (components_to_record): Force a packed
+	layout for the innermost variant of an unchecked union type with
+	fixed part and full representation clause.
+
+2026-02-27  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123306
+	* freeze.adb (Freeze_Entity): For a class-wide equivalent type of
+	a non-interface root type, freeze the root type before it.
+	* sem_ch3.adb (Derived_Type_Declaration): Minor tweak.
+	* sem_ch12.adb (Analyze_One_Association): Revert latest change.
+	* sem_ch13.adb (Analyze_Attribute_Definition_Clause) <Size>: When
+	the prefix is a class-wide type, insert the declaration of the CW-
+	equivalent type immediately after that of the root type, and the
+	size check for the root type into its own freezing actions.
+
+2026-02-25  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124226
+	* sem_res.adb (Resolve_Implicit_Dereference): Move declaration to...
+	* sem_res.ads (Resolve_Implicit_Dereference): ...here.
+	* sem_attr.adb (Resolve_Attribute) <Attribute_Access>: Also call
+	Resolve_Implicit_Dereference when resolving a protected operation.
+
+2026-02-24  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/124224
+	* sem_aggr.adb (Resolve_Container_Aggregate): Minor tweaks.
+	(Resolve_Iterated_Association): Compute Typ on all paths.
+
+2026-02-20  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* libgnat/s-stposu.adb (Finalize_Pool): Pass a local copy of the
+	handle in the call to Finalize_And_Deallocate.
+
+2026-02-16  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/124106
+	* exp_ch4.adb (Expand_N_Allocator): Minor fix in commentary.
+	(Expand_Allocator_Expression): Propagate the Subpool_Handle_Name
+	of the original allocator onto the newly built allocators.
+	* exp_ch6.adb (Make_Build_In_Place_Call_In_Allocator): Likewise.
+	Use Preserve_Comes_From_Source to propagate Comes_From_Source.
+	(Make_CPP_Constructor_Call_In_Allocator): Likewise.
+
+2026-02-11  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/124054
+	* exp_util.adb (Build_Allocate_Deallocate_Proc): Tidy up and pass
+	Proc_Id as the new scope in the call to the New_Copy_Tree function.
+
+2026-02-09  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/124025
+	* exp_ch9.adb (Expand_Entry_Barrier.Is_Global_Entity): Use
+	Scope_Within_Or_Same to test whether the object is local.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/123902
+	* sem_ch4.adb (Analyze_Selected_Component): Also test
+	Core_Extensions_Allowed for discriminated private types.
+	Rework and augment commentary throughout the procedure.
+
+2026-02-01  Eric Botcazou  <ebotcazou@adacore.com>
+	    Liam Powell  <liam@liampwll.com>
+
+	PR ada/121316
+	* exp_ch5.adb (Expand_Iterator_Loop_Over_Array): Minor tweak.
+	(Expand_Iterator_Loop_Over_Container): Likewise.
+	(Expand_N_Loop_Statement): Use Statements (N) throughout.
+
+2026-01-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123867
+	* sem_ch10.adb (Analyze_Compilation_Unit): Output info message
+	when -gnatdi is specified.
+	(Install_Parents): Likewise.  Set the Is_Visible_Lib_Unit flag
+	on the unit.
+	(Install_Private_With_Clauses): Do not output info message here.
+	(Remove_Parents): Output info message when -gnatdi is specified
+	and clear the Is_Visible_Lib_Unit flag on the unit.
+
+2026-01-29  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123861
+	* sem_type.adb (Covers): Fix couple of typos in comment.
+	(Specific_Type): Adjust to Covers' handling of types declared
+	with the Aggregate aspect in Ada 2022.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123857
+	* checks.adb (Apply_Parameter_Validity_Checks.Add_Validity_Check):
+	Set Is_Checked on the generated {Pre,Post}_Condition pragma and
+	bail out if the parameter is of an Unchecked_Union type.
+
+2026-01-28  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123832
+	* exp_imgv.adb: Add with and use clauses for Exp_Ch7.
+	(Expand_Image_Attribute): Establish a transient scope before
+	rewriting the attribute as a call to Put_Image.
+	(Expand_Wide_Image_Attribute): Likewise.
+	(Expand_Wide_Wide_Image_Attribute): Likewise.
+	* exp_put_image.ads (Build_Image_Call): Add note about the
+	need for a transient scope when the function is invoked.
+	* exp_put_image.adb (Build_Image_Call): Call Insert_Actions
+	to immediately insert the actions instead of wrapping them
+	in an Expression_With_Actions node.
+
+2026-01-21  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123580
+	* sem_ch13.adb (Analyze_Aspects_At_Freeze_Point): Replace call to
+	Scope_Within_Or_Same (Current_Scope, S) with In_Open_Scopes (S) to
+	test whether S is open in the current scope.
+	* sem_util.adb (From_Nested_Package): Likewise.
+
+2026-01-17  Eric Botcazou  <ebotcazou@adacore.com>
+	    Lisa Felidae  <lisa@felidae.bam.moe>
+
+	PR ada/68179
+	PR ada/123589
+	* exp_ch3.adb (Expand_Freeze_Array_Type): Build an initialization
+	procedure for a bit-packed array type if Has_Default_Aspect is set
+	on the base type, but make sure not to build it twice.  Also test
+	Has_Default_Aspect for a type derived from String.
+
+2026-01-17  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/68179
+	* exp_ch3.adb (Expand_Freeze_Array_Type): Build an initialization
+	procedure for a type derived from String declared with the aspect
+	Default_Aspect_Component_Value.
+
+2026-01-03  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123371
+	* sem_aggr.adb (Resolve_Iterated_Association): Call Preanalyze
+	instead of Analyze consistently, as well as Copy_Separate_Tree
+	instead of New_Copy_Tree.
+
+2025-12-27  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123306
+	* sem_ch12.adb (Analyze_One_Association): Immediately freeze the
+	root type of mutably tagged types used as actual type parameters.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123088
+	* sem_aggr.adb (Resolve_Record_Aggregate): Add more robust guard.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123302
+	* sem_ch12.adb (Save_Global_Reference.Save_References_In_Aggregate):
+	Recurse on the scope of the type to find one that is visible, in the
+	case of an actual in a subprogram call with a local type.
+
+2025-12-26  Eric Botcazou  <ebotcazou@gcc.gnu.org>
+
+	PR ada/123289
+	* sem_ch13.adb (Resolve_Aspect_Aggregate.Resolve_Operation): Give
+	an error if the operation's name denotes more than one subprogram.
+
+2025-12-25  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123185
+	* sem_ch4.adb (Analyze_Overloaded_Selected_Component): Go to the
+	root when the prefix has a class-wide type.
+	* sem_res.adb (Resolve_Selected_Component): Likewise.
+
+2025-12-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Streamline.
+
+2025-12-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Preserve the alias
+	sets present on the old pointer and old reference, if any.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123138
+	* exp_attr.adb (Expand_N_Attribute_Reference) <Attribute_Reduce>:
+	Override a universal numeric type only if the prefix is not an
+	aggregate.
+
+2025-12-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123060
+	* gcc-interface/utils.cc (update_pointer_to): Synthesize a new
+	TYPE_CANONICAL for the old pointer type in the case where there
+	is no new pointer type.  Likewise for references.
+
+2025-12-11  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123096
+	* exp_put_image.adb (Build_Record_Put_Image_Procedure): Call
+	Incomplete_Or_Partial_View with Partial_Only set to True.
+
+2025-12-11  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123088
+	* sem_aggr.adb (Resolve_Record_Aggregate): Add missing guard.
+
+2025-12-08  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/123037
+	* rtinit.c [__MINGW32__]: Include <stdlib.h> and not <windows.h>.
+	* rtfinal.c [__MINGW32__]: Do not include <windows.h>.
+
+2025-12-06  Iain Sandoe  <iain@sandoe.co.uk>
+
+	PR ada/115305
+	* Makefile.rtl: Use s-oslock__darwin instead of the Posix version.
+	* libgnat/s-oslock__darwin.ads: New file.
+
+2025-11-21  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* repinfo.adb (List_Location): Do not output the final comma.
+	(List_Common_Type_Info): Adjust to above change.  Do not output
+	"??" for an unknown alignment.
+	(List_Entities): Do not output generic types.
+	(List_Object_Info): Adjust to above change.
+	(List_Subprogram_Info): Likewise.
+
+2025-11-21  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* sem_type.adb (Last_Overloaded): Fix typo.
+
+2025-11-21  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/111433
+	* sem_util.ads (Incomplete_Or_Partial_View): Add Partial_Only formal
+	parameter.
+	* sem_util.adb (Incomplete_Or_Partial_View): Likewise.  Do not look
+	for an incomplete view if it is set to True.
+	* sem_ch6.adb (Check_Conformance.Null_Exclusions_Match): Pass True
+	for Partial_Only in the call to Incomplete_Or_Partial_View.
+
+2025-11-12  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/122640
+	* sem_ch3.adb (Analyze_Object_Declaration): Set Is_True_Constant
+	on entry for constants and Never_Set_In_Source in all cases.
+	If an initialization expression is present, set Has_Initial_Value
+	and Is_True_Constant on variables.
+
+2025-11-12  Ronan Desplanques  <desplanques@adacore.com>
+
+	* sem_ch3.adb (Analyze_Object_Declaration): Call Mutate_Ekind earlier.
+
+2025-11-04  Bob Duff  <duff@adacore.com>
+
+	PR ada/118208
+	* exp_ch5.adb
+	(Expand_Assign_With_Target_Names.Replace_Target):
+	Remove code setting Entity to Empty.
+	* sinfo.ads (Has_Target_Names):
+	Improve comment: add "@" to clarify what "target name"
+	means, and remove the content-free phrase "and must
+	be expanded accordingly."
+
+2025-10-24  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/118782
+	* styleg.adb (Is_Box_Comment): Also stop the loop at EOF.
+
+2025-10-24  Nicolas Boulenguez  <nicolas@debian.org>
+
+	PR ada/81087
+	* gnatlink.adb (Is_Prefix): Move around, streamline and return false
+	when the prefix is not strict.
+	(Gnatlink): Fix other instances of incorrect lower bound assumption.
+
+2025-10-20  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/107536
+	* exp_ch2.adb (Expand_Renaming): Mark the entity as referenced.
+
+2025-10-05  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/118343
+	* Makefile.rtl (LLVM_BUILD): Delete.
+
+2025-09-30  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/117517
+	* sem_attr.adb (Resolve_Attribute) <Attribute_Reduce>: Try to
+	resolve the reducer first.  Fix casing of error message.
+
+2025-09-22  Eric Botcazou  <ebotcazou@adacore.com>
+
+	PR ada/121968
+	* sem_ch12.adb (Associations.Find_Assoc): Add guard for clauses.
+	* sem_dim.adb (Analyze_Dimension_Array_Aggregate): Add test for
+	N_Iterated_Component_Association nodes.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* gcc-interface/trans.cc (gnat_to_gnu)
+	<N_Object_Renaming_Declaration>: Deal with objects whose elaboration
+	is deferred.
+	(process_freeze_entity): Deal with renamed objects whose elaboration
+	is deferred.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* checks.adb (Apply_Discriminant_Check): Remove undocumented test
+	on Is_Aliased_View applied to the left-hand side to skip the check
+	in the case where the subtypes are the same, and replace it with a
+	test that the subtypes are constrained.
+
+2025-09-15  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* exp_util.adb (Finalize_Address): In an untagged derivation, call
+	Root_Type on the full view of the base type if the partial view is
+	itself not a derived type.
+	(Is_Untagged_Derivation): Minor formatting tweak.
+
+2025-09-11  Gary Dismukes  <dismukes@adacore.com>
+
+	* exp_aggr.adb (Build_Container_Aggr_Code.Build_Size_Expr): In the case
+	of an association with a single choice, only call Update_Choices when
+	the choice expression is nonstatic.
+
+2025-09-11  Javier Miranda  <miranda@adacore.com>
+
+	* sem_util.adb (Needs_One_Actual): Add support for untagged record
+	types when the sources are compiled with Core Extensions allowed.
+
+2025-09-11  Viljar Indus  <indus@adacore.com>
+
+	* sem_ch13.adb (Analyze_Aspect_Definitions): Create a temporary
+	pragma for the non-task and access type cases.
+
+2025-09-11  Marc Poulhiès  <poulhies@adacore.com>
+
+	* s-pack.adb.tmpl: Typo fix in comment.
+
+2025-09-11  Piotr Trojanek  <trojanek@adacore.com>
+
+	* sem_prag.adb (Check_Interrupt_Or_Attach_Handler): Refine test for
+	protected procedures; fix typo in comment.
+
+2025-09-11  Denis Mazzucato  <mazzucato@adacore.com>
+
+	* exp_ch3.adb (Init_Formals): Remove the check on Global_No_Tasking.
+	* sem.adb: Fix typo.
+
+2025-09-11  Gary Dismukes  <dismukes@adacore.com>
+
+	* exp_aggr.adb (Build_Container_Aggr_Code.To_Int): Replace existing
+	conditional expression with call to Expr_Value.
+
+2025-09-11  Steve Baird  <baird@adacore.com>
+
+	* freeze.adb (Freeze_Profile): Do not emit a warning stating that
+	a formal parameter's size is 8 if the parameter's size is not 8.
+
+2025-09-11  Marc Poulhiès  <poulhies@adacore.com>
+
+	* gcc-interface/trans.cc (gnat_to_gnu): Fix typo in comment.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

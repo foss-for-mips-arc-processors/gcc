@@ -3181,6 +3181,7 @@
     DONE;
   }
 )
+
 (define_insn "extend<mode><Vwide>2"
   [(set (match_operand:<VWIDE> 0 "register_operand" "=w")
 	(float_extend:<VWIDE>
@@ -3189,6 +3190,29 @@
   "fcvtl\\t%0<Vmwtype>, %1<Vmtype>"
   [(set_attr "type" "neon_fp_cvt_widen_s")]
 )
+
+/* A BF->SF is a shift left of 16, however shifts are expensive and the generic
+   middle-end expansion would force through DI move.  Instead use EXT to do the
+   shift to get better throughput and don't go through GPRs.  */
+
+(define_expand "extendbfsf2"
+  [(set (match_operand:SF 0 "register_operand" "=w")
+	(float_extend:SF
+	  (match_operand:BF 1 "register_operand" "w")))]
+  "TARGET_SIMD"
+{
+  rtx tmp0 = aarch64_gen_shareable_zero (V8BFmode);
+  rtx op0 = force_lowpart_subreg (V8BFmode, operands[1], BFmode);
+  rtx res = gen_reg_rtx (V8BFmode);
+  emit_insn (gen_aarch64_extv8bf (res, tmp0, op0, gen_int_mode (7, SImode)));
+  /* Subregs between floating point modes aren't allowed to change size, so go
+     through V4SFmode.  */
+  res = force_lowpart_subreg (V4SFmode, res, V8BFmode);
+  res = force_lowpart_subreg (SFmode, res, V4SFmode);
+  emit_move_insn (operands[0], res);
+  DONE;
+})
+
 
 ;; Float narrowing operations.
 
@@ -6678,7 +6702,7 @@
 	(SAT_TRUNC:<VNARROWQ>
 	  (<TRUNC_SHIFT>:SD_HSDI
 	    (match_operand:SD_HSDI 1 "register_operand" "w")
-	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))))]
+	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))))]
   "TARGET_SIMD"
   "<shrn_op>shrn\t%<vn2>0<Vmntype>, %<v>1<Vmtype>, %2"
   [(set_attr "type" "neon_shift_imm_narrow_q")]
@@ -6700,7 +6724,7 @@
 	(ALL_TRUNC:<VNARROWQ>
 	  (<TRUNC_SHIFT>:VQN
 	    (match_operand:VQN 1 "register_operand")
-	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))))]
+	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))))]
   "TARGET_SIMD"
   {
     operands[2] = aarch64_simd_gen_const_vector_dup (<MODE>mode,
@@ -6731,7 +6755,7 @@
 	      (<TRUNCEXTEND>:<DWI>
 	        (match_operand:SD_HSDI 1 "register_operand" "w"))
 	      (match_operand:<DWI> 3 "aarch64_int_rnd_operand"))
-	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))))]
+	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))))]
   "TARGET_SIMD
    && aarch64_const_vec_rnd_cst_p (operands[3], operands[2])"
   "<shrn_op>rshrn\t%<vn2>0<Vmntype>, %<v>1<Vmtype>, %2"
@@ -6746,7 +6770,7 @@
 	      (<TRUNCEXTEND>:<V2XWIDE>
 	        (match_operand:SD_HSDI 1 "register_operand"))
 	      (match_dup 3))
-	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))))]
+	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))))]
   "TARGET_SIMD"
   {
     /* Use this expander to create the rounding constant vector, which is
@@ -6766,7 +6790,7 @@
 	      (<TRUNCEXTEND>:<V2XWIDE>
 	        (match_operand:VQN 1 "register_operand"))
 	      (match_dup 3))
-	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))))]
+	    (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))))]
   "TARGET_SIMD"
   {
     if (<CODE> == TRUNCATE
@@ -6808,7 +6832,7 @@
 	  (smax:SD_HSDI
 	    (ashiftrt:SD_HSDI
 	      (match_operand:SD_HSDI 1 "register_operand" "w")
-	      (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))
+	      (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))
 	    (const_int 0))
 	  (const_int <half_mask>)))]
   "TARGET_SIMD"
@@ -6819,7 +6843,7 @@
 (define_expand "aarch64_sqshrun_n<mode>"
   [(match_operand:<VNARROWQ> 0 "register_operand")
    (match_operand:SD_HSDI 1 "register_operand")
-   (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>")]
+   (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>")]
   "TARGET_SIMD"
   {
     rtx dst = gen_reg_rtx (<MODE>mode);
@@ -6837,7 +6861,7 @@
 	    (smax:VQN
 	      (ashiftrt:VQN
 		(match_operand:VQN 1 "register_operand")
-		(match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))
+		(match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))
 	      (match_dup 3))
 	    (match_dup 4))))]
   "TARGET_SIMD"
@@ -6879,7 +6903,7 @@
 		(sign_extend:<DWI>
 		  (match_operand:SD_HSDI 1 "register_operand" "w"))
 		(match_operand:<DWI> 3 "aarch64_int_rnd_operand"))
-	      (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))
+	      (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))
 	    (const_int 0))
 	  (const_int <half_mask>)))]
   "TARGET_SIMD
@@ -6891,7 +6915,7 @@
 (define_expand "aarch64_sqrshrun_n<mode>"
   [(match_operand:<VNARROWQ> 0 "register_operand")
    (match_operand:SD_HSDI 1 "register_operand")
-   (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>")]
+   (match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>")]
   "TARGET_SIMD"
   {
     int prec = GET_MODE_UNIT_PRECISION (<DWI>mode);
@@ -6914,7 +6938,7 @@
 		  (sign_extend:<V2XWIDE>
 		    (match_operand:VQN 1 "register_operand"))
 		  (match_dup 3))
-		(match_operand:SI 2 "aarch64_simd_shift_imm_offset_<ve_mode>"))
+		(match_operand:SI 2 "aarch64_simd_shift_imm_offset_<vn_mode>"))
 	      (match_dup 4))
 	    (match_dup 5))))]
   "TARGET_SIMD"
@@ -9142,9 +9166,13 @@
 	 (match_operand:V2DI 3 "aarch64_simd_lshift_imm" "Dl")))]
   "TARGET_SHA3"
   {
+    /* Translate the RTL left-rotate amount into the assembly right-rotate
+       amount.  Modulo by 64 to ensure that a left-rotate of 0 is emitted
+       as a right-rotate of 0 as accepted by the assembly instruction.  */
     operands[3]
-      = GEN_INT (64 - INTVAL (unwrap_const_vec_duplicate (operands[3])));
-    return "xar\\t%0.2d, %1.2d, %2.2d, %3";
+      = GEN_INT ((64 - INTVAL (unwrap_const_vec_duplicate (operands[3])))
+		  % 64);
+    return "xar\\t%0.2d, %1.2d, %2.2d, #%3";
   }
   [(set_attr "type" "crypto_sha3")]
 )
@@ -9164,9 +9192,12 @@
 	 (match_operand:SI 3 "aarch64_simd_shift_imm_di")))]
   "TARGET_SHA3"
   {
-    operands[3]
-      = aarch64_simd_gen_const_vector_dup (V2DImode,
-					   64 - INTVAL (operands[3]));
+      operands[3]
+        = aarch64_simd_gen_const_vector_dup (V2DImode,
+					     /* In the edge case of a 0 rotate
+						amount leave as is.  */
+					     operands[3] == CONST0_RTX (SImode)
+					       ? 0 : 64 - INTVAL (operands[3]));
   }
 )
 

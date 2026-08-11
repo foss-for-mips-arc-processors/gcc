@@ -1719,7 +1719,7 @@ struct aarch64_pragma_builtins_data
   unsigned int flags;
 };
 
-static aarch64_pragma_builtins_data aarch64_pragma_builtins[] = {
+static CONSTEXPR aarch64_pragma_builtins_data aarch64_pragma_builtins[] = {
 #include "aarch64-simd-pragma-builtins.def"
 };
 
@@ -2294,6 +2294,7 @@ aarch64_init_ls64_builtins_types (void)
   const char *tuple_type_name = "__arm_data512_t";
   tree node_type = get_typenode_from_name (UINT64_TYPE);
   tree array_type = build_array_type_nelts (node_type, 8);
+  array_type = build_distinct_type_copy (array_type);
   SET_TYPE_MODE (array_type, V8DImode);
 
   gcc_assert (TYPE_MODE_RAW (array_type) == TYPE_MODE (array_type));

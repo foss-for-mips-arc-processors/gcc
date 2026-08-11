@@ -2315,9 +2315,13 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
   int i;
   tree fncall0;
   gfc_array_spec *as;
+  gfc_symbol *sym = NULL;
 
   if (arg->ts.type == BT_CLASS)
     gfc_add_class_array_ref (arg);
+
+  if (arg->expr_type == EXPR_VARIABLE)
+    sym = arg->symtree->n.sym;
 
   ss = gfc_walk_expr (arg);
   gcc_assert (ss != gfc_ss_terminator);
@@ -2341,7 +2345,7 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
       fncall0 = build_call_expr_loc (input_location,
 				     gfor_fndecl_is_contiguous0, 1, desc);
       se->expr = fncall0;
-      se->expr = convert (logical_type_node, se->expr);
+      se->expr = convert (boolean_type_node, se->expr);
     }
   else
     {
@@ -2373,6 +2377,22 @@ gfc_conv_is_contiguous_expr (gfc_se *se, gfc_expr *arg)
 	}
       se->expr = cond;
     }
+
+  /* A pointer that does not have the CONTIGUOUS attribute needs to be checked
+     if it points to an array whose span differs from the element size.  */
+  if (as && sym && IS_POINTER(sym) && !sym->attr.contiguous)
+    {
+      tree span = gfc_conv_descriptor_span_get (desc);
+      tmp = fold_convert (TREE_TYPE (span),
+			  gfc_conv_descriptor_elem_len (desc));
+      cond = fold_build2_loc (input_location, EQ_EXPR, boolean_type_node,
+			      span, tmp);
+      se->expr = fold_build2_loc (input_location, TRUTH_ANDIF_EXPR,
+				  boolean_type_node, cond,
+				  convert (boolean_type_node, se->expr));
+    }
+
+  gfc_free_ss_chain (ss);
 }
 
 
@@ -8541,13 +8561,18 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
     }
   else
     {
+      bool simply_contiguous = gfc_is_simply_contiguous (arg->expr,
+							 false, true);
       argse.want_pointer = 0;
+      /* A non-contiguous SOURCE needs packing.  */
+      if (!simply_contiguous)
+	argse.force_tmp = 1;
       gfc_conv_expr_descriptor (&argse, arg->expr);
       source = gfc_conv_descriptor_data_get (argse.expr);
       source_type = gfc_get_element_type (TREE_TYPE (argse.expr));
 
       /* Repack the source if not simply contiguous.  */
-      if (!gfc_is_simply_contiguous (arg->expr, false, true))
+      if (!simply_contiguous)
 	{
 	  tmp = gfc_build_addr_expr (NULL_TREE, argse.expr);
 
@@ -8584,7 +8609,12 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
 				       argse.string_length);
       else if (arg->expr->ts.type == BT_CLASS)
 	{
-	  class_ref = TREE_OPERAND (argse.expr, 0);
+	  if (UNLIMITED_POLY (source_expr)
+	      && DECL_LANG_SPECIFIC (source_expr->symtree->n.sym->backend_decl))
+	    class_ref = GFC_DECL_SAVED_DESCRIPTOR
+	      (source_expr->symtree->n.sym->backend_decl);
+	  else
+	    class_ref = TREE_OPERAND (argse.expr, 0);
 	  tmp = gfc_class_vtab_size_get (class_ref);
 	  if (UNLIMITED_POLY (arg->expr))
 	    tmp = gfc_resize_class_size_with_len (&argse.pre, class_ref, tmp);
@@ -9647,7 +9677,17 @@ conv_isocbinding_function (gfc_se *se, gfc_expr *expr)
       se->expr = gfc_evaluate_now (se->expr, &se->pre);
     }
   else if (expr->value.function.isym->id == GFC_ISYM_C_FUNLOC)
-    gfc_conv_expr_reference (se, arg->expr);
+    {
+      gfc_conv_expr_reference (se, arg->expr);
+      if (arg->expr->symtree->n.sym->attr.proc_pointer
+	  && arg->expr->symtree->n.sym->attr.dummy)
+	se->expr = build_fold_indirect_ref_loc (input_location, se->expr);
+      /* The code below is necessary to create a reference from the calling
+	 subprogram to the argument of C_FUNLOC() in the call graph.
+	 Please see PR 117303 for more details. */
+      se->expr = convert (pvoid_type_node, se->expr);
+      se->expr = gfc_evaluate_now (se->expr, &se->pre);
+    }
   else if (expr->value.function.isym->id == GFC_ISYM_C_ASSOCIATED)
     {
       gfc_se arg1se;

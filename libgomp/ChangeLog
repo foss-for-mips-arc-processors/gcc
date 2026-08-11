@@ -1,3 +1,30 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-03-18  Christopher Albert  <albert@tugraz.at>
+
+	Backported from master:
+	2026-03-17  Christopher Albert  <albert@tugraz.at>
+
+	* testsuite/libgomp.fortran/pr120286.f90: New test.
+
+2025-12-11  Frank Scheiner  <frank.scheiner@web.de>
+
+	Backported from master:
+	2025-11-25  Frank Scheiner  <frank.scheiner@web.de>
+
+	* affinity-fmt.c: Make char *q a pointer to a const char.
+
+2025-09-25  Tobias Burnus  <tburnus@baylibre.com>
+
+	Backported from master:
+	2025-09-18  Tobias Burnus  <tburnus@baylibre.com>
+		    Sandra Loosemore  <sloosemore@baylibre.com>
+
+	PR middle-end/121922
+	* testsuite/libgomp.c-c++-common/declare-variant-1.c: New test.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

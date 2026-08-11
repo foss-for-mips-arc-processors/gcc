@@ -753,13 +753,13 @@ unmangled_name_p (const tree decl)
     }
   else if (VAR_P (decl))
     {
+      /* extern "C" declarations aren't mangled.  */
+      if (DECL_NAMESPACE_SCOPE_P (decl) && DECL_EXTERN_C_P (decl))
+	return true;
+
       /* static variables are mangled.  */
       if (!DECL_EXTERNAL_LINKAGE_P (decl))
 	return false;
-
-      /* extern "C" declarations aren't mangled.  */
-      if (DECL_EXTERN_C_P (decl))
-	return true;
 
       /* Other variables at non-global scope are mangled.  */
       if (CP_DECL_CONTEXT (decl) != global_namespace)
@@ -2161,10 +2161,23 @@ write_real_cst (const tree value)
   int i, limit, dir;
 
   tree type = TREE_TYPE (value);
-  int words = GET_MODE_BITSIZE (SCALAR_FLOAT_TYPE_MODE (type)) / 32;
+  int bits = GET_MODE_BITSIZE (SCALAR_FLOAT_TYPE_MODE (type));
+  int words = bits / 32;
 
   real_to_target (target_real, &TREE_REAL_CST (value),
 		  TYPE_MODE (type));
+
+  if (words == 0)
+    {
+      /* _Float16 and std::bfloat16_t are the only supported types smaller than
+	 32 bits.  */
+      gcc_assert (bits == 16);
+      sprintf (buffer, "%04lx", (unsigned long) target_real[0]);
+      write_chars (buffer, 4);
+      return;
+    }
+
+  gcc_assert (bits % 32 == 0);
 
   /* The value in target_real is in the target word order,
      so we must write it out backward if that happens to be
@@ -2675,9 +2688,21 @@ write_type (tree type)
 	      break;
 
 	    case PACK_INDEX_TYPE:
-	      /* TODO Mangle pack indexing
-		 <https://github.com/itanium-cxx-abi/cxx-abi/issues/175>.  */
-	      sorry ("mangling type pack index");
+	      /* https://github.com/itanium-cxx-abi/cxx-abi/issues/175.  */
+	      write_string ("Dy");
+	      if (TREE_CODE (PACK_INDEX_PACK (type)) == TREE_VEC)
+		{
+		  write_char ('J');
+		  for (int i = 0; i < TREE_VEC_LENGTH (PACK_INDEX_PACK (type));
+		       ++i)
+		    write_template_arg (TREE_VEC_ELT (PACK_INDEX_PACK (type),
+						      i));
+		  write_char ('E');
+		}
+	      else
+		/* Dy rather than DyDp.  */
+		write_type (PACK_EXPANSION_PATTERN (PACK_INDEX_PACK (type)));
+	      write_expression (PACK_INDEX_INDEX (type));
 	      break;
 
 	    case LANG_TYPE:
@@ -3531,6 +3556,23 @@ write_expression (tree expr)
 	}
       else
 	goto normal_expr;
+    }
+  else if (code == PACK_INDEX_EXPR)
+    {
+      /* https://github.com/itanium-cxx-abi/cxx-abi/issues/175.  */
+      write_string ("sy");
+      if (TREE_CODE (PACK_INDEX_PACK (expr)) == TREE_VEC)
+	{
+	  write_char ('J');
+	  for (int i = 0; i < TREE_VEC_LENGTH (PACK_INDEX_PACK (expr));
+	       ++i)
+	    write_template_arg (TREE_VEC_ELT (PACK_INDEX_PACK (expr), i));
+	  write_char ('E');
+	}
+      else
+	/* sy rather than sysp.  */
+	write_expression (PACK_EXPANSION_PATTERN (PACK_INDEX_PACK (expr)));
+      write_expression (PACK_INDEX_INDEX (expr));
     }
   else if (TREE_CODE (expr) == ALIGNOF_EXPR)
     {

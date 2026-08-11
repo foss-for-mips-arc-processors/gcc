@@ -1191,7 +1191,11 @@ handle_hardbool_attribute (tree *node, tree name, tree args,
 
   gcc_checking_assert (!TYPE_CACHED_VALUES_P (*node));
   TYPE_VALUES (*node) = values;
-  TYPE_NAME (*node) = orig;
+
+  if (TREE_CODE (orig) == TYPE_DECL)
+    TYPE_NAME (*node) = TYPE_NAME (orig);
+  else
+    TYPE_NAME (*node) = NULL_TREE;
 
   return NULL_TREE;
 }

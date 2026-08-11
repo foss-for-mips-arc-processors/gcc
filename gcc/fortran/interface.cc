@@ -1541,6 +1541,13 @@ gfc_check_dummy_characteristics (gfc_symbol *s1, gfc_symbol *s2,
       int i, compval;
       gfc_expr *shape1, *shape2;
 
+      if (s1->as->rank != s2->as->rank)
+	{
+	  snprintf (errmsg, err_len, "Rank mismatch in argument '%s' (%i/%i)",
+		    s1->name, s1->as->rank, s2->as->rank);
+	  return false;
+	}
+
       /* Sometimes the ambiguity between deferred shape and assumed shape
 	 does not get resolved in module procedures, where the only explicit
 	 declaration of the dummy is in the interface.  */
@@ -1554,7 +1561,9 @@ gfc_check_dummy_characteristics (gfc_symbol *s1, gfc_symbol *s2,
 	      s2->as->lower[i] = gfc_copy_expr (s1->as->lower[i]);
 	}
 
-      if (s1->as->type != s2->as->type)
+      if (s1->as->type != s2->as->type
+	  && !(s1->as->type == AS_DEFERRED
+	       && s2->as->type == AS_ASSUMED_SHAPE))
 	{
 	  snprintf (errmsg, err_len, "Shape mismatch in argument '%s'",
 		    s1->name);
@@ -4010,6 +4019,28 @@ gfc_compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
 	    gfc_error ("Pointer-array actual argument at %L requires "
 		       "an assumed-shape or pointer-array dummy "
 		       "argument %qs due to VOLATILE attribute",
+		       &a->expr->where,f->sym->name);
+	  ok = false;
+	  goto match;
+	}
+
+      /* C_LOC/C_FUNLOC from ISO_C_BINDING as actual argument can only be
+	 passed to a dummy argument of matching type C_PTR/C_FUNPTR.  */
+      if (a->expr->expr_type == EXPR_FUNCTION
+	  && a->expr->ts.type == BT_VOID
+	  && a->expr->symtree->n.sym
+	  && a->expr->symtree->n.sym->from_intmod == INTMOD_ISO_C_BINDING
+	  && (f->sym->ts.type != BT_DERIVED
+	      || f->sym->ts.u.derived->from_intmod != INTMOD_ISO_C_BINDING
+	      || !((a->expr->symtree->n.sym->intmod_sym_id == ISOCBINDING_FUNLOC
+		    && f->sym->ts.u.derived->intmod_sym_id == ISOCBINDING_FUNPTR)
+		   || (a->expr->symtree->n.sym->intmod_sym_id == ISOCBINDING_LOC
+		       && f->sym->ts.u.derived->intmod_sym_id == ISOCBINDING_PTR))))
+	{
+	  if (where)
+	    gfc_error ("ISO_C_BINDING function actual argument at %L "
+		       "requires dummy argument %qs to have a matching "
+		       "type from ISO_C_BINDING",
 		       &a->expr->where,f->sym->name);
 	  ok = false;
 	  goto match;

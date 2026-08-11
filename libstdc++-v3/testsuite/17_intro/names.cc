@@ -282,6 +282,8 @@
 // <sys/ucontext.h> defines fpreg_t::d and fpreg_t::f
 #undef d
 #undef f
+// <asm/types.h> defines __vector128::u
+#undef u
 #endif
 
 #if defined (__linux__) && defined (__sparc__)
@@ -297,7 +299,7 @@
 #if defined (__linux__) || defined (__gnu_hurd__)
 #if __has_include(<features.h>)
 #include <features.h>
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 19
+#if __GLIBC__ == 2 && (__GLIBC_MINOR__ < 19 || __GLIBC_MINOR__ == 43)
 // Glibc defines this prior to 2.19
 #undef __unused
 #endif

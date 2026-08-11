@@ -3569,22 +3569,19 @@ package Einfo is
 --       type of the object.
 
 --    Lit_Hash [root type only]
---       Defined in enumeration types and subtypes. Non-empty only for the
---       case of an enumeration root type, where it contains the entity for
+--       Defined in enumeration types and subtypes. Contains the entity for
 --       the generated hash function. See unit Exp_Imgv for full details of
 --       the nature and use of this entity for implementing the Value
 --       attribute for the enumeration type in question.
 
---    Lit_Indexes
---       Defined in enumeration types and subtypes. Non-empty only for the
---       case of an enumeration root type, where it contains the entity for
+--    Lit_Indexes [root type only]
+--       Defined in enumeration types and subtypes. Contains the entity for
 --       the generated indexes entity. See unit Exp_Imgv for full details of
 --       the nature and use of this entity for implementing the Image and
 --       Value attributes for the enumeration type in question.
 
---    Lit_Strings
---       Defined in enumeration types and subtypes. Non-empty only for the
---       case of an enumeration root type, where it contains the entity for
+--    Lit_Strings [root type only]
+--       Defined in enumeration types and subtypes. Contains the entity for
 --       the literals string entity. See unit Exp_Imgv for full details of
 --       the nature and use of this entity for implementing the Image and
 --       Value attributes for the enumeration type in question.
@@ -5453,12 +5450,12 @@ package Einfo is
    --  E_Enumeration_Subtype
    --    First_Entity $$$ type
    --    Renamed_Object $$$
-   --    Lit_Strings                          (root type only)
    --    First_Literal
+   --    Lit_Hash                             (root type only)
    --    Lit_Indexes                          (root type only)
+   --    Lit_Strings                          (root type only)
    --    Default_Aspect_Value                 (base type only)
    --    Scalar_Range
-   --    Lit_Hash                             (root type only)
    --    Enum_Pos_To_Rep                      (type only)
    --    Static_Discrete_Predicate
    --    Has_Biased_Representation

@@ -548,11 +548,11 @@ begin -- Gen_IL.Gen.Gen_Entities
        (Sm (First_Literal, Node_Id),
         Sm (Has_Enumeration_Rep_Clause, Flag),
         Sm (Has_Pragma_Ordered, Flag, Impl_Base_Type_Only),
-        Sm (Lit_Indexes, Node_Id),
-        Sm (Lit_Strings, Node_Id),
+        Sm (Lit_Hash, Node_Id, Root_Type_Only),
+        Sm (Lit_Indexes, Node_Id, Root_Type_Only),
+        Sm (Lit_Strings, Node_Id, Root_Type_Only),
         Sm (Nonzero_Is_True, Flag, Base_Type_Only,
-            Pre => "Root_Type (N) = Standard_Boolean"),
-        Sm (Lit_Hash, Node_Id, Root_Type_Only)));
+            Pre => "Root_Type (N) = Standard_Boolean")));
 
    Cc (E_Enumeration_Type, Enumeration_Kind,
        --  Enumeration types, created by an enumeration type declaration

@@ -86,6 +86,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "vec-perm-indices.h"
 #include "asan.h"
 #include "gimple-range.h"
+#include "optabs-tree.h"
 
 /* Nonzero if we are folding constants inside an initializer or a C++
    manifestly-constant-evaluated context; zero otherwise.
@@ -2558,6 +2559,8 @@ fold_convert_const (enum tree_code code, tree type, tree arg1)
 	  return v.build ();
 	}
     }
+  else if (TREE_CODE (type) == NULLPTR_TYPE && integer_zerop (arg1))
+    return build_zero_cst (type);
   return NULL_TREE;
 }
 
@@ -2780,6 +2783,10 @@ fold_convert_loc (location_t loc, tree type, tree arg)
       tem = fold_ignored_result (arg);
       return fold_build1_loc (loc, NOP_EXPR, type, tem);
 
+    case NULLPTR_TYPE:
+      if (integer_zerop (arg))
+	return build_zero_cst (type);
+      /* FALLTHRU */
     default:
       if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (orig))
 	return fold_build1_loc (loc, NOP_EXPR, type, arg);
@@ -10678,11 +10685,10 @@ fold_vec_perm (tree type, tree arg0, tree arg1, const vec_perm_indices &sel)
 
   /* For fall back case, we want to ensure we have VLS vectors
      with equal length.  */
-  if (!sel.length ().is_constant (&nelts))
+  if (!sel.length ().is_constant (&nelts)
+      || !known_eq (sel.length (), TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0))))
     return NULL_TREE;
 
-  gcc_assert (known_eq (sel.length (),
-			TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0))));
   tree *in_elts = XALLOCAVEC (tree, nelts * 2);
   if (!vec_cst_ctor_to_array (arg0, nelts, in_elts)
       || !vec_cst_ctor_to_array (arg1, nelts, in_elts + nelts))
@@ -12382,8 +12388,20 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
 		  itype = signed_type_for (itype);
 		  arg00 = fold_convert_loc (loc, itype, arg00);
 		}
-	      return fold_build2_loc (loc, code == EQ_EXPR ? GE_EXPR : LT_EXPR,
-				  type, arg00, build_zero_cst (itype));
+	      enum tree_code code2 = code == EQ_EXPR ? GE_EXPR : LT_EXPR;
+	      /* Make sure to transform vector compares only to supported
+		 ones or from unsupported ones and check that only after
+		 IPA so offloaded code is handled correctly in this regard.  */
+	      if (!VECTOR_TYPE_P (itype)
+		  || (cfun
+		      && cfun->after_inlining
+		      /* We can jump on EQ/NE but not GE/LT.  */
+		      && VECTOR_BOOLEAN_TYPE_P (type)
+		      && (expand_vec_cmp_expr_p (itype, type, code2)
+			  || !expand_vec_cmp_expr_p (TREE_TYPE (op0),
+						     type, code))))
+		return fold_build2_loc (loc, code2,
+					type, arg00, build_zero_cst (itype));
 	    }
 	}
 

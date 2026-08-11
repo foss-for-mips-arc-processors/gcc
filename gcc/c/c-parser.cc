@@ -1709,6 +1709,8 @@ struct attr_state
 {
   /* True if we parsed a musttail attribute for return.  */
   bool musttail_p;
+
+  void reset () { musttail_p = false; }
 };
 
 static bool c_parser_nth_token_starts_std_attributes (c_parser *,
@@ -7497,7 +7499,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
   bool in_omp_loop_block
     = omp_for_parse_state ? omp_for_parse_state->want_nested_loop : false;
   tree sl = NULL_TREE;
-  attr_state a = {};
+  attr_state astate = {};
 
   if (c_parser_next_token_is (parser, CPP_CLOSE_BRACE))
     {
@@ -7589,6 +7591,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
 	      sl = push_stmt_list ();
 	      parser->error = false;
 	      before_labels = get_before_labels ();
+	      astate.reset ();
 	      continue;
 	    }
 	  else if (want_nested_loop
@@ -7622,6 +7625,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
 		}
 	      parser->error = false;
 	      before_labels = get_before_labels ();
+	      astate.reset ();
 	      continue;
 	    }
 	  else if (c_parser_next_token_is (parser, CPP_SEMICOLON))
@@ -7633,6 +7637,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
 	      /* FIXME:  Maybe issue a warning or something here?  */
 	      c_parser_consume_token (parser);
 	      before_labels = get_before_labels ();
+	      astate.reset ();
 	      continue;
 	    }
 	}
@@ -7644,7 +7649,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
       if (have_std_attrs)
 	{
 	  std_attrs = c_parser_std_attribute_specifier_sequence (parser);
-	  std_attrs = c_parser_handle_musttail (parser, std_attrs, a);
+	  std_attrs = c_parser_handle_musttail (parser, std_attrs, astate);
 	}
       if (c_parser_next_token_is_keyword (parser, RID_CASE)
 	  || c_parser_next_token_is_keyword (parser, RID_DEFAULT)
@@ -7786,6 +7791,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
               error_at (loc, "%<else%> without a previous %<if%>");
               c_parser_consume_token (parser);
 	      before_labels = get_before_labels ();
+	      astate.reset ();
               continue;
             }
         }
@@ -7798,7 +7804,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
 	  mark_valid_location_for_stdc_pragma (false);
 	  if (!omp_for_parse_state)
 	    c_parser_statement_after_labels (parser, NULL, before_labels,
-					     NULL, a);
+					     NULL, astate);
 	  else
 	    {
 	      /* In canonical loop nest form, nested loops can only appear
@@ -7815,6 +7821,7 @@ c_parser_compound_statement_nostart (c_parser *parser)
 	}
 
       parser->error = false;
+      astate.reset ();
     }
   if (last_label)
     pedwarn_c11 (label_loc, OPT_Wfree_labels,

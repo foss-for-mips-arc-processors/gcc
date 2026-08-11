@@ -5491,8 +5491,6 @@ package body Exp_Ch6 is
       Loc          : constant Source_Ptr := Sloc (N);
       Func_Id      : constant Entity_Id :=
                        Return_Applies_To (Return_Statement_Entity (N));
-      Is_BIP_Func  : constant Boolean   :=
-                       Is_Build_In_Place_Function (Func_Id);
       Ret_Obj_Id   : constant Entity_Id :=
                        First_Entity (Return_Statement_Entity (N));
       Ret_Obj_Decl : constant Node_Id   := Parent (Ret_Obj_Id);
@@ -5607,12 +5605,13 @@ package body Exp_Ch6 is
          --  master. But Move_Activation_Chain updates their master to be that
          --  of the caller, so they will not be terminated unless the return
          --  statement completes unsuccessfully due to exception, abort, goto,
-         --  or exit. As a formality, we test whether the function requires the
-         --  result to be built in place, though that's necessarily true for
-         --  the case of result types with task parts.
+         --  or exit. Note that we test that the function is both BIP and has
+         --  implicit task formal parameters, because not all functions whose
+         --  result type contains tasks have them (see Needs_BIP_Task_Actuals).
 
-         if Is_BIP_Func and then Has_Task (Ret_Typ) then
-
+         if Is_Build_In_Place_Function (Func_Id)
+           and then Needs_BIP_Task_Actuals (Func_Id)
+         then
             --  The return expression is an aggregate for a complex type which
             --  contains tasks. This particular case is left unexpanded since
             --  the regular expansion would insert all temporaries and
@@ -5625,7 +5624,7 @@ package body Exp_Ch6 is
             --  Do not move the activation chain if the return object does not
             --  contain tasks.
 
-            if Has_Task (Etype (Ret_Obj_Id)) then
+            if Might_Have_Tasks (Etype (Ret_Obj_Id)) then
                Append_To (Stmts, Move_Activation_Chain (Func_Id));
             end if;
          end if;
@@ -6704,7 +6703,7 @@ package body Exp_Ch6 is
       --
       --  into
       --
-      --    return _anonymous_ : <return_subtype> := <expression>
+      --    return _anonymous_ : constant <return_subtype> := <expression>
 
       --  The expansion produced by Expand_N_Extended_Return_Statement will
       --  contain simple return statements (for example, a block containing
@@ -6736,6 +6735,7 @@ package body Exp_Ch6 is
             Obj_Decl : constant Node_Id :=
                          Make_Object_Declaration (Loc,
                            Defining_Identifier => Make_Temporary (Loc, 'R'),
+                           Constant_Present    => True,
                            Object_Definition   => Subtype_Ind,
                            Expression          => Relocate_Node (Exp));
 
@@ -8404,17 +8404,24 @@ package body Exp_Ch6 is
 
          New_Allocator :=
            Make_Allocator (Loc,
-             Expression => New_Occurrence_Of (Result_Subt, Loc));
+             Subpool_Handle_Name =>
+               Relocate_Node (Subpool_Handle_Name (Allocator)),
+             Expression          => New_Occurrence_Of (Result_Subt, Loc));
+
+         --  Prevent default initialization of the allocator
+
          Set_No_Initialization (New_Allocator);
 
-         --  Copy attributes to new allocator. Note that the new allocator
-         --  logically comes from source if the original one did, so copy the
-         --  relevant flag. This ensures proper treatment of the restriction
-         --  No_Implicit_Heap_Allocations in this case.
+         --  Copy the Comes_From_Source flag onto the allocator since logically
+         --  this allocator is a replacement of the original allocator. This is
+         --  for proper handling of restriction No_Implicit_Heap_Allocations.
+
+         Preserve_Comes_From_Source (New_Allocator, Allocator);
+
+         --  Copy the attributes set by Expand_N_Allocator
 
          Set_Storage_Pool      (New_Allocator, Storage_Pool      (Allocator));
          Set_Procedure_To_Call (New_Allocator, Procedure_To_Call (Allocator));
-         Set_Comes_From_Source (New_Allocator, Comes_From_Source (Allocator));
 
          Rewrite (Allocator, New_Allocator);
 
@@ -9393,17 +9400,24 @@ package body Exp_Ch6 is
 
       New_Allocator :=
         Make_Allocator (Loc,
-          Expression => New_Occurrence_Of (Result_Subt, Loc));
+          Subpool_Handle_Name =>
+            Relocate_Node (Subpool_Handle_Name (Allocator)),
+          Expression          => New_Occurrence_Of (Result_Subt, Loc));
+
+      --  Prevent default initialization of the allocator
+
       Set_No_Initialization (New_Allocator);
 
-      --  Copy attributes to new allocator. Note that the new allocator
-      --  logically comes from source if the original one did, so copy the
-      --  relevant flag. This ensures proper treatment of the restriction
-      --  No_Implicit_Heap_Allocations in this case.
+      --  Copy the Comes_From_Source flag onto the allocator since logically
+      --  this allocator is a replacement of the original allocator. This is
+      --  for proper handling of restriction No_Implicit_Heap_Allocations.
+
+      Preserve_Comes_From_Source (New_Allocator, Allocator);
+
+      --  Copy the attributes set by Expand_N_Allocator
 
       Set_Storage_Pool      (New_Allocator, Storage_Pool      (Allocator));
       Set_Procedure_To_Call (New_Allocator, Procedure_To_Call (Allocator));
-      Set_Comes_From_Source (New_Allocator, Comes_From_Source (Allocator));
 
       Rewrite (Allocator, New_Allocator);
 

@@ -2368,23 +2368,38 @@
   else
     {
       rtx reg;
-      rtx label = gen_label_rtx ();
+      rtx label1 = gen_label_rtx ();
+      rtx label2 = gen_label_rtx ();
+      rtx label3 = gen_label_rtx ();
       rtx end_label = gen_label_rtx ();
       rtx abs_reg = gen_reg_rtx (<ANYF:MODE>mode);
       rtx coeff_reg = gen_reg_rtx (<ANYF:MODE>mode);
       rtx tmp_reg = gen_reg_rtx (<ANYF:MODE>mode);
 
       riscv_emit_move (tmp_reg, operands[1]);
+
+      if (flag_trapping_math)
+	{
+	  /* Check if the input is a NaN.  */
+	  riscv_expand_conditional_branch (label1, EQ,
+					   operands[1], operands[1]);
+
+	  emit_jump_insn (gen_jump (label3));
+	  emit_barrier ();
+
+	  emit_label (label1);
+	}
+
       riscv_emit_move (coeff_reg,
 		       riscv_vector::get_fp_rounding_coefficient (<ANYF:MODE>mode));
       emit_insn (gen_abs<ANYF:mode>2 (abs_reg, operands[1]));
 
-      riscv_expand_conditional_branch (label, LT, abs_reg, coeff_reg);
+      riscv_expand_conditional_branch (label2, LT, abs_reg, coeff_reg);
 
       emit_jump_insn (gen_jump (end_label));
       emit_barrier ();
 
-      emit_label (label);
+      emit_label (label2);
       switch (<ANYF:MODE>mode)
 	{
 	case SFmode:
@@ -2402,6 +2417,16 @@
 	}
 
       emit_insn (gen_copysign<ANYF:mode>3 (tmp_reg, abs_reg, operands[1]));
+
+      emit_jump_insn (gen_jump (end_label));
+      emit_barrier ();
+
+      if (flag_trapping_math)
+	{
+	  emit_label (label3);
+	  /* Generate a qNaN from an sNaN if needed.  */
+	  emit_insn (gen_add<ANYF:mode>3 (tmp_reg, operands[1], operands[1]));
+	}
 
       emit_label (end_label);
       riscv_emit_move (operands[0], tmp_reg);

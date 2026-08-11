@@ -369,6 +369,7 @@ static vn_tables_t valid_info;
 /* Global RPO state for access from hooks.  */
 static class eliminate_dom_walker *rpo_avail;
 basic_block vn_context_bb;
+int *vn_bb_to_rpo;
 
 
 /* Valueization hook for simplify_replace_tree.  Valueize NAME if it is
@@ -2527,7 +2528,10 @@ vn_nary_build_or_lookup_1 (gimple_match_op *res_op, bool insert,
   else
     {
       tree val = vn_lookup_simplify_result (res_op);
-      if (!val && insert)
+      /* ???  In weird cases we can end up with internal-fn calls,
+	 but this isn't expected so throw the result away.  See
+	 PR123040 for an example.  */
+      if (!val && insert && res_op->code.is_tree_code ())
 	{
 	  gimple_seq stmts = NULL;
 	  result = maybe_push_res_to_seq (res_op, &stmts);
@@ -2622,6 +2626,12 @@ vn_nary_simplify (vn_nary_op_t nary)
 		      nary->type, nary->length);
   memcpy (op.ops, nary->op, sizeof (tree) * nary->length);
   tree res = vn_nary_build_or_lookup_1 (&op, false, true);
+  /* Do not update *NARY with a simplified result that contains abnormals.
+     This matches what maybe_push_res_to_seq does when requesting insertion.  */
+  for (unsigned i = 0; i < op.num_ops; ++i)
+    if (TREE_CODE (op.ops[i]) == SSA_NAME
+	&& SSA_NAME_OCCURS_IN_ABNORMAL_PHI (op.ops[i]))
+      return res;
   if (op.code.is_tree_code ()
       && op.num_ops <= nary->length
       && (tree_code) op.code != CONSTRUCTOR)
@@ -3903,6 +3913,16 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
   return (void *)-1;
 }
 
+/* Return true if E is a backedge with respect to our CFG walk order.  */
+
+static bool
+vn_is_backedge (edge e, void *)
+{
+  /* During PRE elimination we no longer have access to this info.  */
+  return (!vn_bb_to_rpo
+	  || vn_bb_to_rpo[e->dest->index] <= vn_bb_to_rpo[e->src->index]);
+}
+
 /* Return a reference op vector from OP that can be used for
    vn_reference_lookup_pieces.  The caller is responsible for releasing
    the vector.  */
@@ -3984,8 +4004,8 @@ vn_reference_lookup_pieces (tree vuse, alias_set_type set,
 	*vnresult
 	  = ((vn_reference_t)
 	     walk_non_aliased_vuses (&r, vr1.vuse, true, vn_reference_lookup_2,
-				     vn_reference_lookup_3, vuse_valueize,
-				     limit, &data));
+				     vn_reference_lookup_3, vn_is_backedge,
+				     vuse_valueize, limit, &data));
       if (ops_for_ref != shared_lookup_references)
 	ops_for_ref.release ();
       gcc_checking_assert (vr1.operands == shared_lookup_references);
@@ -4114,8 +4134,8 @@ vn_reference_lookup (tree op, tree vuse, vn_lookup_kind kind,
       wvnresult
 	= ((vn_reference_t)
 	   walk_non_aliased_vuses (&r, vr1.vuse, tbaa_p, vn_reference_lookup_2,
-				   vn_reference_lookup_3, vuse_valueize, limit,
-				   &data));
+				   vn_reference_lookup_3, vn_is_backedge,
+				   vuse_valueize, limit, &data));
       gcc_checking_assert (vr1.operands == shared_lookup_references);
       if (wvnresult)
 	{
@@ -8552,6 +8572,7 @@ do_rpo_vn_1 (function *fn, edge entry, bitmap exit_bbs,
   int *bb_to_rpo = XNEWVEC (int, last_basic_block_for_fn (fn));
   for (int i = 0; i < n; ++i)
     bb_to_rpo[rpo[i]] = i;
+  vn_bb_to_rpo = bb_to_rpo;
 
   unwind_state *rpo_state = XNEWVEC (unwind_state, n);
 
@@ -8909,6 +8930,7 @@ do_rpo_vn_1 (function *fn, edge entry, bitmap exit_bbs,
 
   vn_valueize = NULL;
   rpo_avail = NULL;
+  vn_bb_to_rpo = NULL;
 
   XDELETEVEC (bb_to_rpo);
   XDELETEVEC (rpo);

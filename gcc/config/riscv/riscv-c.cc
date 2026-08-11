@@ -35,127 +35,6 @@ along with GCC; see the file COPYING3.  If not see
 
 #define builtin_define(TXT) cpp_define (pfile, TXT)
 
-struct pragma_intrinsic_flags
-{
-  int intrinsic_target_flags;
-
-  int intrinsic_riscv_vector_elen_flags;
-  int intrinsic_riscv_zvl_flags;
-  int intrinsic_riscv_zvb_subext;
-  int intrinsic_riscv_zvk_subext;
-};
-
-static void
-riscv_pragma_intrinsic_flags_pollute (struct pragma_intrinsic_flags *flags)
-{
-  flags->intrinsic_target_flags = target_flags;
-  flags->intrinsic_riscv_vector_elen_flags = riscv_vector_elen_flags;
-  flags->intrinsic_riscv_zvl_flags = riscv_zvl_flags;
-  flags->intrinsic_riscv_zvb_subext = riscv_zvb_subext;
-  flags->intrinsic_riscv_zvk_subext = riscv_zvk_subext;
-
-  target_flags = target_flags
-    | MASK_VECTOR;
-
-  riscv_zvl_flags = riscv_zvl_flags
-    | MASK_ZVL32B
-    | MASK_ZVL64B
-    | MASK_ZVL128B
-    | MASK_ZVL256B
-    | MASK_ZVL512B
-    | MASK_ZVL1024B
-    | MASK_ZVL2048B
-    | MASK_ZVL4096B;
-
-  riscv_vector_elen_flags = riscv_vector_elen_flags
-    | MASK_VECTOR_ELEN_32
-    | MASK_VECTOR_ELEN_64
-    | MASK_VECTOR_ELEN_FP_16
-    | MASK_VECTOR_ELEN_FP_32
-    | MASK_VECTOR_ELEN_FP_64;
-
-  riscv_zvb_subext = riscv_zvb_subext
-    | MASK_ZVBB
-    | MASK_ZVBC
-    | MASK_ZVKB;
-
-  riscv_zvk_subext = riscv_zvk_subext
-    | MASK_ZVKG
-    | MASK_ZVKNED
-    | MASK_ZVKNHA
-    | MASK_ZVKNHB
-    | MASK_ZVKSED
-    | MASK_ZVKSH
-    | MASK_ZVKN
-    | MASK_ZVKNC
-    | MASK_ZVKNG
-    | MASK_ZVKS
-    | MASK_ZVKSC
-    | MASK_ZVKSG
-    | MASK_ZVKT;
-}
-
-static void
-riscv_pragma_intrinsic_flags_restore (struct pragma_intrinsic_flags *flags)
-{
-  target_flags = flags->intrinsic_target_flags;
-
-  riscv_vector_elen_flags = flags->intrinsic_riscv_vector_elen_flags;
-  riscv_zvl_flags = flags->intrinsic_riscv_zvl_flags;
-  riscv_zvb_subext = flags->intrinsic_riscv_zvb_subext;
-  riscv_zvk_subext = flags->intrinsic_riscv_zvk_subext;
-}
-
-/* Look up the user-defined function declaration by name.
-
-   Given a function name as a string, this function returns the corresponding
-   tree node for its declaration, if it exists.  If the function is not declared
-   in the current scope, an error is reported.  */
-
-tree
-arcv_apex_lookup_function (const char *fn_name)
-{
-  /* Convert the raw string to an interned IDENTIFIER_NODE.  */
-  tree id = get_identifier (fn_name);
-
-  /* Try the current scope (and outer scopes) for a matching declaration.  */
-  tree fndecl = lookup_name (id);
-
-  /* Verify that we really found a function.  */
-  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
-  {
-    error_at (input_location, "%qs is not declared as a function", fn_name);
-  }
-
-  return fndecl;
-}
-
-/* Return true if S is a valid APEX-intrinsic identifier.
-   Rules:
-     - The identifier must begin with an ASCII letter (A–Z or a–z) or
-     an underscore ('_').
-     - All remaining characters must be ASCII letters, digits (0–9) or
-     underscores ('_').
-     - Other symbols are not allowed.
-   Examples of valid identifiers:    "add", "_bar", "Mul3", "op123".
-   Examples of invalid identifiers:  "1foo", "baz.qux", "foo%".  */
-
-static bool
-arcv_apex_valid_identifier_p (const char *s)
-{
-  if (!s || !s[0])
-    return false;
-
-  if (!(ISALPHA (s[0]) || s[0] == '_'))
-    return false;
-
-  for (const char *p = s + 1; *p; ++p)
-    if (!ISALNUM (*p) && *p != '_')
-      return false;
-
-  return true;
-}
-
 /* Parses and handles `#pragma intrinsic` for APEX instructions.
 
    This pragma takes the form:
@@ -510,20 +389,7 @@ riscv_pragma_intrinsic (cpp_reader *)
   if (strcmp (name, "vector") == 0
       || strcmp (name, "xtheadvector") == 0)
     {
-      struct pragma_intrinsic_flags backup_flags;
-
-      riscv_pragma_intrinsic_flags_pollute (&backup_flags);
-
-      riscv_option_override ();
-      init_adjust_machine_modes ();
-      riscv_vector::reinit_builtins ();
       riscv_vector::handle_pragma_vector ();
-
-      riscv_pragma_intrinsic_flags_restore (&backup_flags);
-
-      /* Re-initialize after the flags are restored.  */
-      riscv_option_override ();
-      init_adjust_machine_modes ();
     }
   else
     error ("unknown %<#pragma riscv intrinsic%> option %qs", name);

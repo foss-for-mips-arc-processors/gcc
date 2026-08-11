@@ -522,13 +522,17 @@ c_reconstruct_complex_type (tree type, tree bottom)
     }
   else if (TREE_CODE (type) == ARRAY_TYPE)
     {
+      bool rso = TYPE_REVERSE_STORAGE_ORDER (type);
       inner = c_reconstruct_complex_type (TREE_TYPE (type), bottom);
       outer = c_build_array_type (inner, TYPE_DOMAIN (type));
+      if (rso)
+	{
+	  outer = build_distinct_type_copy (outer);
+	  TYPE_REVERSE_STORAGE_ORDER (outer) = 1;
+	}
 
       gcc_checking_assert (C_TYPE_VARIABLE_SIZE (type)
 			   == C_TYPE_VARIABLE_SIZE (outer));
-      gcc_checking_assert (C_TYPE_VARIABLY_MODIFIED (outer)
-			   == C_TYPE_VARIABLY_MODIFIED (type));
     }
   else if (TREE_CODE (type) == FUNCTION_TYPE)
     {
@@ -545,6 +549,83 @@ c_reconstruct_complex_type (tree type, tree bottom)
   return c_build_type_attribute_qual_variant (outer, TYPE_ATTRIBUTES (type),
 					      TYPE_QUALS (type));
 }
+
+
+/* Helper function for c_canonical_type.  Check whether FIELD
+   contains a pointer to a structure or union with tag,
+   possibly nested in other type derivations, and return the
+   type of this nested structure or union.  */
+static tree
+ptr_to_tagged_member (tree field)
+{
+  gcc_assert (FIELD_DECL == TREE_CODE (field));
+  tree type = TREE_TYPE (field);
+  bool ptr_seen = false;
+  while (TREE_CODE (type) == ARRAY_TYPE
+	 || TREE_CODE (type) == FUNCTION_TYPE
+	 || TREE_CODE (type) == POINTER_TYPE)
+    {
+      if (TREE_CODE (type) == POINTER_TYPE)
+	ptr_seen = true;
+      type = TREE_TYPE (type);
+    }
+
+  if (ptr_seen
+      && RECORD_OR_UNION_TYPE_P (type)
+      && NULL_TREE != c_type_tag (type))
+    return type;
+
+  return NULL_TREE;
+}
+
+/* For a record or union type, make necessary adaptations so that the
+   type can be used as TYPE_CANONICAL.
+
+   If the TYPE contains a pointer (possibly nested in other type
+   derivations) to a structure or union as a member, create a copy and
+   change the nested type to an incomplete type.  Otherwise, the middle-end
+   gets confused when recording component aliases in the case where we
+   have formed equivalency classes that include types for which these
+   member pointers end up pointing to other structure or unions types
+   which have the same tag but are not compatible.  */
+tree
+c_type_canonical (tree type)
+{
+  gcc_assert (RECORD_OR_UNION_TYPE_P (type));
+
+  bool needs_mod = false;
+  for (tree x = TYPE_FIELDS (type); x; x = DECL_CHAIN (x))
+    {
+      if (!ptr_to_tagged_member (x))
+	continue;
+      needs_mod = true;
+      break;
+    }
+  if (!needs_mod)
+    return type;
+
+  /* Construct new version with such members replaced.  */
+  tree n = build_distinct_type_copy (type);
+  tree *fields = &TYPE_FIELDS (n);
+  for (tree x = TYPE_FIELDS (type); x; x = DECL_CHAIN (x))
+    {
+      tree f = copy_node (x);
+      if (tree m = ptr_to_tagged_member (x))
+	{
+	  tree new_node = make_node (TREE_CODE (m));
+	  TYPE_NAME (new_node) = TYPE_NAME (m);
+	  SET_TYPE_STRUCTURAL_EQUALITY (new_node);
+	  new_node = qualify_type (new_node, m);
+	  TREE_TYPE (f) = c_reconstruct_complex_type (TREE_TYPE (x),
+						      new_node);
+	}
+      *fields = f;
+      fields = &DECL_CHAIN (f);
+    }
+  TYPE_CANONICAL (n) = n;
+  return n;
+}
+
 
 /* If NTYPE is a type of a non-variadic function with a prototype
    and OTYPE is a type of a function without a prototype and ATTRS
@@ -594,9 +675,9 @@ c_type_tag (const_tree t)
     return NULL_TREE;
   if (TREE_CODE (name) == TYPE_DECL)
     {
-      /* A TYPE_DECL added by add_decl_expr.  */
-      gcc_checking_assert (!DECL_NAME (name));
-      return NULL_TREE;
+      if (!DECL_NAME (name))
+	return NULL_TREE;
+      name = DECL_NAME (name);
     }
   gcc_checking_assert (TREE_CODE (name) == IDENTIFIER_NODE);
   return name;
@@ -1825,7 +1906,7 @@ tagged_types_tu_compatible_p (const_tree t1, const_tree t2,
   /* When forming equivalence classes for TYPE_CANONICAL in C23, we treat
      structs with the same tag as equivalent, but only when they are targets
      of pointers inside other structs.  */
-  if (data->equiv && data->pointedto)
+  if (data->equiv && data->pointedto && NULL_TREE != c_type_tag (t1))
     return true;
 
   /* Different types without tag are incompatible except as an anonymous

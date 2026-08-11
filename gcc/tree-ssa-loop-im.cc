@@ -2309,7 +2309,14 @@ execute_sm (class loop *loop, im_mem_ref *ref,
   bool always_stored = ref_always_accessed_p (loop, ref, true);
   if (maybe_mt
       && (bb_in_transaction (loop_preheader_edge (loop)->src)
-	  || (ref_can_have_store_data_races (ref->mem.ref) && ! always_stored)))
+	  || (ref_can_have_store_data_races (ref->mem.ref) && ! always_stored)
+	  /* Do not speculate a load/store when that's not a noop, either
+	     because the mode cannot be transferred or because there's
+	     UB involved for out-of-bound values.  */
+	  || !mode_can_transfer_bits (TYPE_MODE (TREE_TYPE (ref->mem.ref)))
+	  || TREE_CODE (TREE_TYPE (ref->mem.ref)) == BOOLEAN_TYPE
+	  || (TREE_CODE (ref->mem.ref) == COMPONENT_REF
+	      && DECL_BIT_FIELD (TREE_OPERAND (ref->mem.ref, 1)))))
     multi_threaded_model_p = true;
 
   if (multi_threaded_model_p && !use_other_flag_var)
@@ -3415,94 +3422,96 @@ fill_always_executed_in_1 (class loop *loop, sbitmap contains_call)
   edge e;
   class loop *inn_loop = loop;
 
-  if (ALWAYS_EXECUTED_IN (loop->header) == NULL)
+  for (class loop *inner = loop->inner; inner; inner = inner->next)
+    fill_always_executed_in_1 (inner, contains_call);
+
+  auto_vec<basic_block, 64> worklist;
+  worklist.reserve_exact (loop->num_nodes);
+  worklist.quick_push (loop->header);
+  do
     {
-      auto_vec<basic_block, 64> worklist;
-      worklist.reserve_exact (loop->num_nodes);
-      worklist.quick_push (loop->header);
-      do
+      edge_iterator ei;
+      bb = worklist.pop ();
+
+      if (!flow_bb_inside_loop_p (inn_loop, bb))
 	{
-	  edge_iterator ei;
-	  bb = worklist.pop ();
-
-	  if (!flow_bb_inside_loop_p (inn_loop, bb))
-	    {
-	      /* When we are leaving a possibly infinite inner loop
-		 we have to stop processing.  */
-	      if (!finite_loop_p (inn_loop))
-		break;
-	      /* If the loop was finite we can continue with processing
-		 the loop we exited to.  */
-	      inn_loop = bb->loop_father;
-	    }
-
-	  if (dominated_by_p (CDI_DOMINATORS, loop->latch, bb))
-	    last = bb;
-
-	  if (bitmap_bit_p (contains_call, bb->index))
+	  /* When we are leaving a possibly infinite inner loop
+	     we have to stop processing.  */
+	  if (!finite_loop_p (inn_loop))
 	    break;
-
-	  /* If LOOP exits from this BB stop processing.  */
-	  FOR_EACH_EDGE (e, ei, bb->succs)
-	    if (!flow_bb_inside_loop_p (loop, e->dest))
-	      break;
-	  if (e)
-	    break;
-
-	  /* A loop might be infinite (TODO use simple loop analysis
-	     to disprove this if possible).  */
-	  if (bb->flags & BB_IRREDUCIBLE_LOOP)
-	    break;
-
-	  if (bb->loop_father->header == bb)
-	    /* Record that we enter into a subloop since it might not
-	       be finite.  */
-	    /* ???  Entering into a not always executed subloop makes
-	       fill_always_executed_in quadratic in loop depth since
-	       we walk those loops N times.  This is not a problem
-	       in practice though, see PR102253 for a worst-case testcase.  */
-	    inn_loop = bb->loop_father;
-
-	  /* Walk the body of LOOP sorted by dominance relation.  Additionally,
-	     if a basic block S dominates the latch, then only blocks dominated
-	     by S are after it.
-	     This is get_loop_body_in_dom_order using a worklist algorithm and
-	     stopping once we are no longer interested in visiting further
-	     blocks.  */
-	  unsigned old_len = worklist.length ();
-	  unsigned postpone = 0;
-	  for (basic_block son = first_dom_son (CDI_DOMINATORS, bb);
-	       son;
-	       son = next_dom_son (CDI_DOMINATORS, son))
-	    {
-	      if (!flow_bb_inside_loop_p (loop, son))
-		continue;
-	      if (dominated_by_p (CDI_DOMINATORS, loop->latch, son))
-		postpone = worklist.length ();
-	      worklist.quick_push (son);
-	    }
-	  if (postpone)
-	    /* Postponing the block that dominates the latch means
-	       processing it last and thus putting it earliest in the
-	       worklist.  */
-	    std::swap (worklist[old_len], worklist[postpone]);
+	  /* If the loop was finite we can continue with processing
+	     the loop we exited to.  */
+	  inn_loop = bb->loop_father;
 	}
-      while (!worklist.is_empty ());
 
-      while (1)
+      if (dominated_by_p (CDI_DOMINATORS, loop->latch, bb))
+	last = bb;
+
+      if (bitmap_bit_p (contains_call, bb->index))
+	break;
+
+      /* If LOOP exits from this BB stop processing.  */
+      FOR_EACH_EDGE (e, ei, bb->succs)
+	if (!flow_bb_inside_loop_p (loop, e->dest))
+	  break;
+      if (e)
+	break;
+
+      /* A loop might be infinite (TODO use simple loop analysis
+	 to disprove this if possible).  */
+      if (bb->flags & BB_IRREDUCIBLE_LOOP)
+	break;
+
+      if (bb->loop_father->header == bb)
+	/* Record that we enter into a subloop since it might not
+	   be finite.  */
+	/* ???  Entering into a not always executed subloop makes
+	   fill_always_executed_in quadratic in loop depth since
+	   we walk those loops N times.  This is not a problem
+	   in practice though, see PR102253 for a worst-case testcase.  */
+	inn_loop = bb->loop_father;
+
+      /* Walk the body of LOOP sorted by dominance relation.  Additionally,
+	 if a basic block S dominates the latch, then only blocks dominated
+	 by S are after it.
+	 This is get_loop_body_in_dom_order using a worklist algorithm and
+	 stopping once we are no longer interested in visiting further
+	 blocks.  */
+      unsigned old_len = worklist.length ();
+      unsigned postpone = 0;
+      for (basic_block son = first_dom_son (CDI_DOMINATORS, bb);
+	   son;
+	   son = next_dom_son (CDI_DOMINATORS, son))
+	{
+	  if (!flow_bb_inside_loop_p (loop, son))
+	    continue;
+	  if (dominated_by_p (CDI_DOMINATORS, loop->latch, son))
+	    postpone = worklist.length ();
+	  worklist.quick_push (son);
+	}
+      if (postpone)
+	/* Postponing the block that dominates the latch means
+	   processing it last and thus putting it earliest in the
+	   worklist.  */
+	std::swap (worklist[old_len], worklist[postpone]);
+    }
+  while (!worklist.is_empty ());
+
+  while (1)
+    {
+      if (last->loop_father == loop
+	  || (ALWAYS_EXECUTED_IN (last)
+	      && loop_outer (ALWAYS_EXECUTED_IN (last)) == loop))
 	{
 	  if (dump_enabled_p ())
 	    dump_printf (MSG_NOTE, "BB %d is always executed in loop %d\n",
 			 last->index, loop->num);
 	  SET_ALWAYS_EXECUTED_IN (last, loop);
-	  if (last == loop->header)
-	    break;
-	  last = get_immediate_dominator (CDI_DOMINATORS, last);
 	}
+      if (last == loop->header)
+	break;
+      last = get_immediate_dominator (CDI_DOMINATORS, last);
     }
-
-  for (loop = loop->inner; loop; loop = loop->next)
-    fill_always_executed_in_1 (loop, contains_call);
 }
 
 /* Fills ALWAYS_EXECUTED_IN information for basic blocks, i.e.

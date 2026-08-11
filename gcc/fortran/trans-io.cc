@@ -416,7 +416,7 @@ gfc_build_io_library_fndecls (void)
 	integer_type_node, gfc_charlen_type_node);
 
   iocall[IOCALL_X_DERIVED] = gfc_build_library_function_decl_with_spec (
-	get_identifier (PREFIX("transfer_derived")), ". w r ",
+	get_identifier (PREFIX("transfer_derived")), ". w w ",
 	void_type_node, 2, dt_parm_type, pvoid_type_node);
 
   /* Library entry points */
@@ -2511,7 +2511,9 @@ transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr,
 
 		  if (c->attr.dimension)
 		    {
-		      tmp = transfer_array_component (tmp, c, & code->loc);
+		      tmp = transfer_array_component (tmp, c,
+						      code ? &code->loc
+						      : NULL);
 		      gfc_add_expr_to_block (&se->pre, tmp);
 		    }
 		  else
@@ -2645,7 +2647,9 @@ gfc_trans_transfer (gfc_code * code)
 	 && ((expr->symtree->n.sym->ts.type == BT_DERIVED && expr->ts.deferred)
 	     || (expr->symtree->n.sym->assoc
 		 && expr->symtree->n.sym->assoc->variable)
-	     || gfc_expr_attr (expr).pointer))
+	     || gfc_expr_attr (expr).pointer
+	     || (expr->symtree->n.sym->attr.pointer
+		 && gfc_expr_attr (expr).target)))
 	goto scalarize;
 
       /* With array-bounds checking enabled, force scalarization in some

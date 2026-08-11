@@ -280,6 +280,7 @@
     UNSPEC_PACIBSP
     UNSPEC_PRLG_STK
     UNSPEC_REV
+    UNSPEC_REV_PRED
     UNSPEC_SADALP
     UNSPEC_SCVTF
     UNSPEC_SET_LANE
@@ -1115,7 +1116,7 @@
 
 (define_insn "simple_return"
   [(simple_return)]
-  ""
+  "aarch64_use_simple_return_insn_p ()"
   {
     output_asm_insn ("ret", operands);
     return aarch64_sls_barrier (aarch64_harden_sls_retbr_p ());
@@ -4739,7 +4740,7 @@
    ;; data
    (match_operand:ALLI 2 "register_operand" "r")
    ;; polynomial without leading 1
-   (match_operand:ALLX 3)]
+   (match_operand:ALLX 3 "const_int_operand")]
   ""
   {
     /* If the polynomial is the same as the polynomial of crc32c* instruction,
@@ -4778,7 +4779,7 @@
    ;; data
    (match_operand:ALLI 2 "register_operand" "r")
    ;; polynomial without leading 1
-   (match_operand:ALLX 3)]
+   (match_operand:ALLX 3 "const_int_operand")]
   "TARGET_AES && <ALLI:sizen> <= <ALLX:sizen>"
   {
     aarch64_expand_crc_using_pmull (<ALLX:MODE>mode, <ALLI:MODE>mode,

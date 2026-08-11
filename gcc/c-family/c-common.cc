@@ -1255,9 +1255,7 @@ c_build_shufflevector (location_t loc, tree v0, tree v1,
   vec_perm_indices indices (sel, 2, maskl);
 
   tree ret_type = build_vector_type (TREE_TYPE (TREE_TYPE (v0)), maskl);
-  tree mask_type = build_vector_type (build_nonstandard_integer_type
-		(TREE_INT_CST_LOW (TYPE_SIZE (TREE_TYPE (ret_type))), 1),
-		maskl);
+  tree mask_type = build_vector_type (ssizetype, maskl);
   /* Pad out arguments to the common vector size.  */
   if (v0n < maskl)
     {
@@ -3938,14 +3936,48 @@ c_common_get_alias_set (tree t)
   /* The C standard specifically allows aliasing between signed and
      unsigned variants of the same type.  We treat the signed
      variant as canonical.  */
-  if ((TREE_CODE (t) == INTEGER_TYPE || TREE_CODE (t) == BITINT_TYPE)
-      && TYPE_UNSIGNED (t))
+  if (TREE_CODE (t) == INTEGER_TYPE && TYPE_UNSIGNED (t))
     {
       tree t1 = c_common_signed_type (t);
 
       /* t1 == t can happen for boolean nodes which are always unsigned.  */
       if (t1 != t)
 	return get_alias_set (t1);
+    }
+  if (TREE_CODE (t) == BITINT_TYPE)
+    {
+      /* For normal INTEGER_TYPEs (except ones built by
+	 build_nonstandard_integer_type), both signed and unsigned variants
+	 of the type are always reachable from GTY roots, so just calling
+	 get_alias_set on the signed type is ok.  For BITINT_TYPE and
+	 non-standard INTEGER_TYPEs, only unsigned could be used and the
+	 corresponding signed type could be created on demand and garbage
+	 collected as unused, so the alias set of unsigned type could keep
+	 changing.
+	 Avoid that by remembering the signed type alias set in
+	 TYPE_ALIAS_SET and also when being asked about !TYPE_UNSIGNED
+	 check if there isn't a corresponding unsigned type with
+	 TYPE_ALIAS_SET_KNOWN_P.  */
+      if (TYPE_UNSIGNED (t))
+	{
+	  /* There is no signed _BitInt(1).  */
+	  if (TYPE_PRECISION (t) == 1)
+	    return -1;
+	  tree t1 = c_common_signed_type (t);
+	  gcc_checking_assert (t != t1);
+	  TYPE_ALIAS_SET (t) = get_alias_set (t1);
+	  return TYPE_ALIAS_SET (t);
+	}
+      else
+	{
+	  tree t1 = c_common_unsigned_type (t);
+	  gcc_checking_assert (t != t1);
+	  if (TYPE_ALIAS_SET_KNOWN_P (t1))
+	    {
+	      TYPE_ALIAS_SET (t) = TYPE_ALIAS_SET (t1);
+	      return TYPE_ALIAS_SET (t);
+	    }
+	}
     }
 
   return -1;
@@ -7106,6 +7138,16 @@ fold_offsetof (tree expr, tree type, enum tree_code ctx)
     case ERROR_MARK:
       return expr;
 
+    case REALPART_EXPR:
+     return fold_offsetof (TREE_OPERAND (expr, 0), type, code);
+
+    case IMAGPART_EXPR:
+     base = fold_offsetof (TREE_OPERAND (expr, 0), type, code);
+     if (base == error_mark_node)
+	return base;
+     off = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (TREE_OPERAND (expr, 0))));
+     break;
+
     case VAR_DECL:
       error ("cannot apply %<offsetof%> to static data member %qD", expr);
       return error_mark_node;
@@ -10245,6 +10287,7 @@ braced_list_to_string (tree type, tree ctor, bool member)
 		    j = i - start;
 		  else
 		    j -= start;
+		  value = copy_node (value);
 		  RAW_DATA_POINTER (value) -= start;
 		  RAW_DATA_LENGTH (value) += start + end;
 		  i += end;

@@ -1,3 +1,74 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-06-03  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/125252
+	* c-typeck.cc (ptr_to_tagged_member): Return type of member.
+	(c_type_canonical): Use incomplete type.
+
+2026-05-15  Andi Kleen  <ak@gcc.gnu.org>
+
+	PR c/124532
+	* c-parser.cc (struct attr_state): Add reset method.
+	(c_parser_compound_statement_nostart): Rename a to astate.
+	Reset state before iterating statements.
+
+2026-04-20  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-04-01  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/124635
+	* c-typeck.cc (c_reconstruct_complex_type): Copy
+	TYPE_REVERSE_STORAGE_ORDER.
+
+2026-04-20  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-03-03  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/122572
+	* c-decl.cc (finish_struct): Add distinct canonical type.
+	* c-tree.h (c_type_canonical): Prototype for new function.
+	* c-typeck.cc (c_type_canonical): New function.
+	(ptr_to_tagged_member): New function.
+
+2026-04-20  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-03-03  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/122572
+	* c-typeck.cc (tagged_types_tu_compatible_p): Fix check.
+
+2026-03-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-02-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/123365
+	* c-decl.cc (build_compound_literal): Call relayout_decl
+	after completing the type.
+
+2025-12-11  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-12-09  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/123018
+	* c-decl.cc (finish_struct): Diagnose bit-fields with vector type.
+
+2025-12-08  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2025-11-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/121506
+	* c-typeck.cc (c_type_tag): If TYPE_NAME is TYPE_DECL
+	with non-NULL DECL_NAME, return that.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

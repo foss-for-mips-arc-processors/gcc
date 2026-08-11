@@ -1012,6 +1012,7 @@ member_like_constrained_friend_p (tree decl)
 	  && DECL_UNIQUE_FRIEND_P (decl)
 	  && DECL_FRIEND_CONTEXT (decl)
 	  && get_constraints (decl)
+	  && CLASSTYPE_IMPLICIT_INSTANTIATION (DECL_FRIEND_CONTEXT (decl))
 	  && (!DECL_TEMPLATE_INFO (decl)
 	      || !PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (decl))
 	      || (uses_outer_template_parms_in_constraints
@@ -4546,7 +4547,9 @@ make_typename_type (tree context, tree name, enum tag_types tag_type,
 	   - the tag corresponds to a class-key or 'enum' so
 	     [basic.lookup.elab] applies, or
 	   - the tag corresponds to scope_type or tf_qualifying_scope is
-	     set so [basic.lookup.qual]/1 applies.
+	     set so [basic.lookup.qual]/1 applies, or
+	   - we're inside a base-specifier so [class.derived.general]/2 applies;
+	     the tag will already be class_type in that case.
 	 TODO: If we'd set/track the scope_type tag thoroughly on all
 	 TYPENAME_TYPEs that are followed by :: then we wouldn't need the
 	 tf_qualifying_scope flag.  */
@@ -8942,7 +8945,7 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 	      /* [basic.start.main]/3: A program that defines main as deleted
 		 is ill-formed.  */
 	      error ("%<::main%> cannot be deleted");
-	      DECL_INITIAL (decl) = NULL_TREE;
+	      DECL_INITIAL (decl) = error_mark_node;
 	    }
 	  else
 	    {

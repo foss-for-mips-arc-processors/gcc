@@ -3504,6 +3504,7 @@ cpp_maybe_module_directive (cpp_reader *pfile, cpp_token *result)
   cpp_token *keyword = peek;
   cpp_hashnode *(&n_modules)[spec_nodes::M_HWM][2] = pfile->spec_nodes.n_modules;
   int header_count = 0;
+  bool eol = false;
 
   /* Make sure the incoming state is as we expect it.  This way we
      can restore it using constants.  */
@@ -3563,10 +3564,10 @@ cpp_maybe_module_directive (cpp_reader *pfile, cpp_token *result)
      tokens.  C++ keywords are not yet relevant.  */
   if (peek->type == CPP_NAME
       || peek->type == CPP_COLON
-      ||  (header_count
-	   ? (peek->type == CPP_LESS
-	      || (peek->type == CPP_STRING && peek->val.str.text[0] != 'R')
-	      || peek->type == CPP_HEADER_NAME)
+      || (header_count
+	  ? (peek->type == CPP_LESS
+	     || (peek->type == CPP_STRING && peek->val.str.text[0] != 'R')
+	     || peek->type == CPP_HEADER_NAME)
 	   : peek->type == CPP_SEMICOLON))
     {
       pfile->state.pragma_allow_expansion = !CPP_OPTION (pfile, preprocessed);
@@ -3669,6 +3670,15 @@ cpp_maybe_module_directive (cpp_reader *pfile, cpp_token *result)
 		      peek->flags |= NO_DOT_COLON;
 		      break;
 		    }
+		  else if (peek->type == CPP_PRAGMA_EOL)
+		    {
+		      /* This is a broken module-directive; undo the clearing
+			 of in_deferred_pragma from _cpp_lex_direct so callers
+			 don't crash, and make sure we process the EOL again.  */
+		      pfile->state.in_deferred_pragma = true;
+		      eol = true;
+		      break;
+		    }
 		  else
 		    break;
 		}
@@ -3688,22 +3698,19 @@ cpp_maybe_module_directive (cpp_reader *pfile, cpp_token *result)
       pfile->state.in_deferred_pragma = false;
       /* Do not let this remain on.  */
       pfile->state.angled_headers = false;
+      /* If we saw EOL, we should drop it, because this isn't a module
+	 control-line after all.  */
+      eol = peek->type == CPP_PRAGMA_EOL;
     }
 
   /* In either case we want to backup the peeked tokens.  */
-  if (backup)
+  if (backup && (!eol || backup > 1))
     {
-      /* If we saw EOL, we should drop it, because this isn't a module
-	 control-line after all.  */
-      bool eol = peek->type == CPP_PRAGMA_EOL;
-      if (!eol || backup > 1)
-	{
-	  /* Put put the peeked tokens back  */
-	  _cpp_backup_tokens_direct (pfile, backup);
-	  /* But if the last one was an EOL, forget it.  */
-	  if (eol)
-	    pfile->lookaheads--;
-	}
+      /* Put the peeked tokens back.  */
+      _cpp_backup_tokens_direct (pfile, backup);
+      /* But if the last one was an EOL, forget it.  */
+      if (eol)
+	pfile->lookaheads--;
     }
 }
 
@@ -5458,7 +5465,13 @@ cpp_directive_only_process (cpp_reader *pfile,
 		    switch (c)
 		      {
 		      case '\\':
-			esc = true;
+			if (esc)
+			  {
+			    star = false;
+			    esc = false;
+			  }
+			else
+			  esc = true;
 			break;
 
 		      case '\r':
@@ -5489,7 +5502,7 @@ cpp_directive_only_process (cpp_reader *pfile,
 			break;
 
 		      case '/':
-			if (star)
+			if (star && !esc)
 			  goto done_comment;
 			/* FALLTHROUGH  */
 

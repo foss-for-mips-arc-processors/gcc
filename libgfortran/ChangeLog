@@ -1,3 +1,38 @@
+2026-06-12  Release Manager
+
+	* GCC 15.3.0 released.
+
+2026-05-16  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2026-05-06  Harald Anlauf  <anlauf@gmx.de>
+
+	PR libfortran/125095
+	* io/list_read.c (read_logical): Eat comments in namelist read mode.
+	(read_integer): Likewise.
+	(read_character): Likewise.
+	(read_complex): Likewise.
+	(read_real): Likewise.
+
+2025-12-21  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2025-12-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR libfortran/122936
+	* io/list_read.c (finish_list_read): Remove the use of hit_eof
+	and free_line. Simplify the logic. Add comments to clarify.
+
+2025-08-13  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2025-08-06  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR libfortran/121234
+	* io/list_read.c (read_character): Add checks to bypass eating
+	semicolons when reading strings with decimal mode 'point'
+	(list_formatted_read_scalar): Likewise.
+
 2025-08-08  Release Manager
 
 	* GCC 15.2.0 released.

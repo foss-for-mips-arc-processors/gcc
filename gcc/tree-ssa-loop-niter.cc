@@ -985,8 +985,8 @@ number_of_iterations_ne (class loop *loop, tree type, affine_iv *iv,
      if BNDS->below in the result is nonnegative.  */
   if (tree_int_cst_sign_bit (iv->step))
     {
-      s = fold_convert (niter_type,
-			fold_build1 (NEGATE_EXPR, type, iv->step));
+      s = fold_build1 (NEGATE_EXPR, niter_type,
+		       fold_convert (niter_type, iv->step));
       c = fold_build2 (MINUS_EXPR, niter_type,
 		       fold_convert (niter_type, iv->base),
 		       fold_convert (niter_type, final));
@@ -1215,7 +1215,7 @@ number_of_iterations_lt_to_ne (tree type, affine_iv *iv0, affine_iv *iv1,
     }
 
   /* IV0 < IV1 does not loop if IV0->base >= IV1->base.  */
-  if (mpz_cmp (mmod, bnds->below) < 0)
+  if (fv_comp_no_overflow && mpz_cmp (mmod, bnds->below) < 0)
     noloop = boolean_false_node;
   else
     noloop = fold_build2 (GE_EXPR, boolean_type_node,
@@ -1630,8 +1630,8 @@ number_of_iterations_lt (class loop *loop, tree type, affine_iv *iv0,
   if (integer_nonzerop (iv0->step))
     step = fold_convert (niter_type, iv0->step);
   else
-    step = fold_convert (niter_type,
-			 fold_build1 (NEGATE_EXPR, type, iv1->step));
+    step = fold_build1 (NEGATE_EXPR, niter_type,
+			fold_convert (niter_type, iv1->step));
 
   /* If we can determine the final value of the control iv exactly, we can
      transform the condition to != comparison.  In particular, this will be

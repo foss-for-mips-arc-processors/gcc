@@ -864,6 +864,7 @@ substitute_and_fold_dom_walker::before_dom_children (basic_block bb)
       /* If we made a replacement, fold the statement.  */
       if (did_replace)
 	{
+	  update_stmt (stmt);
 	  fold_stmt (&i, follow_single_use_edges);
 	  stmt = gsi_stmt (i);
 	  gimple_set_modified (stmt, true);
@@ -1019,6 +1020,8 @@ substitute_and_fold_engine::substitute_and_fold (basic_block block)
   while (!walker.stmts_to_fixup.is_empty ())
     {
       gimple *stmt = walker.stmts_to_fixup.pop ();
+      if (!gimple_bb (stmt))
+	continue;
       if (dump_file && dump_flags & TDF_DETAILS)
 	{
 	  fprintf (dump_file, "Fixing up noreturn call ");
