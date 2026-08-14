@@ -839,6 +839,74 @@ riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
   return !riscv_fuse_same_reg_p (SET_SRC (mem_set), update_dest);
 }
 
+/* Extract a pair of scalar loads or stores with the same mode and base
+   register.  Store whether they are loads in *LOAD_P.  */
+
+static bool
+riscv_fuse_mem_pair_p (rtx_insn *prev, rtx_insn *curr,
+			 struct riscv_fusion_mem_info *prev_mem,
+			 struct riscv_fusion_mem_info *curr_mem,
+			 bool *load_p)
+{
+  if (!riscv_fuse_sets_p (prev, curr)
+      || !riscv_fuse_mem_p (prev, prev_mem)
+      || !riscv_fuse_mem_p (curr, curr_mem))
+    return false;
+
+  bool prev_load_p = prev_mem->type != SCHED_FUSION_ST;
+  bool curr_load_p = curr_mem->type != SCHED_FUSION_ST;
+  if (prev_load_p != curr_load_p
+      || prev_mem->fp_p != curr_mem->fp_p
+      || prev_mem->mode != curr_mem->mode
+      || prev_mem->addr.type != ADDRESS_REG
+      || curr_mem->addr.type != ADDRESS_REG
+      || !CONST_INT_P (prev_mem->addr.offset)
+      || !CONST_INT_P (curr_mem->addr.offset)
+      || !riscv_fuse_same_reg_p (prev_mem->addr.reg,
+				   curr_mem->addr.reg))
+    return false;
+
+  *load_p = prev_load_p;
+  return true;
+}
+
+/* Check common adjacent load/store-pair constraints.  INC_P selects ascending
+   offsets and FP_P selects floating-point rather than integer accesses.  */
+
+static bool
+riscv_fuse_ldst_pair_p (rtx_insn *prev, rtx_insn *curr,
+			  bool inc_p, bool fp_p)
+{
+  struct riscv_fusion_mem_info prev_mem, curr_mem;
+  bool load_p;
+  if (!riscv_fuse_mem_pair_p (prev, curr, &prev_mem, &curr_mem,
+				&load_p)
+      || prev_mem.fp_p != fp_p
+      || prev_mem.type == SCHED_FUSION_LD_ZERO_EXTEND
+      || curr_mem.type == SCHED_FUSION_LD_ZERO_EXTEND)
+    return false;
+
+  HOST_WIDE_INT access_size = GET_MODE_SIZE (prev_mem.mode).to_constant ();
+  if (access_size != 4 && access_size != 8)
+    return false;
+
+  if (load_p)
+    {
+      rtx prev_dest = SET_DEST (single_set (prev));
+      rtx curr_dest = SET_DEST (single_set (curr));
+      if (riscv_fuse_same_reg_p (prev_dest, curr_dest)
+	  || riscv_fuse_same_reg_p (prev_mem.addr.reg, prev_dest))
+	return false;
+    }
+
+  HOST_WIDE_INT diff = inc_p
+		       ? INTVAL (curr_mem.addr.offset)
+			 - INTVAL (prev_mem.addr.offset)
+		       : INTVAL (prev_mem.addr.offset)
+			 - INTVAL (curr_mem.addr.offset);
+  return diff == access_size;
+}
+
 /* Check the common RTL for ZEXTW, ZEXTWS and ZEXTH fusion.  */
 
 static bool
@@ -1422,22 +1490,13 @@ riscv_fuse_auipc_ld (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_aligned_std (rtx_insn *prev, rtx_insn *curr)
 {
-  if (!riscv_fuse_sets_p (prev, curr))
-    return false;
-
   struct riscv_fusion_mem_info prev_mem, curr_mem;
-
-  if (!riscv_fuse_mem_p (prev, &prev_mem)
-      || !riscv_fuse_mem_p (curr, &curr_mem)
-      || prev_mem.type != SCHED_FUSION_ST
-      || curr_mem.type != SCHED_FUSION_ST
+  bool load_p;
+  if (!riscv_fuse_mem_pair_p (prev, curr, &prev_mem, &curr_mem,
+				&load_p)
+      || load_p
       || prev_mem.fp_p
-      || curr_mem.fp_p
-      || !SCALAR_INT_MODE_P (prev_mem.mode)
-      || prev_mem.mode != curr_mem.mode
-      || prev_mem.addr.type != ADDRESS_REG
-      || curr_mem.addr.type != ADDRESS_REG
-      || !riscv_fuse_same_reg_p (prev_mem.addr.reg, curr_mem.addr.reg))
+      || !SCALAR_INT_MODE_P (prev_mem.mode))
     return false;
 
   unsigned int mode_size
@@ -1452,6 +1511,26 @@ riscv_fuse_aligned_std (rtx_insn *prev, rtx_insn *curr)
     return true;
 
   return false;
+}
+
+/* Check for RISCV_FUSE_LDST_PAIR_INC fusion.
+   prev/curr (one of the following pairs):
+     prev (lw/ld) == (set (reg rd1) (mem (rs1, offset1)))
+     curr (lw/ld) == (set (reg rd2) (mem (rs1, offset2)))
+
+     prev (sw/sd) == (set (mem (rs1, offset1)) (reg rs2))
+     curr (sw/sd) == (set (mem (rs1, offset2)) (reg rs3))
+
+   Constraints:
+     access size is 4 or 8 bytes
+     offset2 - offset1 equals the access size
+     loads are not zero-extending
+     for loads, rd1 != rd2 and rd1 != rs1.  */
+
+static bool
+riscv_fuse_ldst_pair_inc (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_ldst_pair_p (prev, curr, true, false);
 }
 
 /* Check for RISCV_FUSE_BFEXT fusion.
@@ -1797,6 +1876,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_auipc_ld, "RISCV_FUSE_AUIPC_LD" },
   { RISCV_FUSE_ALIGNED_STD,
     riscv_fuse_aligned_std, "RISCV_FUSE_ALIGNED_STD" },
+  { RISCV_FUSE_LDST_PAIR_INC,
+    riscv_fuse_ldst_pair_inc, "RISCV_FUSE_LDST_PAIR_INC" },
   { RISCV_FUSE_BFEXT,
     riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_SLLI_SRLI,
