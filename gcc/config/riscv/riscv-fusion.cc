@@ -308,6 +308,43 @@ riscv_set_is_addiw_p (rtx set, rtx *src0 = NULL)
   return false;
 }
 
+/* Matches an addw:
+     (set (reg:DI rd)
+	  (sign_extend:DI (plus:SI (reg:SI rs1) (reg:SI rs2))))
+   or an equivalent word-add RTL form.  */
+
+static bool
+riscv_set_is_addw_p (rtx set)
+{
+  if (!TARGET_64BIT)
+    return false;
+
+  rtx src;
+  return (riscv_set_extract_word_binary_p (set, PLUS, &src)
+	  && REG_P (XEXP (src, 0))
+	  && REG_P (XEXP (src, 1))
+	  && riscv_regno (SET_DEST (set)) != INVALID_REGNUM);
+}
+
+/* Matches an add-type instruction:
+     (set (reg rd) (plus (reg rs1) (reg rs2)))
+   or an accepted addw or add.uw RTL form.  */
+
+static bool
+riscv_insn_is_add_type_p (rtx_insn *insn)
+{
+  rtx set = single_set (insn);
+  if (!set)
+    return false;
+
+  enum attr_type type = get_attr_type (insn);
+  return ((type == TYPE_ARITH
+	   && (riscv_set_is_add_p (set) || riscv_set_is_addw_p (set)))
+	  || (TARGET_64BIT
+	      && type == TYPE_BITMANIP
+	      && riscv_set_is_adduw_p (set)));
+}
+
 /* Matches an mv or li instruction:
      (set (reg rd) (reg rs1))
    or:
@@ -581,6 +618,35 @@ riscv_fuse_mem_p (rtx_insn *insn, struct riscv_fusion_mem_info *info)
   return true;
 }
 
+/* Extract an add-type instruction followed by an integer load or store that
+   uses the add result as an undisplaced address.  */
+
+static bool
+riscv_fuse_add_mem_p (rtx_insn *prev, rtx_insn *curr,
+			rtx *add_set_out, rtx *mem_set_out,
+			struct riscv_fusion_mem_info *mem)
+{
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
+    return false;
+
+  rtx add_dest = SET_DEST (prev_set);
+  if (!riscv_insn_is_add_type_p (prev)
+      || !riscv_fuse_mem_p (curr, mem)
+      || mem->fp_p
+      || mem->addr.type != ADDRESS_REG
+      || !CONST_INT_P (mem->addr.offset)
+      || INTVAL (mem->addr.offset) != 0
+      || !riscv_fuse_same_reg_p (add_dest, mem->addr.reg))
+    return false;
+
+  if (add_set_out)
+    *add_set_out = prev_set;
+  if (mem_set_out)
+    *mem_set_out = curr_set;
+  return true;
+}
+
 /* Check the common RTL for ZEXTW, ZEXTWS and ZEXTH fusion.  */
 
 static bool
@@ -684,38 +750,27 @@ riscv_fuse_zexth (rtx_insn *prev, rtx_insn *curr)
 }
 
 /* Check for RISCV_FUSE_LDINDEXED fusion.
-   prev (add) == (set (reg rd1)
-		      (plus (reg rs1) (reg rs2)))
+   prev (one of the following):
+     (add) == (set (reg rd1) (plus (reg rs1) (reg rs2)))
+     (addw) == (set (reg rd1) (sign_extend (plus:SI (reg rs1)
+						    (reg rs2))))
+     (add.uw) == (set (reg rd1) (plus (zero_extend (reg rs1))
+				      (reg rs2)))
    curr (one of the following):
      (load) == (set (reg rd2) (mem (reg rd1)))
      (load) == (set (reg rd2)
 		    (any_extend (mem (reg rd1))))
 
    Constraints:
-     rd1 == rd2.  */
+     offset == 0.  */
 
 static bool
 riscv_fuse_ldindexed (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set, curr_set;
-  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
-    return false;
-
-  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
-    return false;
-
   struct riscv_fusion_mem_info mem;
 
-  if (riscv_fuse_mem_p (curr, &mem)
-      && mem.type != SCHED_FUSION_ST
-      && !mem.fp_p
-      && mem.addr.type == ADDRESS_REG
-      && INTVAL (mem.addr.offset) == 0
-      && riscv_set_is_add_p (prev_set)
-      && riscv_fuse_same_reg_p (mem.addr.reg, SET_DEST (prev_set)))
-    return true;
-
-  return false;
+  return (riscv_fuse_add_mem_p (prev, curr, NULL, NULL, &mem)
+	  && mem.type != SCHED_FUSION_ST);
 }
 
 /* Check for RISCV_FUSE_EXPANDED_LD fusion.
