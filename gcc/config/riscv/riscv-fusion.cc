@@ -1572,6 +1572,25 @@ riscv_fuse_fldfst_pair_inc (rtx_insn *prev, rtx_insn *curr)
   return riscv_fuse_ldst_pair_p (prev, curr, true, true);
 }
 
+/* Check for RISCV_FUSE_FLDFST_PAIR_DEC fusion.
+   prev/curr (one of the following pairs):
+     prev (flw/fld) == (set (reg frd1) (mem (rs1, offset1)))
+     curr (flw/fld) == (set (reg frd2) (mem (rs1, offset2)))
+
+     prev (fsw/fsd) == (set (mem (rs1, offset1)) (reg frs1))
+     curr (fsw/fsd) == (set (mem (rs1, offset2)) (reg frs2))
+
+   Constraints:
+     access size is 4 or 8 bytes
+     offset1 - offset2 equals the access size
+     for loads, frd1 != frd2.  */
+
+static bool
+riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_ldst_pair_p (prev, curr, false, true);
+}
+
 /* Check for RISCV_FUSE_BFEXT fusion.
    prev (slli) == (set (reg rd1)
 		       (ashift (reg rs1) (const_int shamt1)))
@@ -1921,6 +1940,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_ldst_pair_dec, "RISCV_FUSE_LDST_PAIR_DEC" },
   { RISCV_FUSE_FLDFST_PAIR_INC,
     riscv_fuse_fldfst_pair_inc, "RISCV_FUSE_FLDFST_PAIR_INC" },
+  { RISCV_FUSE_FLDFST_PAIR_DEC,
+    riscv_fuse_fldfst_pair_dec, "RISCV_FUSE_FLDFST_PAIR_DEC" },
   { RISCV_FUSE_BFEXT,
     riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_SLLI_SRLI,
