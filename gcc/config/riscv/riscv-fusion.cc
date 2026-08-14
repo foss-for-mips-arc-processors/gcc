@@ -328,21 +328,30 @@ riscv_set_is_addw_p (rtx set)
 
 /* Matches an add-type instruction:
      (set (reg rd) (plus (reg rs1) (reg rs2)))
-   or an accepted addw or add.uw RTL form.  */
+   or an accepted addw or add.uw RTL form.  Store whether the instruction is
+   a word form in *WORD_P when requested.  */
 
 static bool
-riscv_insn_is_add_type_p (rtx_insn *insn)
+riscv_insn_is_add_type_p (rtx_insn *insn, bool *word_p = NULL)
 {
   rtx set = single_set (insn);
   if (!set)
     return false;
 
   enum attr_type type = get_attr_type (insn);
-  return ((type == TYPE_ARITH
-	   && (riscv_set_is_add_p (set) || riscv_set_is_addw_p (set)))
-	  || (TARGET_64BIT
-	      && type == TYPE_BITMANIP
-	      && riscv_set_is_adduw_p (set)));
+  bool is_word_p = false;
+  if (type == TYPE_ARITH && riscv_set_is_add_p (set))
+    is_word_p = TARGET_64BIT && GET_MODE (SET_SRC (set)) == SImode;
+  else if (type == TYPE_ARITH && riscv_set_is_addw_p (set))
+    is_word_p = true;
+  else if (!TARGET_64BIT
+	   || type != TYPE_BITMANIP
+	   || !riscv_set_is_adduw_p (set))
+    return false;
+
+  if (word_p)
+    *word_p = is_word_p;
+  return true;
 }
 
 /* Matches an mv or li instruction:
@@ -1386,6 +1395,41 @@ riscv_fuse_slli_srli (rtx_insn *prev, rtx_insn *curr)
   return riscv_fuse_shift_pair_p (prev, curr, true, false);
 }
 
+/* Check for RISCV_FUSE_SRLI_ADD fusion.
+   prev (srli/srliw) == (set (reg rd1) (lshiftrt (reg rs1)
+						 (const_int 2)))
+   curr (one of the following):
+     (add) == (set (reg rd2) (plus (reg rd1) (reg rs2)))
+     (addw) == (set (reg rd2)
+		  (sign_extend (plus (reg rd1) (reg rs2))))
+     (add.uw) == (set (reg rd2) (plus (zero_extend (reg rd1))
+				   (reg rs2)))
+
+   Constraints:
+     rd1 == rd2
+     both instructions are word forms or both are non-word forms.  */
+
+static bool
+riscv_fuse_srli_add (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
+      || get_attr_type (prev) != TYPE_SHIFT)
+    return false;
+
+  bool shift_word_p, add_word_p;
+  HOST_WIDE_INT shift_amount;
+  if (!riscv_set_is_shift_type_p (prev_set, LSHIFTRT, &shift_word_p,
+				  &shift_amount)
+      || !riscv_insn_is_add_type_p (curr, &add_word_p)
+      || shift_word_p != add_word_p
+      || !riscv_fuse_same_dest_p (prev_set, curr_set, true))
+    return false;
+
+  unsigned int mask = shift_word_p ? 0x1f : (TARGET_64BIT ? 0x3f : 0x1f);
+  return (shift_amount & mask) == 2;
+}
+
 /* Check for RISCV_FUSE_B_ALUI fusion.
    prev/curr (one of the following pairs):
      prev (orc.b) == (set (reg rd1)
@@ -1656,6 +1700,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_SLLI_SRLI,
     riscv_fuse_slli_srli, "RISCV_FUSE_SLLI_SRLI" },
+  { RISCV_FUSE_SRLI_ADD,
+    riscv_fuse_srli_add, "RISCV_FUSE_SRLI_ADD" },
   { RISCV_FUSE_B_ALUI,
     riscv_fuse_b_alui, "RISCV_FUSE_B_ALUI" },
   { RISCV_FUSE_SUB_SEQZ,
