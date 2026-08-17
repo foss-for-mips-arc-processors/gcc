@@ -11735,6 +11735,12 @@ struct last_vconfig
   rtx avl;
 } last_vconfig;
 
+/* Ready-list macro-fusion state for the current scheduling block.  */
+
+static int riscv_cached_can_issue_more;
+static rtx_insn *riscv_last_scheduled_insn;
+static bool riscv_last_fusion_insn_p;
+
 /* Clear LAST_VCONFIG so we have no known state.  */
 static void
 clear_vconfig (void)
@@ -11778,15 +11784,28 @@ compatible_with_last_vconfig (rtx_insn *insn)
   return true;
 }
 
-/* Implement TARGET_SCHED_INIT, we use this to track the vector configuration
-   of the last issued vector instruction.  We can then use that information
-   to potentially adjust the ready queue to issue instructions of a compatible
-   vector configuration instead of a conflicting configuration.  That will
-   reduce the number of vsetvl instructions we ultimately emit.  */
+/* Return true if INSN is part of an existing scheduling group.  */
+
+static bool
+riscv_sched_group_member_p (rtx_insn *insn)
+{
+  if (SCHED_GROUP_P (insn))
+    return true;
+
+  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  return next && INSN_P (next) && SCHED_GROUP_P (next);
+}
+
+/* Implement TARGET_SCHED_INIT.  Track the vector configuration of the last
+   issued vector instruction so that reordering can reduce vsetvl instructions.
+   Also reset the ready-list fusion state for each scheduling block.  */
 static void
 riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
+  riscv_cached_can_issue_more = riscv_issue_rate ();
+  riscv_last_scheduled_insn = NULL;
+  riscv_last_fusion_insn_p = false;
 }
 
 /* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
@@ -11794,16 +11813,38 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
   if (DEBUG_INSN_P (insn))
-    return more;
+    {
+      riscv_cached_can_issue_more = more;
+      return more;
+    }
 
   rtx_code code = GET_CODE (PATTERN (insn));
   if (code == USE || code == CLOBBER)
-    return more;
+    {
+      riscv_cached_can_issue_more = more;
+      return more;
+    }
+
+  bool fusion_p = riscv_sched_group_member_p (insn);
+  if (!fusion_p
+      && !sched_fusion
+      && riscv_last_scheduled_insn
+      && !riscv_last_fusion_insn_p
+      && (BLOCK_FOR_INSN (riscv_last_scheduled_insn)
+	  == BLOCK_FOR_INSN (insn))
+      && riscv_get_fusion_pair_type (riscv_last_scheduled_insn, insn)
+	 != RISCV_FUSE_NOTHING)
+    fusion_p = true;
+  riscv_last_fusion_insn_p = fusion_p;
+  riscv_last_scheduled_insn = insn;
 
   /* GHOST insns are used for blockage and similar cases which
      effectively end a cycle.  */
   if (get_attr_type (insn) == TYPE_GHOST)
-    return 0;
+    {
+      riscv_cached_can_issue_more = 0;
+      return 0;
+    }
 
   /* If we ever encounter an insn with an unknown type, trip
      an assert so we can find and fix this problem.  */
@@ -11837,17 +11878,73 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	  last_vconfig.ma = mask_agnostic_p (insn);
 	}
     }
-
-  return more - 1;
+  riscv_cached_can_issue_more = more - 1;
+  return riscv_cached_can_issue_more;
 }
 
-/* Implement TARGET_SCHED_REORDER.  The goal here is to look at the ready
-   queue and reorder it ever so slightly to encourage issuing an insn with
-   the same vector configuration as the most recently issued vector
-   instruction.  That will reduce vsetvl instructions.  */
-static int
-riscv_sched_reorder (FILE *, int, rtx_insn **ready, int *nreadyp, int)
+/* Move a fusion partner in the highest-priority window to the next slot
+   without disturbing existing scheduling groups.  */
+
+static bool
+riscv_sched_reorder_fusion (FILE *file, int verbose, rtx_insn **ready,
+			    int nready)
 {
+  if (sched_fusion
+      || sel_sched_p ()
+      || !riscv_macro_fusion_p ()
+      || !riscv_last_scheduled_insn
+      || riscv_last_fusion_insn_p
+      || nready == 0)
+    return false;
+
+  int priority = INSN_PRIORITY (ready[nready - 1]);
+  for (int i = nready - 1; i >= 0; --i)
+    {
+      rtx_insn *insn = ready[i];
+
+      if (INSN_PRIORITY (insn) < priority)
+	break;
+
+      if (riscv_sched_group_member_p (insn))
+	continue;
+
+      if (BLOCK_FOR_INSN (insn)
+	  != BLOCK_FOR_INSN (riscv_last_scheduled_insn))
+	continue;
+
+      if (riscv_get_fusion_pair_type (riscv_last_scheduled_insn, insn)
+	  == RISCV_FUSE_NOTHING)
+	continue;
+
+      if (i != nready - 1)
+	{
+	  for (int j = i; j < nready - 1; ++j)
+	    ready[j] = ready[j + 1];
+	  ready[nready - 1] = insn;
+
+	  if (verbose && file)
+	    fprintf (file, ";;\t\tFusion reorder: (%d, %d)\n",
+		     INSN_UID (riscv_last_scheduled_insn), INSN_UID (insn));
+	}
+      return true;
+    }
+
+  return false;
+}
+
+/* Implement TARGET_SCHED_REORDER.  Try to keep a macro-fusion pair adjacent
+   across a cycle boundary, then prefer an instruction with the same vector
+   configuration as the last issued vector instruction to reduce vsetvl
+   instructions.  */
+static int
+riscv_sched_reorder (FILE *file, int verbose, rtx_insn **ready,
+		     int *nreadyp, int)
+{
+  riscv_cached_can_issue_more = riscv_issue_rate ();
+
+  if (riscv_sched_reorder_fusion (file, verbose, ready, *nreadyp))
+    return riscv_cached_can_issue_more;
+
   /* If we don't have a valid prior vector configuration, then there is
      no point in reordering the ready queue, similarly if there is
      just one entry in the queue.  */
@@ -11893,7 +11990,16 @@ riscv_sched_reorder (FILE *, int, rtx_insn **ready, int *nreadyp, int)
   return riscv_issue_rate ();
 }
 
+/* Implement TARGET_SCHED_REORDER2.  */
 
+static int
+riscv_sched_reorder2 (FILE *file, int verbose, rtx_insn **ready,
+		      int *nreadyp, int)
+{
+  if (riscv_cached_can_issue_more > 0)
+    riscv_sched_reorder_fusion (file, verbose, ready, *nreadyp);
+  return riscv_cached_can_issue_more;
+}
 
 /* Return the set of fusible operations for the current tune.  */
 
@@ -16963,6 +17069,9 @@ riscv_memtag_tag_bitsize ()
 
 #undef  TARGET_SCHED_REORDER
 #define TARGET_SCHED_REORDER riscv_sched_reorder
+
+#undef TARGET_SCHED_REORDER2
+#define TARGET_SCHED_REORDER2 riscv_sched_reorder2
 
 #undef  TARGET_SCHED_ADJUST_COST
 #define TARGET_SCHED_ADJUST_COST riscv_sched_adjust_cost
