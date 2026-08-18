@@ -72,7 +72,8 @@ jobs:
           # fetch the via the git:// instead.
           git submodule set-url binutils git://sourceware.org/git/binutils-gdb.git
           git submodule set-url newlib git://sourceware.org/git/newlib-cygwin.git
-          git submodule sync binutils newlib
+          git submodule set-url dejagnu git://git.savannah.gnu.org/dejagnu.git
+          git submodule sync binutils newlib dejagnu
 
           # Only fetch submodules required for a newlib (--disable-linux) build:
           # binutils, newlib, dejagnu. GCC sources come from the PR checkout
