@@ -2369,6 +2369,67 @@ const char *fli_value_print[32] =
   "8.0", "16.0", "128.0", "256.0", "32768.0", "65536.0", "inf", "nan"
 };
 
+/* load given constant in string format into a register.  */
+rtx
+riscv_get_trig_const (int index)
+{
+  REAL_VALUE_TYPE scale;
+  rtx tmpreg = gen_reg_rtx (SFmode);
+  rtx scalereg = gen_reg_rtx (SFmode);
+  scale = REAL_VALUE_ATOF (fli_value_print[index], SFmode);
+  scalereg = const_double_from_real_value (scale, SFmode);
+  emit_move_insn (tmpreg, scalereg);
+  return tmpreg;
+}
+
+rtx
+riscv_get_trig_scale_value (int index)
+{
+  rtx scalereg = gen_reg_rtx (SFmode);
+  emit_insn (gen_riscv_mips_flti (scalereg, gen_int_mode (index, SImode)));
+  return scalereg;
+}
+
+rtx riscv_output_asinf_hz (rtx dest, rtx src)
+{
+    // temp_reg1 = 1.0
+    rtx const_1 = riscv_get_trig_const (FLI_CONST_1_0_INDEX);
+    rtx temp_reg1 = gen_reg_rtx (SFmode);
+    emit_move_insn (temp_reg1, const_1);
+
+    // temp_reg2 = x * x
+    rtx temp_reg2 = gen_reg_rtx (SFmode);
+    emit_insn (gen_mulsf3 (temp_reg2, src, src));
+
+    // temp_reg3 = 1/x
+    rtx temp_reg3 = gen_reg_rtx (SFmode);
+    emit_insn (gen_riscv_mips_ffrecip (temp_reg3, src));
+
+    // temp_reg2 = temp_reg1 - temp_reg2 (1 - x2)
+    emit_insn (gen_subsf3 (temp_reg2, temp_reg1, temp_reg2));
+
+    // temp_reg1 = sqrt (1-x2)
+    emit_insn (gen_riscv_mips_ffsqrt (temp_reg1, temp_reg2));
+
+    // temp_reg2 = 1/sqrt (1-x2)
+    emit_insn (gen_riscv_mips_ffrsqrt (temp_reg2, temp_reg2));
+
+    emit_insn (gen_mulsf3 (temp_reg1, temp_reg3, temp_reg1));
+    emit_insn (gen_mulsf3 (temp_reg2, src, temp_reg2));
+    emit_insn (gen_riscv_mips_fatan_hz (temp_reg1, temp_reg1));
+
+    // temp_reg3 = 0.25
+    rtx const_0_25 = riscv_get_trig_const (FLI_CONST_0_25_INDEX);
+    emit_move_insn (temp_reg3, const_0_25);
+
+    emit_insn (gen_copysignsf3 (temp_reg3, temp_reg3, src));
+    emit_insn (gen_riscv_mips_fatan_hz (temp_reg2, temp_reg2));
+
+    emit_insn (gen_subsf3 (dest, temp_reg3, temp_reg1));
+    emit_insn (gen_fmaxsf3 (dest, temp_reg2, dest));
+    return dest;
+}
+
 /* Return index of the FLI instruction table if rtx X is an immediate constant
    that can be moved using a single FLI instruction in zfa extension.  Return -1
    if not found.  */

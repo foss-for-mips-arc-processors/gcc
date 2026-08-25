@@ -407,6 +407,12 @@
   "An address operand that is valid for a prefetch instruction"
   (match_operand 0 "prefetch_operand"))
 
+;; MIPS Constraints
+(define_constraint "zlti"
+  "Integer constant for MIPS FLTI instruction."
+  (and (match_code "const_int")
+       (match_test "TARGET_XMIPSTRIG && IN_RANGE (ival, 0, 15)")))
+
 (define_address_constraint "ZD"
   "An address operand that is valid for a mips prefetch instruction"
   (match_test "TARGET_XMIPSCBOP && riscv_prefetch_offset_address_p (op, mode)"))

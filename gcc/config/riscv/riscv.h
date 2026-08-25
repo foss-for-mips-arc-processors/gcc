@@ -1040,6 +1040,49 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
 #define TARGET_ARCV_RHX100 \
   (riscv_microarchitecture == arcv_rhx100)
 
+/* Scaling factor/constant for MIPS trig instructions.  */
+enum flti_index {
+  FLTI_CONST_PI_BY_4        = 0,
+  FLTI_CONST_PI_BY_2        = 1,
+  FLTI_CONST_PI             = 2,
+  FLTI_CONST_2PI            = 3,
+  FLTI_CONST_1_BY_PI        = 4,
+  FLTI_CONST_1_BY_2PI       = 5,
+  FLTI_CONST_LN_OF_2        = 6,
+  FLTI_CONST_LOG2_OF_E      = 7,
+  FLTI_CONST_LOG2_OF_10     = 8,
+  FLTI_CONST_LOG10_OF_2     = 9,
+  FLTI_CONST_SQRT_OF_2      = 10,
+  FLTI_CONST_INV_SQRT_OF_2	= 11,
+  FLTI_CONST_SQRT_OF_3      = 12,
+  FLTI_CONST_INV_SQRT_OF_3  = 13,
+  FLTI_CONST_SQRT_OF_3_BY_2 = 14,
+  FLTI_CONST_SQRT_2_BY_3    = 15,
+  FLTI_CONST_RSVD16         = 16,
+  FLTI_CONST_RSVD17         = 17,
+  FLTI_CONST_RSVD18         = 18,
+  FLTI_CONST_RSVD19         = 19,
+  FLTI_CONST_RSVD20         = 20,
+  FLTI_CONST_RSVD21         = 21,
+  FLTI_CONST_RSVD22         = 22,
+  FLTI_CONST_RSVD23         = 23,
+  FLTI_CONST_RSVD24         = 24,
+  FLTI_CONST_RSVD25         = 25,
+  FLTI_CONST_RSVD26         = 26,
+  FLTI_CONST_RSVD27         = 27,
+  FLTI_CONST_RSVD28         = 28,
+  FLTI_CONST_RSVD29         = 29,
+  FLTI_CONST_RSVD30         = 30,
+  FLTI_CONST_RSVD31         = 31,
+  FLTI_CONST_END            = 32
+};
+
+/* Index values for constants '0.25', '0.5' and '1.0' from
+   'fli_value_print' array (riscv.cc).  */
+#define FLI_CONST_0_25_INDEX  8
+#define FLI_CONST_0_5_INDEX   12
+#define FLI_CONST_1_0_INDEX   16
+
 /* True if the target supports misaligned vector loads and stores.  */
 #define TARGET_VECTOR_MISALIGN_SUPPORTED \
    riscv_vector_unaligned_access_p

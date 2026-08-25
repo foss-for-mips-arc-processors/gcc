@@ -57,6 +57,15 @@
       (match_operand 0 "mips_prefetch_operand")
       (match_operand 0 "zicbop_prefetch_operand")))
 
+(define_predicate "flti_operand"
+  (match_code "const_int")
+{
+  int val = INTVAL (op);
+  if (val >= 0 && val <= 15)
+    return true;
+  return false;
+ })
+
 (define_predicate "lui_operand"
   (and (match_code "const_int")
        (match_test "LUI_OPERAND (INTVAL (op))")))

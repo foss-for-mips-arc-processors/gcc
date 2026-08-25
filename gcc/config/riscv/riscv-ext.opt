@@ -484,6 +484,8 @@ Mask(XMIPSCMOV) Var(riscv_xmips_subext)
 
 Mask(XMIPSCBOP) Var(riscv_xmips_subext)
 
+Mask(XMIPSTRIG) Var(riscv_xmips_subext)
+
 Mask(XANDESPERF) Var(riscv_xandes_subext)
 
 Mask(XANDESBFHCVT) Var(riscv_xandes_subext)

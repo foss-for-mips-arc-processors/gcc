@@ -140,6 +140,19 @@
   "mips_m8500_alu0")
 
 ;;
+;; TRIG
+;;
+(define_insn_reservation "mips_m8500_fpu_flti" 8
+  (and (eq_attr "tune" "mips_m8500")
+       (eq_attr "type" "flti"))
+  "mips_m8500_float_pipe")
+
+(define_insn_reservation "mips_m8500_trig" 8
+  (and (eq_attr "tune" "mips_m8500")
+       (eq_attr "type" "ftrig"))
+  "mips_m8500_fpu1")
+
+;;
 ;; forwarding/bypass
 ;;
 (define_bypass 3 "mips_m8500_load" "mips_m8500_load,mips_m8500_store")
