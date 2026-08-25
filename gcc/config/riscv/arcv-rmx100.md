@@ -51,7 +51,7 @@
        (eq_attr "type" "imul"))
   "arcv_rmx100_MPY")
 
-(define_insn_reservation "arcv_rmx100_load_insn" 3
+(define_insn_reservation "arcv_rmx100_load_insn" 1
   (and (eq_attr "tune" "arcv_rmx100")
        (eq_attr "type" "load"))
   "arcv_rmx100_DMP,nothing*2")
