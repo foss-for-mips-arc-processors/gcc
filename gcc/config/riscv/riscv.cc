@@ -12628,7 +12628,8 @@ riscv_override_options_internal (struct gcc_options *opts)
      advanced fusion for rmx500 is turned on by an option.
    */
   if ((riscv_microarchitecture == arcv_rhx100
-       || riscv_microarchitecture == arcv_rpx100)
+       || riscv_microarchitecture == arcv_rpx100
+       || riscv_microarchitecture == arcv_rmx700)
       && (target_flags_explicit & MASK_ARCV_ADVANCED_FUSION) == 0)
     {
       opts->x_target_flags |= MASK_ARCV_ADVANCED_FUSION;

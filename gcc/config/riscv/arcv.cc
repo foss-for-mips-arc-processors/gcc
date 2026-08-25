@@ -91,7 +91,8 @@ arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 		     || mode == QImode))
 	 || (!is_load && (mode == DImode
 		     || mode == SImode))
-	 || (riscv_microarchitecture == arcv_rmx500
+	 || ((riscv_microarchitecture == arcv_rmx500
+			|| riscv_microarchitecture == arcv_rmx700)
 		     && (mode == HFmode || mode == SFmode || mode == DFmode)));
 }
 
@@ -316,7 +317,8 @@ arcv_fusible_memop_p (rtx_insn *insn)
 {
   enum attr_type type = get_attr_type (insn);
   return (type == TYPE_LOAD || type == TYPE_STORE
-	  || (riscv_microarchitecture == arcv_rmx500
+	  || ((riscv_microarchitecture == arcv_rmx500
+	      || riscv_microarchitecture == arcv_rmx700)
 	  && (type == TYPE_FPLOAD || type == TYPE_FPSTORE)));
 }
 
@@ -619,7 +621,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   /* Fuse adjacent loads.  */
   if ((get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
-      || (riscv_microarchitecture == arcv_rmx500
+      || ((riscv_microarchitecture == arcv_rmx500
+	   || riscv_microarchitecture == arcv_rmx700)
 	&& get_attr_type (prev) == TYPE_FPLOAD
 	&& get_attr_type (curr) == TYPE_FPLOAD))
     {
@@ -634,7 +637,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   /* Fuse adjacent stores.  */
   if ((get_attr_type (prev) == TYPE_STORE
       && get_attr_type (curr) == TYPE_STORE)
-      || (riscv_microarchitecture == arcv_rmx500
+      || ((riscv_microarchitecture == arcv_rmx500
+	    || riscv_microarchitecture == arcv_rmx700)
 	  && get_attr_type (prev) == TYPE_FPSTORE
 	  && get_attr_type (curr) == TYPE_FPSTORE))
     {
@@ -657,7 +661,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       if (next_set
 	  && ((get_attr_type (curr) == TYPE_LOAD
 	       && get_attr_type (next) == TYPE_LOAD)
-	      || (riscv_microarchitecture == arcv_rmx500
+	      || ((riscv_microarchitecture == arcv_rmx500
+		    || riscv_microarchitecture == arcv_rmx700)
 		  && get_attr_type (curr) == TYPE_FPLOAD
 		  && get_attr_type (next) == TYPE_FPLOAD))
 	  && arcv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
@@ -667,7 +672,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
       if (next_set
 	  && ((get_attr_type (curr) == TYPE_STORE
 	       && get_attr_type (next) == TYPE_STORE)
-	      || (riscv_microarchitecture == arcv_rmx500
+	      || ((riscv_microarchitecture == arcv_rmx500
+		    || riscv_microarchitecture == arcv_rmx700)
 		  && get_attr_type (curr) == TYPE_FPSTORE
 		  && get_attr_type (next) == TYPE_FPSTORE))
 	  && arcv_fused_addr_p
@@ -794,7 +800,8 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   if (!sched_state.cached_can_issue_more)
     return 0;
 
-  if (riscv_microarchitecture == arcv_rmx500
+  if ((riscv_microarchitecture == arcv_rmx500
+	|| riscv_microarchitecture == arcv_rmx700)
       && sched_state.last_scheduled_insn
       && ready && *n_readyp > 0
       && !SCHED_GROUP_P (sched_state.last_scheduled_insn))
@@ -974,7 +981,8 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 	   && get_attr_type (next) == TYPE_STORE)
 	 || (get_attr_type (insn) == TYPE_LOAD
 	     && get_attr_type (next) == TYPE_LOAD)
-	 || (riscv_microarchitecture == arcv_rmx500
+	 || ((riscv_microarchitecture == arcv_rmx500
+	      || riscv_microarchitecture == arcv_rmx700)
 	     && ((get_attr_type (insn) == TYPE_FPLOAD
 		  && get_attr_type (next) == TYPE_FPLOAD)
 		|| (get_attr_type (insn) == TYPE_FPSTORE
@@ -1125,7 +1133,8 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 bool
 arcv_can_issue_more_p (int issue_rate, int more)
 {
-  if (riscv_microarchitecture == arcv_rmx500)
+  if (riscv_microarchitecture == arcv_rmx500
+      || riscv_microarchitecture == arcv_rmx700)
     {
       if (more == issue_rate)
 	sched_state.cached_can_issue_more = more;
@@ -1155,7 +1164,8 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
   rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
 
-  if (riscv_microarchitecture == arcv_rmx500)
+  if (riscv_microarchitecture == arcv_rmx500
+      || riscv_microarchitecture == arcv_rmx700)
     {
       sched_state.last_scheduled_insn = insn;
 
