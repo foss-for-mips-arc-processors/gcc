@@ -61,6 +61,7 @@ enum riscv_microarchitecture_type {
   generic_ooo,
   mips_p8700,
   mips_i8500,
+  mips_m8500,
   tt_ascalon_d8,
   tt_ascalon_xg,
   andes_25_series,
