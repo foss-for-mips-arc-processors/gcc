@@ -2461,9 +2461,14 @@ gfc_find_derived_vtab (gfc_symbol *derived)
   if (derived->attr.pdt_template)
     return NULL;
 
-  /* Find the top-level namespace.  */
+  /* Find the top-level namespace, stopping at module/submodule boundaries.
+     A submodule's namespace may have its parent pointer set to the ancestor
+     module namespace for host-association purposes; we must not escape that
+     boundary, because vtables for types defined in a submodule belong in
+     the submodule namespace, not in its parent module.  */
   for (ns = gfc_current_ns; ns; ns = ns->parent)
-    if (!ns->parent)
+    if (!ns->parent
+	|| (ns->proc_name && ns->proc_name->attr.flavor == FL_MODULE))
       break;
 
   /* If the type is a class container, use the underlying derived type.  */
@@ -2486,6 +2491,7 @@ gfc_find_derived_vtab (gfc_symbol *derived)
   /* Work in the gsymbol namespace if the top-level namespace is a module.
      This ensures that the vtable is unique, which is required since we use
      its address in SELECT TYPE.  */
+  gfc_namespace *module_ns = ns;
   if (gsym && gsym->ns && ns && ns->proc_name
       && ns->proc_name->attr.flavor == FL_MODULE)
     ns = gsym->ns;
@@ -2511,6 +2517,20 @@ gfc_find_derived_vtab (gfc_symbol *derived)
 	gfc_find_symbol (name, ns, 0, &vtab);
       if (vtab == NULL)
 	gfc_find_symbol (name, derived->ns, 0, &vtab);
+      /* If all else fails, look in the module/submodule namespace so that
+	 the module variable and procedure body translations find the same
+	 frontend symbol and backend decl.  */
+      if (vtab == NULL && module_ns != ns)
+	gfc_find_symbol (name, module_ns, 0, &vtab);
+
+      /* Fix up a stale non-use-associated duplicate vtab.  */
+      if (vtab
+	  && (derived->attr.use_assoc || derived->attr.used_in_submodule)
+	  && !vtab->attr.use_assoc && !vtab->module)
+	{
+	  vtab->attr.use_assoc = 1;
+	  vtab->module = derived->module;
+	}
 
       if (vtab == NULL)
 	{
@@ -2849,6 +2869,19 @@ yes:
       gcc_assert (final->initializer
 		  && final->initializer->expr_type != EXPR_NULL);
       *final_expr = final->initializer;
+
+      /* Fix up a stale non-use-associated duplicate vtab.  */
+      if ((derived->attr.use_assoc || derived->attr.used_in_submodule)
+	  && (*final_expr)->expr_type == EXPR_VARIABLE
+	  && (*final_expr)->symtree)
+	{
+	  gfc_symbol *final_sym = (*final_expr)->symtree->n.sym;
+	  if (final_sym && !final_sym->attr.use_assoc && !final_sym->module)
+	    {
+	      final_sym->attr.use_assoc = 1;
+	      final_sym->module = derived->module;
+	    }
+	}
     }
   return true;
 }

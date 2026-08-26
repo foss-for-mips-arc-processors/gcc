@@ -3373,6 +3373,7 @@ package body Sem_Attr is
         and then Aname /= Name_Code_Address
         and then Aname /= Name_Result
         and then Aname /= Name_Unchecked_Access
+        and then Aname /= Name_Unrestricted_Access
       then
          --  The prefix must be resolvable by itself, without reference to the
          --  attribute. One case that requires special handling is a prefix
@@ -12879,11 +12880,6 @@ package body Sem_Attr is
                function Is_Reducer_Subprogram (E : Entity_Id) return Boolean;
                --  Return whether E is a reducer subprogram (RM 4.5.10(11-13))
 
-               function Make_Array_Type
-                 (Index, Value : Entity_Id) return Entity_Id;
-               --  This function returns a simple array type to resolve the
-               --  array aggregate.
-
                -----------------------
                -- Get_Value_Subtype --
                -----------------------
@@ -12915,6 +12911,10 @@ package body Sem_Attr is
                      It         : Interp;
 
                   begin
+                     if not Is_Overloaded (Reducer_N) then
+                        return;
+                     end if;
+
                      Get_First_Interp (Reducer_N, I, It);
                      while Present (It.Nam) loop
                         if Is_Reducer_Subprogram (It.Nam) then
@@ -13014,22 +13014,6 @@ package body Sem_Attr is
                --  Start of processing for Get_Value_Subtype
 
                begin
-                  --  In case the reducer is not overloaded, check directly
-                  --  its second formal for the value subtype.
-
-                  if not Is_Overloaded (Reducer_N) then
-                     if Is_Reducer_Subprogram (Entity (Reducer_N)) then
-                        return Etype (Next_Formal
-                                       (First_Formal (Entity (Reducer_N))));
-
-                     --  Return any type to signal the caller that no proper
-                     --  reducer subprogram was found.
-
-                     else
-                        return Any_Type;
-                     end if;
-                  end if;
-
                   --  RM 4.5.10(11/5): the reducer subprogram is required to be
                   --  subtype conformant with one of the following profiles:
 
@@ -13308,31 +13292,6 @@ package body Sem_Attr is
                   end if;
                end Is_Reducer_Subprogram;
 
-               ---------------------
-               -- Make_Array_Type --
-               ---------------------
-
-               function Make_Array_Type
-                 (Index, Value : Entity_Id) return Entity_Id
-               is
-                  Array_Type : constant Entity_Id := Make_Temporary (Loc, 'A');
-                  Range_N    : constant Node_Id :=
-                    Make_Range (Loc,
-                      Low_Bound  => Type_Low_Bound (Index),
-                      High_Bound => Type_High_Bound (Index));
-               begin
-                  Set_In_List (Range_N);
-                  Set_Etype (Range_N, Index);
-
-                  Set_Etype (Array_Type, Array_Type);
-                  Set_Scope (Array_Type, Find_Enclosing_Scope (N));
-                  Mutate_Ekind (Array_Type, E_Array_Type);
-                  Set_Component_Type (Array_Type, Value);
-                  Set_First_Index (Array_Type, Range_N);
-
-                  return Array_Type;
-               end Make_Array_Type;
-
                --  Local variables
 
                Reducer_E : Entity_Id;
@@ -13460,15 +13419,13 @@ package body Sem_Attr is
                end if;
 
                --  Complete the resolution of the reduction expression by
-               --  resolving the initial expression and array aggregate.
+               --  resolving the initial expression, and the prefix if it
+               --  is not an aggregate, since the aggregate is only meant
+               --  to be a placeholder for the iterated association.
 
                Resolve (Init_Value_Expr, Accum_Typ);
 
-               if Nkind (P) = N_Aggregate then
-                  Resolve_Aggregate (P,
-                    Make_Array_Type (Index => Standard_Positive,
-                                     Value => Value_Typ));
-               else
+               if Nkind (P) /= N_Aggregate then
                   Resolve (P);
                end if;
             end;

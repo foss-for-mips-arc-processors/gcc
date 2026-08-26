@@ -1043,6 +1043,11 @@ complex_mul_pattern::matches (complex_operation_t op,
   if (op != MINUS_PLUS)
     return IFN_LAST;
 
+  /* It's only valid to form FMAs and MUL with -ffp-contract=fast.  */
+  if (flag_fp_contract_mode != FP_CONTRACT_FAST
+      && FLOAT_TYPE_P (SLP_TREE_VECTYPE (*node)))
+    return IFN_LAST;
+
   auto childs = *ops;
   auto l0node = SLP_TREE_CHILDREN (childs[0]);
 
@@ -1055,11 +1060,8 @@ complex_mul_pattern::matches (complex_operation_t op,
   auto_vec<slp_tree> left_op, right_op;
   slp_tree add0 = NULL;
 
-  /* Check if we may be a multiply add.  It's only valid to form FMAs
-     with -ffp-contract=fast.  */
+  /* Check if we may be a multiply add.  */
   if (!mul0
-      && (flag_fp_contract_mode == FP_CONTRACT_FAST
-	  || !FLOAT_TYPE_P (SLP_TREE_VECTYPE (*node)))
       && vect_match_expression_p (l0node[0], PLUS_EXPR))
     {
       auto vals = SLP_TREE_CHILDREN (l0node[0]);
@@ -1288,6 +1290,11 @@ complex_fms_pattern::matches (complex_operation_t op,
 
   slp_tree root = *ref_node;
   if (!vect_match_expression_p (root, MINUS_EXPR))
+    return IFN_LAST;
+
+  /* It's only valid to form FMSs with -ffp-contract=fast.  */
+  if (flag_fp_contract_mode != FP_CONTRACT_FAST
+      && FLOAT_TYPE_P (SLP_TREE_VECTYPE (*ref_node)))
     return IFN_LAST;
 
   /* TODO: Support invariants here, with the new layout CADD now

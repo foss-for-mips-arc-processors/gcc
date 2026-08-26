@@ -19138,9 +19138,6 @@ package body Sem_Ch3 is
       elsif Nkind (P) /= N_Component_Declaration
         and then Def_Kind = N_Subtype_Indication
       then
-         --  Base name of subtype on object name, which will be unique in
-         --  the current scope.
-
          --  If this is a duplicate declaration, return base type, to avoid
          --  generating duplicate anonymous types.
 
@@ -19149,53 +19146,28 @@ package body Sem_Ch3 is
             return Entity (Subtype_Mark (Obj_Def));
          end if;
 
+         --  During preanalysis, for example within a pre/postcondition,
+         --  provide just enough information to use the subtype.
+
+         if Preanalysis_Active then
+            return
+              Process_Subtype
+                (Obj_Def,
+                 Related_Nod,
+                 Excludes_Null => Null_Exclusion_Present (P));
+         end if;
+
+         --  Base name of subtype on object name, which will be unique in
+         --  the current scope.
+
          Nam :=
             New_External_Name
              (Chars (Defining_Identifier (Related_Nod)), 'S', 0, 'T');
 
          T := Make_Defining_Identifier (Sloc (P), Nam);
 
-         --  If In_Spec_Expression, for example within a pre/postcondition,
-         --  provide enough information for use of the subtype without
-         --  depending on full analysis and freezing, which will happen when
-         --  building the corresponding subprogram.
-
-         if In_Spec_Expression then
-            Analyze (Subtype_Mark (Obj_Def));
-
-            declare
-               Base_T  : constant Entity_Id := Entity (Subtype_Mark (Obj_Def));
-               New_Def : constant Node_Id   := New_Copy_Tree (Obj_Def);
-               Decl    : constant Node_Id   :=
-                 Make_Subtype_Declaration (Sloc (P),
-                   Defining_Identifier => T,
-                   Subtype_Indication  => New_Def);
-
-            begin
-               Set_Etype  (T, Base_T);
-               Mutate_Ekind  (T, Subtype_Kind (Ekind (Base_T)));
-               Set_Parent (T, Decl);
-               Set_Scope (T, Current_Scope);
-
-               if Ekind (T) = E_Array_Subtype then
-                  Constrain_Array (T, New_Def, Related_Nod, T, 'P');
-
-               elsif Ekind (T) = E_Record_Subtype then
-                  Set_First_Entity (T, First_Entity (Base_T));
-                  Set_Has_Discriminants (T, Has_Discriminants (Base_T));
-                  Set_Is_Constrained (T);
-               end if;
-
-               Insert_Before (Related_Nod, Decl);
-            end;
-
-            return T;
-         end if;
-
          --  When generating code, insert subtype declaration ahead of
-         --  declaration that generated it. Similar behavior required under
-         --  preanalysis (including strict preanalysis) to perform the
-         --  minimum decoration, and avoid reporting spurious errors.
+         --  declaration that generated it.
 
          Insert_Action (Obj_Def,
            Make_Subtype_Declaration (Sloc (P),
@@ -21038,10 +21010,10 @@ package body Sem_Ch3 is
       --  Ada 2005 (AI-287, AI-318): Relax the strictness of the front end in
       --  case of limited aggregates (including extension aggregates), and
       --  function calls. The function call may have been given in prefixed
-      --  notation, in which case the original node is an indexed component.
-      --  If the function is parameterless, the original node was an explicit
-      --  dereference. The function may also be parameterless, in which case
-      --  the source node is just an identifier.
+      --  notation, in which case the original node is an indexed component,
+      --  or a selected component if the function is parameterless, or even
+      --  an explicit dereference. Finally, for a direct unprefixed call to
+      --  a parameterless function, the original node is just an identifier.
 
       --  A branch of a conditional expression may have been removed if the
       --  condition is statically known. This happens during expansion, and
@@ -21066,7 +21038,7 @@ package body Sem_Ch3 is
             return Present (Entity (Original_Node (Exp)))
               and then Ekind (Entity (Original_Node (Exp))) = E_Function;
 
-         when N_Qualified_Expression =>
+         when N_Expression_With_Actions | N_Qualified_Expression =>
             return
               OK_For_Limited_Init_In_05
                 (Typ, Expression (Original_Node (Exp)));

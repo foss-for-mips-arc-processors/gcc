@@ -29826,6 +29826,7 @@ cp_parser_class_specifier (cp_parser* parser)
       case CPP_SEMICOLON:
       case CPP_MULT:
       case CPP_AND:
+      case CPP_AND_AND:
       case CPP_OPEN_PAREN:
       case CPP_CLOSE_PAREN:
       case CPP_COMMA:

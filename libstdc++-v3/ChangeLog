@@ -1,3 +1,565 @@
+2026-08-07  Release Manager
+
+	* GCC 16.2.0 released.
+
+2026-07-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-07-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/122197
+	* include/bits/shared_ptr_base.h (~_Sp_counted_deleter): Disable
+	-Warray-bounds warnings.
+	(_Sp_counted_deleter::_M_dispose): Likewise.
+	(_Sp_counted_ptr_inplace::_M_dispose): Likewise.
+	* testsuite/20_util/shared_ptr/dest/122197-2.cc: New test.
+	* testsuite/20_util/shared_ptr/dest/122197.cc: New test.
+
+2026-07-29  David Faure  <david.faure@kdab.com>
+
+	Backported from master:
+	2026-07-28  David Faure  <david.faure@kdab.com>
+
+	* python/libstdcxx/v6/printers.py (StdMapPrinter.num_children):
+	Count two children per element.
+	(Tr1UnorderedMapPrinter.num_children): Likewise.
+
+2026-07-29  David Faure  <david.faure@kdab.com>
+
+	Backported from master:
+	2026-07-28  David Faure  <david.faure@kdab.com>
+
+	* python/libstdcxx/v6/printers.py (StdMapPrinter.num_children):
+	Fix parameter name.
+	(StdSetPrinter.num_children): Likewise.
+
+2026-07-29  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-20  Tomasz Kamiński  <tkaminsk@redhat.com>
+		    Álvaro Begué  <alvaro.begue@gmail.com>
+
+	PR libstdc++/124854
+	* src/c++20/tzdb.cc (ZoneInfo::save): Define.
+	(time_zone::_M_get_sys_info): Fold initial transition if they
+	occurs in duplicated local time window (merge_window) due move
+	from DST to STD zone.
+	* testsuite/std/time/time_zone/wall_cascade.cc (test_next_year):
+	Test that 1945 Pacific/Auckland transition is properly handled.
+	(test_negative): Adjust test to avoid zone merge.
+	* testsuite/std/time/time_zone/zone_merge.cc: New test.
+
+2026-07-29  Tomasz Kamiński  <tkaminsk@redhat.com>
+	    Álvaro Begué  <alvaro.begue@gmail.com>
+
+	PR libstdc++/116110
+	* src/c++20/tzdb.cc (ZoneInfo::calc_save, ZoneInfo::State): Define.
+	(ZoneInfo::m_expanded): Replaced with m_state.
+	(ZoneInfo::m_pos): Reduce the bit with to 14.
+	(ZoneInfo::m_state): Expands m_expanded with four state enum.
+	(ZoneInfo::ZoneInfo, ZoneInfo::expanded, ZoneInfo::set_abbrev):
+	Replace m_expanded usage with m_state and State::Expanded.
+	(Transitions, find_surrounding_transitions): Extracted from
+	find_active_rule.
+	(find_active_rule): Define overload for local_seconds. Implement
+	both in terms of find_surrounding_transitions.
+	(chrono::reload_tzdb): Calculate save (invoke calc_save) for
+	all infos on all zones.
+	(time_zone::_M_get_sys_info): Define rules as span<const Rules>,
+	and remove the comment.
+	(operator>>(istream&, ZoneInfo&)): Set m_state for UntilPending
+	for UNTIL time using wall time, and SaveKnown for lines without
+	end date. For clarity, set m_save to 0 if daylight is not used.
+	* testsuite/std/time/time_zone/116110.cc (test_apia): Use correct
+	value of the the total offset.
+	* testsuite/std/time/time_zone/pr116110_named.cc: New test.
+	* testsuite/std/time/time_zone/wall_cascade.cc: Add test
+	for last_transition.
+	(cherry picked from commits 020e02fcf281bd24065c8663219a22aba9d0a47d)
+	(4426e08a4fd0d35643d16a14c9e9b81488823a23)
+	(ce285dde2110f453fdbbd89fbb2f85a4d039705d)
+
+2026-07-28  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-28  Jakub Jelinek  <jakub@redhat.com>
+
+	* include/bits/deque.tcc (std::__uninitialized_copy_a): Remove unused
+	variable __sres.
+
+2026-07-26  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-07-25  Patrick Palka  <ppalka@redhat.com>
+
+	* include/std/ranges (__detail::__compatible_joinable_ranges):
+	Remove.
+	(__detail::__concat_reference_t): Move definition up.
+	(__detail::__concat_value_t): Likewise.
+	(__detail::__concat_rvalue_reference_t): Likewise.
+	(__detail::__concat_indirectly_readable_impl): Likewise.
+	(__detail::__concat_indirectly_readable): Likewise.
+	(__detail::__concatable): Likewise.
+	(join_with_view): Use __concatable instead of
+	__compatible_joinable_ranges in constraints as per LWG 4074.
+	(join_with_view::begin): Add __concatable constraint as per
+	LWG 4074.
+	(join_with_view::end): Likewise.
+	(join_with_view::_Iterator): Adjust out-of-line declaration.
+	(join_with_view::_Sentinel): Likewise.
+
+2026-07-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+	    Álvaro Begué  <alvaro.begue@gmail.com>
+
+	PR libstdc++/124853
+	* src/c++20/tzdb.cc
+	(time_zone::_M_get_sys_info): Extract code blocks to
+	separate functions, and invoke them.
+	(<unnamed>::find_active_rule): Modify algorithm to
+	handle cascading saves.
+	(<unnamed>::find_first_std): Simplified implementation
+	benefiting from reordering of rules.
+	(chrono::reload_tzdb): Sort rules by name, from and save.
+	* testsuite/std/time/time_zone/wall_cascade.cc: New test.
+	(cherry picked from commits f7cde200320e0800e4fcc5cea399e9faef50f8d4)
+	(610134a51fa3d0bcd3e0980c6574557172dc88c0)
+
+2026-07-23  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-20  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/116110
+	* src/c++20/tzdb.cc (time_zone::_M_get_sys_info): Correct
+	condition for stopping zone expansion before STD zone.
+	* testsuite/std/time/time_zone/116110.cc (test_dawson):
+	Add test for America/Dawson August 1945 transition.
+
+2026-07-23  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-05-18  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/124852
+	* src/c++20/tzdb.cc (on_month_day::on_day_t, on_month_day::on_day):
+	Remove.
+	(operator>>(istream&, on_month_day::day_t&)): Inlined into...
+	(operator>>(istream&, on_month_day)): Inlined on_month_day::on_day.
+	Avoid modifying on.month if MONTH is not present. Report failure
+	on failure to parse day for LessEq / GreaterEq.
+
+2026-07-23  Álvaro Begué  <alvaro.begue@gmail.com>
+
+	Backported from master:
+	2026-05-13  Álvaro Begué  <alvaro.begue@gmail.com>
+		    Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/124852
+	* src/c++20/tzdb.cc (on_day): Rename to...
+	(on_day_month): Rename from on_day.
+	(on_day_month::on_day_t, on_day_month::on_day): Define.
+	(operator>>(istream&, on_day_t&&)): Factored out of
+	operator>>(istream&, on_day&).
+	(operator>>(istream&, on_day&)): Use on_day_t parser.
+	(operator>>(istream&, ZoneInfo&)): Replace the integer DAY
+	parser with on_day_t for the UNTIL field.
+	* testsuite/std/time/time_zone/until_day_on.cc: New test.
+
+2026-07-23  Álvaro Begué  <alvaro.begue@gmail.com>
+
+	Backported from master:
+	2026-05-13  Álvaro Begué  <alvaro.begue@gmail.com>
+
+	PR libstdc++/124851
+	* src/c++20/tzdb.cc (ZoneInfo::ZoneInfo(sys_info&&)): Store
+	stdoff only in m_offset (subtract info.save).
+	(ZoneInfo::ZoneInfo(const pair<sys_info, string_view>&)):
+	Likewise.
+	(ZoneInfo::offset()): Document new semantics.
+	(ZoneInfo::to(sys_info&)): Add m_save back to offset() when
+	populating sys_info::offset.
+	* testsuite/std/time/time_zone/numeric_save.cc: New test.
+
+2026-07-22  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-22  Jakub Jelinek  <jakub@redhat.com>
+
+	* config/abi/post/aarch64-linux-gnu/baseline_symbols.txt: Regenerate.
+	* config/abi/post/hppa-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/i386-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/i486-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/ia64-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/m68k-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/powerpc-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/powerpc64-linux-gnu/32/baseline_symbols.txt:
+	Likewise.
+	* config/abi/post/powerpc64-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/powerpc64le-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/riscv64-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/s390x-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/sparc64-linux-gnu/32/baseline_symbols.txt: Likewise.
+	* config/abi/post/sparc64-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/x86_64-linux-gnu/baseline_symbols.txt: Likewise.
+	* config/abi/post/x86_64-linux-gnu/32/baseline_symbols.txt: Likewise.
+	* config/abi/post/x86_64-linux-gnu/x32/baseline_symbols.txt: Likewise.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-07  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/mdspan
+	(layout_stride::mapping::mapping(const extent_type&, span<...>)):
+	Convert strides using __index_type_cast, which bring asserts
+	for negative and unrepresentable values.
+	* testsuite/23_containers/mdspan/layouts/stride_neg.cc: New test.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-10  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/ranges (repeat_view::repeat_view): Assert that
+	__bound >= 0 consistently. Replace !same_as<unreachable_sentinel>
+	with __is_signed_integer_like check.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-07  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* config/abi/pre/gnu.ver (GLIBCXX_3.4.36): Export basic_format_arg
+	_M_handle_unrecognized method of specializations of
+	format_context and wformat_context.
+	* include/std/format (basic_format_arg::_M_handle_unrecognized):
+	Declare with explicit specializations for (w)format_context
+	if _GLIBCXX_EXTERN_TEMPLATE, and define otherwise.
+	(basic_format_arg::_M_visit): Remove __type parameter, and use
+	_M_type instead. Call _M_handle_unrecognized for unrecognized
+	_Arg_t values.
+	(basic_format_arg::_M_visit_user): Remove __type parameter,
+	and use _M_type instead. Adjust calls to _M_visit.
+	(basic_format_arg::visit, std::visit_format_arg)
+	(__format::__visit_format_arg): Remove _M_type argument from
+	_M_visit(_user) calls.
+	* src/c++20/format-inst.cc
+	(basic_format_arg::_M_handle_unrecognized): Define and export
+	explicit specializations for (w)format_context.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-03  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/format (_Pres_type::_Pres_p, _Pres_type::_Pres_P):
+	Change the values to which they are defined.
+	(__formatter_fp::format): Append 0x/0X if _M_type is _Pres_p/_Pres_P
+	respectively.
+	(__formatter_fp::_M_localize): Add __offset parameter representing
+	start of number value (after sign and prefix).
+	(__formatter_ptr::parse, __formatter_ptr::_M_default)
+	(__formatter_ptr::__formatter_ptr): Remove unused __type parameter,
+	and replace use of _Pres_p/P with _Pres_x/X.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-07-03  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/format (__formatter_int::format)
+	(__formatter_fp::format): For unrecognised _M_spec._M_type
+	values (default branch of switch) fallthrou to _Pres_none.
+
+2026-07-21  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-06-24  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/std/format (__do_vformat_to): Change the preprocessor
+	check for __do_vformat_to.
+
+2026-07-21  Jonathan Wakely  <jwakely@redhat.com>
+	    Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	PR libstdc++/123165
+	* acinclude.m4 (libtool_VERSION): Bump version.
+	* config/abi/pre/gnu.ver (GLIBCXX_3.4.36): Add new symbol
+	version and export new symbol.
+	* configure: Regenerate.
+	* include/std/chrono (__detail::__recent_leap_second_info):
+	Declare new function and make it a friend of various classes.
+	(leap_second): Make private constructor constexpr. Remove friend
+	declaration for get_leap_second_info.
+	(__detail::__get_leap_second_info): Use new function for times
+	past the hardcoded expiry.
+	* src/c++20/tzdb.cc (tzdb_list::_Node::fixed_leaps): Move array
+	of leap seconds here from _S_read_leap_seconds.
+	(_Node::NumLeapSeconds): New class.
+	(_Node::num_leap_seconds): New static variable.
+	(__detail::__recent_leap_second_info): Define new function.
+	(tzdb_list::_Node::_S_read_leap_seconds): Populate vector from
+	_Node::fixed_leaps. Rename bool variable to clarify meaning.
+	(tzdb_list::_Node::_S_replace_head): Update num_leap_seconds
+	when updating the tzdb_list.
+	* testsuite/util/testsuite_abi.cc: Update known_versions and
+	latestp.
+	* testsuite/std/time/clock/utc/leap_second_info-2.cc: New test.
+	(cherry-picked from commits e79f0f818c0e42d0d84c90a54684dfb269ac388c)
+	(b12fdd952511786bf8d285e7080e94deeb32aa1d)
+	(adb4f4a064c009cd616106fa4c648182c18f96d9)
+	(a7ad4bee6fe7cd77aceb6e86380dcaeb6da82791)
+
+2026-07-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-07-15  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/126111
+	* include/std/format (__format::__write_escape_seq): Remove
+	unnecessary alias declaration.
+	* include/std/spanstream (wspanbuf, wispanstream, wospanstream)
+	(wspanstream): Only declare for _GLIBCXX_USE_WCHAR_T.
+	* include/std/syncstream (wsyncbuf wosyncstream): Likewise.
+	* src/c++23/std.cc.in: Add preprocessor checks for
+	_GLIBCXX_USE_WCHAR_T to names which depend on it.
+
+2026-07-01  Matthias Kretz  <m.kretz@gsi.de>
+
+	Backported from master:
+	2026-07-01  Matthias Kretz  <m.kretz@gsi.de>
+
+	* include/bits/simd_details.h (_ScalarAbi): Remove.
+	(__scalar_abi_tag): Identify _Abi<N, N> as scalar now.
+	(__native_abi): Replace _ScalarAbi<1> with _Abi_t<1, 1, ...>.
+	(__abi_rebind): Refactor rebinding from/to __scalar_abi_tag.
+	* include/bits/simd_mask.h (_S_use_bitmask): Only true if
+	!_S_is_scalar.
+	(_M_and_neighbors, _M_or_neighbors): Add case for _S_is_scalar
+	where the and/or must be executed one step earlier.
+	(_M_reduce_min_index, _M_reduce_max_index): Delete dead code.
+	* include/bits/simd_vec.h (_S_use_bitmask): Inherit the value
+	from the first data member.
+	* testsuite/std/simd/traits_impl.cc: Adjust for the removal of
+	_ScalarAbi.
+
+2026-07-01  Yi Chen  <chencyy@hygon.cn>
+
+	Backported from master:
+	2026-07-01  Yi Chen  <chencyy@hygon.cn>
+
+	* src/c++11/random.cc (random_device::_M_init): Add signature_HYGON_ebx to
+	the RDSEED and RDRAND CPUID vendor allowlists.  For the default device on
+	Hygon, prefer RDRAND via a dedicated check at the top of the function.
+
+2026-07-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-29  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/chrono_io.h: Fix comment typo.
+
+2026-07-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-25  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/125956
+	* src/c++20/format.cc [_GLIBCXX_HAVE_ICONV] (iconv_input): New
+	concept.
+	(__encoding::conv) [_GLIBCXX_HAVE_ICONV]: Use iconv_input to
+	decide which type to cast the input pointer to.
+
+2026-07-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-24  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/27_io/filesystem/operations/copy_symlink/1.cc: Add
+	dg-require-target-fs-symlinks.
+	* testsuite/27_io/filesystem/operations/copy_symlink/2.cc:
+	Likewise.
+	* testsuite/27_io/filesystem/operations/copy_symlink/3.cc:
+	Likewise.
+	* testsuite/27_io/filesystem/operations/copy_symlink/4.cc:
+	Likewise.
+
+2026-07-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-24  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/118158
+	* testsuite/27_io/filesystem/operations/pr118158.cc: Add
+	dg-require-mkfifo.
+
+2026-07-01  Dragon Archer  <dragon-archer@outlook.com>
+
+	Backported from master:
+	2026-05-16  Dragon Archer  <dragon-archer@outlook.com>
+
+	PR libstdc++/125228
+	* src/c++11/debug.cc: Replace assert with __glibcxx_assert,
+	and remove the include of <cassert>.
+	* src/c++17/floating_to_chars.cc: Likewise, but redefine
+	assert as __glibcxx_assert.
+
+2026-06-25  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-06-25  Jakub Jelinek  <jakub@redhat.com>
+
+	* src/c++23/Makefile.am (stamp-modules-bits): Use abs_builddir instead
+	of abs_srcdir.
+	* src/c++23/Makefile.in: Regenerate.
+
+2026-06-24  Alexandre Oliva  <oliva@adacore.com>
+
+	Backported from master:
+	2026-06-24  Alexandre Oliva  <oliva@adacore.com>
+
+	* src/c++23/Makefile.am (libstdc++.modules.json): Rewrite
+	without abspath make function.
+	(stamp-modules-bits): Likewise.
+	* src/c++23/Makefile.in: Rebuilt.
+
+2026-06-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/chrono.h (std::chrono_literals): Fix typo in
+	comment.
+
+2026-06-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/xml/manual/debug_mode.xml: Remove 404 link to stlport
+	website and modernise some text about debug modes in other
+	implementations.
+	* doc/html/manual/debug_mode_design.html: Regenerate.
+
+2026-06-23  Nathan Myers  <ncm@cantrip.org>
+
+	PR libstdc++/125890
+	* include/bits/memory_resource.h (allocate_at_least): Add to
+	allocator_traits<pmr::polymorphic_allocator> specialization.
+	* testsuite/20_util/polymorphic_allocator/at_least.cc: New test.
+
+2026-06-23  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	Backported from master:
+	2026-06-13  Tomasz Kamiński  <tkaminsk@redhat.com>
+
+	* include/bits/version.def (constant_wrapper): Bump to 202606L.
+	* include/bits/version.h: Regenerate.
+	* include/bits/funcref_impl.h (function_ref::function_ref): Rename
+	template parameter from __cwfn to __fn and use it direclty.
+	* include/bits/funcwrap.h (function_ref): Rename template parameter
+	to __fn.
+	(std::constant_wrapper): Use auto as non-type template parameter,
+	and refeference it as value.
+	* include/bits/utility.h (__CwFixedValue): Remove.
+	* include/std/mdspan (__mdspan::__is_constant_wrapper):
+	Use auto as non-type template parameter.
+	* testsuite/20_util/constant_wrapper/generic.cc: Remove arrays
+	and string literal tests. Add test for address of value.
+	* testsuite/20_util/constant_wrapper/other_wrappers.cc:
+	Remove test_array.
+	* testsuite/20_util/constant_wrapper/type_param_neg.cc: New file.
+
+2026-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-05-29  Patrick Palka  <ppalka@redhat.com>
+
+	* include/std/flat_set (_Flat_set_impl::swap): Swap _M_cont
+	first.
+
+2026-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-05-28  Patrick Palka  <ppalka@redhat.com>
+
+	* include/std/flat_map (flat_map): Bring in operator= from
+	_Flat_map_base.
+	(flat_multimap): Likewise.
+	* include/std/flat_set (flat_set): Bring in operator= from
+	_Flat_set_base.
+	(flat_multiset): Likewise.
+	* testsuite/23_containers/flat_map/1.cc (test11): Simplify by
+	using = {...}.
+	(test12): New test.
+	* testsuite/23_containers/flat_multimap/1.cc (test10): Simplify
+	by using = {...}.
+	(test11): New test.
+	* testsuite/23_containers/flat_multiset/1.cc (test10): Simplify
+	by using = {...}.
+	(test11): New test.
+	* testsuite/23_containers/flat_set/1.cc (test10): Simplify by
+	using = {...}.
+	(test11): New test.
+
+2026-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-05-28  Patrick Palka  <ppalka@redhat.com>
+
+	* include/bits/version.def (flat_map): Bump to 202511.
+	(flat_set): Likewise.
+	* include/bits/version.h: Regenerate.
+	* include/std/flat_map (_Flat_map_impl): Remove
+	is_nothrow_swappable_v assertions.
+	(_Flat_map_impl::_Flat_map_impl): Explicitly default copy ctor.
+	Define move ctor with corrected exception handling as per
+	P3567R2.
+	(_Flat_map_impl::operator=): Likewise.
+	(_Flat_map_impl::insert_range): Define new __sorted_t overload
+	as per P3567R2.
+	(_Flat_map_impl::swap): Make conditionally noexcept as per
+	P3567R2.
+	* include/std/flat_set (_Flat_set_impl): Remove
+	is_nothrow_swappable_v assertion.
+	(_Flat_set_impl::_Flat_set_impl): Explicitly default copy ctor.
+	Define move ctor with correct invariant preserving behavior as
+	per P3567R2.
+	(_Flat_set_impl::operator=): Likewise.
+	(_Flat_set_impl::_M_insert_range): Factored out from
+	insert_range.  Add bool parameter __is_sorted defaulted to
+	false.
+	(_Flat_set_impl::insert_range): Define new __sorted_t overload
+	as per P3567R2.
+	(_Flat_set_impl::swap): Make conditionally noexcept as per
+	P3567R2.  Correct to use ranges::swap instead of ADL swap.
+	* testsuite/23_containers/flat_map/1.cc (test11, test12):
+	New tests.
+	* testsuite/23_containers/flat_multimap/1.cc (test10, test11):
+	New tests.
+	* testsuite/23_containers/flat_multiset/1.cc (test10, test11):
+	New tests.
+	* testsuite/23_containers/flat_set/1.cc (test10, test11):
+	New tests.
+
+2026-06-04  Patrick Palka  <ppalka@redhat.com>
+
+	Backported from master:
+	2026-05-28  Patrick Palka  <ppalka@redhat.com>
+
+	* include/std/flat_map (_Flat_map_impl::_M_insert): New bool
+	parameter __is_sorted defaulted to false.  Reimplement using
+	views::zip and ranges::inplace_merge.
+	(_Flat_map_impl::insert): In the __sorted_t overload, pass
+	__is_sorted=true to _M_insert.
+
+2026-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2026-06-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/debug/safe_iterator.h: Remove trailing whitespace.
+
 2026-05-27  Jonathan Wakely  <jwakely@redhat.com>
 
 	Backported from master:

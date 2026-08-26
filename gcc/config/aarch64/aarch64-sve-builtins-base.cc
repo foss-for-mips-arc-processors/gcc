@@ -1854,6 +1854,20 @@ public:
 	gimple_seq_add_stmt_without_update (&stmts, mem_ref_stmt);
 
 	int source_nelts = TYPE_VECTOR_SUBPARTS (access_type).to_constant ();
+
+	/* When the SVE vector has the same number of elements as the
+	   128-bit quadword (i.e. VL == 128), the load fills the entire
+	   register and no replication is needed.  Just convert the
+	   loaded value from the Advanced SIMD type to the SVE type.  */
+	if (known_eq (lhs_len, (unsigned int) source_nelts))
+	  {
+	    gimple *g
+	      = gimple_build_assign (lhs, build1 (VIEW_CONVERT_EXPR,
+						  lhs_type, mem_ref_lhs));
+	    gimple_seq_add_stmt_without_update (&stmts, g);
+	    gsi_replace_with_seq_vops (f.gsi, stmts);
+	    return g;
+	  }
 	vec_perm_builder sel (lhs_len, source_nelts, 1);
 	for (int i = 0; i < source_nelts; i++)
 	  sel.quick_push (i);
@@ -2977,12 +2991,12 @@ public:
        The fold routines expect the replacement statement to have the
        same lhs as the original call, so return the copy statement
        rather than the field update.  */
-    gassign *copy = gimple_build_assign (unshare_expr (f.lhs), rhs_tuple);
+    gassign *copy = gimple_build_assign (f.lhs, rhs_tuple);
 
     /* Get a reference to the individual vector.  */
     tree field = tuple_type_field (TREE_TYPE (f.lhs));
     tree lhs_array = build3 (COMPONENT_REF, TREE_TYPE (field),
-			     f.lhs, field, NULL_TREE);
+			     unshare_expr (f.lhs), field, NULL_TREE);
     tree lhs_vector = build4 (ARRAY_REF, TREE_TYPE (rhs_vector),
 			      lhs_array, index, NULL_TREE, NULL_TREE);
     gassign *update = gimple_build_assign (lhs_vector, rhs_vector);

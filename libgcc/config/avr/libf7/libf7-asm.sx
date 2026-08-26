@@ -2308,8 +2308,85 @@ _ENDF __fractqqdf
 #endif /* F7MOD_qq2D_ */
 
 
+#ifdef F7MOD_fx2D_
+;;; Convert an [un]signed 64-bit fixed point value R18[] to double.
+;;;    double ufx64_to_d (ufx64_t R18, uint8_t fbit R30);
+;;;    double sfx64_to_d (sfx64_t R18, uint8_t fbit R30);
+;;; FBIT accounts for the fractional bits of the fixed point type,
+;;; e.g. pass __DA_FBIT__ for long accum etc.
+DEFUN ufx64_to_d
+    push    r30
+    XCALL __floatundidf
+    rjmp  1f
+
+LABEL sfx64_to_d
+    push    r30
+    XCALL __floatdidf
+1:  pop     r30
+
+    ;; The MSB indicates a value of 0.  Notice that at this point,
+    ;; we have a normal floating point number with a biased exponent
+    ;; that won't underflow below.
+    tst     r25
+    breq 0f
+
+    ;; Subtract fbit from the double exponent.  R30[] = fbit << 4.
+    swap    r30
+    mov     r31, r30
+    andi    r30, lo8 (0x0ff0)
+    andi    r31, hi8 (0x0ff0)
+    sub     r24, r30
+    sbc     r25, r31
+
+0:  ret
+ENDF ufx64_to_d
+#endif /* F7MOD_fx2D_ */
+
+#ifdef F7MOD_da2D_
+_DEFUN __fractdadf
+    ldi     r30, __DA_FBIT__
+    F7jmp   sfx64_to_d
+_ENDF __fractdadf
+#endif /* F7MOD_da2D_ */
+
+#ifdef F7MOD_uda2D_
+_DEFUN __fractudadf
+    ldi     r30, __UDA_FBIT__
+    F7jmp   ufx64_to_d
+_ENDF __fractudadf
+#endif /* F7MOD_uda2D_ */
+
+#ifdef F7MOD_ta2D_
+_DEFUN __fracttadf
+    ldi     r30, __TA_FBIT__
+    F7jmp   sfx64_to_d
+_ENDF __fracttadf
+#endif /* F7MOD_ta2D_ */
+
+#ifdef F7MOD_uta2D_
+_DEFUN __fractutadf
+    ldi     r30, __UTA_FBIT__
+    F7jmp   ufx64_to_d
+_ENDF __fractutadf
+#endif /* F7MOD_uta2D_ */
+
+#ifdef F7MOD_dq2D_
+_DEFUN __fractdqdf
+    ldi     r30, __DQ_FBIT__
+    F7jmp   sfx64_to_d
+_ENDF __fractdqdf
+#endif /* F7MOD_dq2D_ */
+
+#ifdef F7MOD_udq2D_
+_DEFUN __fractudqdf
+    ldi     r30, __UDQ_FBIT__
+    F7jmp   ufx64_to_d
+_ENDF __fractudqdf
+#endif /* F7MOD_udq2D_ */
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Fixed-point -> double conversions.
+;;; Double -> fixed-point conversions.
 
 #ifdef F7MOD_D2qq_
 _DEFUN __fractdfqq
@@ -2387,6 +2464,57 @@ _DEFUN __fractdfusa
     XJMP    __fixunsdfsi
 _ENDF __fractdfusa
 #endif /* F7MOD_D2usa_ */
+
+#ifdef F7MOD_D2da_
+_DEFUN __fractdfda
+    ;; Multiply with 2^FBIT to get a DA result in r25:r18.
+    subi    r24, dex_lo (-__DA_FBIT__)
+    sbci    r25, dex_hi (-__DA_FBIT__)
+    XJMP    __fixdfdi
+_ENDF __fractdfda
+#endif /* F7MOD_D2da_ */
+
+#ifdef F7MOD_D2uda_
+_DEFUN __fractdfuda
+    ;; Multiply with 2^FBIT to get an UDA result in r25:r18.
+    subi    r25, dex_hi (-__UDA_FBIT__)
+    XJMP    __fixunsdfdi
+_ENDF __fractdfuda
+#endif /* F7MOD_D2uda_ */
+
+#ifdef F7MOD_D2ta_
+_DEFUN __fractdfta
+    ;; Multiply with 2^FBIT to get a TA result in r25:r18.
+    subi    r24, dex_lo (-__TA_FBIT__)
+    sbci    r25, dex_hi (-__TA_FBIT__)
+    XJMP    __fixdfdi
+_ENDF __fractdfta
+#endif /* F7MOD_D2ta_ */
+
+#ifdef F7MOD_D2uta_
+_DEFUN __fractdfuta
+    ;; Multiply with 2^FBIT to get an UTA result in r25:r18.
+    subi    r25, dex_hi (-__UTA_FBIT__)
+    XJMP    __fixunsdfdi
+_ENDF __fractdfuta
+#endif /* F7MOD_D2uta_ */
+
+#ifdef F7MOD_D2dq_
+_DEFUN __fractdfdq
+    ;; Multiply with 2^FBIT to get a DQ result in r25:r18.
+    subi    r24, dex_lo (-__DQ_FBIT__)
+    sbci    r25, dex_hi (-__DQ_FBIT__)
+    XJMP    __fixdfdi
+_ENDF __fractdfdq
+#endif /* F7MOD_D2dq_ */
+
+#ifdef F7MOD_D2udq_
+_DEFUN __fractdfudq
+    ;; Multiply with 2^FBIT to get an UDQ result in r25:r18.
+    subi    r25, dex_hi (-__UDQ_FBIT__)
+    XJMP    __fixunsdfdi
+_ENDF __fractdfudq
+#endif /* F7MOD_D2udq_ */
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1521,7 +1521,8 @@ insert_stmt_after (gimple *stmt, gimple *insert_point)
       return;
     }
   else if (gimple_code (insert_point) == GIMPLE_ASM
-	   && gimple_asm_nlabels (as_a <gasm *> (insert_point)) != 0)
+	   && gimple_asm_nlabels (as_a <gasm *> (insert_point)) != 0
+	   && !single_succ_p (gimple_bb (insert_point)))
     /* We have no idea where to insert - it depends on where the
        uses will be placed.  */
     gcc_unreachable ();
@@ -4263,7 +4264,7 @@ optimize_vec_cond_expr (tree_code opcode, vec<operand_entry *> *ops)
 
   for (i = 0; i < length; ++i)
     {
-      tree elt0 = (*ops)[i]->op;
+      tree &elt0 = (*ops)[i]->op;
 
       gassign *stmt0, *vcond0;
       bool invert;
@@ -4311,11 +4312,13 @@ optimize_vec_cond_expr (tree_code opcode, vec<operand_entry *> *ops)
 	  gimple_stmt_iterator gsi = gsi_for_stmt (vcond0);
 	  tree exp = force_gimple_operand_gsi (&gsi, comb, true, NULL_TREE,
 					       true, GSI_SAME_STMT);
-	  if (invert)
-	    swap_ssa_operands (vcond0, gimple_assign_rhs2_ptr (vcond0),
-			       gimple_assign_rhs3_ptr (vcond0));
-	  gimple_assign_set_rhs1 (vcond0, exp);
-	  update_stmt (vcond0);
+	  tree res = gimple_build (&gsi, true, GSI_SAME_STMT, UNKNOWN_LOCATION,
+				   VEC_COND_EXPR, TREE_TYPE (elt0), exp,
+				   constant_boolean_node (true,
+							  TREE_TYPE (elt0)),
+				   constant_boolean_node (false,
+							  TREE_TYPE (elt0)));
+	  elt0 = res;
 
 	  elt1 = error_mark_node;
 	  any_changes = true;

@@ -1709,7 +1709,8 @@ pushtag (location_t loc, tree name, tree type)
      NULL-named TYPE_DECL node helps dwarfout.c to know when it needs
      to output a representation of a tagged type, and it also gives
      us a convenient place to record the "scope start" address for the
-     tagged type.  */
+     tagged type, and it is used to track whether the type is used
+     in a non-local context via mark_decl_used.  */
 
   TYPE_STUB_DECL (type) = pushdecl (build_decl (loc,
 						TYPE_DECL, NULL_TREE, type));
@@ -4952,7 +4953,8 @@ c_init_decl_processing (void)
   truthvalue_false_node = integer_zero_node;
 
   /* Even in C99, which has a real boolean type.  */
-  pushdecl (build_decl (UNKNOWN_LOCATION, TYPE_DECL, get_identifier ("_Bool"),
+  pushdecl (build_decl (UNKNOWN_LOCATION, TYPE_DECL,
+			get_identifier (flag_isoc23 ? "bool" : "_Bool"),
 			boolean_type_node));
 
   /* C-specific nullptr initialization.  */
@@ -9970,6 +9972,23 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
       warning_at (loc, 0, "union cannot be made transparent");
     }
 
+  tree incomplete_vars = C_TYPE_INCOMPLETE_VARS (TYPE_MAIN_VARIANT (t));
+  for (x = TYPE_MAIN_VARIANT (t); x; x = TYPE_NEXT_VARIANT (x))
+    {
+      TYPE_FIELDS (x) = TYPE_FIELDS (t);
+      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (t);
+      TYPE_TRANSPARENT_AGGR (x) = TYPE_TRANSPARENT_AGGR (t);
+      TYPE_TYPELESS_STORAGE (x) = TYPE_TYPELESS_STORAGE (t);
+      C_TYPE_FIELDS_READONLY (x) = C_TYPE_FIELDS_READONLY (t);
+      C_TYPE_FIELDS_VOLATILE (x) = C_TYPE_FIELDS_VOLATILE (t);
+      C_TYPE_FIELDS_NON_CONSTEXPR (x) = C_TYPE_FIELDS_NON_CONSTEXPR (t);
+      C_TYPE_FIELDS_HAS_COUNTED_BY (x) = C_TYPE_FIELDS_HAS_COUNTED_BY (t);
+      C_TYPE_VARIABLE_SIZE (x) = C_TYPE_VARIABLE_SIZE (t);
+      C_TYPE_VARIABLY_MODIFIED (x) = C_TYPE_VARIABLY_MODIFIED (t);
+      C_TYPE_INCOMPLETE_VARS (x) = NULL_TREE;
+      TYPE_INCLUDES_FLEXARRAY (x) = TYPE_INCLUDES_FLEXARRAY (t);
+    }
+
   /* Check for consistency with previous definition.  */
   if (flag_isoc23 && NULL != enclosing_struct_parse_info)
     {
@@ -10022,23 +10041,6 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
 	  *e = t;
 	}
       c_update_type_canonical (t);
-    }
-
-  tree incomplete_vars = C_TYPE_INCOMPLETE_VARS (TYPE_MAIN_VARIANT (t));
-  for (x = TYPE_MAIN_VARIANT (t); x; x = TYPE_NEXT_VARIANT (x))
-    {
-      TYPE_FIELDS (x) = TYPE_FIELDS (t);
-      TYPE_LANG_SPECIFIC (x) = TYPE_LANG_SPECIFIC (t);
-      TYPE_TRANSPARENT_AGGR (x) = TYPE_TRANSPARENT_AGGR (t);
-      TYPE_TYPELESS_STORAGE (x) = TYPE_TYPELESS_STORAGE (t);
-      C_TYPE_FIELDS_READONLY (x) = C_TYPE_FIELDS_READONLY (t);
-      C_TYPE_FIELDS_VOLATILE (x) = C_TYPE_FIELDS_VOLATILE (t);
-      C_TYPE_FIELDS_NON_CONSTEXPR (x) = C_TYPE_FIELDS_NON_CONSTEXPR (t);
-      C_TYPE_FIELDS_HAS_COUNTED_BY (x) = C_TYPE_FIELDS_HAS_COUNTED_BY (t);
-      C_TYPE_VARIABLE_SIZE (x) = C_TYPE_VARIABLE_SIZE (t);
-      C_TYPE_VARIABLY_MODIFIED (x) = C_TYPE_VARIABLY_MODIFIED (t);
-      C_TYPE_INCOMPLETE_VARS (x) = NULL_TREE;
-      TYPE_INCLUDES_FLEXARRAY (x) = TYPE_INCLUDES_FLEXARRAY (t);
     }
 
   /* Update type location to the one of the definition, instead of e.g.
@@ -13134,6 +13136,11 @@ declspecs_add_type (location_t loc, struct c_declspecs *specs,
 	      specs->typedef_p = true;
 	      specs->locations[cdw_typedef] = loc;
 	    }
+
+	  if (TREE_CODE (type) == RECORD_TYPE || TREE_CODE (type) == UNION_TYPE
+	      || TREE_CODE (type) == ENUMERAL_TYPE)
+	    mark_decl_used (TYPE_STUB_DECL (type), false);
+
 	  if (spec.expr)
 	    {
 	      if (specs->expr)

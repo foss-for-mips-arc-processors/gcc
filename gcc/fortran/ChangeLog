@@ -1,3 +1,372 @@
+2026-08-07  Release Manager
+
+	* GCC 16.2.0 released.
+
+2026-07-30  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-28  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125866
+	* expr.cc (is_CFI_desc): Add check for proc_name.
+
+2026-07-27  Thomas Koenig  <tkoenig@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-26  Thomas Koenig  <tkoenig@gcc.gnu.org>
+
+	PR fortran/126386
+	* frontend-passes.cc (matmul_lhs_realloc):  Fix size calculation of
+	A2B1 case.
+
+2026-07-27  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR fortran/126303
+	* frontend-passes.cc (inner_loop_may_be_skipped): If inner loop iterator
+	is not integral, return true.
+
+2026-07-20  Mikael Morin  <mikael@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-03  Mikael Morin  <mikael@gcc.gnu.org>
+
+	PR fortran/97592
+	PR fortran/125998
+	* trans-array.cc (gfc_conv_array_parameter): Always create a new
+	descriptor.  Copy lbound and ubound from the original descriptor
+	using matching dimension indexes.  Recalculate stride and
+	offset.
+
+2026-07-14  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-14  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/126234
+	* module.cc (read_module): Walk the symtree instead of
+	using gfc_find_symbol.
+
+2026-07-12  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2026-05-07  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/125172
+	* resolve.cc (gfc_fixup_inferred_type_refs): Update kind for
+	INQUIRY_RE and INQUIRY_IM references on inferred complex
+	associate-name.
+	(resolve_variable): For an inferred-type associate-name with
+	no subobject ref, refresh e->ts from sym->ts.
+	(resolve_assoc_var): For an inferred-type complex/character
+	associate-name, refresh sym->ts from the resolved target when
+	only the kind differs.
+
+2026-07-11  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-11  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/126210
+	* module.cc (read_module): Only skip re-importing a symbol
+	already visible via host association from the same module
+	when that symbol is a derived type.
+
+2026-07-11  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-10  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/126170
+	* class.cc (gfc_find_derived_vtab): Fix up a stale
+	non-use-associated duplicate vtab symbol.
+	(gfc_is_finalizable): Same fix-up, for the finalizer wrapper
+	symbol.
+	* module.cc (read_module): Skip re-importing a symbol already
+	visible via host association from the same module.
+
+2026-07-09  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2026-07-08  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/126127
+	* interface.cc (find_symtree0): Check for NULL pointer.
+	(gfc_find_sym_in_symtree): Also search user-defined operator list
+	when the symbol refers to a function.
+
+2026-07-09  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-07  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/103367
+	* expr.cc (simplify_const_ref): Hoist the call to
+	remove_subobject_ref up a level.
+	* primary.cc (gfc_match_rvalue): Don't copy the value expr
+	if the type is an EXPR_VARIABLE.
+	* trans-array.cc (gfc_conv_array_initializer): Only copy the expr
+	value if it does not have a ref.
+
+2026-07-03  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-03  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/126018
+	* match.cc (gfc_match_stopcode): Adjust the f2008 error check.If the
+	STOP code expr type is unknown, do not error. It will be checked in
+	gfc_resolve_code.
+	* resolve.cc (gfc_resolve_code): Add checks for EXEC_STOP and
+	EXEC_ERROR_STOP.
+
+2026-06-29  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2026-05-10  Andre Vehreschild  <vehre@gcc.gnu.org>
+		    Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/125051
+	* trans-decl.cc (gfc_get_symbol_decl): gfc_defer_symbol_init
+	must not be called for PDT types, classes or types with PDT
+	(gfc_generate_function_code): If gfc_current_ns is not the same
+	as the function namespace, stash it,change it to the function
+	namespace and restore after translation of the code.
+	* trans-intrinsic.cc (gfc_conv_intrinsic_caf_get): If the array
+	is in a module, use the symbol namespace.
+	* trans-openmp.cc (gfc_trans_omp_array_reduction_or_udr): If the
+	current namespace is not that of the procedure, change to the
+	procedure namspace and revert on leaving this function.
+
+2026-06-26  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2026-06-26  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/125902
+	* dump-parse-tree.cc (needs_CFI_cdesc): New helper function to
+	determine when struct CFI_cdesc_t is used.
+	(has_cfi_cdesc): Use it here...
+	(get_c_type_name): ... and here.
+
+2026-06-24  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2026-06-23  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/125902
+	* dump-parse-tree.cc (get_c_type_name): Use CFI_cdesc_t also for
+	deferred shape and deferred length dummies, as well as for
+	assumed-length scalar character dummies.
+
+2026-06-24  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-04  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/60576
+	* trans-array.cc (gfc_conv_array_parameter): For an assumed-rank
+	actual argument passed to a CLASS assumed-rank formal, use a
+	runtime-sized memcpy for the dim[] entries instead of a full
+	GFC_MAX_DIMENSIONS static copy.  For a fixed-rank actual to a
+	CLASS assumed-rank formal, pass lhs_type=false to
+	gfc_class_array_data_assign so the dim[] copy is sized by the
+	RHS descriptor type (dim_t[rank]).  Fixed-rank class formals
+	retain lhs_type=true.
+	* trans-expr.cc (gfc_conv_derived_to_class): For an assumed-rank
+	actual, use a runtime-sized memcpy for the derived_array descriptor
+	dim[] copy instead of a full GFC_MAX_DIMENSIONS static copy.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125430
+	* trans-decl.cc (build_function_decl): Set TREE_PUBLIC for all
+	module-contained procedures so submodules compiled as separate
+	translation units can reach them via host association.  Also set
+	DECL_VISIBILITY to VISIBILITY_HIDDEN for PRIVATE procedures,
+	matching the existing treatment of module variables.
+
+2026-06-15  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/125527
+	* class.cc (gfc_find_derived_vtab): Stash module namespace and
+	use it as the last place to search for the vtab before building
+	a new one.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125535
+	* trans-array.cc (gfc_constructor_is_owned_alloc_comp): New function.
+	(gfc_trans_array_constructor_value): Add OWNED_SWEEP parameter and,
+	when set, suppress the per-element finalization.  Pass it through the
+	recursive call.
+	(trans_array_constructor): Compute OWNED_SWEEP and, when set,
+	deallocate the allocatable components of the whole temporary in one
+	sweep.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125650
+	* match.cc (match_association_list): Handle ASSOCIATE selectors
+	that are overloaded intrinsic operator expressions by extending
+	them with gfc_extend_expr at parse time, so the associate name is
+	typed before the construct body is parsed.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125481
+	* interface.cc (gfc_compare_actual_formal): Add missing check that
+	rejects a procedure-pointer actual argument corresponding to a
+	data-object dummy argument (F23:15.5.2.5, para 2).  Restrict to
+	EXPR_VARIABLE to avoid false positives on calls through procedure
+	pointer components.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125527
+	* class.cc (gfc_find_derived_vtab): Stop the top-level namespace
+	walk at module/submodule boundaries to avoid escaping a submodule
+	into its ancestor module namespace.
+	* openmp.cc (gfc_omp_requires_add_clause): Likewise; treat the
+	submodule as its own program unit for OMP REQUIRES.
+	(gfc_match_omp_requires): Likewise; allow OMP REQUIRES in a submodule
+	spec part even when gfc_current_ns->parent is now non-NULL.
+	(gfc_match_omp_atomic): Likewise.
+	* parse.cc (parse_module): After processing USE statements and
+	host-association traversal, link the submodule namespace to its
+	ancestor module namespace so internal subprograms are visible via
+	host association (Fortran 2018, 14.6.1.3).
+	(clean_up_modules): Reset gfc_current_ns->parent before gfc_done_2
+	to prevent double-free of the ancestor module namespace.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125528
+	* class.cc (find_typebound_proc_uop): Set root = NULL instead of
+	returning NULL when derived type lacks f2k_derived, so parent-type
+	type-bound procedures and operators are still found via inheritance.
+	* match.cc (resolve_assoc_operand): New helper.
+	(infer_typebound_uop_type): New helper.
+	(extend_assoc_op): New helper.
+	(match_association_list): Handle ASSOCIATE selectors that are
+	type-bound user-defined operator expressions, including nested cases.
+	* resolve.cc (resolve_typebound_procedures): Move resolve_symbol
+	call for the parent type before the early return so inherited
+	type-bound bindings are resolved even when the child type has none
+	of its own.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125529
+	* resolve.cc (check_default_none_expr): Use d->code instead of
+	sym->ns->code to locate the DO CONCURRENT forall_iterator list,
+	avoiding a wrong-union-member read when the symbol's namespace is
+	an ASSOCIATE body.  Skip leading underscore when comparing iterator
+	names for shadow iterators.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125530
+	* match.cc (gfc_match_call): Route ASSOCIATE names followed by '%'
+	to match_typebound_call without first resolving the selector, to
+	avoid prematurely marking a contained-function selector as EXTERNAL.
+	* symbol.cc (find_derived_types): Also search type-bound procedure
+	names via gfc_find_typebound_proc when inferring the type of an
+	inferred-type ASSOCIATE name; exclude vtable types.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125531
+	* primary.cc (gfc_match_varspec): Before erroring on a zero-argument
+	COMPCALL, check for a same-named data component and fall back to the
+	data-component path.  For inferred-type ASSOCIATE names, retry
+	gfc_find_component with noaccess=true when the normal search fails.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	* resolve.cc (replace_in_code_recursive): Add EXEC_BLOCK case to
+	replace shadow iterator references in ASSOCIATE selector expressions
+	and the ASSOCIATE body namespace.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125534
+	* trans-stmt.cc (gfc_trans_allocate): Use GFC_TYPE_ARRAY_RANK from
+	the GFC descriptor type when se.expr is a descriptor, rather than
+	expr->rank, for the rank passed to gfc_allocate_pdt_comp.  Apply
+	the same fix to the CLASS path.
+	(gfc_trans_deallocate): Likewise for gfc_deallocate_pdt_comp.
+
+2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+
+	PR fortran/125535
+	* trans-expr.cc (gfc_conv_procedure_call): Move post block append
+	to after the deep copy of allocatable components for transformational
+	intrinsics, so that argument temporaries are not freed before the
+	result components are copied.
+
+2026-06-09  Paul Thomas  <pault@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-09  Paul Thomas  <pault@gcc.gnu.org>
+
+	PR fortran/125669
+	* decl.cc (gfc_get_pdt_instance): If the bound expressions for
+	and array component, of the length expression for a character
+	component, gave simplified to a constant, do not set attributes
+	pdt_array and pdt_string respectively.
+
+2026-06-08  Harald Anlauf  <anlauf@gmx.de>
+
+	Backported from master:
+	2026-06-06  Harald Anlauf  <anlauf@gmx.de>
+
+	PR fortran/125606
+	* trans-intrinsic.cc (gfc_conv_intrinsic_loc): When the argument
+	of LOC() is not scalar or known to be simply contiguous, simply
+	take the address of the argument array's first element.
+
 2026-06-01  Harald Anlauf  <anlauf@gmx.de>
 
 	Backported from master:

@@ -4584,10 +4584,13 @@ package body Sem_Ch12 is
       End_Package_Scope (Id);
       Exit_Generic_Scope (Id);
 
-      --  If the generic appears within a package unit, the body of that unit
-      --  has to be present for instantiation and inlining.
+      --  If the generic appears directly within a package unit and requires a
+      --  body, the package body of that unit has to be present for inlining.
 
-      if Nkind (Unit (Cunit (Current_Sem_Unit))) = N_Package_Declaration then
+      if Nkind (Unit (Cunit (Current_Sem_Unit))) = N_Package_Declaration
+        and then not In_Instance
+        and then Unit_Requires_Body (Id)
+      then
          Set_Body_Needed_For_Inlining
            (Defining_Entity (Unit (Cunit (Current_Sem_Unit))));
       end if;
@@ -4783,10 +4786,11 @@ package body Sem_Ch12 is
          Set_Body_Required (Parent (N), Unit_Requires_Body (Id));
       end if;
 
-      --  If the generic appears within a package unit, the body of that unit
-      --  has to be present for instantiation and inlining.
+      --  If the generic appears directly within a package unit and requires a
+      --  body, the package body of that unit has to be present for inlining.
 
       if Nkind (Unit (Cunit (Current_Sem_Unit))) = N_Package_Declaration
+        and then not In_Instance
         and then Unit_Requires_Body (Id)
       then
          Set_Body_Needed_For_Inlining
@@ -7405,10 +7409,21 @@ package body Sem_Ch12 is
       --  reasons pertaining to freezing (see the Freeze_Package_Instance and
       --  Freeze_Subprogram_Instance procedures).
 
-      Add_Local_Declaration (Inst, N, Scop => Empty);
-      if Error_Posted (Inst) then
-         return Empty;
-      end if;
+      --  We also need to temporarily disable registration of tagged types,
+      --  lest there be multiple instantiations in the partition, since it
+      --  is performed even though the generic unit is preelaborated.
+
+      declare
+         S_Restrictions : constant Save_Cunit_Boolean_Restrictions :=
+                                     Cunit_Boolean_Restrictions_Save;
+      begin
+         Set_Restriction (No_Tagged_Type_Registration, N);
+         Add_Local_Declaration (Inst, N, Scop => Empty);
+         Cunit_Boolean_Restrictions_Restore (S_Restrictions);
+         if Error_Posted (Inst) then
+            return Empty;
+         end if;
+      end;
 
       --  If the structural instance had already been created, this occurrence
       --  has been turned into a renaming of it.

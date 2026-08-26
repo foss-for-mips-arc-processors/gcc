@@ -2571,7 +2571,9 @@ aarch64_fntype_abi (const_tree fntype)
   if (lookup_attribute ("aarch64_vector_pcs", TYPE_ATTRIBUTES (fntype)))
     return aarch64_simd_abi ();
 
-  if (lookup_attribute ("preserve_none", TYPE_ATTRIBUTES (fntype)))
+  /* Fall back to AAPCS for variadic functions.  */
+  if (lookup_attribute ("preserve_none", TYPE_ATTRIBUTES (fntype))
+      && !stdarg_p (fntype))
     return aarch64_preserve_none_abi ();
 
   if (aarch64_returns_value_in_sve_regs_p (fntype)
@@ -6897,29 +6899,6 @@ aarch64_stack_protect_canary_mem (machine_mode mode, rtx decl_rtl,
       addr = plus_constant (Pmode, addr, aarch64_stack_protector_guard_offset);
     }
   return gen_rtx_MEM (mode, force_reg (Pmode, addr));
-}
-
-/* Emit a load/store from a subreg of SRC to a subreg of DEST.
-   The subregs have mode NEW_MODE. Use only for reg<->mem moves.  */
-void
-aarch64_emit_load_store_through_mode (rtx dest, rtx src, machine_mode new_mode)
-{
-  gcc_assert ((MEM_P (dest) && register_operand (src, VOIDmode))
-	      || (MEM_P (src) && register_operand (dest, VOIDmode)));
-  auto mode = GET_MODE (dest);
-  auto int_mode = aarch64_sve_int_mode (mode);
-  if (MEM_P (src))
-    {
-      rtx tmp = force_reg (new_mode, adjust_address (src, new_mode, 0));
-      tmp = force_lowpart_subreg (int_mode, tmp, new_mode);
-      emit_move_insn (dest, force_lowpart_subreg (mode, tmp, int_mode));
-    }
-  else
-    {
-      src = force_lowpart_subreg (int_mode, src, mode);
-      emit_move_insn (adjust_address (dest, new_mode, 0),
-		      force_lowpart_subreg (new_mode, src, int_mode));
-    }
 }
 
 /* PRED is a predicate that is known to contain PTRUE.
@@ -12225,7 +12204,8 @@ aarch64_start_call_args (cumulative_args_t ca_v)
     emit_insn (gen_aarch64_start_private_za_call ());
 
   /* If this is a call to a shared-ZA function that doesn't share ZT0,
-     save and restore ZT0 around the call.  */
+     save and restore ZT0 around the call.  If ZA is not shared, then the
+     save/restore is instead emitted by aarch64_mode_emit_local_sme_state.  */
   if (aarch64_cfun_has_state ("zt0")
       && (ca->isa_mode & AARCH64_ISA_MODE_ZA_ON)
       && ca->shared_zt0_flags == 0)
@@ -26133,6 +26113,47 @@ aarch64_sve_expand_vector_init_subvector (rtx target, rtx vals)
   return;
 }
 
+/* Emit a load/store from a subreg of SRC to a subreg of DEST.
+   The subregs have mode NEW_MODE. Use only for reg<->mem moves.  */
+void
+aarch64_emit_load_store_through_mode (rtx dest, rtx src, machine_mode new_mode)
+{
+  gcc_assert ((MEM_P (dest) && register_operand (src, VOIDmode))
+	      || (MEM_P (src) && register_operand (dest, VOIDmode)));
+  auto mode = GET_MODE (dest);
+  auto int_mode = aarch64_sve_int_mode (mode);
+  rtx tmp_reg;
+  if (MEM_P (src))
+    {
+      rtx tmp = force_reg (new_mode, adjust_address (src, new_mode, 0));
+      if (!VECTOR_MODE_P (new_mode))
+	{
+	  machine_mode full_mode = int_mode;
+	  auto vmode = aarch64_classify_vector_mode (int_mode);
+	  /* Partial vectors have to go through a full mode insert since we
+	     don't support inserting an partial vectors.  */
+	  if (GET_MODE_INNER (int_mode) != new_mode || (vmode & VEC_PARTIAL))
+	    full_mode
+	      = aarch64_full_sve_mode (as_a <scalar_mode> (new_mode)).require ();
+
+	  /* Create an SVE register with the top bits explicitly zero'd.  */
+	  tmp_reg = force_reg (full_mode, CONST0_RTX (full_mode));
+	  emit_insr (tmp_reg, tmp);
+	  if (full_mode != int_mode)
+	    tmp_reg = force_lowpart_subreg (int_mode, tmp_reg, full_mode);
+	}
+      else
+	tmp_reg = force_lowpart_subreg (int_mode, tmp, new_mode);
+      emit_move_insn (dest, force_lowpart_subreg (mode, tmp_reg, int_mode));
+    }
+  else
+    {
+      src = force_lowpart_subreg (int_mode, src, mode);
+      emit_move_insn (adjust_address (dest, new_mode, 0),
+		      force_lowpart_subreg (new_mode, src, int_mode));
+    }
+}
+
 /* Check whether VALUE is a vector constant in which every element
    is either a power of 2 or a negated power of 2.  If so, return
    a constant vector of log2s, and flip CODE between PLUS and MINUS
@@ -31964,7 +31985,8 @@ aarch64_mode_emit_local_sme_state (aarch64_local_sme_state mode,
       emit_insn (gen_aarch64_tpidr2_save ());
       emit_insn (gen_aarch64_clear_tpidr2 ());
       if (mode == aarch64_local_sme_state::ACTIVE_LIVE
-	  || mode == aarch64_local_sme_state::ACTIVE_DEAD)
+	  || mode == aarch64_local_sme_state::ACTIVE_DEAD
+	  || mode == aarch64_local_sme_state::INACTIVE_LOCAL)
 	{
 	  if (aarch64_cfun_has_state ("za"))
 	    emit_insn (gen_aarch64_initial_zero_za ());
@@ -32046,6 +32068,16 @@ aarch64_mode_emit_local_sme_state (aarch64_local_sme_state mode,
 
   if (mode == aarch64_local_sme_state::INACTIVE_LOCAL)
     {
+      if (prev_mode == aarch64_local_sme_state::INACTIVE_CALLER)
+	/* Enable ZA (if it wasn't already enabled on entry).  Enabling ZA has
+	   the side-effect of zeroing ZA.
+
+	   A functionally correct alternative would be to leave TPIDR2_EL0 null
+	   and zero the save buffer.  However, zeroing the save buffer would require
+	   more code and would optimize for the case in which a callee also
+	   initialises private ZA state (which should be a rare event).  */
+	emit_insn (gen_aarch64_smstart_za ());
+
       if (prev_mode == aarch64_local_sme_state::ACTIVE_LIVE
 	  || prev_mode == aarch64_local_sme_state::ACTIVE_DEAD
 	  || prev_mode == aarch64_local_sme_state::INACTIVE_CALLER)
@@ -32375,7 +32407,7 @@ aarch64_mode_confluence (int entity, int mode1, int mode2)
 }
 
 /* Implement TARGET_MODE_BACKPROP for an entity that either stays
-   NO throughput, or makes one transition from NO to YES.  */
+   NO throughout, or makes one transition from NO to YES.  */
 
 static aarch64_tristate_mode
 aarch64_one_shot_backprop (aarch64_tristate_mode mode1,

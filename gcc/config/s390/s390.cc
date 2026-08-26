@@ -1807,7 +1807,7 @@ s390_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
       && XINT (*op0, 1) == UNSPEC_STRCMPCC_TO_INT
       && XVECLEN (*op0, 0) == 1
       && GET_MODE (XVECEXP (*op0, 0, 0)) == CCUmode
-      && GET_CODE (XVECEXP (*op0, 0, 0)) == REG
+      && REG_P (XVECEXP (*op0, 0, 0))
       && REGNO (XVECEXP (*op0, 0, 0)) == CC_REGNUM
       && *op1 == const0_rtx)
     {
@@ -1834,7 +1834,7 @@ s390_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
   if (GET_CODE (*op0) == UNSPEC
       && XINT (*op0, 1) == UNSPEC_CC_TO_INT
       && XVECLEN (*op0, 0) == 1
-      && GET_CODE (XVECEXP (*op0, 0, 0)) == REG
+      && REG_P (XVECEXP (*op0, 0, 0))
       && REGNO (XVECEXP (*op0, 0, 0)) == CC_REGNUM
       && CONST_INT_P (*op1))
     {
@@ -1870,6 +1870,7 @@ s390_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
       && GET_CODE (XEXP (*op0, 0)) == UNSPEC
       && XINT (XEXP (*op0, 0), 1) == UNSPEC_CC_TO_INT
       && XVECLEN (XEXP (*op0, 0), 0) == 1
+      && REG_P (XVECEXP (XEXP (*op0, 0), 0, 0))
       && REGNO (XVECEXP (XEXP (*op0, 0), 0, 0)) == CC_REGNUM
       && CONST_INT_P (XEXP (*op0, 1))
       && CONST_INT_P (*op1)
@@ -1893,6 +1894,7 @@ s390_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
       && GET_CODE (XEXP (*op0, 0)) == UNSPEC
       && XINT (XEXP (*op0, 0), 1) == UNSPEC_CC_TO_INT
       && XVECLEN (XEXP (*op0, 0), 0) == 1
+      && REG_P (XVECEXP (XEXP (*op0, 0), 0, 0))
       && REGNO (XVECEXP (XEXP (*op0, 0), 0, 0)) == CC_REGNUM
       && CONST_INT_P (XEXP (*op0, 1))
       && CONST_INT_P (*op1)
@@ -1929,6 +1931,7 @@ s390_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
       if (GET_CODE (*op0) == UNSPEC
 	  && XINT (*op0, 1) == UNSPEC_CC_TO_INT
 	  && XVECLEN (*op0, 0) == 1
+	  && REG_P (XVECEXP (*op0, 0, 0))
 	  && REGNO (XVECEXP (*op0, 0, 0)) == CC_REGNUM
 	  && CONST_INT_P (*op1))
 	{
@@ -3977,13 +3980,15 @@ s390_rtx_costs (rtx x, machine_mode mode, int outer_code,
     case MEM:
       *total = 0;
       return true;
-      case SET: {
+    case SET:
+      {
 	rtx dst = SET_DEST (x);
 	rtx src = SET_SRC (x);
 
 	switch (GET_CODE (src))
 	  {
-	    case IF_THEN_ELSE: {
+	  case IF_THEN_ELSE:
+	    {
 	      /* Without this a conditional move instruction would be
 		 accounted as 3 * COSTS_N_INSNS (set, if_then_else,
 		 comparison operator).  That's a bit pessimistic.  */
@@ -3992,6 +3997,12 @@ s390_rtx_costs (rtx x, machine_mode mode, int outer_code,
 		return false;
 
 	      rtx cond = XEXP (src, 0);
+	      /* Intermediate RTXs may have a non-compare condition as e.g. a
+		 constant like r108={(0x1)?r113:r109} which get folded later
+		 on.  */
+	      if (GET_RTX_CLASS (GET_CODE (cond)) != RTX_COMPARE
+		  && GET_RTX_CLASS (GET_CODE (cond)) != RTX_COMM_COMPARE)
+		return false;
 	      if (!CC_REG_P (XEXP (cond, 0)) || !CONST_INT_P (XEXP (cond, 1)))
 		return false;
 
@@ -4050,7 +4061,8 @@ s390_rtx_costs (rtx x, machine_mode mode, int outer_code,
 	      /* Otherwise just cost the src.  */
 	      *total += rtx_cost (src, mode, SET, 1, speed);
 	    return true;
-	    case MEM: {
+	  case MEM:
+	    {
 	      rtx address = XEXP (dst, 0);
 	      rtx tmp;
 	      HOST_WIDE_INT tmp2;

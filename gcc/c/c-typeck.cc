@@ -579,8 +579,9 @@ c_reconstruct_complex_type (tree type, tree bottom)
 
 /* Helper function for c_canonical_type.  Check whether FIELD
    contains a pointer to a structure or union with tag,
-   possibly nested in other type derivations.  */
-static bool
+   possibly nested in other type derivations, and return the
+   type of this nested structure or union.  */
+static tree
 ptr_to_tagged_member (tree field)
 {
   gcc_assert (FIELD_DECL == TREE_CODE (field));
@@ -598,17 +599,17 @@ ptr_to_tagged_member (tree field)
   if (ptr_seen
       && RECORD_OR_UNION_TYPE_P (type)
       && NULL_TREE != c_type_tag (type))
-    return true;
+    return type;
 
-  return false;
+  return NULL_TREE;
 }
 
 /* For a record or union type, make necessary adaptations so that the
    type can be used as TYPE_CANONICAL.
 
    If the TYPE contains a pointer (possibly nested in other type
-   derivations) to a structure or union as a member, create a copy
-   and change such pointers to void pointers.  Otherwise, the middle-end
+   derivations) to a structure or union as a member, create a copy and
+   change the nested type to an incomplete type.  Otherwise, the middle-end
    gets confused when recording component aliases in the case where we
    have formed equivalency classes that include types for which these
    member pointers end up pointing to other structure or unions types
@@ -635,9 +636,15 @@ c_type_canonical (tree type)
   for (tree x = TYPE_FIELDS (type); x; x = DECL_CHAIN (x))
     {
       tree f = copy_node (x);
-      if (ptr_to_tagged_member (x))
-	TREE_TYPE (f) = c_reconstruct_complex_type (TREE_TYPE (x),
-						    ptr_type_node);
+      if (tree m = ptr_to_tagged_member (x))
+	{
+	  tree new_node = make_node (TREE_CODE (m));
+	  TYPE_NAME (new_node) = TYPE_NAME (m);
+	  SET_TYPE_STRUCTURAL_EQUALITY (new_node);
+	  new_node = qualify_type (new_node, m);
+	  TREE_TYPE (f) = c_reconstruct_complex_type (TREE_TYPE (x),
+						      new_node);
+	}
       *fields = f;
       fields = &DECL_CHAIN (f);
     }
@@ -2373,7 +2380,7 @@ function_to_pointer_conversion (location_t loc, tree exp)
 
   tree exp2 = build_unary_op (loc, ADDR_EXPR, exp, false);
 
-  /* If the function is defined and known to not to require a non-local
+  /* If the function is defined and known to not require a non-local
      context, make sure no trampoline is generated.  */
   if (TREE_CODE (exp) == FUNCTION_DECL
       && DECL_INITIAL (exp) && !C_FUNC_NONLOCAL_CONTEXT (exp))
@@ -5774,9 +5781,22 @@ build_unary_op (location_t location, enum tree_code code, tree xarg,
   tree ret = error_mark_node;
   tree eptype = NULL_TREE;
   const char *invalid_op_diag;
-  bool int_operands;
 
-  int_operands = EXPR_INT_CONST_OPERANDS (xarg);
+  /* If ARG is wrapped in a call to .ACCESS_WITH_SIZE — created when the
+     C parser rvalue-converts a counted_by-annotated member access (see
+     PR123569) — unwrap it here.  Unary operators that consume an rvalue
+     (!, -, +) read the value itself rather than dereferencing into the
+     pointed-to data, so the bounds-checking wrapper is unnecessary and
+     would otherwise reach build_unary_op while it is not equipped to
+     handle the wrapped form.  PR123569 fixed the ++/-- side of this by
+     suppressing wrapper creation in the parser; the rvalue-consuming
+     ops still receive the wrapper and need to strip it here.  */
+  if (is_access_with_size_p (arg))
+    xarg = arg = get_ref_from_access_with_size (arg);
+
+  gcc_checking_assert (!is_access_with_size_p (arg));
+
+  bool int_operands = EXPR_INT_CONST_OPERANDS (xarg);
   if (int_operands)
     arg = remove_c_maybe_const_expr (arg);
 
@@ -6238,10 +6258,7 @@ build_unary_op (location_t location, enum tree_code code, tree xarg,
 	  goto return_build_unary_op;
 	}
 
-      /* Ordinary case; arg is a COMPONENT_REF or a decl, or a call to
-	 .ACCESS_WITH_SIZE.  */
-      if (is_access_with_size_p (arg))
-	arg = TREE_OPERAND (TREE_OPERAND (CALL_EXPR_ARG (arg, 0), 0), 0);
+      /* Ordinary case; arg is a COMPONENT_REF or a decl.  */
 
       argtype = TREE_TYPE (arg);
 

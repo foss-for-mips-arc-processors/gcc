@@ -9434,6 +9434,11 @@ trees_out::decl_node (tree decl, walk_kind ref)
     case TYPE_DECL:
       if (DECL_TINFO_P (decl))
 	goto tinfo;
+      /* c++/125768: For an imported typedef, also mark the original type
+	 reachable in case it was instantiated here.  */
+      if (!streaming_p () && DECL_ORIGINAL_TYPE (decl)
+	  && (DECL_LANG_SPECIFIC (decl) && DECL_MODULE_IMPORT_P (decl)))
+	tree_node (DECL_ORIGINAL_TYPE (decl));
       break;
     }
 
@@ -15182,6 +15187,12 @@ depset::hash::add_namespace_entities (tree ns, bitmap partitions)
   for (tree udir : NAMESPACE_LEVEL (ns)->using_directives)
     if (TREE_CODE (udir) == USING_DECL && DECL_MODULE_PURVIEW_P (udir))
       {
+	/* Unless it's a (TU-local) anonymous namespace.
+
+	   FIXME instead of checking here, they should be
+	   is_tu_local_entity.  */
+	if (!TREE_PUBLIC (USING_DECL_DECLS (udir)))
+	  continue;
 	make_dependency (USING_DECL_DECLS (udir), depset::EK_NAMESPACE);
 	if (DECL_MODULE_EXPORT_P (udir))
 	  count++;
@@ -15725,7 +15736,9 @@ depset::hash::find_dependencies (module_state *module)
 		      tree lookup = lookup_arg_dependent (info.name, NULL_TREE,
 							  info.args, true);
 		      for (tree fn : lkp_range (lookup))
-			add_dependency (make_dependency (fn, EK_DECL));
+			/* We don't need to add_dependency, just have
+			   make_dependency build an ADL binding.  */
+			make_dependency (fn, EK_DECL);
 
 		      if (info.rewrite)
 			{
@@ -15733,7 +15746,7 @@ depset::hash::find_dependencies (module_state *module)
 			  lookup = lookup_arg_dependent (rewrite_name, NULL_TREE,
 							 info.args, true);
 			  for (tree fn : lkp_range (lookup))
-			    add_dependency (make_dependency (fn, EK_DECL));
+			    make_dependency (fn, EK_DECL);
 			}
 		      release_tree_vector (info.args);
 		    }

@@ -6578,6 +6578,13 @@ resolve_variable (gfc_expr *e)
       if (e->expr_type == EXPR_CONSTANT)
 	return true;
     }
+  else if (IS_INFERRED_TYPE (e)
+	   && sym->ts.type != BT_UNKNOWN
+	   && (sym->ts.type != e->ts.type || sym->ts.kind != e->ts.kind))
+    /* No subobject ref, but the expression's typespec was set at parse
+       time before the target's actual type/kind was known.  Refresh from
+       the now-resolved associate-name symbol.  */
+    e->ts = sym->ts;
   else if (sym->attr.select_type_temporary
 	   && sym->ns->assoc_name_inferred)
     gfc_fixup_inferred_type_refs (e);
@@ -6962,6 +6969,15 @@ gfc_fixup_inferred_type_refs (gfc_expr *e)
 					   sym->assoc->target->ts.kind);
 	  gfc_replace_expr (e, ne);
 	}
+      else if (ref && ref->type == REF_INQUIRY
+	       && (ref->u.i == INQUIRY_RE || ref->u.i == INQUIRY_IM)
+	       && sym->ts.type == BT_COMPLEX
+	       && e->ts.type == BT_REAL
+	       && e->ts.kind != sym->ts.kind)
+	/* primary.cc set the inquiry-result kind to the default real kind
+	   when the associate-name's type was inferred from %re/%im before
+	   the target was resolved.  Now use the (resolved) selector kind.  */
+	e->ts.kind = sym->ts.kind;
 
       /* Now that the references are all sorted out, set the expression rank
 	 and return.  */
@@ -8581,15 +8597,23 @@ check_default_none_expr (gfc_expr **e, int *, void *data)
 	      ns2 = ns2->parent;
 	    }
 
-	  /* A DO CONCURRENT iterator cannot appear in a locality spec.  */
-	  if (sym->ns->code->ext.concur.forall_iterator)
+	  /* A DO CONCURRENT iterator cannot appear in a locality spec.
+	     Use d->code (the DO CONCURRENT node) rather than sym->ns->code,
+	     which may be a different code type (e.g. EXEC_ASSOCIATE) whose
+	     ext union would be read incorrectly.  */
+	  for (gfc_forall_iterator *iter = d->code->ext.concur.forall_iterator;
+	       iter; iter = iter->next)
 	    {
-	      gfc_forall_iterator *iter
-		= sym->ns->code->ext.concur.forall_iterator;
-	      for (; iter; iter = iter->next)
-		if (iter->var->symtree
-		    && strcmp(sym->name, iter->var->symtree->name) == 0)
-		  return 0;
+	      if (!iter->var || !iter->var->symtree)
+		continue;
+	      const char *iter_name = iter->var->symtree->name;
+	      /* Shadow iterators (from inline type-spec: integer :: i = ...)
+		 store the iterator with a leading underscore internally; the
+		 user-visible name does not have the underscore.  */
+	      if (iter->shadow)
+		iter_name++;
+	      if (strcmp (sym->name, iter_name) == 0)
+		return 0;
 	    }
 
 	  /* A named constant is not a variable, so skip test.  */
@@ -10680,6 +10704,16 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
 	/* Confirmed to be either a derived type or misidentified to be a
 	   scalar class object, when the selector is a class array.  */
 	sym->ts = target->ts;
+      else if (sym->assoc->inferred_type
+	       && (sym->ts.type == BT_COMPLEX
+		   || sym->ts.type == BT_CHARACTER)
+	       && target->ts.type == sym->ts.type
+	       && sym->ts.kind != target->ts.kind)
+	/* The inferred type was set from a %re, %im or %len inquiry on
+	   the associate name with the default kind, before the target's
+	   actual type was known.  Now that the target has been resolved,
+	   update the kind to match.  */
+	sym->ts = target->ts;
     }
 
 
@@ -12588,7 +12622,8 @@ gfc_count_forall_iterators (gfc_code *code)
    3) call gfc_resolve_forall_body to resolve the FORALL body.  */
 
 /* Custom recursive expression walker that replaces symbols.
-   This ensures we visit ALL expressions including those in array subscripts.  */
+   Visits all expressions including array subscripts.  Also called from
+   replace_in_code_recursive to handle ASSOCIATE selector expressions.  */
 
 static void
 replace_in_expr_recursive (gfc_expr *expr, gfc_symbol *old_sym, gfc_symtree *new_st)
@@ -12713,6 +12748,19 @@ replace_in_code_recursive (gfc_code *code, gfc_symbol *old_sym, gfc_symtree *new
 	    }
 	  /* Don't recurse into nested FORALL/DO CONCURRENT bodies here,
 	     they'll be handled separately */
+	  break;
+
+	case EXEC_BLOCK:
+	  /* Replace in ASSOCIATE selector expressions and the body.
+	     The body of an EXEC_BLOCK lives in c->ext.block.ns->code, not
+	     c->block->next, so without this case both selectors and body
+	     are silently skipped, leaving shadow iterator references unreplaced
+	     and producing wrong values at runtime.  */
+	  for (gfc_association_list *alist = c->ext.block.assoc;
+	       alist; alist = alist->next)
+	    replace_in_expr_recursive (alist->target, old_sym, new_st);
+	  if (c->ext.block.ns)
+	    replace_in_code_recursive (c->ext.block.ns->code, old_sym, new_st);
 	  break;
 
 	default:
@@ -14294,6 +14342,25 @@ start:
 
 	case EXEC_STOP:
 	case EXEC_ERROR_STOP:
+	  if (code->expr1 != NULL && t)
+	    {
+	      if (!(code->expr1->ts.type == BT_CHARACTER
+		    || code->expr1->ts.type == BT_INTEGER))
+		gfc_error ("STOP code at %L must be either INTEGER or CHARACTER "
+			   "type", &code->expr1->where);
+	      else if (code->expr1->rank != 0)
+		gfc_error ("STOP code at %L must be scalar",
+			   &code->expr1->where);
+	      else if (code->expr1->ts.type == BT_CHARACTER
+		       && code->expr1->ts.kind != gfc_default_character_kind)
+		gfc_error ("STOP code at %L must be default character KIND=%d",
+			   &code->expr1->where, (int) gfc_default_character_kind);
+	      else if (code->expr1->ts.type == BT_INTEGER
+		       && code->expr1->ts.kind != gfc_default_integer_kind)
+		gfc_notify_std (GFC_STD_F2018, "STOP code at %L must be default "
+				"integer KIND=%d", &code->expr1->where,
+				(int) gfc_default_integer_kind);
+	    }
 	  if (code->expr2 != NULL
 	      && (code->expr2->ts.type != BT_LOGICAL
 		  || code->expr2->rank != 0))
@@ -16997,12 +17064,16 @@ resolve_typebound_procedures (gfc_symbol* derived)
   int op;
   gfc_symbol* super_type;
 
-  if (!derived->f2k_derived || !derived->f2k_derived->tb_sym_root)
-    return true;
-
+  /* Resolve the super-type first so that inherited bindings (including
+     user operators) are fully resolved before we look them up via
+     gfc_find_typebound_user_op.  This must happen even when 'derived'
+     has no direct type-bound bindings of its own.  */
   super_type = gfc_get_derived_super_type (derived);
   if (super_type)
     resolve_symbol (super_type);
+
+  if (!derived->f2k_derived || !derived->f2k_derived->tb_sym_root)
+    return true;
 
   resolve_bindings_derived = derived;
   resolve_bindings_result = true;

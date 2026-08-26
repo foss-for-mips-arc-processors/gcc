@@ -5881,6 +5881,29 @@ read_module (void)
 				module_name, 0))
 	    continue;
 
+	  /* Skip re-importing a derived type already visible via host
+	     association from the same module.  Walk the symtree since
+	     using gfc_find_symbol can give a wrong error.  */
+	  if (!only_flag && !info->u.rsym.renamed
+		&& strcmp (name, module_name) != 0
+		&& gfc_current_ns->parent)
+	    {
+	      gfc_symbol *host_sym = NULL;
+	      for (gfc_namespace *pns = gfc_current_ns; pns; pns = pns->parent)
+		{
+		  gfc_symtree *host_st = gfc_find_symtree (pns->sym_root, name);
+		  if (host_st)
+		    {
+		      host_sym = host_st->n.sym;
+		      break;
+		    }
+		}
+	      if (host_sym && host_sym->attr.flavor == FL_DERIVED
+		  && host_sym->module
+		  && strcmp (host_sym->module, module_name) == 0)
+		continue;
+	    }
+
 	  st = gfc_find_symtree (gfc_current_ns->sym_root, p);
 
 	  if (st != NULL

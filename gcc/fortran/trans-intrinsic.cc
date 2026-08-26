@@ -1238,6 +1238,7 @@ gfc_conv_intrinsic_caf_get (gfc_se *se, gfc_expr *expr, tree lhs,
   array_expr = expr->value.function.actual->expr;
   ns = array_expr->expr_type == EXPR_VARIABLE
 	   && !array_expr->symtree->n.sym->attr.associate_var
+	   && !array_expr->symtree->n.sym->module
 	 ? array_expr->symtree->n.sym->ns
 	 : gfc_current_ns;
   type = gfc_typenode_for_spec (&array_expr->ts);

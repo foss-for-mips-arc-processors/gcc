@@ -1408,7 +1408,7 @@ See RS/6000 and PowerPC Options.
 -mgnu-attribute
 -mstack-protector-guard=@var{guard}  -mstack-protector-guard-reg=@var{reg}
 -mstack-protector-guard-offset=@var{offset}  -mprefixed
--mpcrel  -mmma  -mrop-protect  -mprivileged
+-mpcrel  -mmma  -mdense-math  -mrop-protect  -mprivileged
 -mno-splat-word-constant  -mno-splat-float-constant
 -mno-ieee128-constant  -mno-warn-altivec-long}
 
@@ -8447,6 +8447,7 @@ Warn about uses of pointers to dynamically allocated objects that have
 been rendered indeterminate by a call to a deallocation function.
 The warning is enabled at all optimization levels but may yield different
 results with optimization than without.
+@option{-Wuse-after-free} is equivalent to @option{-Wuse-after-free=1}.
 
 @table @gcctabopt
 @item -Wuse-after-free=1
@@ -21154,8 +21155,8 @@ problems or, in some cases, to provide workarounds for compiler bugs.
 for documentation of these internal parameters.
 @end table
 
-@anchor{Submodel Options}
 @node Target-Specific Options
+@anchor{Submodel Options}
 @section Target-Specific Options
 @cindex submodel options
 @cindex hardware-specific options
@@ -21536,7 +21537,7 @@ performance of the code.  Permissible values for this option are:
 @samp{neoverse-512tvb}, @samp{neoverse-e1}, @samp{neoverse-n1},
 @samp{neoverse-n2}, @samp{neoverse-v1}, @samp{neoverse-v2}, @samp{grace},
 @samp{neoverse-v3}, @samp{neoverse-v3ae}, @samp{armagicpu}, @samp{neoverse-n3},
-@samp{olympus}, @samp{cortex-a725}, @samp{cortex-x925},
+@samp{olympus}, @samp{rigel}, @samp{cortex-a725}, @samp{cortex-x925},
 @samp{qdf24xx}, @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan},
 @samp{octeontx}, @samp{octeontx81},  @samp{octeontx83},
 @samp{octeontx2}, @samp{octeontx2t98}, @samp{octeontx2t96}
@@ -21949,8 +21950,6 @@ Enable the TIndex Exception-like Vector Extension.
 Enable the TLBI Domains Extension.
 @item gcie
 Enable the GICv5 (Generic Interrupt Controller) CPU Interface Extension.
-@item mpamv2
-Enable MPAMv2 system registers.
 @item lscp
 Enable the load acquire and store release pair extension.
 @item mops-go
@@ -31678,8 +31677,8 @@ Supported values for @var{cpu_type} are @samp{401}, @samp{403},
 @samp{e6500}, @samp{ec603e}, @samp{G3}, @samp{G4}, @samp{G5},
 @samp{titan}, @samp{power3}, @samp{power4}, @samp{power5}, @samp{power5+},
 @samp{power6}, @samp{power6x}, @samp{power7}, @samp{power8},
-@samp{power9}, @samp{power10}, @samp{power11}, @samp{powerpc}, @samp{powerpc64},
-@samp{powerpc64le}, @samp{rs64}, and @samp{native}.
+@samp{power9}, @samp{power10}, @samp{power11}, @samp{future}, @samp{powerpc},
+@samp{powerpc64}, @samp{powerpc64le}, @samp{rs64}, and @samp{native}.
 
 @option{-mcpu=powerpc}, @option{-mcpu=powerpc64}, and
 @option{-mcpu=powerpc64le} specify pure 32-bit PowerPC (either
@@ -31707,7 +31706,7 @@ following options:
 -mcrypto  -mhtm  -mpower8-fusion
 -mquad-memory  -mquad-memory-atomic  -mfloat128
 -mfloat128-hardware  -mprefixed  -mpcrel  -mmma
--mrop-protect}
+-mdense-math -mrop-protect}
 
 The particular options set for any particular CPU varies between
 compiler versions, depending on what setting seems to produce optimal
@@ -32803,6 +32802,14 @@ the option @option{-mcpu=power10} (or later) is enabled.
 Generate (do not generate) the MMA instructions.  The @option{-mma}
 option requires that the option @option{-mcpu=power10} (or later)
 is enabled.
+
+@opindex mdense-math
+@opindex mno-dense-math
+@item -mdense-math
+@itemx -mno-dense-math
+Generate (do not generate) Dense Math Facility (DMF) instructions.
+The @option{-mdense-math} option requires that the option
+@option{-mcpu=future} (or later) is enabled.
 
 @opindex mrop-protect
 @opindex mno-rop-protect
@@ -35205,7 +35212,7 @@ MOVDIRI, MOVDIR64B, ENQCMD, CLDEMOTE, PTWRITE, WAITPKG, SERIALIZE, TSXLDTRK,
 UINTR, AMX-BF16, AMX-TILE, AMX-INT8, AVX-VNNI, AVX512FP16, AVX512BF16, AMX-FP16,
 PREFETCHI, AMX-COMPLEX, AVX10.1-512, AVX-IFMA, AVX-NE-CONVERT, AVX-VNNI-INT16,
 AVX-VNNI-INT8, CMPccXADD, SHA512, SM3, SM4, AVX10.2-512, APX_F, AMX-AVX512,
-AMX-FP8, AMX-TF32, MOVRS and AMX-MOVRS instruction set support.
+AMX-FP8, MOVRS and AMX-MOVRS instruction set support.
 
 @item bonnell
 @itemx atom
@@ -35496,6 +35503,15 @@ CLFLUSHOPT, XSAVES, LZCNT, POPCNT instruction set support.
 
 @item c86-4g-m7
 HYGON c86-4g-m7 CPU with x86-64, MMX, SSE, SSE2, SSE3, SSE4A, CX16, ABM, SSSE3,
+SSE4.1, SSE4.2, AES, PCLMUL, AVX, AVX2, BMI, BMI2, F16C, FMA, PRFCHW, FXSR, SHA,
+XSAVE, XSAVEOPT, XSAVEC, FSGSBASE, RDRND, MOVBE, MWAITX, ADX, RDSEED, CLZERO,
+CLFLUSHOPT, XSAVES, LZCNT, POPCNT, AVX512F, AVX512DQ, AVX512IFMA, AVX512CD,
+AVX512BW, AVX512VL, AVX512BF16, AVX512VBMI, AVX512VBMI2, GFNI, AVX512VNNI, VAES,
+AVX512BITALG, AVX512VPOPCNTDQ, AVX512VP2INTERSECT, AVXVNNI, VPCLMULQDQ,
+WBNOINVD instruction set support.
+
+@item c86-4g-m8
+HYGON c86-4g-m8 CPU with x86-64, MMX, SSE, SSE2, SSE3, SSE4A, CX16, ABM, SSSE3,
 SSE4.1, SSE4.2, AES, PCLMUL, AVX, AVX2, BMI, BMI2, F16C, FMA, PRFCHW, FXSR, SHA,
 XSAVE, XSAVEOPT, XSAVEC, FSGSBASE, RDRND, MOVBE, MWAITX, ADX, RDSEED, CLZERO,
 CLFLUSHOPT, XSAVES, LZCNT, POPCNT, AVX512F, AVX512DQ, AVX512IFMA, AVX512CD,

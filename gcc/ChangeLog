@@ -1,3 +1,3019 @@
+2026-08-07  Release Manager
+
+	* GCC 16.2.0 released.
+
+2026-08-06  Jakub Jelinek  <jakub@redhat.com>
+
+	Revert:
+	2026-07-29  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR middle-end/126405
+	* cfgexpand.cc (verify_partition_mem_exprs): New function.
+	(pass_expand::execute): Call it.
+
+2026-08-04  Jin Ma  <jinma@linux.alibaba.com>
+
+	Backported from master:
+	2026-07-16  Jin Ma  <jinma@linux.alibaba.com>
+
+	* config/riscv/riscv.cc (riscv_regno_to_class): Map t1 to
+	JALR_REGS.
+	* config/riscv/riscv.h (RISCV_PROLOGUE_TEMP_REGNUM): Document
+	the SIBCALL_REGS restriction.
+	(REG_CLASS_CONTENTS): Remove t1 from SIBCALL_REGS.
+
+2026-08-03  Hu, Lin1  <lin1.hu@intel.com>
+
+	PR target/126581
+	* config/i386/avx10_2satcvtintrin.h
+	(_mm_cvtts_sd_epi32): New alias of _mm_cvtts_sd_i32.
+	(_mm_cvtts_sd_epu32): New alias of _mm_cvtts_sd_u32.
+	(_mm_cvtts_ss_epi32): New alias of _mm_cvtts_ss_i32.
+	(_mm_cvtts_ss_epu32): New alias of _mm_cvtts_ss_u32.
+	(_mm_cvtts_roundsd_epi32): New alias of _mm_cvtts_roundsd_i32.
+	(_mm_cvtts_roundsd_epu32): New alias of _mm_cvtts_roundsd_u32.
+	(_mm_cvtts_roundss_epi32): New alias of _mm_cvtts_roundss_i32.
+	(_mm_cvtts_roundss_epu32): New alias of _mm_cvtts_roundss_u32.
+	(_mm_cvtts_sd_epi64): New alias of _mm_cvtts_sd_i64.
+	(_mm_cvtts_sd_epu64): New alias of _mm_cvtts_sd_u64.
+	(_mm_cvtts_ss_epi64): New alias of _mm_cvtts_ss_i64.
+	(_mm_cvtts_ss_epu64): New alias of _mm_cvtts_ss_u64.
+	(_mm_cvtts_roundsd_epi64): New alias of _mm_cvtts_roundsd_i64.
+	(_mm_cvtts_roundsd_epu64): New alias of _mm_cvtts_roundsd_u64.
+	(_mm_cvtts_roundss_epi64): New alias of _mm_cvtts_roundss_i64.
+	(_mm_cvtts_roundss_epu64): New alias of _mm_cvtts_roundss_u64.
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126504
+	* match.pd ((CST1 << A) == CST2 -> A == ctz (CST2) - ctz (CST1)):
+	If cand isn't representable in TREE_TYPE (@1), simplify to
+	cmp == NE_EXPR.
+	(((1 << n) & M) != 0 -> n == log2 (M)): Don't simplify if
+	log2 doesn't fit into TREE_TYPE (@0).
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126503
+	* gimple-lower-bitint.cc (bitint_large_huge::handle_plus_minus): If
+	IFN_ADDC/IFN_SUBC can't be used and rhs1_type is not the limb type
+	and is signed, perform both additions or both subtractions in
+	unsigned type for the rhs1_type and cast to rhs1_type at the end.
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/126497
+	* gimplify.cc (recalculate_side_effects): Return for
+	tcc_declaration.
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126490
+	* match.pd ((a & b) == (a ^ b) -> !(a | b)): If @0 has
+	integral one bit precision type, use (convert:type ...) around the
+	bit_not just in case the comparison has a different result type
+	from the type of its operands.  Otherwise do that too but with
+	bit_not replaced with bit_xor with one of the appropriate type.
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126464
+	* range-op-float.cc (float_widen_lhs_range): Remove also_inf
+	argument, replace its uses as if it was always true.
+	(operator_cast::op1_range): Don't pass third argument to
+	float_widen_lhs_range.
+
+2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-31  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126476
+	* match.pd (((C << A) & D) != 0 -> A == 0,
+	((C << A) & D) == 0 -> A != 0): Fold to false/true if
+	c1 - c2 resp. c2 - c1 doesn't fit into TREE_TYPE (@0).
+
+2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126464
+	* range-op-float.cc (float_widen_lhs_range): Add also_inf argument
+	defaulted to false, if true, extend even lb of +inf and ub of -inf.
+	(operator_cast::op1_range): Adjust float_widen_lhs_range caller.
+
+2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/126084
+	* asan.cc (maybe_instrument_call): Don't instrument
+	BUILT_IN_ASAN_REPORT_{LOAD,STORE}{1,2,4,8,16,_N} builtins.
+	(initialize_sanitizer_builtins): Use
+	(*lang_hooks.types.type_for_mode) (ptr_mode, 0) instead of
+	pointer_sized_int_mode for PTRMODE arguments.
+	(asan_expand_poison_ifn): Likewise.
+
+2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126471
+	* match.pd (parity(~X) is parity(X)): Only optimize this way
+	if element_precision is even, otherwise optimize into parity(X) ^ 1.
+
+2026-07-30  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/126446
+	* gimple-isel.cc (gimple_expand_vec_set_extract_expr): Punt if
+	idx doesn't fit into poly_uint64 but is poly_int_tree_p.  Use
+	known_ge rather than known_gt for out of bounds check.  Formatting
+	fixes.
+
+2026-07-30  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-29  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	* config/s390/s390.cc (s390_canonicalize_comparison): Verify op0
+	for an UNSPEC_CC_TO_INT is a register.
+
+2026-07-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2026-07-28  H.J. Lu  <hjl.tools@gmail.com>
+		    Richard Biener   <rguenther@suse.de>
+
+	PR middle-end/126410
+	* tree-vect-stmts.cc (vectorizable_store): Only commit to
+	recorded base alignment when transforming.
+	(vectorizable_load): Likewise.
+
+2026-07-30  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-29  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126457
+	* tree-vect-loop.cc (vectorizable_reduction): Reject
+	operations where not all operands correspond to a SLP
+	child early.
+
+2026-07-30  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126404
+	* tree-vect-patterns.cc (vect_recog_popcount_clz_ctz_ffs_pattern):
+	Avoid recursing to vect_recog_ctz_ffs_pattern with a reduction.
+
+2026-07-30  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-28  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126404
+	* tree-vect-slp.cc (vect_analyze_slp_reduc_chain): Fixup
+	conversion detection.
+
+2026-07-30  Hu, Lin1  <lin1.hu@intel.com>
+
+	* config/i386/avx10_2satcvtintrin.h
+	(_mm_cvtts_sd_i32): Renamed from _mm_cvtts_sd_epi32.
+	(_mm_cvtts_sd_si32): New alias of _mm_cvtts_sd_i32.
+	(_mm_cvtts_sd_u32): Renamed from _mm_cvtts_sd_epu32.
+	(_mm_cvtts_ss_i32): Renamed from _mm_cvtts_ss_epi32.
+	(_mm_cvtts_ss_si32): New alias of _mm_cvtts_ss_i32.
+	(_mm_cvtts_ss_u32): Renamed from _mm_cvtts_ss_epu32.
+	(_mm_cvtts_roundsd_i32): Renamed from _mm_cvtts_roundsd_epi32.
+	(_mm_cvtts_roundsd_si32): New alias of _mm_cvtts_roundsd_i32.
+	(_mm_cvtts_roundsd_u32): Renamed from _mm_cvtts_roundsd_epu32.
+	(_mm_cvtts_roundss_i32): Renamed from _mm_cvtts_roundss_epi32.
+	(_mm_cvtts_roundss_si32): New alias of _mm_cvtts_roundss_i32.
+	(_mm_cvtts_roundss_u32): Renamed from _mm_cvtts_roundss_epu32.
+	(_mm_cvtts_sd_i64): Renamed from _mm_cvtts_sd_epi64.
+	(_mm_cvtts_sd_si64): New alias of _mm_cvtts_sd_i64.
+	(_mm_cvtts_sd_u64): Renamed from _mm_cvtts_sd_epu64.
+	(_mm_cvtts_ss_i64): Renamed from _mm_cvtts_ss_epi64.
+	(_mm_cvtts_ss_si64): New alias of _mm_cvtts_ss_i64.
+	(_mm_cvtts_ss_u64): Renamed from _mm_cvtts_ss_epu64.
+	(_mm_cvtts_roundsd_i64): Renamed from _mm_cvtts_roundsd_epi64.
+	(_mm_cvtts_roundsd_si64): New alias of _mm_cvtts_roundsd_i64.
+	(_mm_cvtts_roundsd_u64): Renamed from _mm_cvtts_roundsd_epu64.
+	(_mm_cvtts_roundss_i64): Renamed from _mm_cvtts_roundss_epi64.
+	(_mm_cvtts_roundss_si64): New alias of _mm_cvtts_roundss_i64.
+	(_mm_cvtts_roundss_u64): Renamed from _mm_cvtts_roundss_epu64.
+
+2026-07-30  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-07-30  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	PR target/126438
+	* config/rs6000/darwin.h (REGISTER_NAMES): Add dmf registers.
+
+2026-07-29  Richard Sandiford  <rdsandiford@googlemail.com>
+
+	Backported from master:
+	2026-06-07  Richard Sandiford  <rdsandiford@googlemail.com>
+
+	* doc/sourcebuild.texi: Document that check-function-bodies
+	automatically adds the check_function_bodies options.
+
+2026-07-29  Iain Sandoe  <iain@sandoe.co.uk>
+
+	Backported from master:
+	2026-06-21  Iain Sandoe  <iain@sandoe.co.uk>
+
+	* doc/sourcebuild.texi: Document object file checks.
+
+2026-07-29  Reshma Roy  <Reshma.Roy@amd.com>
+
+	Backported from master:
+	2026-07-28  Reshma Roy  <Reshma.Roy@amd.com>
+
+	* config/i386/i386-features.cc (ix86_emit_tls_call): Additional
+	check to see if DRAP register is live in basic block with DF_LR_IN.
+
+2026-07-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2026-07-29  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/126450
+	* config/i386/i386.cc (ix86_spill_register_argument_p): Check
+	the argument-linked memory used to store local variable.
+
+2026-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/126446
+	* config/i386/i386-expand.cc (ix86_expand_vector_set): If elt is
+	out of bounds, emit a no-op move.
+
+2026-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/126447
+	* gimple-lower-bitint.cc (gimple_lower_bitint): For
+	ifn calls with large/huge _BitInt (ab) SSA_NAME lhs if they
+	have such (ab) argument too, force it into temporary SSA_NAME
+	for IFN_UBSAN_CHECK_MUL and, if bitint_big_endian, also for
+	IFN_UBSAN_CHECK_{ADD,SUB}.
+
+2026-07-29  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-28  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR middle-end/126405
+	* cfgexpand.cc (verify_partition_mem_exprs): New function.
+	(pass_expand::execute): Call it.
+
+2026-07-29  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-28  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR middle-end/126405
+	* tree-outof-ssa.cc (split_overlapping_partition_decls): Also split
+	partitions of PARM_DECLs and RESULT_DECLs.
+
+2026-07-29  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-28  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR middle-end/126405
+	* cfgexpand.cc (leader_merge): Rename to...
+	(expand_leader_merge): ...this.  Make external.
+	* cfgexpand.h (expand_leader_merge): Declare.
+	* tree-outof-ssa.cc: Include cfgexpand.h.
+	(split_overlapping_partition_decls): Determine the variable of a
+	partition from all of its names.
+
+2026-07-28  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-25  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR rtl-optimization/126184
+	* ifcvt.cc (init_noce_multiple_sets_info): Record only the most
+	recent prior definition of each pseudo register.
+
+2026-07-28  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-25  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR rtl-optimization/126184
+	* ifcvt.cc (init_noce_multiple_sets_info): Assert that destinations
+	are pseudos.
+	(bb_ok_for_noce_convert_multiple_sets): Reject hard-register
+	destinations.
+
+2026-07-28  Haochen Jiang  <haochen.jiang@intel.com>
+
+	Backported from master:
+	2026-07-28  Haochen Jiang  <haochen.jiang@intel.com>
+
+	PR target/126429
+	* config/i386/sse.md (avx512fmaskhalfmode): Removed.
+	(avx512f_dpbf16ps_<mode>_maskz): Use avx512fmaskmode instead of
+	avx512fmaskhalfmode.
+	(avx512f_dpbf16ps_<mode>_mask): Ditto.
+	(avx512f_dpbf16ps_<mode><maskz_half_name>): Rename to ...
+	(avx512f_dpbf16ps_<mode><sd_maskz_name>): ... this. Use
+	corresponding sd_mask_op4.
+	* config/i386/subst.md (maskz_half): Remove not used pattern.
+
+2026-07-27  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-27  Jakub Jelinek  <jakub@redhat.com>
+
+	* doc/sourcebuild.texi (arm_neon_fp16_hw, arm_fp16_alternative_hw):
+	Use @code{...} instead of @code(...).
+
+2026-07-27  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-07-27  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* doc/sourcebuild.texi (arm_fp16_alternative_hw): Document.
+	(arm_neon_fp16_hw): Add reference to arm_neon_fp16_ok.
+
+2026-07-27  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-05-26  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/125396
+	* tree-cfgcleanup.cc (bb_phis_references_abnormal_uses): New function.
+	(maybe_remove_forwarder_block): Check to make sure the
+	forwarder block does not have a phi that references ssa name that has
+	abnormal uses.
+
+2026-07-27  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-05-15  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/125290
+	* tree-cfg.cc (group_case_labels_stmt): Remove code that was
+	added to remove `cases` that goto blocks of unreachable.
+	* tree-ssa-forwprop.cc (optimize_unreachable): Remove the
+	comment about switch cases being handled.
+
+2026-07-25  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2026-07-24  H.J. Lu  <hjl.tools@gmail.com>
+		    Uros Bizjak  <ubizjak@gmail.com>
+
+	PR target/126320
+	* config/i386/i386.cc (ix86_spill_register_argument_p): New
+	function.
+	(ix86_argument_passed_on_stack_p): Add a pattern argument.  Call
+	ix86_spill_register_argument_p to check spill of register argument
+	by callee.
+	(ix86_update_stack_alignment): Pass pat to
+	ix86_argument_passed_on_stack_p.
+
+2026-07-24  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_DMF_DMXVF16GERX2): New UNSPEC entry.
+	(UNSPEC_DMF_DMXVF16GERX2PP): Likewise.
+	(UNSPEC_DMF_DMXVF16GERX2PN): Likewise.
+	(UNSPEC_DMF_DMXVF16GERX2NP): Likewise.
+	(UNSPEC_DMF_DMXVF16GERX2NN): Likewise.
+	(UNSPEC_DMF_PMDMXVF16GERX2): Likewise.
+	(UNSPEC_DMF_PMDMXVF16GERX2PP): Likewise.
+	(UNSPEC_DMF_PMDMXVF16GERX2PN): Likewise.
+	(UNSPEC_DMF_PMDMXVF16GERX2NP): Likewise.
+	(UNSPEC_DMF_PMDMXVF16GERX2NN): Likewise.
+	(DMF_PV): Add UNSPEC_DMF_DMXVF16GERX2.
+	(DMF_DPV): Add f16 variants.
+	(DMF_PVI8I4I2): Add UNSPEC_DMF_PMDMXVF16GERX2.
+	(DMF_DPVI8I4I2): Add f16 prefixed variants.
+	(pv): Add dmxvf16gerx2 attribute.
+	(dpv): Add f16 attributes.
+	(pvi8i4i2): Add pmdmxvf16gerx2 attribute.
+	(dpvi8i4i2): Add f16 prefixed attributes.
+	* config/rs6000/rs6000-builtins.def (__builtin_mma_dmxvf16gerx2): New
+	builtin.
+	(__builtin_mma_dmxvf16gerx2pp): Likewise.
+	(__builtin_mma_dmxvf16gerx2pn): Likewise.
+	(__builtin_mma_dmxvf16gerx2np): Likewise.
+	(__builtin_mma_dmxvf16gerx2nn): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2pp): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2pn): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2np): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2nn): Likewise.
+	(__builtin_mma_dmxvf16gerx2_internal): New internal builtin.
+	(__builtin_mma_dmxvf16gerx2pp_internal): Likewise.
+	(__builtin_mma_dmxvf16gerx2pn_internal): Likewise.
+	(__builtin_mma_dmxvf16gerx2np_internal): Likewise.
+	(__builtin_mma_dmxvf16gerx2nn_internal): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2_internal): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2pp_internal): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2pn_internal): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2np_internal): Likewise.
+	(__builtin_mma_pmdmxvf16gerx2nn_internal): Likewise.
+	* doc/extend.texi (PowerPC Matrix-Multiply Assist Built-in Functions):
+	Document new MMA+ builtins for f16 operations.
+
+2026-07-24  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_DMF_DMXVI8GERX4SPP): New UNSPEC entry.
+	(UNSPEC_DMF_PMDMXVI8GERX4SPP): Likewise.
+	(UNSPEC_DMF_DMXVBF16GERX2): Likewise.
+	(UNSPEC_DMF_DMXVBF16GERX2PP): Likewise.
+	(UNSPEC_DMF_DMXVBF16GERX2PN): Likewise.
+	(UNSPEC_DMF_DMXVBF16GERX2NP): Likewise.
+	(UNSPEC_DMF_DMXVBF16GERX2NN): Likewise.
+	(UNSPEC_DMF_PMDMXVBF16GERX2): Likewise.
+	(UNSPEC_DMF_PMDMXVBF16GERX2PP): Likewise.
+	(UNSPEC_DMF_PMDMXVBF16GERX2PN): Likewise.
+	(UNSPEC_DMF_PMDMXVBF16GERX2NP): Likewise.
+	(UNSPEC_DMF_PMDMXVBF16GERX2NN): Likewise.
+	(DMF_PV): Add UNSPEC_DMF_DMXVBF16GERX2.
+	(DMF_DPV): Add bf16 and int8 signed accumulate variants.
+	(DMF_DPVI8I4I4): Add UNSPEC_DMF_PMDMXVI8GERX4SPP.
+	(DMF_PVI8I4I2): New int iterator.
+	(DMF_DPVI8I4I2): Likewise.
+	(pv): Add dmxvbf16gerx2 attribute.
+	(apv): Removed dmxvi8gerx4pp attribute.
+	(dpv): New attribute.
+	(dpvi8i4i4): Add pmdmxvi8gerx4spp attribute.
+	(pvi8i4i2): New attribute.
+	(dpvi8i4i2): Likewise.
+	(dmf_<dpv>): Rename from dmf_<apv> and update to use dpv attribute.
+	(dmf_<pvi8i4i2>): New insn pattern.
+	(dmf_<dpvi8i4i2>): Likewise.
+	* config/rs6000/rs6000-builtins.def (__builtin_mma_dmxvi8gerx4spp): New
+	builtin.
+	(__builtin_mma_pmdmxvi8gerx4spp): Likewise.
+	(__builtin_mma_dmxvbf16gerx2): Likewise.
+	(__builtin_mma_dmxvbf16gerx2pp): Likewise.
+	(__builtin_mma_dmxvbf16gerx2pn): Likewise.
+	(__builtin_mma_dmxvbf16gerx2np): Likewise.
+	(__builtin_mma_dmxvbf16gerx2nn): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2pp): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2pn): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2np): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2nn): Likewise.
+	(__builtin_mma_dmxvi8gerx4spp_internal): New internal builtin.
+	(__builtin_mma_pmdmxvi8gerx4spp_internal): Likewise.
+	(__builtin_mma_dmxvbf16gerx2_internal): Likewise.
+	(__builtin_mma_dmxvbf16gerx2pp_internal): Likewise.
+	(__builtin_mma_dmxvbf16gerx2pn_internal): Likewise.
+	(__builtin_mma_dmxvbf16gerx2np_internal): Likewise.
+	(__builtin_mma_dmxvbf16gerx2nn_internal): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2_internal): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2pp_internal): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2pn_internal): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2np_internal): Likewise.
+	(__builtin_mma_pmdmxvbf16gerx2nn_internal): Likewise.
+	* doc/extend.texi (PowerPC Matrix-Multiply Assist Built-in Functions):
+	Document new MMA+ builtins for int8 and bf16 operations.
+
+2026-07-24  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/rs6000-builtins.def (__builtin_dmr_extract512): New
+	built-in.
+	(__builtin_disassemble_dmr): Likewise.
+	(__builtin_dmr_extract512_internal): New internal built-in.
+	* config/rs6000/rs6000-builtin.cc (rs6000_gimple_fold_mma_builtin):
+	Exempt RS6000_BIF_DISASSEMBLE_DMR from the early-return guard.
+	Generate appropriate gimple code for the extract builtins.
+
+2026-07-24  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Avinash Jayakar  <avinashd@linux.ibm.com>
+		    Vijay Shankar  <vijay@linux.ibm.com>
+
+	* config/rs6000/mma.md (mma_xxsetaccz): Use wD constraint and
+	accumulator operand.
+	(mma_<vv>): Likewise.
+	(mma_<avv>): Likewise.
+	(mma_<pv>): Likewise.
+	(mma_<apv>): Likewise.
+	(mma_<vvi4i4i8>): Likewise.
+	(mma_<avvi4i4i8>): Likewise.
+	(mma_<vvi4i4i2>): Likewise.
+	(mma_<avvi4i4i2>): Likewise.
+	(mma_<vvi4i4>): Likewise.
+	(mma_<avvi4i4>): Likewise.
+	(mma_<pvi4i2>): Likewise.
+	(mma_<apvi4i2>): Likewise.
+	(mma_<vvi4i4i4>): Likewise.
+	(mma_<avvi4i4i4>): Likewise.
+	* config/rs6000/rs6000.cc (print_operand): Print DMR register
+	numbers if dense math option enabled.
+
+2026-07-24  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Peter Bergner  <bergner@linux.ibm.com>
+		    Surya Kumari Jangala  <jskumari@linux.ibm.com>
+		    Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/mma.md (MAX_MMA_OPERANDS): Increase from 7 to 9.
+	(UNSPEC_DMF_DMXOR): New unspec.
+	(UNSPEC_DMF_DMXVI8GERX4): Likewise.
+	(UNSPEC_DMF_DMXVI8GERX4PP): Likewise.
+	(UNSPEC_DMF_PMDMXVI8GERX4): Likewise.
+	(UNSPEC_DMF_PMDMXVI8GERX4PP): Likewise.
+	(UNSPEC_DMF_DMSETDMRZ): Likewise.
+	(DMF_PV): New iterator.
+	(DMF_DPV): Likewise.
+	(DMF_PVI8I4I4): Likewise.
+	(DMF_DPVI8I4I4): Likewise.
+	(pv): Add DMF mappings.
+	(apv): Likewise.
+	(pvi8i4i4): New attribute.
+	(dpvi8i4i4): Likewise.
+	(dmf_build_dmr): New define_expand.
+	(dmf_dmsetdmrz): New insn.
+	(dmf_dmxor): Likewise.
+	(dmf_<pv>): New insn pattern.
+	(dmf_<apv>): Likewise.
+	(dmf_<pvi8i4i4>): Likewise.
+	(dmf_<dpvi8i4i4>): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_gimple_fold_mma_builtin): Add
+	DMF builtin support. Handle DMR pass-by-reference semantics.
+	Support up to nine builtin operands.
+	(mma_expand_builtin): Likewise.
+	(rs6000_expand_builtin): Handle DMF builtins.
+	* config/rs6000/rs6000-builtins.def: Add DMF and MMA+ builtin
+	definitions.
+	* doc/extend.texi
+	(PowerPC Matrix-Multiply Assist Built-in Functions): Document
+	MMA+ builtins.
+	(PowerPC Dense Math Facility Built-in Functions): Document DMF builtins.
+
+2026-07-24  Manjunath S Matti  <mmatti@linux.ibm.com>
+
+	Backported from master:
+	2026-07-23  Manjunath Matti  <mmatti@linux.ibm.com>
+
+	* config/rs6000/rs6000.h (RS6000_BTI_dmr1024): New enumerator.
+	(RS6000_BTI_ptr_dmr1024): New enumerator.
+	(dmr1024_type_node): New macro.
+	(ptr_dmr1024_type_node): New macro.
+	* config/rs6000/rs6000-builtin.cc (rs6000_type_string): Handle
+	dmr1024_type_node.
+	(rs6000_init_builtins): Register the __dmr1024 opaque type and
+	its pointer-to-const variant, with 512-bit alignment.
+	* config/rs6000/rs6000.cc (rs6000_mangle_type): Handle
+	dmr1024_type_node.
+	(rs6000_invalid_conversion): Reject conversions to/from TDOmode.
+	(rs6000_opaque_type_invalid_use_p): Gate __vector_quad and
+	__vector_pair on TARGET_MMA and __dmr1024 on TARGET_DMF
+	independently, and require -mdense-math for __dmr1024.
+
+2026-07-24  Vijay Shankar  <vijay@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Vijay Shankar  <vijay@linux.ibm.com>
+
+	* config/rs6000/mma.md (*movxo): renamed to movxo_nodmf
+	(*movxo_nodmf): updated contraint to use wD and add !TARGET_DMF
+	(*movxo_dmf): New pattern to handle dmf insert/extract from vsx
+
+2026-07-24  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+		    Peter Bergner  <bergner@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_DMR_RELOAD_FROM_MEMORY): New unspec.
+	(UNSPEC_DMR_RELOAD_TO_MEMORY): Likewise.
+	(reload_tdo_load): New define_insn_and_split.
+	(reload_tdo_store): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_init_hard_regno_mode_ok): Set
+	reload_load and reload_store for TDOmode when TARGET_DMF.
+
+2026-07-24  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_DMF_EXTRACT512): New unspec.
+	(dm_extract512): New insn.
+	(movtdo): New expander.
+	(*movtdo): New insn_and_split to support TDOmode moves between
+	memory, VSX registers, and Dense Math Registers.
+	* config/rs6000/rs6000.cc (rs6000_emit_move): Diagnose constant
+	assignments to TDOmode objects.
+	(rs6000_split_multireg_move): Handle TDOmode when splitting
+	multi-register moves.
+
+2026-07-24  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/mma.md (UNSPEC_DMF_INSERT512): New unspec.
+	(UNSPEC_DMF_INSERT1024): Likewise.
+	(movoo): Enable for TARGET_DMF.
+	(*movoo): Likewise.
+	(vsx_assemble_pair): Likewise.
+	(*vsx_assemble_pair): Likewise.
+	(vsx_disassemble_pair): Likewise.
+	(*vsx_disassemble_pair): Likewise.
+	(dm_insert512): New insn.
+	(dm_insert1024): Likewise.
+	(mma_assemble_acc): Use accumulator_operand.
+	Build accumulators via DMR insert operations when TARGET_DMF.
+	(*mma_assemble_acc): Use accumulator_operand.
+	(mma_<acc>): New define_expand treating xxmtacc/xxmfacc as no-ops
+	for TARGET_DMF.
+	(*mma_<acc>): Restrict to !TARGET_DMF and use accumulator_operand.
+	(mma_disassemble_acc): Use accumulator_operand.
+	* config/rs6000/predicates.md (dmr_register_operand): New predicate.
+	(gpc_reg_operand): Accept DMR registers.
+	* config/rs6000/rs6000-builtin.cc (rs6000_gimple_fold_mma_builtin): Do
+	not emit xxmfacc for DISASSEMBLE_ACC when TARGET_DMF.
+	* config/rs6000/rs6000.cc (rs6000_hard_regno_mode_ok_uncached): Allow
+	OOmode in VSX register pairs for TARGET_DMF.
+	(rs6000_split_multireg_move): Avoid emitting xxmtacc/xxmfacc when
+	TARGET_DMF.
+	* config/rs6000/rs6000.md (type): Add dmf type.
+	(isa): Add mma and dmf ISA attributes.
+	(enabled): Add mma and dmf enable conditions.
+
+2026-07-24  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	* config/rs6000/constraints.md
+	(rs6000_constraints[RS6000_CONSTRAINT_wD]): New wD constraint.
+	* config/rs6000/predicates.md (accumulator_operand): New predicate.
+	* config/rs6000/rs6000.cc (rs6000_debug_reg_global): Support wD
+	register class.
+	(rs6000_init_hard_regno_mode_ok): Map wD to FLOAT_REGS.
+	* config/rs6000/rs6000.h (enum r6000_reg_class_enum): Add wD constraint.
+	* doc/md.texi: Document the new constraint.
+
+2026-07-24  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	Backported from master:
+	2026-07-22  Surya Kumari jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/rs6000.cc (enum rs6000_reg_type): Add DMR_REG_TYPE.
+	(enum rs6000_reload_reg_type): Add RELOAD_REG_DMR.
+	(LAST_RELOAD_REG_CLASS): Update to RELOAD_REG_DMR.
+	(reload_reg_map): Add DMR entry.
+	(rs6000_reg_names): Add DMR register names.
+	(alt_reg_names): Add alternate DMR register names.
+	(rs6000_hard_regno_nregs_internal): Handle DMR registers.
+	(rs6000_hard_regno_mode_ok_uncached): Add TDOmode and XOmode support for
+	DMR registers.
+	(rs6000_debug_reg_global): Add TDOmode to debug modes and print DMR
+	register range.
+	(rs6000_setup_reg_addr_masks): Handle RELOAD_REG_DMR.
+	Allow offset loads for TDOmode values.
+	(rs6000_init_hard_regno_mode_ok): Add DMR_REGS to reg_class_to_reg_type
+	mapping.
+	Update precalculation of CLASS_MAX_NREGS.
+	(rs6000_secondary_reload_memory): Handle DMR_REGS class.
+	(rs6000_secondary_reload_simple_move): Add DMR to VSX moves.
+	(rs6000_preferred_reload_class): Handle DMR_REGS.
+	(rs6000_modes_tieable_p): Exclude TDOmode from register tying.
+	(reg_offset_addressing_ok_p): Allow XOmode with TARGET_DMF.
+	Add TDOmode support with TARGET_DMF.
+	(rs6000_secondary_reload_class): Handle DMR_REGS reload routing.
+	(rs6000_dmr_register_move_cost): New helper.
+	(rs6000_register_move_cost): Handle DMR_REGS as source or destination.
+	(rs6000_memory_move_cost): Add DMR_REGS case routing cost through VSX.
+	(rs6000_compute_pressure_classes): Add DMR_REGS when TARGET_DMF.
+	(rs6000_debugger_regno): Add DMR register numbering.
+	* config/rs6000/rs6000.h (UNITS_PER_DMR_WORD): Define as 128.
+	(FIRST_PSEUDO_REGISTER): Increase from 111 to 119.
+	(FIXED_REGISTERS): Add 8 DMR registers as non-fixed.
+	(CALL_USED_REGISTERS): Mark all DMR registers as call-used.
+	(REG_ALLOC_ORDER): Add DMR registers to allocation order.
+	(DMR_REGNO_P): New macro.
+	(VECTOR_ALIGNMENT_P): Add TDOmode.
+	(enum reg_class): Add DMR_REGS entry.
+	(REG_CLASS_CONTENTS): Add DMR_REGS bitmask.
+	(REGISTER_NAMES): Add dmr0-dmr7 register names.
+	(ADDITIONAL_REGISTER_NAMES): Add dmr0-dmr7 mappings.
+	* config/rs6000/rs6000.md (FIRST_DMR_REGNO): Define as 111.
+	(LAST_DMR_REGNO): Define as 118.
+
+2026-07-24  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-07-21  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+		    Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/rs6000.cc (print_operand): Add the `%W`
+	print modifier to print the VSX register number plus two.
+
+2026-07-24  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-07-16  Peter Bergner  <bergner@linux.ibm.com>
+		    Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/rs6000-builtin.cc (rs6000_invalid_builtin): Add
+	ENB_DM diagnostic.
+	(rs6000_builtin_is_supported): Handle ENB_DM.
+	* config/rs6000/rs6000-gen-builtins.cc: Update comments for new
+	Dense Math builtin attributes.
+	(bif_stanza): Add BSTZ_DM.
+	(stanza_map): Add "dm" stanza.
+	(enable_string): Add ENB_DM.
+	(basetype): Add BT_DMR.
+	(attrinfo): Add isdm, isdmint and isdmr fields.
+	(type_map): Add dmr1024 and ptr_dmr1024 type mappings.
+	(match_type): Recognize dmr1024 type.
+	(parse_bif_attrs): Parse dm, dmint and dmr attributes.
+	(complete_vector_type): Handle BT_DMR.
+	(write_decls): Emit ENB_DM and Dense Math builtin attribute bits
+	and predicates.
+	(write_bif_static_init): Initialize Dense Math builtin attributes
+	and associate dmint builtins with their internal variants.
+
+2026-07-24  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-07-13  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	* config/rs6000/rs6000-call.cc (rs6000_return_in_memory): Handle
+	TDOmode and emit "Dense Math" diagnostics.
+	(rs6000_function_arg): Reject TDOmode function parameters and
+	emit "Dense Math" diagnostics.
+	* config/rs6000/rs6000-modes.def: Add TDOmode.
+
+2026-07-24  jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-07-11  Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): Add OPTION_MASK_DMF.
+	(POWERPC_MASKS): Likewise.
+	* config/rs6000/rs6000.cc (rs6000_option_override_internal): Enable
+	OPTION_MASK_DMF by default when TARGET_FUTURE is set and the
+	flag was not explicitly given; emit an error and clear the flag
+	when -mdense-math is requested on a non-future target.
+	(rs6000_opt_masks): Add "dense-math" entry for OPTION_MASK_DMF.
+	* config/rs6000/rs6000.opt (mdense-math): New option backed by Mask(DMF).
+	* doc/invoke.texi: Add -mdense-math.
+
+2026-07-24  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-21  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR middle-end/126341
+	* tree-outof-ssa.cc (split_overlapping_partition_decls): Preserve
+	DECL_IGNORED_P.  Check that the replacement uses memory.
+
+2026-07-24  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-07-14  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/123625
+	PR target/121957
+	* tree-outof-ssa.cc (split_overlapping_partition_decls): New function.
+	Use use_register_for_decl to identify memory partitions.
+	(remove_ssa_form): Call split_overlapping_partition_decls.
+
+2026-07-24  Boudewijn van der Heide  <boudewijn@delta-utec.com>
+
+	Backported from master:
+	2026-05-11  Boudewijn van der Heide  <boudewijn@delta-utec.com>
+
+	PR rtl-optimization/125209
+	* combine.cc (make_compound_operation_int): Return NULL_RTX if we got CLOBBER.
+
+2026-07-24  Roger Sayle  <roger@nextmovesoftware.com>
+
+	Backported from master:
+	2026-05-08  Roger Sayle  <roger@nextmovesoftware.com>
+
+	PR middle-end/124637
+	* calls.cc (load_register_parameters): If using store_constructor
+	to place a constant structure in a register, use a right shift to
+	align the structure/padding if required on big-endian targets.
+
+2026-07-24  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-15  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126171
+	* tree-scalar-evolution.cc (scev_dfs::add_to_evolution):
+	Remove code argument.  Remove MINUS_EXPR handling here.
+	(scev_dfs::follow_ssa_edge_binary): Likewise.
+	(scev_dfs::follow_ssa_edge_expr): Handle MINUS_EXPR
+	separately here, promoting the whole operation to unsigned
+	instead of just the addend.
+
+2026-07-24  Cem Akgok  <cemakgok@gmail.com>
+
+	Backported from master:
+	2026-07-14  Cem Akgok  <cemakgok@gmail.com>
+
+	PR tree-optimization/126225
+	* tree-vect-loop.cc (vect_slp_induction_reuse_p): New function.
+	(vectorizable_induction): Validate SLP induction IV reuse.  Reuse
+	generated IVs cyclically when filling the SLP group.
+
+2026-07-24  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-07-21  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	PR tree-optimization/124663
+	* match.pd: Fold constant conditional selects.
+
+2026-07-23  Tobias Burnus  <tburnus@baylibre.com>
+
+	Backported from master:
+	2026-07-23  Tobias Burnus  <tburnus@baylibre.com>
+
+	* config/gcn/gcn-devices.def (gfx9-4-generic): Set sram-ecc
+	default to HSACO_ATTR_ANY.
+
+2026-07-21  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	Backported from master:
+	2026-07-20  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	* config/bpf/bpf.cc (bpf_insn_cost): Return pattern_cost () by default.
+
+2026-07-21  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	Backported from master:
+	2026-07-20  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	* config/bpf/bpf.cc (bpf_rtx_costs): set CONST_INT 0 insns.
+	* config/bpf/bpf.h (BPF_IMM32_P): New helper macro.
+	* config/bpf/predicates.md (imm32_operand): Use new macro.
+
+2026-07-21  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	Backported from master:
+	2026-07-20  Vineet Gupta  <vineet.gupta@linux.dev>
+
+	* config/bpf/bpf.cc (bpf_rtx_costs): Assign MPY/DIV/MOD cost 1.
+
+2026-07-21  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	Backported from master:
+	2026-06-01  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	* config/bpf/bpf.cc (bpf_asm_named_section): Fix typos.
+	* config/bpf/core-builtins.cc (remove_parser_plugin): Likewise.
+	(make_core_relo): Likewise.
+	(bpf_handle_plugin_finish_type): Likewise.
+	(bpf_output_core_reloc): Likewise.
+	(core_make_builtins): Likewise.
+
+2026-07-21  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2026-07-09  Martin Jambor  <mjambor@suse.cz>
+
+	PR ipa/125207
+	* ipa-cp.cc (decide_about_value): Add detailed dumping about skipping
+	a value when there are no edges for it.  Make dumping about skipping
+	because of growth limit violation consistent with other cases.
+	(decide_whether_version_node): Only create all-context nodes for local
+	nodes, remove the logic doing it in other cases, allow cloning for
+	single constant lattices for non-local nodes.  Adjust dumping.
+
+2026-07-20  Alice Carlotti  <alice.carlotti@arm.com>
+
+	* config/aarch64/aarch64.cc (aarch64_start_call_args): Extend
+	comment.
+
+2026-07-20  Alice Carlotti  <alice.carlotti@arm.com>
+
+	* config/aarch64/aarch64.cc (aarch64_mode_confluence): Fix
+	comment typo.
+	* target.def (mode_switching): Fix incorrect variable names in
+	documentation.
+	* doc/tm.texi: Regenerate.
+
+2026-07-20  Alice Carlotti  <alice.carlotti@arm.com>
+
+	PR target/119210
+	* config/aarch64/aarch64.cc (aarch64_mode_emit_local_sme_state):
+	Add PSTATE.ZA enablement, and zero it if already enabled.
+
+2026-07-20  Alice Carlotti  <alice.carlotti@arm.com>
+
+	* config/aarch64/aarch64-sme.md (aarch64_sme_write_zt): Add
+	ZTO_REGNUM use and make unspec non-volatile.
+
+2026-07-20  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-07-20  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	PR testsuite/126261
+	* doc/sourcebuild.texi (can_deref_null): Document.
+
+2026-07-20  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-06-29  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/105116
+	* lra-constraints.cc (simplify_operand_subreg): Reload a
+	non-representable narrowing subreg of a hard register through
+	memory instead of resolving it lossily.
+
+2026-07-20  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-07-13  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	PR driver/124058
+	* common.opt (Wuse-after-free): Make an alias for
+	-Wuse-after-free=1.
+	* doc/invoke.texi: Document alias.
+	* gimple-ssa-warn-access.cc (pass_waccess::warn_invalid_pointer):
+	Use OPT_Wuse_after_free_.
+	* gcc-diagnostic-spec.cc (nowarn_spec_t::nowarn_spec_t):
+	Likewise.
+
+2026-07-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-16  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126262
+	* gimple-lower-bitint.cc (build_bitint_stmt_ssa_conflicts): Treat
+	IFN_MUL_OVERFLOW and IFN_UBSAN_CHECK_MUL like IFN_BSWAP, regardless
+	of bitint_big_endian.
+
+2026-07-15  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-15  Jakub Jelinek  <jakub@redhat.com>
+
+	PR tree-optimization/126257
+	* match.pd (x+x -> x*2): Only optimize if 2 is representable in the
+	type.
+
+2026-07-15  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-07-09  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	* config/rs6000/rs6000-builtins.def: Move AES builtins to future-vsx
+	stanza.
+	* doc/extend.texi: Add subheading for AES builtins.
+
+2026-07-15  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-07-07  Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/altivec.md (UNSPEC_VUCMPRHN): New unspec entry.
+	(UNSPEC_VUCMPRLN): Likewise.
+	(UNSPEC_VUCMPRHB): Likewise.
+	(UNSPEC_VUCMPRLB): Likewise.
+	(UNSPEC_VUCMPRHH): Likewise.
+	(UNSPEC_VUCMPRLH): Likewise.
+	(UNSPEC_VUPKHSNTOB): Likewise.
+	(UNSPEC_VUPKLSNTOB): Likewise.
+	(UNSPEC_VUPKINT4TOBF16): Likewise.
+	(UNSPEC_VUPKINT8TOBF16): Likewise.
+	(UNSPEC_VUPKINT4TOFP32): Likewise.
+	(UNSPEC_VUPKINT8TOFP32): Likewise.
+	(vu_hl): New attribute.
+	(vu_lh): Likewise.
+	(VUPKNTOB): New int iterator.
+	(altivec_vupkhsntob): New define_insn.
+	(altivec_vupklsntob): Likewise.
+	(altivec_vupkint4tobf16): Likewise.
+	(altivec_vupkint8tobf16): Likewise.
+	(altivec_vupkint4tofp32): Likewise.
+	(altivec_vupkint8tofp32): Likewise.
+	(vucmpr_splat): New attribute.
+	(vucmpr_pcv): Likewise.
+	(vucmpr_uim): Likewise.
+	(VUCMPR_N): New int iterator.
+	(VUCMPR_B): Likewise.
+	(VUCMPR_H): Likewise.
+	(altivec_vucmpr<vu_hl>n): New define_expand.
+	(altivec_vucmpr<vu_hl>n_direct): New define_insn for vucmpr<vu_hl>n.
+	(altivec_vucmpr<vu_hl>b): New define_expand.
+	(altivec_vucmpr<vu_hl>b_direct): New define_insn for vucmpr<vu_hl>b.
+	(altivec_vucmpr<vu_hl>h): New define_expand.
+	(altivec_vucmpr<vu_hl>h_direct): New define_insn for vucmpr<vu_hl>h.
+	* config/rs6000/rs6000-builtins.def: Add vector uncompress and unpack
+	builtins under [future].
+	* config/rs6000/rs6000-overload.def: Add vec_uncompress* and vec_unpack*
+	interfaces.
+
+2026-07-15  Manjunath Matti  <mmatti@linux.ibm.com>
+
+	Backported from master:
+	2026-06-25  Manjunath Matti  <mmatti@linux.ibm.com>
+
+	* config/rs6000/predicates.md (const_0_to_6_operand): New predicate.
+	* config/rs6000/rs6000-builtins.def (__builtin_vsx_xxmulmul): Add new
+	builtin definitions under [future] stanza.
+	(__builtin_vsx_xxmulmulhiadd): Likewise.
+	(__builtin_vsx_xxmulmulloadd): Likewise.
+	(__builtin_vsx_xxssumudm): Likewise.
+	(__builtin_vsx_xxssumudmc): Likewise.
+	(__builtin_vsx_xxssumudmcext): Likewise.
+	(__builtin_vsx_xsaddadduqm): Likewise.
+	(__builtin_vsx_xsaddaddsuqm): Likewise.
+	(__builtin_vsx_xsaddsubuqm): Likewise.
+	(__builtin_vsx_xsaddsubsuqm): Likewise.
+	(__builtin_vsx_xsmerge2t1uqm): Likewise.
+	(__builtin_vsx_xsmerge2t2uqm): Likewise.
+	(__builtin_vsx_xsmerge2t3uqm): Likewise.
+	(__builtin_vsx_xsmerge3t1uqm): Likewise.
+	(__builtin_vsx_xsrebase2t1uqm): Likewise.
+	(__builtin_vsx_xsrebase2t2uqm): Likewise.
+	(__builtin_vsx_xsrebase2t3uqm): Likewise.
+	(__builtin_vsx_xsrebase2t4uqm): Likewise.
+	(__builtin_vsx_xsrebase3t1uqm): Likewise.
+	(__builtin_vsx_xsrebase3t2uqm): Likewise.
+	(__builtin_vsx_xsrebase3t3uqm): Likewise.
+	* config/rs6000/vsx.md (UNSPEC_XXMULMUL): Add UNSPEC entry.
+	(UNSPEC_XXMULMULHIADD): Likewise.
+	(UNSPEC_XXMULMULLOADD): Likewise.
+	(UNSPEC_XXSSUMUDM): Likewise.
+	(UNSPEC_XXSSUMUDMC): Likewise.
+	(UNSPEC_XXSSUMUDMCEXT): Likewise.
+	(UNSPEC_XSADDADDUQM): Likewise.
+	(UNSPEC_XSADDADDSUQM): Likewise.
+	(UNSPEC_XSADDSUBUQM): Likewise.
+	(UNSPEC_XSADDSUBSUQM): Likewise.
+	(UNSPEC_XSMERGE2T1UQM): Likewise.
+	(UNSPEC_XSMERGE2T2UQM): Likewise.
+	(UNSPEC_XSMERGE2T3UQM): Likewise.
+	(UNSPEC_XSMERGE3T1UQM): Likewise.
+	(UNSPEC_XSREBASE2T1UQM): Likewise.
+	(UNSPEC_XSREBASE2T2UQM): Likewise.
+	(UNSPEC_XSREBASE2T3UQM): Likewise.
+	(UNSPEC_XSREBASE2T4UQM): Likewise.
+	(UNSPEC_XSREBASE3T1UQM): Likewise.
+	(UNSPEC_XSREBASE3T2UQM): Likewise.
+	(UNSPEC_XSREBASE3T3UQM): Likewise.
+	(vsx_xxmulmul): New define_insn.
+	(vsx_xxmulmulhiadd): Likewise.
+	(vsx_xxmulmulloadd): Likewise.
+	(vsx_xxssumudm): Likewise.
+	(vsx_xxssumudmc): Likewise.
+	(vsx_xxssumudmcext): Likewise.
+	(vsx_xsaddadduqm): Likewise.
+	(vsx_xsaddaddsuqm): Likewise.
+	(vsx_xsaddsubuqm): Likewise.
+	(vsx_xsaddsubsuqm): Likewise.
+	(vsx_xsmerge2t1uqm): Likewise.
+	(vsx_xsmerge2t2uqm): Likewise.
+	(vsx_xsmerge2t3uqm): Likewise.
+	(vsx_xsmerge3t1uqm): Likewise.
+	(vsx_xsrebase2t1uqm): Likewise.
+	(vsx_xsrebase2t2uqm): Likewise.
+	(vsx_xsrebase2t3uqm): Likewise.
+	(vsx_xsrebase2t4uqm): Likewise.
+	(vsx_xsrebase3t1uqm): Likewise.
+	(vsx_xsrebase3t2uqm): Likewise.
+	(vsx_xsrebase3t3uqm): Likewise.
+	* doc/extend.texi (PowerPC AltiVec/VSX Built-in Functions): Add
+	documentation for ECC cryptography builtins available on
+	future ISA.
+
+2026-07-14  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	Backported from master:
+	2026-07-07  Dhruv Chawla  <dhruvc@nvidia.com>
+
+	* config/aarch64/aarch64-cores.def (rigel): New entry.
+	* config/aarch64/aarch64-tune.md: Regenerate.
+	* doc/invoke.texi (AArch64 Options): Document the above.
+
+2026-07-14  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	Backported from master:
+	2026-07-14  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	* doc/sourcebuild.texi (arm_v8_1m_mve_link): Document.
+
+2026-07-14  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-14  Jakub Jelinek  <jakub@redhat.com>
+
+	PR middle-end/126084
+	* gimple-lower-bitint.cc: Include "attribs.h" and "asan.h".
+	(gimple_lower_bitint): Use asan_expand_poison_ifn to lower
+	.ASAN_POISON calls with large/huge _BitInt lhs.
+	* asan.cc (report_error_func): Set *nargs and use _n builtin
+	even if size is not a power of two or larger than 16.
+	(asan_expand_poison_ifn): Handle nargs == 2.
+
+2026-07-14  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-07-14  Jakub Jelinek  <jakub@redhat.com>
+		    H.J. Lu  <hjl.tools@gmail.com>
+
+	PR tree-optimization/120201
+	* cfgexpand.cc (expand_used_vars): Set data.asan_alignb to
+	maximum of itself and crtl->stack_alignment_needed
+	/ BITS_PER_UNIT.
+
+2026-07-14  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-14  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126194
+	* gimple-ssa-pta-constraints.cc (find_func_aliases_for_call):
+	Only ignore calls to delete if DECL_IS_REPLACEABLE_OPERATOR.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-08  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126150
+	* tree-cfg.cc (replace_uses_by): Delay purging of EH edges
+	until after FOR_EACH_IMM_USE_STMT finished.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-25  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125953
+	* gimple-range.cc (gimple_ranger::range_of_expr): Document.
+	Fall back to global ranges if 'stmt' is not in the IL.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-26  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/125875
+	* match.pd: When checking for !can_vec_perm_const_p also
+	allow variable permutes and use the vec_perm_indices CTOR
+	with the original tree operands.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-26  Richard Biener  <rguenther@suse.de>
+
+	* vec-perm-indices.h (vec_perm_indices::new_vector): New overload.
+	(vec_perm_indices::input_bitwise_zero_p): New method.
+	(vec_perm_indices::m_input0_bitwise_zero_p,
+	vec_perm_indices::m_input1_bitwise_zero_p): New members.
+	(vec_perm_indices::vec_perm_indices): Adjust.
+	(tree_to_vec_perm_indices): Declare.
+	* vec-perm-indices.cc (vec_perm_indices::new_vector): New overload.
+	(vec_perm_indices::new_expanded_vector): Adjust.
+	(tree_to_vec_perm_indices): New function.
+	* optabs-query.cc (can_vec_perm_const_p): Handle permute
+	patterns mapping to vec_shl/vec_shr.
+	* tree-vect-generic.cc (lower_vec_perm): Move vec_shl/vec_shr
+	detection to can_vec_perm_const_p and simplify.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125786
+	* tree-ssa-reassoc.cc (optimize_vec_cond_expr): Create a new
+	stmt instead of rewriting an existing possibly multi-use one.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-08  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125668
+	* tree-ssa-forwprop.cc (forward_propagate_addr_expr_1):
+	Preserve alignment of the original access also for propagating
+	into the LHS.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-05-15  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125296
+	* tree-ssa-forwprop.cc (forward_propagate_addr_expr_1):
+	Preserve alignment of the original access.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-30  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/126008
+	* tree-ssa-loop-ivopts.cc (alloc_iv): Revert last change.
+	* tree-ssa-address.cc (add_to_parts): Use unsigned arithmetic
+	to accumulate to base.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-16  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125730
+	* tree-ssa-loop-ivopts.cc (alloc_iv): Do not convert pointer
+	IVs to unsigned before canonicalizing.
+
+2026-07-13  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-07-01  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125040
+	* tree-ssa-pre.cc (clean): Iterate processing.
+
+2026-07-13  Josef Melcr  <josef.melcr@suse.com>
+
+	Backported from master:
+	2026-07-13  Josef Melcr  <josef.melcr@suse.com>
+
+	PR ipa/125121
+	* cgraph.cc (cgraph_edge::make_callback): Add missing call to
+	duplication hooks.
+	* ipa-prop.cc (init_callback_edge_summary): Remove function.
+	(ipa_compute_jump_functions_for_edge): Remove call to
+	init_callback_edge_summary, fix comment.
+	(ipa_edge_args_sum_t::duplicate): Fix the initialization of jump
+	functions vector for callback edges.
+
+2026-07-10  Martin Jambor  <mjambor@suse.cz>
+
+	Backported from master:
+	2026-06-18  Martin Jambor  <mjambor@suse.cz>
+
+	PR ipa/124128
+	* ipa-cp.cc (ipa_vr_intersect_with_arith_jfunc): Move the check if
+	the final type conversion needs to happen before the conversion.
+
+2026-07-10  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-01  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	* config/s390/s390.md: Annotate mnemonic for
+	extzv_<mode>_{srl,sll}<clobbercc_or_nocc>.
+
+2026-07-10  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	Backported from master:
+	2026-07-01  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	PR target/126054
+	* config/s390/s390.md: Fix
+	extzv_<mode>_{srl,sll}<clobbercc_or_nocc> by adjusting the
+	bitmasks in the output templates.
+
+2026-07-09  Richard Earnshaw  <rearnsha@arm.com>
+
+	Backported from master:
+	2026-07-07  Richard Earnshaw  <rearnsha@arm.com>
+
+	* config/aarch64/aarch64-option-extensions.def (AARCH64_OPT_EXTENSION):
+	Remove +mpamv2.
+	* config/aarch64/aarch64-sys-regs.def: Remove sysregs associated
+	with MPAMv2_VID and adjust other related sysregs to use the
+	base permitted architecture.
+	* doc/invoke.texi (aarch64: +mpamv2): Remove option.
+
+2026-07-09  Uros Bizjak  <ubizjak@gmail.com>
+
+	Backported from master:
+	2026-07-08  Uros Bizjak  <ubizjak@gmail.com>
+
+	PR target/126148
+	* config/i386/i386-expand.cc (ix86_gen_ccmp_first): Restrict
+	floating-point modes accepted for ccmp according to the
+	available floating-point instruction set.
+
+2026-07-08  Tamar Christina  <tamar.christina@arm.com>
+
+	Backported from master:
+	2026-06-12  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/125597
+	* tree-vect-loop-manip.cc (vect_do_peeling): Create IFN_VARYING for
+	early break scalar IV.
+	* tree-vect-loop.cc (vect_update_ivs_after_vectorizer_for_early_breaks):
+	Replace the IFN_VARYING with actual value.
+
+2026-07-08  Tamar Christina  <tamar.christina@arm.com>
+
+	Backported from master:
+	2026-06-12  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/125597
+	(vect_do_peeling): Create IFN_VARYING for masks.
+	* tree-vect-loop-manip.cc (vect_set_loop_condition): Replace the
+	IFN_VARYING.
+
+2026-07-08  Tamar Christina  <tamar.christina@arm.com>
+
+	Backported from master:
+	2026-06-12  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/125597
+	* internal-fn.def (VARYING): New.
+	* doc/ifn.texi: Document it.
+	* internal-fn.cc (expand_VARYING): New.
+	* internal-fn.h (expand_VARYING): New.
+	* tree-cfg.cc (verify_gimple_call): Check for leaked IFN_VARYING.
+
+2026-07-07  Stafford Horne  <shorne@gmail.com>
+
+	Backported from master:
+	2026-07-07  Stafford Horne  <shorne@gmail.com>
+
+	PR target/126081
+	* config/or1k/or1k.cc (or1k_hard_regno_mode_ok): Stop allowing
+	SImode for FLAG_REGS.
+	(or1k_can_change_mode_class): Stop allowing SImode for
+	FLAG_REGS.
+	(or1k_noce_conversion_profitable_p): Always check
+	or1k_is_cmov_insn.
+
+2026-07-07  Stafford Horne  <shorne@gmail.com>
+
+	Backported from master:
+	2026-06-14  Stafford Horne  <shorne@gmail.com>
+
+	* config/or1k/or1k.md (cbranchsi4): Add clobber clause.
+
+2026-07-07  Stafford Horne  <shorne@gmail.com>
+
+	Backported from master:
+	2026-06-14  Stafford Horne  <shorne@gmail.com>
+
+	* config/or1k/or1k.h (SHIFT_COUNT_TRUNCATED): Define.
+	* config/or1k/or1k.md (rotrsi3): Rename reg_or_u6_operand to
+	reg_or_u5_operand.
+	(<shift_op>si3): Ditto.
+	* config/or1k/predicates.md (reg_or_u6_operand): Remove.
+	(reg_or_u5_operand): New predicate.
+
+2026-07-07  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-06-24  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	* config/rs6000/altivec.md (V16QI_V2DI): New mode iterator.
+	(add<mode>3): Split into two patterns to support future ISA
+	alternatives.
+	(sub<mode>3): Likewise.
+	* config/rs6000/vsx.md (VIArith): New mode iterator.
+	(vsx_mul<mode>3): New insn pattern.
+	(smul<mode>3_highpart): Split into mode-specific patterns.
+	(umul<mode>3_highpart): Likewise.
+	(smulv8hi3_highpart): New insn pattern.
+	(smulv4si3_highpart): Likewise.
+	(smulv2di3_highpart): Likewise.
+	(umulv8hi3_highpart): Likewise.
+	(umulv4si3_highpart): Likewise.
+	(umulv2di3_highpart): Likewise.
+	* config/rs6000/rs6000-builtins.def (__builtin_vsx_xvmulhuh): New
+	builtin.
+	(__builtin_vsx_xvmulhsh): Likewise.
+	* config/rs6000/rs6000-overload.def (__builtin_vec_mulh): Add
+	overloads for vector multiply-high signed/unsigned halfword.
+	* config/rs6000/rs6000-gen-builtins.cc (enum bif_stanza): Add entry for
+	BSTZ_FUTURE_VSX.
+	(stanza_map): Add future-vsx stanza mapping.
+	(enable_string): Add ENB_FUTURE_VSX.
+	(write_decls): Add ENB_FUTURE_VSX to the bif_enable enum in the
+	generated header file.
+	* config/rs6000/rs6000.md (define_attr "isa"): Add future to the list
+	of ISA values.
+	(define_attr "enabled"): Add check for future ISA.
+	* config/rs6000/rs6000-builtin.cc (rs6000_invalid_builtin): Handle
+	ENB_FUTURE_VSX and issue a diagnostic requiring -mcpu=future and -mvsx.
+	(rs6000_builtin_is_supported): Return TARGET_FUTURE && TARGET_VSX
+	for ENB_FUTURE_VSX built-ins.
+	* doc/extend.texi (PowerPC AltiVec/VSX Built-in Functions Available
+	on Future ISA): Document new functions.
+
+2026-07-07  Icenowy Zheng  <zhengxingda@iscas.ac.cn>
+
+	Backported from master:
+	2026-07-01  Icenowy Zheng  <zhengxingda@iscas.ac.cn>
+
+	PR target/126049
+	* config/riscv/autovec.md: Change fmin/fmax reduction initial
+	value from inf/-inf to NaN for proper semantics of corresponding
+	C funtion.
+
+2026-07-06  vekumar  <Venkataramanan.Kumar@amd.com>
+
+	Backported from master:
+	2026-06-04  vekumar  <Venkataramanan.Kumar@amd.com>
+
+	* config/i386/x86-tune.def (X86_TUNE_FUSE_ALU_AND_BRANCH_MEM): Enable
+	for m_ZNVER6.
+	(X86_TUNE_FUSE_ALU_AND_BRANCH_MEM_IMM): Likewise.
+	(X86_TUNE_SSE_REDUCTION_PREFER_PSHUF): Likewise.
+
+2026-07-06  liuhongt  <hongtao.liu@intel.com>
+
+	Backported from master:
+	2026-07-06  liuhongt  <hongtao.liu@intel.com>
+
+	PR target/126098
+	* config/i386/sse.md (VI1_AVX512VNNIBW): Remove.
+	(sdot_prod<ssedvecmodelower><mode>): Use VI1_AVX512 instead of
+	VI1_AVX512VNNIBW so V64QI is enabled only under AVX512BW.
+	(udot_prod<ssedvecmodelower><mode>): Likewise.
+
+2026-07-05  Oleg Endo  <olegendo@gcc.gnu.org>
+
+	PR target/67459
+	PR target/122948
+	* config/sh/sh.md (addc): Fix T bit set expression.
+	(subc): Likewise.
+
+2026-07-03  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-05-07  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	* config/rs6000/crypto.md (UNSPEC_XXAESENCP): New unspec entry.
+	(UNSPEC_XXAES128ENCP): Likewise.
+	(UNSPEC_XXAES192ENCP): Likewise.
+	(UNSPEC_XXAES256ENCP): Likewise.
+	(UNSPEC_XXAESDECP): Likewise.
+	(UNSPEC_XXAES128DECP): Likewise.
+	(UNSPEC_XXAES192DECP): Likewise.
+	(UNSPEC_XXAES256DECP): Likewise.
+	(UNSPEC_XXAESGENLKP): Likewise.
+	(UNSPEC_XXAES128GENLKP): Likewise.
+	(UNSPEC_XXAES192GENLKP): Likewise.
+	(UNSPEC_XXAES256GENLKP): Likewise.
+	(UNSPEC_XXGFMUL128): Likewise.
+	(UNSPEC_XXGFMUL128GCM): Likewise.
+	(UNSPEC_XXGFMUL128XTS): Likewise.
+	(AESACC_base_code): New iterator for xxaesencp and xxaesdecp base
+	mnemonics.
+	(AESACC_code): New iterator for xxaesencp and xxaesdecp extended
+	mnemonics.
+	(AESGENLKP_code): New iterator for xxaesgenlkp extended mnemonics.
+	(AESGF_code): New iterator for xxgfmul128 extended mnemonics.
+	(AESACC_base_insn): New attribute iterator for xxaesencp and xxaesdecp
+	base mnemonics.
+	(AESACC_insn): New attribute iterator for xxaesencp and xxaesdecp
+	extended mnemonics.
+	(AESGENLKP_insn): New attribute iterator for xxaesgenlkp extended
+	mnemonics.
+	(AESGF_insn): New attribute iterator for xxgfmul128 extended mnemonics.
+	(<AESACC_base_insn>): New define_insn for xxaesencp and xxaesdecp base
+	mnemonics.
+	(<AESACC_insn>): New define_insn for xxaesencp and xxaesdecp extended
+	mnemonics.
+	(<AESGENLKP_insn>): New define_insn for xxaesgenlkp extended mnemonics.
+	(xxaesgenlkp): New define_insn for genlkp base mnemonic.
+	(<AESGF_insn>): New define_insn for xxgfmul128 extended mnemonics.
+	(xxgfmul128): New define_insn for xxgfmul128 base mnemonic.
+	* config/rs6000/rs6000-builtins.def: Added new builtin definitions for
+	AES acceleration.
+	* doc/extend.texi: Add new section for AES acceleration builtins
+	for Future ISA.
+
+2026-07-03  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-06-23  Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config/rs6000/rs6000-builtin.cc (rs6000_invalid_builtin): Handle
+	ENB_FUTURE_ALTIVEC and issue a diagnostic requiring -mcpu=future
+	and -maltivec.
+	(rs6000_builtin_is_supported): Check TARGET_FUTURE && TARGET_ALTIVEC
+	for ENB_FUTURE_ALTIVEC built-ins.
+	* config/rs6000/rs6000-gen-builtins.cc (enum bif_stanza): Add
+	BSTZ_FUTURE_ALTIVEC entry.
+	(stanza_map): Add future-altivec stanza mapping.
+	(enable_string): Add ENB_FUTURE_ALTIVEC.
+	(write_decls): Add ENB_FUTURE_ALTIVEC to the bif_enable enum in the
+	generated header file.
+
+2026-07-02  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2026-06-30  Xi Ruoyao  <xry111@xry111.site>
+
+	* config/loongarch/loongarch.md
+	(@stack_protect_combined_set_normal_<mode>): Replace `st.d'
+	with `st.<d>', reject stptr.d on LA32 with enabled attribute.
+	(@stack_protect_combined_test_internal_<mode>): Replace `ld.d'
+	with `ld.<d>', reject ldptr.d on LA32 with enabled attribute.
+	(@stack_protect_combined_set_extreme_<mode>): Rename to ...
+	(stack_protect_combined_set_extreme): ... here.  Force DImode.
+	Add TARGET_ABI_LP64 as the condition.
+	(stack_protect_combined_set): Adapt for the change of
+	stack_protect_combined_set_extreme.
+
+2026-07-01  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-26  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	PR target/125972
+	* config/s390/s390.cc (s390_rtx_costs): Deal with non-compare
+	conditions during costing.  Also fix some indentation.
+
+2026-07-01  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* tree-ssa-structalias.cc (set_uids_in_ptset): If ANYTHING is
+	present in the ESCAPED_RETURN solution, record that the global
+	solution has an escaped heap if FROM contains a heap variable.
+
+2026-07-01  Avinash Jayakar  <avinashd@linux.ibm.com>
+
+	Backported from master:
+	2026-06-30  Avinash Jayakar  <avinashd@linux.ibm.com>
+		    Surya Kumari Jangala  <jskumari@linux.ibm.com>
+
+	* config/rs6000/rs6000-builtin.cc (rs6000_expand_builtin): Add logic to
+	handle __builtin_ppc_atomic_cas_local.
+	* config/rs6000/rs6000-builtins.def: New builtins for
+	__builtin_ppc_atomic_cas_local with types.
+	* config/rs6000/rs6000-c.cc (altivec_build_resolved_builtin): Handle
+	builtins with up to 6 arguments.
+	* config/rs6000/rs6000-overload.def: Overload builtin for signed/unsiged
+	char, short, int, long, __int128.
+	* config/rs6000/rs6000-protos.h (rs6000_expand_atomic_compare_and_swap): Add
+	additional parameter 'local' to the prototype.
+	* config/rs6000/rs6000.cc (emit_load_locked): Add new parameter. Pass new
+	parameter to generate load-locked instruction.
+	(rs6000_expand_atomic_compare_and_swap): Add new parameter. Call
+	emit_load_locked() with additional parameter value of EH bit.
+	(rs6000_expand_atomic_exchange): Pass EH value 0 to emit_load_locked().
+	(rs6000_expand_atomic_op): Likewise.
+	* config/rs6000/sync.md (load_locked<mode>): Add new operand in RTL template.
+	Specify EH bit in the larx instruction.
+	(load_locked<QHI:mode>_si): Likewise.
+	(load_lockedpti): Likewise.
+	(load_lockedti): Add new operand in RTL template. Pass EH bit to
+	gen_load_lockedpti().
+	(atomic_compare_and_swap<mode>): Pass new parameter 'false' to
+	rs6000_expand_atomic_compare_and_swap.
+	(atomic_compare_and_swap_local<mode>): New define_expand.
+	* doc/extend.texi: Add documentation for new builtin.
+
+2026-07-01  Haochen Jiang  <haochen.jiang@intel.com>
+
+	* config/i386/i386.h (PTA_DIAMONDRAPIDS): Remove PTA_AMX_TF32.
+	* doc/invoke.texi: Correct documentation.
+
+2026-07-01  Xin Liu  <liulxx@hygon.cn>
+
+	Backported from master:
+	2026-06-23  Xin Liu  <liulxx@hygon.cn>
+
+	* common/config/i386/cpuinfo.h (get_hygon_cpu): Detect HYGON
+	Family 18h model 8 as c86-4g-m8.
+	* common/config/i386/i386-common.cc (processor_names): Add
+	c86-4g-m8.
+	(processor_alias_table): Likewise.
+	* common/config/i386/i386-cpuinfo.h (enum processor_subtypes): Add
+	HYGONFAM18H_C86_4G_M8.
+	* config.gcc: Add c86-4g-m8 to supported x86 CPUs and handle
+	c86_4g_m8 target triples.
+	* config/i386/c86-4g-m7.md: Rename to ...
+	* config/i386/c86-4g-m7m8.md: ... this and extend shared c86-4g-m7
+	scheduling reservations to c86-4g-m8.
+	(c86_4g_m8_imovx_cwde): New reservation.
+	(c86_4g_m7_imov_xchg): Add c86_4g_m8 to CPU attribute.
+	(c86_4g_m7_imov_xchg_load): Ditto.
+	(c86_4g_m7_imov): Ditto.
+	(c86_4g_m7_imov_load): Ditto.
+	(c86_4g_m7_imov_store): Ditto.
+	(c86_4g_m7_push): Ditto.
+	(c86_4g_m7_push_mem): Ditto.
+	(c86_4g_m7_pop): Ditto.
+	(c86_4g_m7_pop_mem): Ditto.
+	(c86_4g_m7_imul): Ditto.
+	(c86_4g_m7_imul_load): Ditto.
+	(c86_4g_m7_idiv): Ditto.
+	(c86_4g_m7_idiv_QI): Ditto.
+	(c86_4g_m7_idiv_load): Ditto.
+	(c86_4g_m7_idiv_QI_load): Ditto.
+	(c86_4g_m7_insn): Ditto.
+	(c86_4g_m7_insn_load): Ditto.
+	(c86_4g_m7_insn_store): Ditto.
+	(c86_4g_m7_insn2_store): Ditto.
+	(c86_4g_m7_insn_both): Ditto.
+	(c86_4g_m7_setcc): Ditto.
+	(c86_4g_m7_setcc_load): Ditto.
+	(c86_4g_m7_setcc_store): Ditto.
+	(c86_4g_m7_alu1_double): Ditto.
+	(c86_4g_m7_alu1_double_load): Ditto.
+	(c86_4g_m7_alu1_vector): Ditto.
+	(c86_4g_m7_alu1_vector_load): Ditto.
+	(c86_4g_m7_alu1_direct): Ditto.
+	(c86_4g_m7_alu1_direct_load): Ditto.
+	(c86_4g_m7_call): Ditto.
+	(c86_4g_m7_branch): Ditto.
+	(c86_4g_m7_branch_load): Ditto.
+	(c86_4g_m7_lea): Ditto.
+	(c86_4g_m7_leave): Ditto.
+	(c86_4g_m7_str): Ditto.
+	(c86_4g_m7_str_load): Ditto.
+	(c86_4g_m7_ieu_vector): Ditto.
+	(c86_4g_m7_ieu_vector_load): Ditto.
+	(c86_4g_m7_sse_insertimm): Ditto.
+	(c86_4g_m7_sse_insert): Ditto.
+	(c86_4g_m7_fp_cmov): Ditto.
+	(c86_4g_m7_fp_mov_direct_load): Ditto.
+	(c86_4g_m7_fp_mov_direct_store): Ditto.
+	(c86_4g_m7_fp_mov_double_load): Ditto.
+	(c86_4g_m7_fp_mov_double_store): Ditto.
+	(c86_4g_m7_fp_mov_direct): Ditto.
+	(c86_4g_m7_fp_sqrt): Ditto.
+	(c86_4g_m7_fp_spc_direct): Ditto.
+	(c86_4g_m7_fp_spc): Ditto.
+	(c86_4g_m7_fp_op_mul): Ditto.
+	(c86_4g_m7_fp_op_mul_load): Ditto.
+	(c86_4g_m7_fp_op_imul_load): Ditto.
+	(c86_4g_m7_fp_div): Ditto.
+	(c86_4g_m7_fp_div_load): Ditto.
+	(c86_4g_m7_fp_idiv_load): Ditto.
+	(c86_4g_m7_fp_fsgn): Ditto.
+	(c86_4g_m7_fp_fcmp): Ditto.
+	(c86_4g_m7_fp_fcmp_load): Ditto.
+	(c86_4g_m7_fp_mmx): Ditto.
+	(c86_4g_m7_mmx_add_cmp): Ditto.
+	(c86_4g_m7_mmx_add_cmp_load): Ditto.
+	(c86_4g_m7_mmx_cvt): Ditto.
+	(c86_4g_m7_mmx_cvt_load): Ditto.
+	(c86_4g_m7_mmx_shift): Ditto.
+	(c86_4g_m7_mmx_shift_load): Ditto.
+	(c86_4g_m7_mmx_shift_avg): Ditto.
+	(c86_4g_m7_mmx_shift_avg_load): Ditto.
+	(c86_4g_m7_mmx_shift_sadbw): Ditto.
+	(c86_4g_m7_mmx_shift_sadbw_load): Ditto.
+	(c86_4g_m7_mmx_mov): Ditto.
+	(c86_4g_m7_mmx_mov_store): Ditto.
+	(c86_4g_m7_mmx_mov_load): Ditto.
+	(c86_4g_m7_mmx_mul): Ditto.
+	(c86_4g_m7_mmx_mul_load): Ditto.
+	(c86_4g_m7_sse_pinsr_reg): Ditto.
+	(c86_4g_m7_sse_pinsr_reg_load): Ditto.
+	(c86_4g_m7_avx_vpinsr_reg): Ditto.
+	(c86_4g_m7_avx_vpinsr_reg_load): Ditto.
+	(c86_4g_m7_avx512_perm_xmm): Ditto.
+	(c86_4g_m7_avx512_perm_xmm_opload): Ditto.
+	(c86_4g_m7_avx512_permi2_ymm): Ditto.
+	(c86_4g_m7_avx512_permi2_zmm): Ditto.
+	(c86_4g_m7_avx512_permi2_ymm_load): Ditto.
+	(c86_4g_m7_avx512_permi2_zmm_load): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_imm): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_imm_load): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_noimm): Ditto.
+	(c86_4g_m7_sse_perm_zmm_noimm_load): Ditto.
+	(c86_4g_m7_avx512_insertx_ymm): Ditto.
+	(c86_4g_m7_avx512_insertx_ymem): Ditto.
+	(c86_4g_m7_avx512_insertx_zxmm): Ditto.
+	(c86_4g_m7_avx512_insertx_zxmem): Ditto.
+	(c86_4g_m7_avx512_insertx_zymm): Ditto.
+	(c86_4g_m7_avx512_insertx_zymem): Ditto.
+	(c86_4g_m7_avx_insertx_ymm): Ditto.
+	(c86_4g_m7_avx_insertx_ymem): Ditto.
+	(c86_4g_m7_avx512_shuf_xymm): Ditto.
+	(c86_4g_m7_avx512_shuf_zmm): Ditto.
+	(c86_4g_m7_avx512_shuf_xymem): Ditto.
+	(c86_4g_m7_avx512_shuf_zmem): Ditto.
+	(c86_4g_m7_sselogic_xymm): Ditto.
+	(c86_4g_m7_sselogic_xymm_load): Ditto.
+	(c86_4g_m7_avx512_cmpestr): Ditto.
+	(c86_4g_m7_avx512_cmpestr_load): Ditto.
+	(c86_4g_m7_avx512_log): Ditto.
+	(c86_4g_m7_avx512_log_load): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_xymm): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_xymem): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_zmm): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_zmem): Ditto.
+	(c86_4g_m7_avx512_abs): Ditto.
+	(c86_4g_m7_avx512_abs_load): Ditto.
+	(c86_4g_m7_avx_sign): Ditto.
+	(c86_4g_m7_avx_sign_load): Ditto.
+	(c86_4g_m7_avx_blend): Ditto.
+	(c86_4g_m7_avx_blend_load): Ditto.
+	(c86_4g_m7_avx512_aes): Ditto.
+	(c86_4g_m7_avx512_aes_load): Ditto.
+	(c86_4g_m7_avx_aes): Ditto.
+	(c86_4g_m7_avx_aes_load): Ditto.
+	(c86_4g_m7_extr): Ditto.
+	(c86_4g_m7_extr_store): Ditto.
+	(c86_4g_m7_avx_ssecomi_comi): Ditto.
+	(c86_4g_m7_avx_ssecomi_comi_load): Ditto.
+	(c86_4g_m7_avx_ssecomi_test): Ditto.
+	(c86_4g_m7_avx_ssecomi_test_load): Ditto.
+	(c86_4g_m7_avx512_imul): Ditto.
+	(c86_4g_m7_avx512_imul_mem): Ditto.
+	(c86_4g_m7_avx_imul): Ditto.
+	(c86_4g_m7_avx_imul_mem): Ditto.
+	(c86_4g_m7_avx512_mov_vmov): Ditto.
+	(c86_4g_m7_avx512_mov_vmov_store): Ditto.
+	(c86_4g_m7_avx512_mov_vmov_load): Ditto.
+	(c86_4g_m7_avx512_vpmovx_y): Ditto.
+	(c86_4g_m7_avx512_vpmovx_y_load): Ditto.
+	(c86_4g_m7_avx512_vpmovx_z): Ditto.
+	(c86_4g_m7_avx512_vpmovx_z_load): Ditto.
+	(c86_4g_m7_avx512_vpmovx_x): Ditto.
+	(c86_4g_m7_avx512_vpmovx_x_load): Ditto.
+	(c86_4g_m7_avx_vpmovx_xx): Ditto.
+	(c86_4g_m7_avx_vpmovx_xx_load): Ditto.
+	(c86_4g_m7_avx512_expand): Ditto.
+	(c86_4g_m7_avx512_expand_load): Ditto.
+	(c86_4g_m7_avx512_expand_z): Ditto.
+	(c86_4g_m7_avx512_expand_z_load): Ditto.
+	(c86_4g_m7_avx512_movnt_load): Ditto.
+	(c86_4g_m7_avx512_movnt_store): Ditto.
+	(c86_4g_m7_sse_movnt_store): Ditto.
+	(c86_4g_m7_sse_movnt): Ditto.
+	(c86_4g_m7_avx512_blendv): Ditto.
+	(c86_4g_m7_avx512_blendv_load): Ditto.
+	(c86_4g_m7_sse_mov2): Ditto.
+	(c86_4g_m7_sse_mov2_load): Ditto.
+	(c86_4g_m7_avx512_sseishft_aligr): Ditto.
+	(c86_4g_m7_avx512_sseishft_aligr_load): Ditto.
+	(c86_4g_m7_avx512_sseishft_vshift): Ditto.
+	(c86_4g_m7_avx512_sseishft_vshift_load): Ditto.
+	(c86_4g_m7_avx512_sseadd_maxmin): Ditto.
+	(c86_4g_m7_avx512_sseadd_maxmin_load): Ditto.
+	(c86_4g_m7_avx_sseadd_maxmin): Ditto.
+	(c86_4g_m7_avx_sseadd_maxmin_load): Ditto.
+	(c86_4g_m7_sse_sseadd_maxmin): Ditto.
+	(c86_4g_m7_sse_sseadd_maxmin_load): Ditto.
+	(c86_4g_m7_avx512_sseadd): Ditto.
+	(c86_4g_m7_avx512_sseadd_load): Ditto.
+	(c86_4g_m7_avx_sseadd_hplus): Ditto.
+	(c86_4g_m7_avx_sseadd_hplus_load): Ditto.
+	(c86_4g_m7_avx512_sseiadd_madd): Ditto.
+	(c86_4g_m7_avx512_sseiadd_madd_mem): Ditto.
+	(c86_4g_m7_avx_sseiadd_sadbw): Ditto.
+	(c86_4g_m7_avx_sseiadd_sadbw_mem): Ditto.
+	(c86_4g_m7_sse_sseiadd_sadbw): Ditto.
+	(c86_4g_m7_sse_sseiadd_sadbw_mem): Ditto.
+	(c86_4g_m7_sse_sseiadd_madd): Ditto.
+	(c86_4g_m7_sse_sseiadd_madd_mem): Ditto.
+	(c86_4g_m7_avx512_sseiadd_avg): Ditto.
+	(c86_4g_m7_avx512_sseiadd_avg_load): Ditto.
+	(c86_4g_m7_avx_sseiadd_hplus): Ditto.
+	(c86_4g_m7_avx_sseiadd_hplus_load): Ditto.
+	(c86_4g_m7_sse_sseiadd_hplus): Ditto.
+	(c86_4g_m7_sse_sseiadd_hplus_load): Ditto.
+	(c86_4g_m8_avx512_ssemul): New reservation.
+	(c86_4g_m8_avx512_ssemul_load): Ditto.
+	(c86_4g_m7_avx512_ssediv_x): Add c86_4g_m8 to CPU attribute.
+	(c86_4g_m7_avx512_ssediv_xmem): Ditto.
+	(c86_4g_m7_avx512_ssediv_y): Ditto.
+	(c86_4g_m7_avx512_ssediv_ymem): Ditto.
+	(c86_4g_m7_avx512_ssediv_z): Ditto.
+	(c86_4g_m7_avx512_ssediv_zmem): Ditto.
+	(c86_4g_m7_avx512_ssecmp): Ditto.
+	(c86_4g_m7_avx512_ssecmp_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_z): Ditto.
+	(c86_4g_m7_avx512_ssecmp_z_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp_z): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp_z_load): Ditto.
+	(c86_4g_m7_avx_ssecmp_vp): Ditto.
+	(c86_4g_m7_avx_ssecmp_vp_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_test): Ditto.
+	(c86_4g_m7_avx512_ssecmp_test_load): Ditto.
+	(c86_4g_m7_avx512_ssecvt_xy): Ditto.
+	(c86_4g_m7_avx512_ssecvt_xy_load): Ditto.
+	(c86_4g_m7_avx512_ssecvt_y_z): Ditto.
+	(c86_4g_m7_avx512_ssecvt_y_z_load): Ditto.
+	(c86_4g_m7_avx512_ssecvt_z): Ditto.
+	(c86_4g_m7_avx512_ssecvt_z_load): Ditto.
+	(c86_4g_m7_avx_ssecvt): Ditto.
+	(c86_4g_m7_avx_ssecvt_load): Ditto.
+	(c86_4g_m7_sse_ssecvt_pspi): Ditto.
+	(c86_4g_m7_sse_ssecvt_pspi_load): Ditto.
+	(c86_4g_m7_sse_ssecvt_pi): Ditto.
+	(c86_4g_m7_sse_ssecvt_pi_load): Ditto.
+	(c86_4g_m8_avx512_muladd): New reservation.
+	(c86_4g_m8_avx512_muladd_load): Ditto.
+	(c86_4g_m7_avx512_muladd_madd): Add c86_4g_m8 to CPU attribute.
+	(c86_4g_m7_avx512_muladd_madd_load): Ditto.
+	(c86_4g_m7_avx512_sse_range): Ditto.
+	(c86_4g_m7_avx512_sse_range_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_x): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_x_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_y): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_y_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_z): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_z_load): Ditto.
+	(c86_4g_m7_avx512_sse_class): Ditto.
+	(c86_4g_m7_avx512_sse_class_load): Ditto.
+	(c86_4g_m7_avx512_sse_class_z): Ditto.
+	(c86_4g_m7_avx512_sse_class_z_load): Ditto.
+	(c86_4g_m7_avx_sse): Ditto.
+	(c86_4g_m7_avx_sse_load): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_x): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_xload): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_y): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_yload): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_z): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_sf_zload): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_x): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_xload): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_y): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_yload): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_z): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_df_zload): Ditto.
+	(c86_4g_m7_avx512_msklog): Ditto.
+	(c86_4g_m7_avx512_msklog_vector): Ditto.
+	(c86_4g_m7_avx512_mskmov_reg_k): Ditto.
+	(c86_4g_m7_avx512_mskmov_xy_k): Ditto.
+	(c86_4g_m7_avx512_mskmov_z_k): Ditto.
+	(c86_4g_m7_avx512_mskmov_k_k): Ditto.
+	(c86_4g_m7_avx512_mskmov_k_reg): Ditto.
+	(c86_4g_m7_avx512_mskmov_k_m): Ditto.
+	* config/i386/driver-i386.cc (host_detect_local_cpu): Detect
+	c86-4g-m8.
+	* config/i386/i386-c.cc (ix86_target_macros_internal): Define
+	c86-4g-m8 arch and tune macros.
+	* config/i386/i386-options.cc (m_C86_4G_M8): New macro.
+	(m_C86_4G): Include m_C86_4G_M8.
+	(processor_cost_table): Add c86_4g_m8_cost.
+	* config/i386/i386.cc (ix86_reassociation_width): Handle
+	PROCESSOR_C86_4G_M8.
+	* config/i386/i386.h (enum processor_type): Add
+	PROCESSOR_C86_4G_M8.
+	(PTA_C86_4G_M8): New.
+	* config/i386/i386.md: Add c86_4g_m8 to cpu attribute.
+	* config/i386/x86-tune-costs.h (c86_4g_m8_cost): New.
+	* config/i386/x86-tune-sched.cc (ix86_issue_rate): Handle
+	PROCESSOR_C86_4G_M8.
+	(ix86_adjust_cost): Likewise.
+	* config/i386/x86-tune.def (X86_TUNE_USE_SCATTER_2PARTS): Include
+	m_C86_4G_M8.
+	(X86_TUNE_USE_SCATTER_4PARTS): Likewise.
+	(X86_TUNE_USE_SCATTER_8PARTS): Likewise.
+	(X86_TUNE_SSE_REDUCTION_PREFER_PSHUF): Likewise.
+	(X86_TUNE_AVX512_SPLIT_REGS): Likewise.
+	(X86_TUNE_AVX512_MOVE_BY_PIECES): Likewise.
+	(X86_TUNE_AVX512_MASKED_EPILOGUES): Likewise.
+	* doc/extend.texi: Document c86-4g-m8 for __builtin_cpu_is.
+	* doc/invoke.texi: Document c86-4g-m8.
+
+2026-07-01  Zhongjie Guo  <guozhongjie@hygon.cn>
+
+	Backported from master:
+	2026-06-17  Zhongjie Guo  <guozhongjie@hygon.cn>
+
+	* config/i386/x86-tune-costs.h (c86_4g_m7_cost): Increase
+	512-bit load/store and unaligned load/store costs.
+
+2026-07-01  Xin Liu  <liulxx@hygon.cn>
+
+	Backported from master:
+	2026-06-17  Xin Liu  <liulxx@hygon.cn>
+
+	* config/i386/c86-4g-m7.md (c86_4g_m7_imov_xchg): Adjust
+	reservation units.
+	(c86_4g_m7_imov_xchg_load): Ditto.
+	(c86_4g_m7_call): Ditto.
+	(c86_4g_m7_branch): Ditto.
+	(c86_4g_m7_branch_load): Ditto.
+	(c86_4g_m7_fp_spc_direct): Add missing store unit.
+	(c86_4g_m7_sse_pinsr_reg): Adjust reservation units.
+	(c86_4g_m7_avx512_insertx_ymm): Ditto.
+	(c86_4g_m7_avx512_insertx_ymem): Ditto.
+	(c86_4g_m7_avx512_insertx_zxmm): Ditto.
+	(c86_4g_m7_avx512_insertx_zxmem): Ditto.
+	(c86_4g_m7_avx512_abs_load): Add missing store unit.
+	(c86_4g_m7_avx_sign): Use combined FPU reservation.
+	(c86_4g_m7_avx_sign_load): Ditto.
+	(c86_4g_m7_avx_aes): Ditto.
+	(c86_4g_m7_avx_aes_load): Ditto.
+	(c86_4g_m7_extr_load): Rename to ...
+	(c86_4g_m7_extr_store): ... this and restrict to store memory.
+	(c86_4g_m7_avx_imul): Use combined FPU reservation.
+	(c86_4g_m7_avx_imul_mem): Ditto.
+	(c86_4g_m7_avx512_vpmovx_y_load): Add missing store unit.
+	(c86_4g_m7_avx_vpmovx_xx_load): Ditto.
+	(c86_4g_m7_avx512_sseadd_maxmin_xy): Rename to ...
+	(c86_4g_m7_avx512_sseadd_maxmin): ... this and simplify
+	memory attribute check.
+	(c86_4g_m7_avx512_sseadd_maxmin_xy_load): Rename to ...
+	(c86_4g_m7_avx512_sseadd_maxmin_load): ... this and simplify
+	memory attribute check.
+	(c86_4g_m7_avx512_sseadd_xy): Rename to ...
+	(c86_4g_m7_avx512_sseadd): ... this.
+	(c86_4g_m7_avx512_sseadd_xy_load): Rename to ...
+	(c86_4g_m7_avx512_sseadd_load): ... this.
+	(c86_4g_m7_sse_sseiadd_sadbw): Use combined FPU reservation.
+	(c86_4g_m7_sse_sseiadd_sadbw_mem): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp_z): Adjust reservation units.
+	(c86_4g_m7_avx512_ssecmp_vp_z_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_test_load): Ditto.
+	(c86_4g_m7_avx512_mskmov_k_m): Adjust latency.
+
+2026-06-30  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	Backported from master:
+	2026-06-12  Stefan Schulze Frielinghaus  <stefansf@gcc.gnu.org>
+
+	PR rtl-optimization/125173
+	* ira.cc (combine_and_move_insns): Allow multiple uses within
+	an insn.
+
+2026-06-30  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-04-22  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/124908
+	* config/aarch64/aarch64-sve-builtins-base.cc
+	(svld1rq_impl::fold): When the SVE vector length equals the
+	quadword width, emit VIEW_CONVERT_EXPR instead of VEC_PERM_EXPR.
+
+2026-06-30  Alfie Richards  <alfie.richards@arm.com>
+
+	PR target/125838
+	* config/aarch64/aarch64.cc (aarch64_fntype_abi): Fall back to
+	AAPCS for preserve_none variadic calls.
+
+2026-06-30  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2026-06-21  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR target/125883
+	* config/i386/i386-features.cc (ix86_broadcast_inner): Skip JUMP
+	from asm goto.
+
+2026-06-29  Alex Coplan  <alex.coplan@arm.com>
+
+	Backported from master:
+	2026-06-23  Alex Coplan  <alex.coplan@arm.com>
+
+	PR target/125818
+	* config/aarch64/aarch64-sve-builtins-base.cc (svset_impl::fold): Fix
+	unsharing to ensure the returned stmt has the exact same lhs as the
+	original.
+
+2026-06-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-06-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/125469
+	* config/i386/i386.md (*add<mode>_1<nf_name>): Revert 2026-05-28
+	changes.
+	(define_split from *add<mode>_1_nf to *lea<mode>): Set INSN_CODE
+	to -1 if <LEAMODE> and <MODE> are the same.
+
+2026-06-29  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-05-28  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/125469
+	* config/i386/i386.md (*add<mode>_1<nf_name>): Don't return "#" for
+	the lea non-TARGET_APX_NDD case, instead emit a lea directly.
+
+2026-06-29  vekumar  <Venkataramanan.Kumar@amd.com>
+
+	Backported from master:
+	2026-06-26  vekumar  <Venkataramanan.Kumar@amd.com>
+
+	PR target/125949
+	* config/i386/i386.md ("isa"): Add avxvnniint8.
+	("enabled"): Adjust for avxvnniint8.
+	* config/i386/sse.md (vpdp<vpdotprodtype>_<mode>): Adjust for
+	AVXVNNIINT8.
+
+2026-06-27  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-06-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/125992
+	* config/s390/s390.md (*brx_stage1_<GPR:mode>): Add CC_REGNUM clobber.
+
+2026-06-25  Peter Bergner  <bergner@tenstorrent.com>
+
+	* config/riscv/riscv-cores.def (RISCV_TUNE): Add tt-ascalon-x.
+	(RISCV_CORE): Likewise.
+	* doc/riscv-mcpu.texi: Regenerate.
+	* doc/riscv-mtune.texi: Likewise.
+
+2026-06-25  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-25  Richard Biener  <rguenther@suse.de>
+
+	PR middle-end/125977
+	* cfgexpand.cc (pass_expand::execute): Guard ranger use
+	on optimize.
+
+2026-06-25  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2026-06-25  Xi Ruoyao  <xry111@xry111.site>
+
+	PR target/125628
+	* config/mips/sync.md (sync_old_<optab><mode>): Fix
+	uninitialized operand use.
+	(sync_new_<optab><mode>): Fix uninitialized operand use, use the
+	same expression for the set source of operand 0 and 1.
+
+2026-06-25  Jan Beulich  <jbeulich@suse.com>
+
+	* config/riscv/arch-canonicalize: Avoid f"..." strings.
+
+2026-06-25  Oleg Tolmatcev  <oleg.tolmatcev@gmail.com>
+
+	Backported from master:
+	2026-06-24  Oleg Tolmatcev  <oleg.tolmatcev@gmail.com>
+
+	* config/i386/prfchwintrin.h (_m_prefetchw): Take
+	volatile const void * instead of void *.
+
+2026-06-24  Jan Beulich  <jbeulich@suse.com>
+
+	* doc/ifn.texi: Drop blanks after @code.
+
+2026-06-23  Xi Ruoyao  <xry111@xry111.site>
+
+	Revert:
+	2026-06-09  Xi Ruoyao  <xry111@xry111.site>
+
+	* config/mips/sync.md (sync_old_<optab><mode>): Fix
+	uninitialized operand use.
+	(sync_new_<optab><mode>): Fix uninitialized operand use, use the
+	same expression for the set source of operand 0 and 1.
+
+2026-06-22  Robin Dapp  <rdapp.gcc@gmail.com>
+
+	Backported from master:
+	2026-06-17  Robin Dapp  <rdapp.gcc@gmail.com>
+
+	PR target/125478
+	* config/riscv/vector.md: Set widen-alu mode_idx to 3.
+
+2026-06-22  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-06-09  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	* config/rs6000/amo.h (_AMO_LD): Add _AMO_LD_CS_EQ enumerator, gated on
+	_ARCH_FUTURE.
+	(amo_lwat_cas_eq, amo_lwat_scas_eq, amo_ldat_cas_eq,
+	amo_ldat_scas_eq): New compare-and-swap equal helper functions.
+	(_AMO_ERR_CMPSWP): New macro for error-attribute stubs on non-Future
+	targets.
+	* doc/extend.texi (PowerPC Atomic Memory Operation Functions): Document
+	new functions.
+
+2026-06-22  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-06-04  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	PR target/106895
+	* config/rs6000/rs6000.h (enum rs6000_builtin_type_index): Add
+	RS6000_BTI_INTPTI and RS6000_BTI_UINTPTI.
+	(intPTI_type_internal_node, uintPTI_type_internal_node): New
+	PTImode type macros.
+	* config/rs6000/rs6000-builtin.cc (rs6000_init_builtins): Register
+	signed and unsigned PTImode internal builtin types.
+	* config/rs6000/sync.md (trunctipti2): New splitter.
+	(extendptiti2): Likewise.
+	(zero_extendptiti2): Likewise.
+
+2026-06-22  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-05-13  Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	PR target/122665
+	* config/rs6000/vsx.md (smul<mode>3_highpart, umul<mode>3_highpart):
+	Replace shift-based patterns with smul_highpart and umul_highpart RTL
+	codes and use altivec_register_operand.
+
+2026-06-22  Jeevitha  <jeevitha@linux.ibm.com>
+
+	Backported from master:
+	2026-05-19  Peter Bergner  <bergner@linux.ibm.com>
+		    Jeevitha Palanisamy  <jeevitha@linux.ibm.com>
+
+	* config/rs6000/amo.h: Add missing atomic memory operations.
+	* doc/extend.texi (PowerPC Atomic Memory Operation Functions): Document
+	new functions.
+
+2026-06-22  Robin Dapp  <rdapp.gcc@gmail.com>
+
+	Backported from master:
+	2026-06-16  Robin Dapp  <rdapp.gcc@gmail.com>
+
+	PR target/125670
+	* config/riscv/autovec-opt.md: Use avl_type operand number.
+
+2026-06-20  Arsen Arsenović  <aarsenovic@baylibre.com>
+
+	Backported from master:
+	2026-06-19  Arsen Arsenović  <aarsenovic@baylibre.com>
+
+	* doc/extend.texi: Move @anchor-s referring to tops of nodes
+	after their corresponding @node lines.
+	* doc/invoke.texi: Ditto.
+
+2026-06-19  Eric Botcazou  <ebotcazou@adacore.com>
+
+	* acinclude.m4 (gcc_GAS_FLAGS): Set to --32 for abi32 targets.
+	* configure.ac (TLS support): Use 32-bit sequence for abi32 targets.
+	* configure: Regenerate.
+
+2026-06-17  Alex Coplan  <alex.coplan@arm.com>
+
+	Backported from master:
+	2026-06-09  Alex Coplan  <alex.coplan@arm.com>
+
+	PR middle-end/125621
+	* expmed.cc (make_tree): Fix CONST_POLY_INT case to pass type
+	instead of t, move it to its own switch case.
+
+2026-06-17  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-05-22  Steve Markgraf  <steve@steve-m.de>
+
+	* config/rs6000/rs6000.h (TARGET_NO_LWSYNC): Add PROCESSOR_MPCCORE.
+
+2026-06-17  Tamar Christina  <tamar.christina@arm.com>
+
+	Backported from master:
+	2026-05-27  Tamar Christina  <tamar.christina@arm.com>
+
+	PR target/125148
+	* config/aarch64/aarch64-sve.md
+	(*aarch64_vec_shl_insert_into_zero_<mode>,
+	*aarch64_vec_shl_insert_into_zero_vnx16qi,
+	*aarch64_vec_shl_insert_from_load_<mode>): New.
+	* config/aarch64/aarch64.cc (aarch64_emit_load_store_through_mode):
+	Replace paradoxical subreg with zero-extend.
+
+2026-06-17  Tamar Christina  <tamar.christina@arm.com>
+
+	Backported from master:
+	2026-06-03  Tamar Christina  <tamar.christina@arm.com>
+
+	PR tree-optimization/125431
+	* tree-vect-slp-patterns.cc (complex_mul_pattern::matches,
+	complex_fms_pattern::matches): Gate on FP contraction.
+
+2026-06-17  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	Backported from master:
+	2026-06-15  Kyrylo Tkachov  <ktkachov@nvidia.com>
+
+	PR target/125795
+	* config/aarch64/aarch64-early-ra.cc (early_ra::allocate_colors):
+	Compute the allocated-FPR mask as
+	((1ULL << color->group->size) - 1) << best.
+
+2026-06-17  Andrew MacLeod  <amacleod@redhat.com>
+
+	PR tree-optimization/125501
+	* tree-ssa-dom.cc (set_global_ranges_from_unreachable_edges): Abort
+	if there are 2 SSA_NAMES on the branch condition.
+
+2026-06-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-06-13  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/125776
+	* tree-ssa-phiopt.cc (is_factor_profitable): An
+	usage in a debug stmt should be ignored.
+
+2026-06-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-06-14  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/125774
+	* gimple-range-fold.cc (fold_using_range::relation_fold_and_or): Use
+	relation_swap rather than relation_negate when the operands are exchanged.
+
+2026-06-16  Carter Rennick  <carter.rennick@gmail.com>
+
+	Backported from master:
+	2026-04-24  Carter Rennick  <carter.rennick@gmail.com>
+
+	PR target/120144
+	* config/mips/mips.h (MAX_FIXED_MODE_SIZE): Remove.
+
+2026-06-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-06-10  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR ipa/125699
+	* ipa-param-manipulation.cc (ipa_param_body_adjustments::prepare_debug_expressions): Fix
+	lifetime issue with m_dead_ssa_debug_equiv usage.
+
+2026-06-16  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	Backported from master:
+	2026-05-24  Andrew Pinski  <andrew.pinski@oss.qualcomm.com>
+
+	PR tree-optimization/125419
+	* tree-if-conv.cc (factor_out_operators): Change
+	asserts about abnormals into a conditional to reject
+	it.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-08  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125652
+	* tree-chrec.cc (chrec_fold_plus_poly_poly): Avoid UB
+	integer overflow in accumulating CHREC_RIGHT.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-10  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125686
+	* tree-vect-patterns.cc (synth_lshift_by_additions): Specify
+	pattern vector type.
+	(apply_binop_and_append_stmt): Likewise.
+	(vect_synth_mult_by_constant): Adjust.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-08  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125646
+	* tree-vect-patterns.cc (vect_synth_mult_by_constant): Assign
+	vector type to the pattern def sequence stmts.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-02  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125553
+	* tree-ssa-sccvn.cc (visit_nary_op): Valueize the BIT_FIELD_REF
+	operand before looking at its definition.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-02  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125545
+	* tree-ssa-reassoc.cc (insert_stmt_after): Allow asm goto
+	with a single successor.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-02  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125502
+	* tree-ssa-forwprop.cc (optimize_vector_load): Do not
+	move defs of abnormals.
+
+2026-06-15  Richard Biener  <rguenther@suse.de>
+
+	Backported from master:
+	2026-06-03  Richard Biener  <rguenther@suse.de>
+
+	PR tree-optimization/125477
+	* tree-vect-loop-manip.cc (vect_loop_versioning): Verify we
+	can duplicate an outer loop before considering to version it.
+
+2026-06-15  Kishan Parmar  <kishan@linux.ibm.com>
+
+	Backported from master:
+	2026-05-04  Kishan Parmar  <kishan@linux.ibm.com>
+
+	* config.gcc (powerpc*-*-*): Add support for supporting
+	--with-cpu=future.
+	* config/rs6000/aix71.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if the user used the -mcpu=future option.
+	* config/rs6000/aix72.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/aix73.h (ASM_CPU_SPEC): Likewise.
+	* config/rs6000/rs6000-builtin.cc (rs6000_invalid_builtin): Handle
+	ENB_FUTURE and issue diagnostic requiring -mcpu=future.
+	(rs6000_builtin_is_supported): Return TARGET_FUTURE for
+	ENB_FUTURE built-ins.
+	* config/rs6000/rs6000-c.cc (rs6000_target_modify_macros): Define
+	_ARCH_FUTURE if -mcpu=future.
+	* config/rs6000/rs6000-cpus.def (FUTURE_MASKS_SERVER): New macro.
+	(POWERPC_MASKS): Add OPTION_MASK_FUTURE.
+	(rs6000_cpu_opt_value): New entry for 'future' via the RS6000_CPU macro.
+	* config/rs6000/rs6000-gen-builtins.cc (enum bif_stanza): Add
+	BSTZ_FUTURE for future.
+	(write_decls): Add ENB_FUTURE in bif_enable enum of generated header
+	file.
+	* config/rs6000/rs6000-opts.h (PROCESSOR_FUTURE): New macro.
+	* config/rs6000/rs6000-tables.opt: Regenerate.
+	* config/rs6000/rs6000.cc (rs6000_machine_from_flags) If -mcpu=future,
+	set the .machine directive to "future".
+	(rs6000_opt_masks): Add entry for -mfuture.
+	* config/rs6000/rs6000.h (ASM_CPU_SPEC): Pass -mfuture to the assembler
+	if the user used the -mcpu=future option.
+	* config/rs6000/rs6000.opt (-mfuture): New option.
+	* doc/invoke.texi (IBM RS/6000 and PowerPC Options): Document
+	-mcpu=future.
+
+2026-06-11  Georg-Johann Lay  <avr@gjlay.de>
+
+	Backported from master:
+	2026-06-11  Georg-Johann Lay  <avr@gjlay.de>
+
+	PR target/125751
+	* config/avr/avr.cc (avr_out_fract): Fix too small sequence
+	lengths in avr_asm_len calls.
+
+2026-06-11  Torbjörn SVENSSON  <torbjorn.svensson@foss.st.com>
+
+	PR testsuite/113276
+	* doc/sourcebuild.texi (arm_mixed_fp): Document.
+
+2026-06-09  Xi Ruoyao  <xry111@xry111.site>
+
+	Backported from master:
+	2026-06-08  Xi Ruoyao  <xry111@xry111.site>
+
+	* config/mips/sync.md (sync_old_<optab><mode>): Fix
+	uninitialized operand use.
+	(sync_new_<optab><mode>): Fix uninitialized operand use, use the
+	same expression for the set source of operand 0 and 1.
+
+2026-06-09  Kewen Lin  <linkewen@hygon.cn>
+
+	Backported from master:
+	2026-05-28  Kewen Lin  <linkewen@hygon.cn>
+		    Xin Liu  <liulxx@hygon.cn>
+
+	* config/i386/c86-4g-m7.md (c86_4g_m7_fpu): Remove automaton.
+	(c86_4g_m7_fpu02): New automaton.
+	(c86_4g_m7_fpu13): Ditto.
+	(c86-4g-m7-fpu0): Move to c86_4g_m7_fpu02 automaton.
+	(c86-4g-m7-fpu1): Move to c86_4g_m7_fpu13 automaton.
+	(c86-4g-m7-fpu2): Move to c86_4g_m7_fpu02 automaton.
+	(c86-4g-m7-fpu3): Move to c86_4g_m7_fpu13 automaton.
+	(c86-4g-m7-fdiv): Remove cpu unit.
+	(c86-4g-m7-fdiv1): New cpu unit.
+	(c86-4g-m7-fdiv3): Ditto.
+	(c86-4g-m7-fpu_0_3): New reservation.
+	(c86-4g-m7-fpu_1_3x2): Ditto.
+	(c86-4g-m7-fpu_1_3x3): Ditto.
+	(c86-4g-m7-fpu_1_3x6): Ditto.
+	(c86-4g-m7-fpux2): Ditto.
+	(c86-4g-m7-fpux4): Ditto.
+	(c86-4g-m7-fpux6): Ditto.
+	(c86-4g-m7-fpux8): Ditto.
+	(c86-4g-m7-fpux16): Ditto.
+	(c86-4g-m7-fp1fdiv1x4): Ditto.
+	(c86-4g-m7-fp3fdiv3x4): Ditto.
+	(c86-4g-m7-fdiv13): Ditto.
+	(c86-4g-m7-fp13div13): Ditto.
+	(c86-4g-m7-fp13div13x4): Ditto.
+	(c86-4g-m7-fp1div1_fp3div3_x4x8): Ditto.
+	(c86-4g-m7-fp1div1_fp3div3_x4x9): Ditto.
+	(c86-4g-m7-fp1div1_fp3div3_x4x11): Ditto.
+	(c86-4g-m7-fp1div1_fp3div3_x4x15): Ditto.
+	(c86-4g-m7-fp1div1_fp3div3_x4x18): Ditto.
+	(c86_4g_m7_idiv): New reservation.
+	(c86_4g_m7_idiv_QI): Adjust reservation latency and unit occupancy.
+	(c86_4g_m7_idiv_load): New reservation.
+	(c86_4g_m7_idiv_QI_load): Adjust reservation latency and unit
+	occupancy.
+	(c86_4g_m7_idiv_DI): Remove reservation.
+	(c86_4g_m7_idiv_SI): Ditto.
+	(c86_4g_m7_idiv_HI): Ditto.
+	(c86_4g_m7_idiv_DI_load): Ditto.
+	(c86_4g_m7_idiv_SI_load): Ditto.
+	(c86_4g_m7_idiv_HI_load): Ditto.
+	(c86_4g_m7_sse_insertimm): Adjust reservation units and unit
+	occupancy.
+	(c86_4g_m7_sse_insert): Ditto.
+	(c86_4g_m7_fp_sqrt): Adjust reservation.
+	(c86_4g_m7_fp_div): Ditto.
+	(c86_4g_m7_fp_div_load): Ditto.
+	(c86_4g_m7_fp_idiv_load): Ditto.
+	(c86_4g_m7_sse_pinsr_reg): Adjust reservation units and unit
+	occupancy.
+	(c86_4g_m7_sse_pinsr_reg_load): Ditto.
+	(c86_4g_m7_avx_vpinsr_reg): Ditto.
+	(c86_4g_m7_avx_vpinsr_reg_load): Ditto.
+	(c86_4g_m7_avx512_perm_xmm): Delete the prefix condition.
+	(c86_4g_m7_avx512_perm_xmm_opload): Ditto.
+	(c86_4g_m7_avx512_permi2_ymm): Adjust reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_permi2_zmm): Ditto.
+	(c86_4g_m7_avx512_permi2_ymm_load): Ditto.
+	(c86_4g_m7_avx512_permi2_zmm_load): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_imm): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_imm_load): Ditto.
+	(c86_4g_m7_avx512_perm_zmm_noimm): Ditto.
+	(c86_4g_m7_sse_perm_zmm_noimm_load): Ditto.
+	(c86_4g_m7_avx_perm_ymm): Remove.
+	(c86_4g_m7_avx_perm_ymem): Ditto.
+	(c86_4g_m7_avx512_shuf_zmm): Adjust reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_shuf_zmem): Ditto.
+	(c86_4g_m7_avx512_cmpestr): Ditto.
+	(c86_4g_m7_avx512_cmpestr_load): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_zmm): Ditto.
+	(c86_4g_m7_avx512_vdbpsadbw_zmem): Ditto.
+	(c86_4g_m7_avx_ssecomi_comi): Ditto.
+	(c86_4g_m7_avx_ssecomi_comi_load): Ditto.
+	(c86_4g_m7_avx512_expand): Ditto.
+	(c86_4g_m7_avx512_expand_load): Ditto.
+	(c86_4g_m7_avx512_expand_z): Ditto.
+	(c86_4g_m7_avx512_expand_z_load): Ditto.
+	(c86_4g_m7_sse_movnt_xy): Rename to c86_4g_m7_sse_movnt.
+	(c86_4g_m7_avx512_sseadd_xy): Adjust reservation units.
+	(c86_4g_m7_avx512_sseadd_xy_load): Ditto.
+	(c86_4g_m7_sse_sseiadd_hplus): Adjust reservation units and unit
+	occupancy.
+	(c86_4g_m7_sse_sseiadd_hplus_load): Ditto.
+	(c86_4g_m7_avx512_ssemul): Adjust reservation units.
+	(c86_4g_m7_avx512_ssemul_load): Ditto.
+	(c86_4g_m7_avx512_ssediv): Remove.
+	(c86_4g_m7_avx512_ssediv_mem): Remove.
+	(c86_4g_m7_avx512_ssediv_x): New.
+	(c86_4g_m7_avx512_ssediv_xmem): New.
+	(c86_4g_m7_avx512_ssediv_y): New.
+	(c86_4g_m7_avx512_ssediv_ymem): New.
+	(c86_4g_m7_avx512_ssediv_z): Adjust reservation units.
+	(c86_4g_m7_avx512_ssediv_zmem): Ditto.
+	(c86_4g_m7_avx512_ssecmp_z): Add reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_ssecmp_z_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_vp_z): New reservation.
+	(c86_4g_m7_avx512_ssecmp_vp_z_load): Ditto.
+	(c86_4g_m7_avx512_ssecmp_test_z): Remove reservation.
+	(c86_4g_m7_avx512_ssecmp_test_z_load): Ditto.
+	(c86_4g_m7_avx512_muladd): Broaden matching condition.
+	(c86_4g_m7_avx512_muladd_load): Ditto.
+	(c86_4g_m7_fma_muladd): Remove reservation.
+	(c86_4g_m7_fma_muladd_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_x): Add reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_sse_conflict_x_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_y): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_y_load): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_z): Ditto.
+	(c86_4g_m7_avx512_sse_conflict_z_load): Ditto.
+	(c86_4g_m7_avx512_sse_class_z): Add reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_sse_class_z_load): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt): Remove.
+	(c86_4g_m7_avx512_sse_sqrt_load): Remove.
+	(c86_4g_m7_avx512_sse_sqrt_sf_x): New.
+	(c86_4g_m7_avx512_sse_sqrt_sf_xload): New.
+	(c86_4g_m7_avx512_sse_sqrt_sf_y): New.
+	(c86_4g_m7_avx512_sse_sqrt_sf_yload): New.
+	(c86_4g_m7_avx512_sse_sqrt_sf_z): New.
+	(c86_4g_m7_avx512_sse_sqrt_sf_zload): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_x): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_xload): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_y): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_yload): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_z): New.
+	(c86_4g_m7_avx512_sse_sqrt_df_zload): New.
+	(c86_4g_m7_avx512_msklog_vector): Add reservation units and unit
+	occupancy.
+	(c86_4g_m7_avx512_mskmov_z_k): Ditto.
+	(c86_4g_m7_avx512_mskmov_k_reg): Ditto.
+	* config/i386/c86-4g.md (c86_4g_fp): Remove automaton.
+	(c86_4g_fp024): New automaton.
+	(c86_4g_fp1): Ditto.
+	(c86-4g-fp0): Move to c86_4g_fp024 automaton.
+	(c86-4g-fp1): Move to c86_4g_fp1 automaton.
+	(c86-4g-fp2): Move to c86_4g_fp024 automaton.
+	(c86-4g-fp3): Ditto.
+	(c86-4g-fp1fdivx4): New reservation.
+	(c86_4g_fp_sqrt): Adjust reservation.
+	(c86_4g_sse_sqrt_sf): Ditto.
+	(c86_4g_sse_sqrt_sf_mem): Ditto.
+	(c86_4g_sse_sqrt_df): Ditto.
+	(c86_4g_sse_sqrt_df_mem): Ditto.
+	(c86_4g_fp_op_div): Ditto.
+	(c86_4g_fp_op_div_load): Ditto.
+	(c86_4g_fp_op_idiv_load): Adjust reservation latency.
+	(c86_4g_ssediv_ss_ps): Adjust reservation.
+	(c86_4g_ssediv_ss_ps_load): Ditto.
+	(c86_4g_ssediv_sd_pd): Ditto.
+	(c86_4g_ssediv_sd_pd_load): Ditto.
+	(c86_4g_ssediv_avx256_ps): Ditto.
+	(c86_4g_ssediv_avx256_ps_load): Ditto.
+	(c86_4g_ssediv_avx256_pd): Ditto.
+	(c86_4g_ssediv_avx256_pd_load): Ditto.
+
+2026-06-09  Kewen Lin  <linkewen@hygon.cn>
+
+	Backported from master:
+	2026-05-01  Kewen Lin  <linkewen@hygon.cn>
+
+	* config/i386/c86-4g-m7.md (c86_4g_m7_idiv): New automaton.
+	(c86_4g_m7_fdiv): Ditto.
+	(c86-4g-m7-idiv): New unit.
+	(c86-4g-m7-fdiv): Ditto.
+	(c86_4g_m7_idiv_DI): Adjust unit in the reservation.
+	(c86_4g_m7_idiv_SI): Ditto.
+	(c86_4g_m7_idiv_HI): Ditto.
+	(c86_4g_m7_idiv_QI): Ditto.
+	(c86_4g_m7_idiv_DI_load): Ditto.
+	(c86_4g_m7_idiv_SI_load): Ditto.
+	(c86_4g_m7_idiv_HI_load): Ditto.
+	(c86_4g_m7_idiv_QI_load): Ditto.
+	(c86_4g_m7_fp_div): Ditto.
+	(c86_4g_m7_fp_div_load): Ditto.
+	(c86_4g_m7_fp_idiv_load): Ditto.
+	(c86_4g_m7_avx512_ssediv): Ditto.
+	(c86_4g_m7_avx512_ssediv_mem): Ditto.
+	(c86_4g_m7_avx512_ssediv_z): Ditto.
+	(c86_4g_m7_avx512_ssediv_zmem): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt): Ditto.
+	(c86_4g_m7_avx512_sse_sqrt_load): Ditto.
+	(c86_4g_m7_fp_sqrt): Ditto.  Rename from ...
+	(c86_4g_m7fp_sqrt): ... here.
+	* config/i386/c86-4g.md (c86_4g_idiv): New automaton.
+	(c86_4g_fdiv): Ditto.
+	(c86-4g-idiv): New unit.
+	(c86-4g-fdiv): Ditto.
+	(c86_4g_idiv_DI): Ditto.
+	(c86_4g_idiv_SI): Ditto.
+	(c86_4g_idiv_HI): Ditto.
+	(c86_4g_idiv_QI): Ditto.
+	(c86_4g_idiv_mem_DI): Ditto.
+	(c86_4g_idiv_mem_SI): Ditto.
+	(c86_4g_idiv_mem_HI): Ditto.
+	(c86_4g_idiv_mem_QI): Ditto.
+	(c86_4g_fp_sqrt): Ditto.
+	(c86_4g_sse_sqrt_sf): Ditto.
+	(c86_4g_sse_sqrt_sf_mem): Ditto.
+	(c86_4g_sse_sqrt_df): Ditto.
+	(c86_4g_sse_sqrt_df_mem): Ditto.
+	(c86_4g_fp_op_div): Ditto.
+	(c86_4g_fp_op_div_load): Ditto.
+	(c86_4g_fp_op_idiv_load): Ditto.
+	(c86_4g_ssediv_ss_ps): Ditto.
+	(c86_4g_ssediv_ss_ps_load): Ditto.
+	(c86_4g_ssediv_ss_pd): Ditto.
+	(c86_4g_ssediv_ss_pd_load): Ditto.
+	(c86_4g_ssediv_avx256_ps): Ditto.
+	(c86_4g_ssediv_avx256_ps_load): Ditto.
+	(c86_4g_ssediv_avx256_pd): Ditto.
+	(c86_4g_ssediv_avx256_pd_load): Ditto.
+
+2026-06-09  Xin Liu  <liulxx@hygon.cn>
+
+	Backported from master:
+	2026-04-29  Xin Liu  <liulxx@hygon.cn>
+		    Zhaoling Bao  <baozhaoling@hygon.cn>
+
+	* common/config/i386/cpuinfo.h (get_hygon_cpu): Detect the specific
+	type of HYGON CPU and return HYGON CPU name.
+	(cpu_indicator_init): Handle HYGON CPU.
+	* common/config/i386/i386-common.cc (processor_names): Add HYGON
+	C86-4G processors c86-4g-m{4,6,7}.
+	(processor_alias_table): Add hygon, hygonfam18h and c86-4g-m{4,6,7}
+	entries.
+	(ARRAY_SIZE): Update as new entries added.
+	* common/config/i386/i386-cpuinfo.h (enum processor_vendor): Add
+	VENDOR_HYGON.
+	(enum processor_types): Add HYGONFAM18H.
+	(enum processor_subtypes): Add HYGONFAM18H_C86_4G_M{4,6,7}.
+	* config.gcc: Add support for c86_4g_m{4,6,7}.
+	* config/i386/cpuid.h (signature_HYGON_ebx):  Add signature for HYGON.
+	(signature_HYGON_ecx): Ditto.
+	(signature_HYGON_edx): Ditto.
+	* config/i386/driver-i386.cc (host_detect_local_cpu): Support HYGON
+	c86-4g-m4{4,6,7} processors.
+	* config/i386/i386-c.cc (ix86_target_macros_internal): Ditto.
+	* config/i386/i386-options.cc (m_C86_4G_M4): New definition.
+	(m_C86_4G_M6): Ditto.
+	(m_C86_4G_M7): Ditto.
+	(m_C86_4G): Ditto.
+	(processor_cost_table): Add cost entries for c86-4g-m4{4,6,7}.
+	* config/i386/i386.cc (ix86_reassociation_width): Add handlings for
+	PROCESSOR_C86_4G_M{4,6,7}.
+	* config/i386/i386.h (enum processor_type): Define
+	PROCESSOR_C86_4G_M{4,6,7}.
+	(PTA_C86_4G_M4): New define.
+	(PTA_C86_4G_M6): Ditto.
+	(PTA_C86_4G_M7): Ditto.
+	* config/i386/x86-tune-costs.h (c86_4g_m4_memcpy): New stringop_algs.
+	(c86_4g_m4_cost): New processor_costs.
+	(c86_4g_m6_cost): Ditto.
+	(c86_4g_m7_cost): Ditto.
+	* config/i386/x86-tune-sched.cc (ix86_issue_rate): Handle
+	PROCESSOR_C86_4G_M{4,6,7}.
+	(ix86_adjust_cost): Ditto.
+	* config/i386/x86-tune.def (X86_TUNE_SCHEDULE): Handle m_C86_4G.
+	(X86_TUNE_PARTIAL_REG_DEPENDENCY): Ditto.
+	(X86_TUNE_SSE_PARTIAL_REG_DEPENDENCY): Ditto.
+	(X86_TUNE_SSE_PARTIAL_REG_FP_CONVERTS_DEPENDENCY): Ditto.
+	(X86_TUNE_SSE_PARTIAL_REG_CONVERTS_DEPENDENCY): Ditto.
+	(X86_TUNE_MEMORY_MISMATCH_STALL): Ditto.
+	(X86_TUNE_FUSE_CMP_AND_BRANCH_32): Ditto.
+	(X86_TUNE_FUSE_CMP_AND_BRANCH_64): Ditto.
+	(X86_TUNE_FUSE_CMP_AND_BRANCH_SOFLAGS): Ditto.
+	(X86_TUNE_USE_LEAVE): Ditto.
+	(X86_TUNE_PUSH_MEMORY): Ditto.
+	(X86_TUNE_INTEGER_DFMODE_MOVES): Ditto.
+	(X86_TUNE_MISALIGNED_MOVE_STRING_PRO_EPILOGUES): Ditto.
+	(X86_TUNE_USE_SAHF): Ditto.
+	(X86_TUNE_USE_BT): Ditto.
+	(X86_TUNE_AVOID_MFENCE): Ditto.
+	(X86_TUNE_USE_FFREEP): Ditto.
+	(X86_TUNE_SSE_UNALIGNED_STORE_OPTIMAL): Ditto.
+	(X86_TUNE_SSE_PACKED_SINGLE_INSN_OPTIMAL): Ditto.
+	(X86_TUNE_SSE_TYPELESS_STORES): Ditto.
+	(X86_TUNE_SSE_LOAD0_BY_PXOR): Ditto.
+	(X86_TUNE_USE_GATHER_2PARTS): Ditto.
+	(X86_TUNE_USE_GATHER_4PARTS): Ditto.
+	(X86_TUNE_USE_GATHER_8PARTS): Ditto.
+	(X86_TUNE_AVOID_128FMA_CHAINS): Ditto.
+	(X86_TUNE_AVOID_256FMA_CHAINS): Ditto.
+	(X86_TUNE_USE_RCR): Ditto.
+	(X86_TUNE_AVX256_MOVE_BY_PIECES): Handle m_C86_4G_M{4,6}.
+	(X86_TUNE_USE_SCATTER_2PARTS): Handle m_C86_4G_M7.
+	(X86_TUNE_USE_SCATTER_4PARTS): Ditto.
+	(X86_TUNE_USE_SCATTER_8PARTS): Ditto.
+	(X86_TUNE_SSE_REDUCTION_PREFER_PSHUF): Ditto.
+	(X86_TUNE_AVX512_SPLIT_REGS): Ditto.
+	(X86_TUNE_AVX512_MOVE_BY_PIECES): Ditto.
+	(X86_TUNE_AVX512_MASKED_EPILOGUES): Ditto.
+	* doc/extend.texi: Document about hygonfam18h and c86-4g-m{4,6,7}.
+	* doc/invoke.texi: Document about c86-4g-m{4,6,7}.
+	* config/i386/c86-4g-m7.md: New file for c86-4g-m7 scheduling model
+	information.
+	* config/i386/c86-4g.md: New file for c86-4g-m{4,6} scheduling model
+	information.
+	* config/i386/i386.md (cpu attr): Add c86_4g_m{4,6,7}.
+	(c86-4g.md): New include.
+	(c86-4g-m7.md): Ditto.
+	(*cmpi<unord>xf_i387): Set attr c86_decode.
+	(*cmpi<unord><MODEF:mode>): Ditto.
+	(swap<mode>): Ditto.
+	(*swap<mode>): Ditto.
+	(extendhisi2): Ditto.
+	(floathi<mode>2): Ditto.
+	(float<SWI48x:mode>xf2): Ditto.
+	(*float<SWI48:mode><MODEF:mode>2): Ditto.
+	(*floatdi<MODEF:mode>2_i387): Ditto.
+	(*anddi_1_bt): Ditto.
+	(*iordi_1_bts): Ditto.
+	(*xordi_1_btc): Ditto.
+	(*<btsc><mode>): Ditto.
+	(*btr<mode>): Ditto.
+	(*btsq_imm): Ditto.
+	(*btrq_imm): Ditto.
+	(*btcq_imm): Ditto.
+	(*tzcnt<mode>_1): Ditto.
+	(*tzcnt<mode>_1_falsedep): Ditto.
+	(*bsf<mode>_1): Ditto.
+	(*ctz<mode>2_falsedep): Ditto.
+	(*ctzsi2_zext): Ditto.
+	(*ctzsi2_zext_falsedep): Ditto.
+	(bsr_rex64): Ditto.
+	(bsr_rex64_1): Ditto.
+	(bsr_rex64_1_zext): Ditto.
+	(bsr): Ditto.
+	(bsr_1): Ditto.
+	(bsr_zext_1): Ditto.
+	(*bswaphi2_movbe): Ditto.
+	(*bswaphi2): Ditto.
+	(bswaphisi2_lowpart): Ditto.
+	(fpremxf4_i387): Ditto.
+	(fprem1xf4_i387): Ditto.
+	(<sincos>xf2): Ditto.
+	(sincosxf3): Ditto.
+	(fptanxf4_i387): Ditto.
+	(atan2xf3): Ditto.
+	(fyl2xxf3_i387): Ditto.
+	(fyl2xp1xf3_i387): Ditto.
+	(fxtractxf3_i387): Ditto.
+	(*f2xm1xf2_i387): Ditto.
+	(fscalexf4_i387): Ditto.
+	(rintxf2): Ditto.
+	(*movxi_internal_avx512f): Set attr c86_attr.
+	(*movoi_internal_avx): Ditto.
+	(*movti_internal): Ditto.
+	(*movdi_internal): Ditto.
+	(*movsi_internal): Ditto.
+	(*movhi_internal): Ditto.
+	(*movtf_internal): Ditto.
+	(*movdf_internal): Ditto.
+	(*movsf_internal): Ditto.
+	(*zero_extendsidi2): Ditto.
+	(sqrtxf2): Ditto.
+	(<smaxmin:code><mode>3): Ditto.
+	(*ieee_s<ieee_maxmin><mode>3): Ditto.
+	* config/i386/mmx.md (*mmx_maskmovq): Set attr c86_decode.
+	(*mmx_maskmovq): Ditto.
+	(sse_movntq): Set attr c86_attr.
+	(*mmx_blendps): Ditto.
+	(mmx_blendvps): Ditto.
+	(*mmx_pmaddwd): Ditto.
+	(mmx_pblendvb_v8qi): Ditto.
+	(mmx_pblendvb_<mode>): Ditto.
+	(sse4_1_<code>v4qiv4hi2): Ditto.
+	(sse4_1_<code>v2hiv2si2): Ditto.
+	(sse4_1_<code>v2qiv2si2): Ditto.
+	(sse4_1_<code>v2qiv2hi2): Ditto.
+	(*mmx_pinsrd): Ditto.
+	(*mmx_pinsrw): Ditto.
+	(*mmx_pinsrb): Ditto.
+	(*mmx_pextrw): Ditto.
+	(*mmx_pextrw<mode>): Ditto.
+	(*mmx_pextrw_zext): Ditto.
+	(*mmx_pextrb): Ditto.
+	(*mmx_pextrb_zext): Ditto.
+	(*mmx_pblendw64): Ditto.
+	(*mmx_pblendw32): Ditto.
+	(*vec_extractv2si_1): Ditto.
+	(*vec_extractv2si_1_zext): Ditto.
+	(*pinsrw): Ditto.
+	(*pinsrb): Ditto.
+	(*pextrw): Ditto.
+	(*pextrw<mode>): Ditto.
+	(*pextrw_zext): Ditto.
+	(*pextrb): Ditto.
+	(*pextrb_zext): Ditto.
+	(*mmx_psadbw): Ditto.
+	* config/i386/sse.md (ktest<mode>): Set attr c86_decode.
+	(*kortest<mode>): Ditto.
+	(sse_cvtsi2ss<rex64namesuffix><round_name>): Ditto.
+	(sse2_cvtsi2sd): Ditto.
+	(sse2_maskmovdqu): Ditto.
+	(*<sse>_dp<ssemodesuffix><avxsizesuffix>): Ditto.
+	(*<sse4_1_avx2>_mpsadbw): Ditto.
+	(pclmulqdq): Ditto.
+	(<mask_codefor>conflict<mode><mask_name>): Ditto.
+	(<avx512>_blendm<mode>): Set attr c86_attr.
+	(sse2_movnti<mode>): Ditto.
+	(<sse>_movnt<mode>): Ditto.
+	(<sse2>_movnt<mode>): Ditto.
+	(<sse>_rcp<mode>2): Ditto.
+	(sse_vmrcpv4sf2): Ditto.
+	(<mask_codefor>rcp14<mode><mask_name>): Ditto.
+	(srcp14<mode>): Ditto.
+	(srcp14<mode>_mask): Ditto.
+	(<sse>_sqrt<mode>2<mask_name><round_name>): Ditto.
+	(<sse>_vmsqrt<mode>2<mask_scalar_name><round_scalar_name>): Ditto.
+	(*<sse>_vmsqrt<mode>2<mask_scalar_name><round_scalar_name>): Ditto.
+	(<mask_codefor>rsqrt14<mode><mask_name>): Ditto.
+	(rsqrt14<mode>): Ditto.
+	(rsqrt14_<mode>_mask"): Ditto.
+	(*<code><mode>3<mask_name><round_saeonly_name>): Ditto.
+	(ieee_<ieee_maxmin><mode>3<mask_name><round_saeonly_name>): Ditto.
+	(*<sse>_vm<code><mode>3<mask_scalar_name><round_saeonly_scalar_name>):
+	Ditto.
+	(<sse>_ieee_vm<ieee_maxmin><mode>3<mask_scalar_name>
+	<round_saeonly_scalar_name>): Ditto.
+	(*ieee_<ieee_maxmin><mode>3): Ditto.
+	(avx_h<insn>v4df3): Ditto.
+	(*sse3_haddv2df3): Ditto.
+	(sse3_hsubv2df3): Ditto.
+	(*sse3_haddv2df3_low): Ditto.
+	(*sse3_hsubv2df3_low): Ditto.
+	(avx_h<insn>v8sf3): Ditto.
+	(sse3_h<insn>v4sf3): Ditto.
+	(*<mask_codefor>reducep<mode><mask_name><round_saeonly_name>): Ditto.
+	(reduces<mode><mask_scalar_name><round_saeonly_scalar_name>): Ditto.
+	(*<avx512>_eq<mode>3<mask_scalar_merge_name>_1): Ditto.
+	(<sse>_andnot<mode>3<mask_name>): Ditto.
+	(*<code><mode>3<mask_name>): Ditto.
+	(*andnot<mode>3): Ditto.
+	(<code><mode>3): Ditto.
+	(*<code>tf3): Ditto.
+	(vec_set<mode>_0): Ditto.
+	(@vec_set<mode>_0): Ditto.
+	(*sse4_1_extractps): Ditto.
+	(vec_extract<mode>): Ditto.
+	(<mask_codefor><avx512>_align<mode><mask_name>): Ditto.
+	(avx512bw_pmaddwd512<mode><mask_name>): Ditto.
+	(*avx2_pmaddw): Ditto.
+	(*sse2_pmaddwd): Ditto.
+	(*avx2_<code><mode>3): Ditto.
+	(*avx512f_<code><mode>3<mask_name>): Ditto.
+	(*avx512bw_<code><mode>3<mask_name>): Ditto.
+	(*sse4_1_<code><mode>3<mask_name>): Ditto.
+	(*<code>v8hi3): Ditto.
+	(*<code>v16qi3): Ditto.
+	(*andnot<mode>3_mask): Ditto.
+	(*<code><mode>3): Ditto.
+	(<code>v1ti3): Ditto.
+	(<sse2p4_1>_pinsr<ssemodesuffix>): Ditto.
+	(*<extract_type>_vinsert<shuffletype><extract_suf>_0): Ditto.
+	(<mask_codefor><extract_type>_vinsert<shuffletype><extract_suf>
+	_1<mask_name>): Ditto.
+	(vec_set_lo_<mode><mask_name>): Ditto.
+	(vec_set_hi_<mode><mask_name>): Ditto.
+	(<mask_codefor>avx512dq_shuf_<shuffletype>64x2_1<mask_name>): Ditto.
+	(avx512f_shuf_<shuffletype>64x2_1<mask_name>): Ditto.
+	(*avx512f_shuf_<shuffletype>64x2_1<mask_name>_1): Ditto.
+	(avx512vl_shuf_<shuffletype>32x4_1<mask_name>): Ditto.
+	(avx512f_shuf_<shuffletype>32x4_1<mask_name>): Ditto.
+	(*avx512f_shuf_<shuffletype>32x4_1<mask_name>_1): Ditto.
+	(*vec_extract<mode>): Ditto.
+	(*vec_extract<PEXTR_MODE12:mode>_zext): Ditto.
+	(*vec_extractv16qi_zext): Ditto.
+	(*vec_extractv4si): Ditto.
+	(*vec_extractv4si_zext): Ditto.
+	(*vec_extractv2di_1): Ditto.
+	(*vec_concatv2si_sse4_1): Ditto.
+	(vec_concatv2di): Ditto.
+	(*<sse2_avx2>_uavg<mode>3<mask_name>): Ditto.
+	(*<sse2_avx2>_psadbw): Ditto.
+	(<sse>_movmsk<ssemodesuffix><avxsizesuffix>): Ditto.
+	(*<sse>_movmsk<ssemodesuffix><avxsizesuffix>_<u>ext): Ditto.
+	(<sse2_avx2>_pmovmskb): Ditto.
+	(*<sse2_avx2>_pmovmskb_zext): Ditto.
+	(*sse2_maskmovdqu): Ditto.
+	(avx2_ph<plusminus_mnemonic>wv16hi3): Ditto.
+	(ssse3_ph<plusminus_mnemonic>wv8hi3): Ditto.
+	(ssse3_ph<plusminus_mnemonic>dv4si3): Ditto.
+	(avx2_ph<plusminus_mnemonic>dv8si3): Ditto.
+	(avx2_pmaddubsw256): Ditto.
+	(avx512bw_pmaddubsw512<mode><mask_name>): Ditto.
+	(ssse3_pmaddubsw128): Ditto.
+	(<ssse3_avx2>_psign<mode>3): Ditto.
+	(ssse3_psign<mode>3): Ditto.
+	(*abs<mode>2): Ditto.
+	(abs<mode>2_mask): Ditto.
+	(abs<mode>2_mask): Ditto.
+	(sse4a_movnt<mode>): Ditto.
+	(sse4a_vmmovnt<mode>): Ditto.
+	(<sse4_1>_blend<ssemodesuffix><avxsizesuffix>): Ditto.
+	(<sse4_1>_blendv<ssemodesuffix><avxsizesuffix>): Ditto.
+	(sse4_1_blendv<ssemodesuffix>): Ditto.
+	(<vi8_sse4_1_avx2_avx512>_movntdqa): Ditto.
+	(<sse4_1_avx2>_pblendvb): Ditto.
+	(sse4_1_pblend<ssemodesuffix>): Ditto.
+	(*avx2_pblend<ssemodesuffix>): Ditto.
+	(avx2_pblendd<mode>): Ditto.
+	(avx2_<code>v16qiv16hi2<mask_name>): Ditto.
+	(avx512bw_<code>v32qiv32hi2<mask_name>): Ditto.
+	(sse4_1_<code>v8qiv8hi2<mask_name>): Ditto.
+	(*sse4_1_<code>v8qiv8hi2<mask_name>_1): Ditto.
+	(<mask_codefor>avx512f_<code>v16qiv16si2<mask_name>): Ditto.
+	(avx2_<code>v8qiv8si2<mask_name>): Ditto.
+	(*avx2_<code>v8qiv8si2<mask_name>_1): Ditto.
+	(sse4_1_<code>v4qiv4si2<mask_name>): Ditto.
+	(*sse4_1_<code>v4qiv4si2<mask_name>_1): Ditto.
+	(avx512f_<code>v16hiv16si2<mask_name>): Ditto.
+	(avx2_<code>v8hiv8si2<mask_name>): Ditto.
+	(sse4_1_<code>v4hiv4si2<mask_name>): Ditto.
+	(*sse4_1_<code>v4hiv4si2<mask_name>_1): Ditto.
+	(avx512f_<code>v8qiv8di2<mask_name>): Ditto.
+	(*avx512f_<code>v8qiv8di2<mask_name>_1): Ditto.
+	(avx2_<code>v4qiv4di2<mask_name>): Ditto.
+	(*avx2_<code>v4qiv4di2<mask_name>_1): Ditto.
+	(sse4_1_<code>v2qiv2di2<mask_name>): Ditto.
+	(*sse4_1_<code>v2qiv2di2<mask_name>_1): Ditto.
+	(avx512f_<code>v8hiv8di2<mask_name>): Ditto.
+	(avx2_<code>v4hiv4di2<mask_name>): Ditto.
+	(*avx2_<code>v4hiv4di2<mask_name>_1): Ditto.
+	(sse4_1_<code>v2hiv2di2<mask_name>): Ditto.
+	(*sse4_1_<code>v2hiv2di2<mask_name>_1): Ditto.
+	(avx512f_<code>v8siv8di2<mask_name>): Ditto.
+	(avx2_<code>v4siv4di2<mask_name>): Ditto.
+	(sse4_1_<code>v2siv2di2<mask_name>): Ditto.
+	(*sse4_1_<code>v2siv2di2<mask_name>_1): Ditto.
+	(sse4_1_round<ssescalarmodesuffix>): Ditto.
+	(*sse4_1_round<ssescalarmodesuffix>"): Ditto.
+	(sse4_2_pcmpestri): Ditto.
+	(sse4_2_pcmpestrm): Ditto.
+	(sse4_2_pcmpestr_cconly): Ditto.
+	(sse4_2_pcmpistri): Ditto.
+	(sse4_2_pcmpistrm): Ditto.
+	(sse4_2_pcmpistr_cconly): Ditto.
+	(xop_phadd<u>bw): Ditto.
+	(xop_phadd<u>bd): Ditto.
+	(xop_phadd<u>bq): Ditto.
+	(xop_phadd<u>wd): Ditto.
+	(xop_phadd<u>wq): Ditto.
+	(xop_phadd<u>dq): Ditto.
+	(xop_phsubbw): Ditto.
+	(xop_phsubwd): Ditto.
+	(xop_phsubdq): Ditto.
+	(aesenc): Ditto.
+	(aesenclast): Ditto.
+	(aesdec): Ditto.
+	(aesdeclast): Ditto.
+	(aesimc): Ditto.
+	(aeskeygenassist): Ditto.
+	(<avx2_avx512>_permvar<mode><mask_name>): Ditto.
+	(avx2_perm<mode>_1<mask_name>): Ditto.
+	(<avx512>_permvar<mode><mask_name>): Ditto.
+	(avx512f_perm<mode>_1<mask_name>): Ditto.
+	(<mask_codefor>avx512f_broadcast<mode><mask_name>): Ditto.
+	(avx_vbroadcastf128_<mode>): Ditto.
+	(<mask_codefor>avx512vl_broadcast<mode><mask_name>_1): Ditto.
+	(<mask_codefor>avx512dq_broadcast<mode><mask_name>_1): Ditto.
+	(*<avx512>_vpermi2var<mode>3_mask): Ditto.
+	(<avx512>_vpermt2var<mode>3<sd_maskz_name>): Ditto.
+	(<avx512>_vpermt2var<mode>3_mask): Ditto.
+	(*avx_vperm2f128<mode>_nozero): Ditto.
+	(vec_set_lo_<mode><mask_name>): Ditto.
+	(vec_set_hi_<mode><mask_name>): Ditto.
+	(vec_set_lo_<mode>): Ditto.
+	(vec_set_hi_<mode>): Ditto.
+	(vec_set_lo_v32qi): Ditto.
+	(<avx_avx2>_maskload<ssemodesuffix><avxsizesuffix>): Ditto.
+	(<avx_avx2>_maskstore<ssemodesuffix><avxsizesuffix>): Ditto.
+	(avx_vec_concat<mode>): Ditto.
+	(<avx512>_compress<mode>_mask): Ditto.
+	(compress<mode>_mask): Ditto.
+	(<avx512>_compressstore<mode>_mask): Ditto.
+	(compressstore<mode>_mask): Ditto.
+	(expand<mode>_mask): Ditto.
+	(<mask_codefor>avx512bw_dbpsadbw<mode><mask_name>): Ditto.
+	(clz<mode>2<mask_name>): Ditto.
+	(vpmadd52<vpmadd52type>v8di): Ditto.
+	(vpmadd52<vpmadd52type><mode>): Ditto.
+	(vpmadd52<vpmadd52type><mode>_maskz_1): Ditto.
+	(vpmadd52<vpmadd52type><mode>_mask): Ditto.
+	(vaesdec_<mode>): Ditto.
+	(vaesdeclast_<mode>): Ditto.
+	(vaesenc_<mode>): Ditto.
+	(vaesenclast_<mode>): Ditto.
+
+2026-06-06  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-06-06  Jakub Jelinek  <jakub@redhat.com>
+
+	PR target/125611
+	* config/i386/sse.md (<ssse3_avx2>_pmulhrsw<mode>3, smulhrs<mode>3):
+	Use vector_operand instead of nonimmediate_operand.
+
 2026-06-03  Richard Sandiford  <rdsandiford@googlemail.com>
 
 	PR rtl-optimization/125375

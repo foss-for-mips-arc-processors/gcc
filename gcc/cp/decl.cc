@@ -5901,18 +5901,15 @@ cp_make_fname_decl (location_t loc, tree id, int type_dep)
       if (!release_name)
 	{
 	  cpp_string cstr = { 0, 0 }, strname;
-	  size_t len = strlen (name) + 3; /* Two for '"'s.  One for NULL.  */
-	  char *namep = XNEWVEC (char, len);
-	  snprintf (namep, len, "\"%s\"", name);
-	  strname.text = (unsigned char *) namep;
-	  strname.len = len - 1;
-	  if (cpp_interpret_string (parse_in, &strname, 1, &cstr, CPP_STRING))
+	  strname.text
+	    = const_cast <unsigned char *> ((const unsigned char *) name);
+	  strname.len = strlen (name) + 1;
+	  if (cpp_translate_string (parse_in, &strname, &cstr, CPP_STRING,
+				    false))
 	    {
 	      name = (const char *) cstr.text;
 	      release_name = true;
 	    }
-
-	  XDELETEVEC (namep);
 	}
 
       size_t length = strlen (name);
@@ -10114,10 +10111,14 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 	      tree guard = NULL_TREE;
 	      if (cleanups || cleanup)
 		{
-		  guard = get_internal_target_expr (boolean_false_node);
-		  add_stmt (guard);
-		  guard = TARGET_EXPR_SLOT (guard);
+		  /* Since the CLEANUP_STMT will refer to the guard, we need it
+		      to be a variable with the same lifetime.  ??? It might be
+		      better to use wrap_temporary_cleanups.  */
+		  guard = get_temp_regvar (boolean_type_node, boolean_false_node);
+		  /* And make sure register_local_var_uses sees it.  */
+		  pushdecl (guard);
 		}
+
 	      tree sl = push_stmt_list ();
 	      initialize_local_var (decl, init, true);
 	      if (guard)
@@ -10143,9 +10144,8 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 		     popped that all, so push those extra cleanups around
 		     the whole sequence with a guard variable.  */
 		  gcc_assert (TREE_CODE (sl) == STATEMENT_LIST);
-		  guard = get_internal_target_expr (integer_zero_node);
-		  add_stmt (guard);
-		  guard = TARGET_EXPR_SLOT (guard);
+		  guard = get_temp_regvar (integer_type_node, integer_zero_node);
+		  pushdecl (guard);
 		  for (unsigned i = 0; i < n_extra_cleanups; ++i)
 		    {
 		      tree_stmt_iterator tsi = tsi_last (sl);
@@ -10714,7 +10714,7 @@ cp_finish_decomp (tree decl, cp_decomp *decomp, bool test_p)
 	    }
 	  first = DECL_CHAIN (first);
 	}
-      if (DECL_P (decl) && DECL_NAMESPACE_SCOPE_P (decl))
+      if (DECL_P (decl) && TREE_STATIC (decl))
 	SET_DECL_ASSEMBLER_NAME (decl, get_identifier ("<decomp>"));
       return false;
     }
@@ -13778,6 +13778,8 @@ diagnose_non_c_class_typedef_for_linkage (tree type, tree orig)
 static bool
 maybe_diagnose_non_c_class_typedef_for_linkage (tree type, tree orig, tree t)
 {
+  if (!COMPLETE_TYPE_P (t))
+    return false;
   if (!BINFO_BASE_BINFOS (TYPE_BINFO (t))->is_empty ())
     {
       auto_diagnostic_group d;
@@ -20290,7 +20292,7 @@ maybe_prepare_return_this (tree cdtor)
   if (targetm.cxx.cdtor_returns_this ())
     if (tree val = DECL_ARGUMENTS (cdtor))
       {
-	suppress_warning (val, OPT_Wuse_after_free);
+	suppress_warning (val, OPT_Wuse_after_free_);
 	return val;
       }
 

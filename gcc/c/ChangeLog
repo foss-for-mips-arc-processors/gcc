@@ -1,3 +1,65 @@
+2026-08-07  Release Manager
+
+	* GCC 16.2.0 released.
+
+2026-07-14  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2026-06-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/125935
+	* c-decl.cc (c_init_decl_processing): Use "bool" rather than "_Bool"
+	as the name of boolean_type_node for C23+.
+
+2026-07-05  Kees Cook  <kees@kernel.org>
+
+	Backported from master:
+	2026-06-19  Kees Cook  <kees@kernel.org>
+
+	PR c/125604
+	* c-typeck.cc (build_unary_op): Unwrap .ACCESS_WITH_SIZE
+	from the operand before further processing.
+
+2026-07-05  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-06-03  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/123569
+	* c-parser.cc (mark_exp_read_cond): New function.
+	(c_parser_unary_expression): Use mark_exp_read_cond.
+	(c_parser_postfix_expression_after_primary): Likewise.
+	* c-typeck.cc (build_unary_op): Remove dead code and
+	add checking assertion.
+
+2026-06-13  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-06-03  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/125252
+	* c-typeck.cc (ptr_to_tagged_member): Return type of member.
+	(c_type_canonical): Use incomplete type.
+
+2026-06-13  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-04-25  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/124303
+	* c-decl.cc (finish_struct): Check for consistency of
+	declarations after completing variants.
+
+2026-06-13  Martin Uecker  <uecker@tugraz.at>
+
+	Backported from master:
+	2026-05-06  Martin Uecker  <uecker@tugraz.at>
+
+	PR c/124985
+	* c-decl.cc (pushtag): Update comment.
+	(declspecs_add_type): Mark TYPE_STUB_DECL as used.
+	* c-typeck.cc (function_to_pointer_conversion): Fix grammar in comment.
+
 2026-05-15  Andi Kleen  <ak@gcc.gnu.org>
 
 	PR c/124532

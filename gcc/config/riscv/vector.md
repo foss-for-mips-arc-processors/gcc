@@ -852,10 +852,10 @@
 	       (const_int 2)
 
 	       (eq_attr "type" "vstux,vstox,vssegts,vssegtux,vssegtox,vfcvtftoi,vfwcvtitof,vfwcvtftoi,
-				vfwcvtftof,vmsfs,vired,viwred,vfredu,vfredo,vfwredu,vfwredo,vwsll")
+				vfwcvtftof,vmsfs,vired,viwred,vfredu,vfredo,vfwredu,vfwredo,vwsll,viwalu,vfwalu,viwmul,vfwmul")
 	       (const_int 3)
 
-	       (eq_attr "type" "viwalu,viwmul,viwmuladd,vfwalu,vfwmul,vfwmuladd")
+	       (eq_attr "type" "viwmuladd,vfwmuladd")
 	       (const_int 4)]
 	(const_int INVALID_ATTRIBUTE)))
 
@@ -4202,7 +4202,6 @@
   "TARGET_VECTOR"
   "vw<plus_minus:insn><any_extend:u>.wx\t%0,%3,%z4%p1"
   [(set_attr "type" "vi<widen_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_single_widen_add<any_extend:su><mode>_extended_scalar"
@@ -4225,7 +4224,6 @@
   "TARGET_VECTOR"
   "vwadd<any_extend:u>.wx\t%0,%3,%z4%p1"
   [(set_attr "type" "viwalu")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_single_widen_sub<any_extend:su><mode>_extended_scalar"
@@ -4248,7 +4246,6 @@
   "TARGET_VECTOR"
   "vwsub<any_extend:u>.wx\t%0,%3,%z4%p1"
   [(set_attr "type" "viwalu")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")])
 
 (define_insn "@pred_widen_mulsu<mode>"
@@ -4469,7 +4466,6 @@
   "TARGET_VECTOR"
   "v<insn>.vx\t%0,%3,%4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_<optab><mode>_scalar"
@@ -4491,7 +4487,6 @@
   "TARGET_VECTOR"
   "v<insn>.vx\t%0,%3,%4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_expand "@pred_<optab><mode>_scalar"
@@ -4546,7 +4541,6 @@
   "TARGET_VECTOR"
   "v<insn>.vx\t%0,%3,%4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "*pred_<optab><mode>_extended_scalar"
@@ -4569,7 +4563,6 @@
   "TARGET_VECTOR && !TARGET_64BIT"
   "v<insn>.vx\t%0,%3,%4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_expand "@pred_<optab><mode>_scalar"
@@ -4624,7 +4617,6 @@
   "TARGET_VECTOR"
   "v<insn>.vx\t%0,%3,%z4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "*pred_<optab><mode>_extended_scalar"
@@ -4647,7 +4639,6 @@
   "TARGET_VECTOR && !TARGET_64BIT"
   "v<insn>.vx\t%0,%3,%z4%p1"
   [(set_attr "type" "<int_binop_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_<sat_op><mode>"
@@ -4693,7 +4684,6 @@
   "TARGET_VECTOR"
   "v<sat_op>.vx\t%0,%3,%z4%p1"
   [(set_attr "type" "<sat_insn_type>")
-   (set_attr "mode_idx" "3")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_<sat_op><mode>_scalar"
@@ -7298,7 +7288,7 @@
   [(set_attr "type" "vf<widen_binop_insn_type>")
    (set_attr "mode" "<V_DOUBLE_TRUNC>")
    (set (attr "frm_mode")
-	(symbol_ref "riscv_vector::get_frm_mode (operands[9])"))])
+   (symbol_ref "riscv_vector::get_frm_mode (operands[9])"))])
 
 (define_insn "@pred_single_widen_add<mode>"
   [(set (match_operand:VWEXTF 0 "register_operand"                  "=&vr,  &vr")

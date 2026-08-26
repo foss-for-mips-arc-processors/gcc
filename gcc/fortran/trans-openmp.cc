@@ -2917,6 +2917,11 @@ gfc_trans_omp_array_reduction_or_udr (tree c, gfc_omp_namelist *n, locus where)
   const char *iname;
   bool t;
   gfc_omp_udr *udr = n->u2.udr ? n->u2.udr->udr : NULL;
+  gfc_namespace *old_ns = gfc_current_ns;
+
+  if (gfc_current_ns->proc_name
+      && gfc_current_ns->proc_name->ns != gfc_current_ns)
+    gfc_current_ns = gfc_current_ns->proc_name->ns;
 
   decl = OMP_CLAUSE_DECL (c);
   gfc_current_locus = where;
@@ -3199,6 +3204,8 @@ gfc_trans_omp_array_reduction_or_udr (tree c, gfc_omp_namelist *n, locus where)
 	  *udr->omp_orig = omp_var_copy[3];
 	}
     }
+
+  gfc_current_ns = old_ns;
 }
 
 static tree

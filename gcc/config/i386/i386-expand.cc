@@ -18917,6 +18917,11 @@ ix86_expand_vector_set (bool mmx_ok, rtx target, rtx val, int elt)
   machine_mode mmode = VOIDmode;
   rtx (*gen_blendm) (rtx, rtx, rtx, rtx);
 
+  if (!IN_RANGE (elt, 0, GET_MODE_NUNITS (mode)))
+    {
+      emit_move_insn (target, target);
+      return;
+    }
   switch (mode)
     {
     case E_V2SImode:
@@ -27061,12 +27066,15 @@ ix86_gen_ccmp_first (rtx_insn **prep_seq, rtx_insn **gen_seq,
     op_mode = GET_MODE (op1);
 
   /* We only supports following scalar comparisons that use just 1
-     instruction: DI/SI/QI/HI/DF/SF/HF.
-     Unordered/Ordered compare cannot be corretly indentified by
+     instruction: DI/SI/HI/QI/XF/DF/SF/HF.
+     Unordered/Ordered compare cannot be correctly identified by
      ccmp so they are not supported.  */
-  if (!(op_mode == DImode || op_mode == SImode || op_mode == HImode
-	|| op_mode == QImode || op_mode == DFmode || op_mode == SFmode
-	|| op_mode == HFmode)
+  if (!(op_mode == DImode || op_mode == SImode
+	|| op_mode == HImode || op_mode == QImode
+	|| ((op_mode == XFmode || op_mode == DFmode || op_mode == SFmode)
+	    && (TARGET_80387
+		|| (SSE_FLOAT_MODE_P (op_mode) && TARGET_SSE_MATH)))
+	|| (op_mode == HFmode && TARGET_AVX512FP16))
       || code == ORDERED
       || code == UNORDERED)
     {

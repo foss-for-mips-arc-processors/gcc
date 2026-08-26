@@ -631,10 +631,6 @@
 (define_mode_iterator VI1_AVX512VNNI
   [(V64QI "TARGET_AVX512VNNI") (V32QI "TARGET_AVX2") V16QI])
 
-(define_mode_iterator VI1_AVX512VNNIBW
-  [(V64QI "TARGET_AVX512BW || TARGET_AVX512VNNI")
-   (V32QI "TARGET_AVX2") V16QI])
-
 (define_mode_iterator VI12_256_512_AVX512VL
   [V64QI (V32QI "TARGET_AVX512VL")
    V32HI (V16HI "TARGET_AVX512VL")])
@@ -1110,17 +1106,6 @@
    (V32BF "si") (V16BF "hi") (V8BF  "qi")
    (V16SF "hi") (V8SF  "qi") (V4SF  "qi")
    (V8DF  "qi") (V4DF  "qi") (V2DF  "qi")])
-
-;; Mapping of vector modes to corresponding mask half size
-(define_mode_attr avx512fmaskhalfmode
-  [(V64QI "SI") (V32QI "HI") (V16QI "QI")
-   (V32HI "HI") (V16HI "QI") (V8HI  "QI") (V4HI "QI")
-   (V16SI "QI") (V8SI  "QI") (V4SI  "QI")
-   (V8DI  "QI") (V4DI  "QI") (V2DI  "QI")
-   (V32HF "HI") (V16HF "QI") (V8HF  "QI")
-   (V32BF "HI") (V16BF "QI") (V8BF  "QI")
-   (V16SF "QI") (V8SF  "QI") (V4SF  "QI")
-   (V8DF  "QI") (V4DF  "QI") (V2DF  "QI")])
 
 ;; Mapping of vector float modes to an integer mode of the same size
 (define_mode_attr sseintvecmode
@@ -32126,7 +32111,7 @@
    (match_operand:VF1_AVX512VL 1 "register_operand")
    (match_operand:<sf_bf16> 2 "register_operand")
    (match_operand:<sf_bf16> 3 "register_operand")
-   (match_operand:<avx512fmaskhalfmode> 4 "register_operand")]
+   (match_operand:<avx512fmaskmode> 4 "register_operand")]
   "TARGET_AVX512BF16"
 {
   emit_insn (gen_avx512f_dpbf16ps_<mode>_maskz_1(operands[0], operands[1],
@@ -32134,7 +32119,7 @@
   DONE;
 })
 
-(define_insn "avx512f_dpbf16ps_<mode><maskz_half_name>"
+(define_insn "avx512f_dpbf16ps_<mode><sd_maskz_name>"
   [(set (match_operand:VF1_AVX512VL 0 "register_operand" "=v")
 	(unspec:VF1_AVX512VL
 	  [(match_operand:VF1_AVX512VL 1 "register_operand" "0")
@@ -32142,7 +32127,7 @@
 	   (match_operand:<sf_bf16> 3 "nonimmediate_operand" "vm")]
         UNSPEC_VDPBF16PS))]
   "TARGET_AVX512BF16"
-  "vdpbf16ps\t{%3, %2, %0<maskz_half_operand4>|%0<maskz_half_operand4>, %2, %3}")
+  "vdpbf16ps\t{%3, %2, %0<sd_mask_op4>|%0<sd_mask_op4>, %2, %3}")
 
 (define_insn "avx512f_dpbf16ps_<mode>_mask"
   [(set (match_operand:VF1_AVX512VL 0 "register_operand" "=v")
@@ -32153,7 +32138,7 @@
 	     (match_operand:<sf_bf16> 3 "nonimmediate_operand" "vm")]
              UNSPEC_VDPBF16PS)
           (match_dup 1)
-          (match_operand:<avx512fmaskhalfmode> 4 "register_operand" "Yk")))]
+          (match_operand:<avx512fmaskmode> 4 "register_operand" "Yk")))]
   "TARGET_AVX512BF16"
   "vdpbf16ps\t{%3, %2, %0%{%4%}|%0%{%4%}, %2, %3}")
 
@@ -32413,8 +32398,8 @@
 
 (define_expand "sdot_prod<ssedvecmodelower><mode>"
   [(match_operand:<ssedvecmode> 0 "register_operand")
-   (match_operand:VI1_AVX512VNNIBW 1 "register_operand")
-   (match_operand:VI1_AVX512VNNIBW 2 "register_operand")
+   (match_operand:VI1_AVX512 1 "register_operand")
+   (match_operand:VI1_AVX512 2 "register_operand")
    (match_operand:<ssedvecmode> 3 "register_operand")]
   "TARGET_SSE2"
 {
@@ -32461,8 +32446,8 @@
 
 (define_expand "udot_prod<ssedvecmodelower><mode>"
   [(match_operand:<ssedvecmode> 0 "register_operand")
-   (match_operand:VI1_AVX512VNNIBW 1 "register_operand")
-   (match_operand:VI1_AVX512VNNIBW 2 "register_operand")
+   (match_operand:VI1_AVX512 1 "register_operand")
+   (match_operand:VI1_AVX512 2 "register_operand")
    (match_operand:<ssedvecmode> 3 "register_operand")]
   "TARGET_SSE2"
 {
@@ -32508,15 +32493,17 @@
 })
 
 (define_insn "vpdp<vpdotprodtype>_<mode>"
-  [(set (match_operand:VI4_AVX 0 "register_operand" "=v")
+  [(set (match_operand:VI4_AVX 0 "register_operand" "=x,v")
 	(unspec:VI4_AVX
-	  [(match_operand:VI4_AVX 1 "register_operand" "0")
-	   (match_operand:VI4_AVX 2 "register_operand" "v")
-	   (match_operand:VI4_AVX 3 "nonimmediate_operand" "vm")]
+	  [(match_operand:VI4_AVX 1 "register_operand" "0,0")
+	   (match_operand:VI4_AVX 2 "register_operand" "x,v")
+	   (match_operand:VI4_AVX 3 "nonimmediate_operand" "xjm,vm")]
 	  VPDOTPROD))]
   "TARGET_AVXVNNIINT8 || TARGET_AVX10_2"
   "vpdp<vpdotprodtype>\t{%3, %2, %0|%0, %2, %3}"
-   [(set_attr "prefix" "maybe_evex")])
+   [(set_attr "prefix" "maybe_evex")
+    (set_attr "addr" "gpr16,*")
+    (set_attr "isa" "avxvnniint8,avx10_2")])
 
 (define_insn "vpdp<vpdotprodtype>_v16si"
   [(set (match_operand:V16SI 0 "register_operand" "=v")

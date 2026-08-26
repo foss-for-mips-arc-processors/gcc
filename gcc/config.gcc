@@ -560,7 +560,7 @@ powerpc*-*-*)
 	extra_headers="${extra_headers} ppu_intrinsics.h spu2vmx.h vec_types.h si2vmx.h"
 	extra_headers="${extra_headers} amo.h"
 	case x$with_cpu in
-	    xpowerpc64|xdefault64|x6[23]0|x970|xG5|xpower[3456789]|xpower1[01]|xpower6x|xrs64a|xcell|xa2|xe500mc64|xe5500|xe6500)
+	    xpowerpc64|xdefault64|x6[23]0|x970|xG5|xpower[3456789]|xpower1[01]|xfuture|xpower6x|xrs64a|xcell|xa2|xe500mc64|xe5500|xe6500)
 		cpu_is_64bit=yes
 		;;
 	esac
@@ -774,7 +774,7 @@ sapphirerapids alderlake rocketlake eden-x2 nano nano-1000 nano-2000 nano-3000 \
 nano-x2 eden-x4 nano-x4 lujiazui yongfeng shijidadao x86-64 x86-64-v2 \
 x86-64-v3 x86-64-v4 sierraforest graniterapids graniterapids-d grandridge \
 arrowlake arrowlake-s clearwaterforest pantherlake diamondrapids novalake \
-c86-4g-m4 c86-4g-m6 c86-4g-m7 native"
+c86-4g-m4 c86-4g-m6 c86-4g-m7 c86-4g-m8 native"
 
 # Additional x86 processors supported by --with-cpu=.  Each processor
 # MUST be separated by exactly one space.
@@ -4085,6 +4085,10 @@ case ${target} in
 	arch=c86-4g-m7
 	cpu=c86-4g-m7
 	;;
+      c86_4g_m8-*)
+	arch=c86-4g-m8
+	cpu=c86-4g-m8
+	;;
       *)
 	arch=pentiumpro
 	cpu=generic
@@ -4198,6 +4202,10 @@ case ${target} in
       c86_4g_m7-*)
 	arch=c86-4g-m7
 	cpu=c86-4g-m7
+	;;
+      c86_4g_m8-*)
+	arch=c86-4g-m8
+	cpu=c86-4g-m8
 	;;
       *)
 	arch=x86-64
@@ -5984,7 +5992,7 @@ case "${target}" in
 				eval "with_$which=405"
 				;;
 			"" | common | native \
-			| power[3456789] | power1[01] | power5+ | power6x \
+			| power[3456789] | power1[01] | future | power5+ | power6x \
 			| powerpc | powerpc64 | powerpc64le \
 			| rs64 \
 			| 401 | 403 | 405 | 405fp | 440 | 440fp | 464 | 464fp \
