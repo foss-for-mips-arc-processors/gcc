@@ -859,7 +859,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1OR2> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VWEXTI
 	    (match_operand:<V_DOUBLE_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -884,7 +884,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1OR2> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr")
 	  (sign_extend:VQEXTI
 	    (match_operand:<V_QUAD_TRUNC> 4 "vector_shift_operand" "vr,vr,vr,vr,vk,vk,vk,vk"))]
 	  UNSPEC_ARCV_VNSRA_2S))
@@ -909,7 +909,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_DOUBLE_TRUNC>
 	  (unspec:VWEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1OR2> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand 4 "pmode_reg_or_uimm5_operand" "r,r,r,r,r,r,K,K,K,K,K,K")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_DOUBLE_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -933,7 +933,7 @@
 		 (reg:SI VXRM_REGNUM)] UNSPEC_VPREDICATE)
 	(truncate:<V_QUAD_TRUNC>
 	  (unspec:VQEXTI
-	  [(match_operand:<V_LMUL1> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
+	  [(match_operand:<V_LMUL1OR2> 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	  (match_operand 4 "pmode_reg_or_uimm5_operand" "r,r,r,r,r,r,K,K,K,K,K,K")]
 	  UNSPEC_ARCV_VNSRA_2S))
 	(match_operand:<V_QUAD_TRUNC> 2 "vector_merge_operand"     "vu,0,vu,0,vu,0,vu,0,vu,0,vu,0")))]
@@ -1079,8 +1079,8 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_quad_widen_arcv_vqrdot_2s<mode>"
-  [(set (match_operand:<V_QEXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:<V_QEXT_LMUL1>
+  [(set (match_operand:<V_QEXT_LMUL1OR2> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:<V_QEXT_LMUL1OR2>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
 	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
@@ -1089,10 +1089,10 @@
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	(unspec:<V_QEXT_LMUL1>
+	(unspec:<V_QEXT_LMUL1OR2>
 	[(match_operand:V_QRDOT 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:V_QRDOT 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	     (match_operand:<V_QEXT_LMUL1> 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
+	     (match_operand:<V_QEXT_LMUL1OR2> 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
 	  UNSPEC_ARCV_VQRDOT_2S)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"
@@ -1101,8 +1101,8 @@
    (set_attr "mode" "<MODE>")])
 
 (define_insn "@pred_widen_arcv_vwsrdot_2s<mode>"
-  [(set (match_operand:<V_EXT_LMUL1> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
-	(if_then_else:<V_EXT_LMUL1>
+  [(set (match_operand:<V_EXT_LMUL1OR2> 0 "register_operand" "=vd, vd, vr, vr, vd, vd, vr, vr, vd, vd, vr, vr")
+	(if_then_else:<V_EXT_LMUL1OR2>
 	  (unspec:<VM>
 	    [(match_operand:<VM> 1 "vector_mask_operand" "vm, vm,Wc1, Wc1, vm, vm,Wc1,Wc1, vm, vm,Wc1,Wc1")
 	     (match_operand 5 "vector_length_operand"    "rK, rK, rK,  rK, rK, rK, rK, rK, rK, rK, rK, rK")
@@ -1111,10 +1111,10 @@
 	     (match_operand 8 "const_int_operand"        " i,  i,  i,   i,  i,  i,  i,  i,  i,  i,  i,  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
-	(unspec:<V_EXT_LMUL1>
+	(unspec:<V_EXT_LMUL1OR2>
 	[(match_operand:V_WRDOT 3 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
 	(match_operand:V_WRDOT 4 "register_operand" "vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr,vr")
-	     (match_operand:<V_EXT_LMUL1> 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
+	     (match_operand:<V_EXT_LMUL1OR2> 2 "register_operand" "0,0,0,0,0,0,0,0,0,0,0,0")]
 	  UNSPEC_ARCV_VWSRDOT_2S)
 	(match_dup 2)))]
   "TARGET_XARCVVDSP"

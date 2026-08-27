@@ -129,9 +129,9 @@ vint32m1_t test_vwsrdot_2s_vv_i16_mu (vbool16_t mask, vint32m1_t pass, vint16m1_
 **  ret
 */
 
-vint64m1_t test_vwsrdot_2s_vv_i32 (vint64m1_t vd, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
+vint64m2_t test_vwsrdot_2s_vv_i32 (vint64m2_t vd, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m2 (vd, vs1, vs2, vl);
 }
 
 /*
@@ -141,9 +141,9 @@ vint64m1_t test_vwsrdot_2s_vv_i32 (vint64m1_t vd, vint32m1_t vs1, vint32m1_t vs2
 **  ret
 */
 
-vint64m1_t test_vwsrdot_2s_vv_i32_m (vbool32_t mask, vint64m1_t vd, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
+vint64m2_t test_vwsrdot_2s_vv_i32_m (vbool32_t mask, vint64m2_t vd, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m1_m (mask, vd, vs1, vs2, vl);
+  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m2_m (mask, vd, vs1, vs2, vl);
 }
 
 /*
@@ -152,9 +152,9 @@ vint64m1_t test_vwsrdot_2s_vv_i32_m (vbool32_t mask, vint64m1_t vd, vint32m1_t v
 **  arcv\.vwsrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])
 **  ret
 */
-vint64m1_t test_vwsrdot_2s_vv_i32_tu (vint64m1_t maskedoff, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
+vint64m2_t test_vwsrdot_2s_vv_i32_tu (vint64m2_t maskedoff, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m1_tu (maskedoff, vs1, vs2, vl);
+  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m2_tu (maskedoff, vs1, vs2, vl);
 }
 
 /*
@@ -163,9 +163,9 @@ vint64m1_t test_vwsrdot_2s_vv_i32_tu (vint64m1_t maskedoff, vint32m1_t vs1, vint
 **  arcv\.vwsrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])\.t
 **  ret
 */
-vint64m1_t test_vwsrdot_2s_vv_i32_tumu (vbool32_t mask, vint64m1_t maskedoff, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
+vint64m2_t test_vwsrdot_2s_vv_i32_tumu (vbool32_t mask, vint64m2_t maskedoff, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m1_tumu (mask, maskedoff, vs1, vs2, vl);
+  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m2_tumu (mask, maskedoff, vs1, vs2, vl);
 }
 
 /*
@@ -174,7 +174,7 @@ vint64m1_t test_vwsrdot_2s_vv_i32_tumu (vbool32_t mask, vint64m1_t maskedoff, vi
 **  arcv\.vwsrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])\.t
 **  ret
 */
-vint64m1_t test_vwsrdot_2s_vv_i32_mu (vbool32_t mask, vint64m1_t pass, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
+vint64m2_t test_vwsrdot_2s_vv_i32_mu (vbool32_t mask, vint64m2_t pass, vint32m1_t vs1, vint32m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m1_mu (mask, pass, vs1, vs2, vl);
+  return __riscv_arcv_vwsrdot_2s_vv_i32m1_i64m2_mu (mask, pass, vs1, vs2, vl);
 }

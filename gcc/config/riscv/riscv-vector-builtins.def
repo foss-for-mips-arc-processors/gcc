@@ -83,7 +83,8 @@ along with GCC; see the file COPYING3.  If not see
   SIGNED_EEW64_LMUL1_INTERPRET, UNSIGNED_EEW8_LMUL1_INTERPRET,                 \
   UNSIGNED_EEW16_LMUL1_INTERPRET, UNSIGNED_EEW32_LMUL1_INTERPRET,              \
   UNSIGNED_EEW64_LMUL1_INTERPRET, X2, X2_VLMUL_EXT, X4_VLMUL_EXT, X8_VLMUL_EXT,\
-  X16_VLMUL_EXT, X32_VLMUL_EXT, X64_VLMUL_EXT, TUPLE_SUBPART)
+  X16_VLMUL_EXT, X32_VLMUL_EXT, X64_VLMUL_EXT, TUPLE_SUBPART, LMUL1OR2,\
+  WLMUL1OR2, QWLMUL1OR2)
 #endif
 
 /* Define RVV_VXRM rounding mode enum for fixed-point intrinsics.  */
@@ -775,6 +776,10 @@ DEF_RVV_BASE_TYPE (scalar_float, get_scalar_float_type (type_idx))
 DEF_RVV_BASE_TYPE (void_const_ptr, const_ptr_type_node)
 
 DEF_RVV_BASE_TYPE (lmul1_unsigned_vector, get_vector_type (type_idx))
+/* Dual-scalar (_2s): LMUL=1, or LMUL=2 when the referenced EEW is 64.  */
+DEF_RVV_BASE_TYPE (lmul1or2_vector, get_vector_type (type_idx))
+DEF_RVV_BASE_TYPE (widen_lmul1or2_vector, get_vector_type (type_idx))
+DEF_RVV_BASE_TYPE (quad_widen_lmul1or2_vector, get_vector_type (type_idx))
 
 DEF_RVV_VXRM_ENUM (RNU, VXRM_RNU)
 DEF_RVV_VXRM_ENUM (RNE, VXRM_RNE)

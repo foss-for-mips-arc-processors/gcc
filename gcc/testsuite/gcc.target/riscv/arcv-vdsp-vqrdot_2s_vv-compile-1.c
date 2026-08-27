@@ -72,9 +72,9 @@ vint32m1_t test_vqrdot_2s_vv_i8_mu (vbool8_t mask, vint32m1_t pass, vint8m1_t vs
 **  ret
 */
 
-vint64m1_t test_vqrdot_2s_vv_i16 (vint64m1_t vd, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
+vint64m2_t test_vqrdot_2s_vv_i16 (vint64m2_t vd, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m1 (vd, vs1, vs2, vl);
+  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m2 (vd, vs1, vs2, vl);
 }
 
 /*
@@ -84,9 +84,9 @@ vint64m1_t test_vqrdot_2s_vv_i16 (vint64m1_t vd, vint16m1_t vs1, vint16m1_t vs2,
 **  ret
 */
 
-vint64m1_t test_vqrdot_2s_vv_i16_m (vbool16_t mask, vint64m1_t vd, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
+vint64m2_t test_vqrdot_2s_vv_i16_m (vbool16_t mask, vint64m2_t vd, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m1_m (mask, vd, vs1, vs2, vl);
+  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m2_m (mask, vd, vs1, vs2, vl);
 }
 
 /*
@@ -95,9 +95,9 @@ vint64m1_t test_vqrdot_2s_vv_i16_m (vbool16_t mask, vint64m1_t vd, vint16m1_t vs
 **  arcv\.vqrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])
 **  ret
 */
-vint64m1_t test_vqrdot_2s_vv_i16_tu (vint64m1_t maskedoff, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
+vint64m2_t test_vqrdot_2s_vv_i16_tu (vint64m2_t maskedoff, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m1_tu (maskedoff, vs1, vs2, vl);
+  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m2_tu (maskedoff, vs1, vs2, vl);
 }
 
 /*
@@ -106,9 +106,9 @@ vint64m1_t test_vqrdot_2s_vv_i16_tu (vint64m1_t maskedoff, vint16m1_t vs1, vint1
 **  arcv\.vqrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])\.t
 **  ret
 */
-vint64m1_t test_vqrdot_2s_vv_i16_tumu (vbool16_t mask, vint64m1_t maskedoff, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
+vint64m2_t test_vqrdot_2s_vv_i16_tumu (vbool16_t mask, vint64m2_t maskedoff, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m1_tumu (mask, maskedoff, vs1, vs2, vl);
+  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m2_tumu (mask, maskedoff, vs1, vs2, vl);
 }
 
 /*
@@ -117,7 +117,7 @@ vint64m1_t test_vqrdot_2s_vv_i16_tumu (vbool16_t mask, vint64m1_t maskedoff, vin
 **  arcv\.vqrdot\.2s\.vv\s+(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1]),\s*(?:v[0-9]|v[1-2][0-9]|[a-x0-9]+[0-1])\.t
 **  ret
 */
-vint64m1_t test_vqrdot_2s_vv_i16_mu (vbool16_t mask, vint64m1_t pass, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
+vint64m2_t test_vqrdot_2s_vv_i16_mu (vbool16_t mask, vint64m2_t pass, vint16m1_t vs1, vint16m1_t vs2, size_t vl)
 {
-  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m1_mu (mask, pass, vs1, vs2, vl);
+  return __riscv_arcv_vqrdot_2s_vv_i16m1_i64m2_mu (mask, pass, vs1, vs2, vl);
 }

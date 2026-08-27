@@ -1339,6 +1339,11 @@ static CONSTEXPR const rvv_arg_type_info rwwvv_args[]
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info rwwvv_2s_args[]
+ = { rvv_arg_type_info (RVV_BASE_widen_lmul1or2_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info urqqvv_args[]
  = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_vector),
@@ -1355,6 +1360,10 @@ static CONSTEXPR const rvv_arg_type_info signed_shift_qx_args[]
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_qqx_args[]
  = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_2s_qx_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1or2_vector),
      rvv_arg_type_info (RVV_BASE_integer),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info surqqvv_args[]
@@ -1377,6 +1386,10 @@ static CONSTEXPR const rvv_arg_type_info signed_shift_wx_args[]
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_wwx_args[]
  = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_integer),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_2s_wx_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1or2_vector),
      rvv_arg_type_info (RVV_BASE_integer),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info whx_args[]
@@ -1405,12 +1418,21 @@ static CONSTEXPR const rvv_arg_type_info signed_shift_wwv_args[]
  = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
      rvv_arg_type_info (RVV_BASE_double_trunc_vector),
      rvv_arg_type_info_end};
+/* Dual-scalar (_2s) variants: wide/quad source is LMUL1, or LMUL2 for EEW=64.  */
+static CONSTEXPR const rvv_arg_type_info signed_shift_2s_wv_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1or2_vector),
+     rvv_arg_type_info (RVV_BASE_double_trunc_vector),
+     rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_qv_args[]
  = { rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info signed_shift_qqv_args[]
  = { rvv_arg_type_info (RVV_BASE_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info signed_shift_2s_qv_args[]
+ = { rvv_arg_type_info (RVV_BASE_lmul1or2_vector),
      rvv_arg_type_info (RVV_BASE_quad_trunc_vector),
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info qqvv_args_prime[]
@@ -1443,6 +1465,11 @@ static CONSTEXPR const rvv_arg_type_info whv_args[]
      rvv_arg_type_info_end};
 static CONSTEXPR const rvv_arg_type_info rqqvv_args[]
  = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info (RVV_BASE_vector),
+     rvv_arg_type_info_end};
+static CONSTEXPR const rvv_arg_type_info rqqvv_2s_args[]
+ = { rvv_arg_type_info (RVV_BASE_quad_widen_lmul1or2_vector),
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info (RVV_BASE_vector),
      rvv_arg_type_info_end};
@@ -3683,6 +3710,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvqv_ops
     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
     signed_shift_qqv_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_2s_qv_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_2s_qv_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info i_signed_shift_wvv_ops
  = {wexti_ops,			/* Types */
     OP_TYPE_vv,			/* Suffix */
@@ -3725,6 +3758,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvwv_ops
     rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
     signed_shift_wwv_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_2s_wv_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_2s_wv_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info iu_vv_ops
  = {iu_ops,			/* Types */
     OP_TYPE_v,			/* Suffix */
@@ -3748,6 +3787,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvwx_ops
     OP_TYPE_wx,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
     signed_shift_wwx_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_2s_wx_ops
+ = {wexti_ops,			/* Types */
+    OP_TYPE_wx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_double_trunc_vector),	/* Return type */
+    signed_shift_2s_wx_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info wi_vv_ops
  = {wi_ops,			/* Types */
@@ -3833,6 +3878,12 @@ static CONSTEXPR const rvv_op_info i_narrow_signed_shift_vvqx_ops
     rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
     signed_shift_qqx_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_narrow_signed_shift_2s_qx_ops
+ = {qexti_ops,			/* Types */
+    OP_TYPE_qx,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_trunc_vector),	/* Return type */
+    signed_shift_2s_qx_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info i_qqvv_ops_prime
  = {qexti_ops,			/* Types */
     OP_TYPE_vv,			/* Suffix */
@@ -3844,6 +3895,12 @@ static CONSTEXPR const rvv_op_info i_rqqvv_ops
     OP_TYPE_vv,			/* Suffix */
     rvv_arg_type_info (RVV_BASE_quad_widen_lmul1_vector),	/* Return type */
     rqqvv_args			/* Args */};
+
+static CONSTEXPR const rvv_op_info i_rqqvv_2s_ops
+ = {qrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_quad_widen_lmul1or2_vector),	/* Return type */
+    rqqvv_2s_args			/* Args */};
 
 static CONSTEXPR const rvv_op_info iu_s_vx_ops
  = {iu_ops,			/* Types */
@@ -3875,6 +3932,12 @@ static CONSTEXPR const rvv_op_info i_rwwvv_ops
     rvv_arg_type_info (RVV_BASE_widen_lmul1_vector),	/* Return type */
     rwwvv_args			/* Args */};
 
+static CONSTEXPR const rvv_op_info i_rwwvv_2s_ops
+ = {wrdot_i_ops,			/* Types */
+    OP_TYPE_vv,			/* Suffix */
+    rvv_arg_type_info (RVV_BASE_widen_lmul1or2_vector),	/* Return type */
+    rwwvv_2s_args			/* Args */};
+
 static CONSTEXPR const rvv_op_info su_rwwvv_ops
  = {wrdot_i_ops,			/* Types */
     OP_TYPE_vv,			/* Suffix */
@@ -3905,7 +3968,8 @@ static CONSTEXPR const function_type_info function_types[] = {
   SIGNED_EEW64_LMUL1_INTERPRET, UNSIGNED_EEW8_LMUL1_INTERPRET,                 \
   UNSIGNED_EEW16_LMUL1_INTERPRET, UNSIGNED_EEW32_LMUL1_INTERPRET,              \
   UNSIGNED_EEW64_LMUL1_INTERPRET, X2, X2_VLMUL_EXT, X4_VLMUL_EXT, X8_VLMUL_EXT,\
-  X16_VLMUL_EXT, X32_VLMUL_EXT, X64_VLMUL_EXT, TUPLE_SUBPART)                  \
+  X16_VLMUL_EXT, X32_VLMUL_EXT, X64_VLMUL_EXT, TUPLE_SUBPART, LMUL1OR2,\
+  WLMUL1OR2, QWLMUL1OR2)                  \
   {                                                                            \
     VECTOR_TYPE_##VECTOR,                                                      \
     VECTOR_TYPE_INVALID,                                                       \
@@ -3988,6 +4052,9 @@ static CONSTEXPR const function_type_info function_types[] = {
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
     VECTOR_TYPE_INVALID,                                                       \
+    VECTOR_TYPE_##LMUL1OR2,                                                    \
+    VECTOR_TYPE_##WLMUL1OR2,                                                   \
+    VECTOR_TYPE_##QWLMUL1OR2,                                                  \
   },
 #include "riscv-vector-builtins.def"
 }; // namespace riscv_vector
@@ -4531,6 +4598,9 @@ required_extensions_p (enum rvv_base_type type)
       case RVV_BASE_double_trunc_vector:
       case RVV_BASE_double_trunc_lmul1_vector:
       case RVV_BASE_widen_lmul1_vector:
+      case RVV_BASE_lmul1or2_vector:
+      case RVV_BASE_widen_lmul1or2_vector:
+      case RVV_BASE_quad_widen_lmul1or2_vector:
       case RVV_BASE_eew8_interpret:
       case RVV_BASE_eew16_interpret:
       case RVV_BASE_eew32_interpret:

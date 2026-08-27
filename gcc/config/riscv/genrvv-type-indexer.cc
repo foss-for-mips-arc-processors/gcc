@@ -32,6 +32,9 @@ along with GCC; see the file COPYING3.  If not see
     8, 16, 32, 64                                                              \
   }
 #define LMUL1_LOG2 0
+/* Dual-scalar (_2s): LMUL=2 when SEW=64 so two elements fit at VLEN=64;
+   otherwise LMUL=1.  */
+#define DUAL_LMUL_LOG2(SEW) ((SEW) == 64 ? 1 : 0)
 
 std::string
 to_lmul (int lmul_log2)
@@ -320,7 +323,10 @@ main (int argc, const char **argv)
 	  unsigned multiple_of_lmul = 1 << lmul_log2_offset;
 	  fprintf (fp, "  /*X%d_INTERPRET*/ INVALID,\n", multiple_of_lmul);
 	}
-      fprintf (fp, "  /*TUPLE_SUBPART*/ INVALID\n");
+      fprintf (fp, "  /*TUPLE_SUBPART*/ INVALID,\n");
+      fprintf (fp, "  /*LMUL1OR2*/ INVALID,\n");
+      fprintf (fp, "  /*WLMUL1OR2*/ INVALID,\n");
+      fprintf (fp, "  /*QWLMUL1OR2*/ INVALID\n");
       fprintf (fp, ")\n");
     }
 
@@ -463,8 +469,16 @@ main (int argc, const char **argv)
 			 inttype (sew, lmul_log2 + lmul_log2_offset, unsigned_p)
 			   .c_str ());
 	      }
-	    fprintf (fp, "  /*TUPLE_SUBPART*/ %s\n",
+	    fprintf (fp, "  /*TUPLE_SUBPART*/ %s,\n",
 		     inttype (sew, lmul_log2, 1, unsigned_p).c_str ());
+	    fprintf (fp, "  /*LMUL1OR2*/ %s,\n",
+		     inttype (sew, DUAL_LMUL_LOG2 (sew), unsigned_p).c_str ());
+	    fprintf (fp, "  /*WLMUL1OR2*/ %s,\n",
+		     inttype (sew * 2, DUAL_LMUL_LOG2 (sew * 2),
+			      unsigned_p).c_str ());
+	    fprintf (fp, "  /*QWLMUL1OR2*/ %s\n",
+		     inttype (sew * 4, DUAL_LMUL_LOG2 (sew * 4),
+			      unsigned_p).c_str ());
 	    fprintf (fp, ")\n");
 	  }
   // Build for vbfloat16
@@ -544,8 +558,11 @@ main (int argc, const char **argv)
 	    fprintf (fp, "  /*X%d_VLMUL_EXT*/ %s,\n", multiple_of_lmul,
 		     bfloat16_type (lmul_log2 + lmul_log2_offset).c_str ());
 	  }
-	fprintf (fp, "  /*TUPLE_SUBPART*/ %s\n",
+	fprintf (fp, "  /*TUPLE_SUBPART*/ %s,\n",
 		 bfloat16_type (lmul_log2, 1U).c_str ());
+	fprintf (fp, "  /*LMUL1OR2*/ INVALID,\n");
+	fprintf (fp, "  /*WLMUL1OR2*/ INVALID,\n");
+	fprintf (fp, "  /*QWLMUL1OR2*/ INVALID\n");
 	fprintf (fp, ")\n");
       }
   // Build for vfloat
@@ -639,8 +656,11 @@ main (int argc, const char **argv)
 	      fprintf (fp, "  /*X%d_VLMUL_EXT*/ %s,\n", multiple_of_lmul,
 		       floattype (sew, lmul_log2 + lmul_log2_offset).c_str ());
 	    }
-	  fprintf (fp, "  /*TUPLE_SUBPART*/ %s\n",
+	  fprintf (fp, "  /*TUPLE_SUBPART*/ %s,\n",
 		   floattype (sew, lmul_log2, 1).c_str ());
+	  fprintf (fp, "  /*LMUL1OR2*/ INVALID,\n");
+	  fprintf (fp, "  /*WLMUL1OR2*/ INVALID,\n");
+	  fprintf (fp, "  /*QWLMUL1OR2*/ INVALID\n");
 	  fprintf (fp, ")\n");
 	}
 
