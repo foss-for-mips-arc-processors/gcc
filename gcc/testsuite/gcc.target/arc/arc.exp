@@ -60,6 +60,15 @@ proc check_effective_target_arcmpy { } {
     }]
 }
 
+# Return 1 if we have the ARC HS quad multiply option
+proc check_effective_target_qmacw { } {
+    return [check_no_compiler_messages qmacw assembly {
+	#if !defined(__ARC_MPY_QMACW__) || !defined(__ARCHS__)
+	#error No QMACW
+	#endif
+    }]
+}
+
 # Return 1 if this is a compiler supporting ARC HS as default processor
 proc check_effective_target_archs { } {
     return [check_no_compiler_messages archs assembly {
