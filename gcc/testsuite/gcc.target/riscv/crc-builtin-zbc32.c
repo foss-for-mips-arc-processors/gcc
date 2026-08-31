@@ -19,7 +19,7 @@ int16_t crc16_data16 ()
 }
 
 int32_t rev_crc32_data8 ()
-]{
+{
   return __builtin_rev_crc32_data8 (0x12345678, 'a', 0x04C11DB7);
 }
 
