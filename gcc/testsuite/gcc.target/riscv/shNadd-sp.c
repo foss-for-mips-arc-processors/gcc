@@ -11,4 +11,4 @@ void foo ()
     bar (baz);
   }
 
-/* { dg-final { scan-assembler-not "sh[123]add" } } */
+/* { dg-final { scan-assembler-not "sh\[123\]add" } } */
