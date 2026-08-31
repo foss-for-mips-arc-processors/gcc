@@ -2679,7 +2679,7 @@ riscv*-*-elf* | riscv*-*-rtems*)
 		  xno) ;;
 		  xyes)
 			case ${target} in
-			*-snps-*)
+			*-gf-* | *-snps-*)
 			  if test "x${with_multilib_list}" = "xdefault"; then
 				with_multilib_list=release
 			  fi
@@ -5143,8 +5143,8 @@ case "${target}" in
 		case ${with_tune} in
 		"")
 			case ${target} in
-			*-snps-*)
-				# Use a default mtune for Synopsys ARC-V.
+			*-gf-* | *-snps-*)
+				# Use a default mtune for ARC-V.
 				with_tune=arc-v-rmx-100-series
 				;;
 			*)
