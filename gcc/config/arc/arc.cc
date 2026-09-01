@@ -9984,10 +9984,12 @@ arc_split_move (rtx *operands)
 	}
       else
 	{
-	  intval1  = INTVAL (XVECEXP (operands[1], 0, 3)) << 16;
-	  intval1 |= INTVAL (XVECEXP (operands[1], 0, 2)) & 0xFFFF;
-	  intval0  = INTVAL (XVECEXP (operands[1], 0, 1)) << 16;
-	  intval0 |= INTVAL (XVECEXP (operands[1], 0, 0)) & 0xFFFF;
+	  int hi = TARGET_BIG_ENDIAN ? 0 : 1;
+	  int lo = TARGET_BIG_ENDIAN ? 1 : 0;
+	  intval1  = INTVAL (XVECEXP (operands[1], 0, 2 + hi)) << 16;
+	  intval1 |= INTVAL (XVECEXP (operands[1], 0, 2 + lo)) & 0xFFFF;
+	  intval0  = INTVAL (XVECEXP (operands[1], 0, hi)) << 16;
+	  intval0 |= INTVAL (XVECEXP (operands[1], 0, lo)) & 0xFFFF;
 	}
       xop[0] = gen_rtx_REG (SImode, REGNO (operands[0]));
       xop[3] = gen_rtx_REG (SImode, REGNO (operands[0]) + 1);
