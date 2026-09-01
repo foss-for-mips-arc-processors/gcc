@@ -2095,9 +2095,12 @@
    emit_insn (gen_rtx_SET (high_dest,
 			   gen_rtx_ASHIFT (SImode, tmp, GEN_INT (16))));
    emit_insn (gen_rtx_SET (low_dest,
-			   gen_rtx_IOR (SImode, high_dest, tmp)));
+			   gen_rtx_LSHIFTRT (SImode, high_dest,
+					     GEN_INT (16))));
+   emit_insn (gen_rtx_SET (low_dest,
+			   gen_rtx_IOR (SImode, low_dest, high_dest)));
    emit_move_insn (high_dest, low_dest);
    DONE;
   }
-  [(set_attr "length" "12")
+  [(set_attr "length" "16")
    (set_attr "type" "multi")])
