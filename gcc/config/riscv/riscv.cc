@@ -16696,10 +16696,16 @@ synthesize_add (rtx operands[3])
       return true;
     }
 
+  /* Virtual registers are later eliminated to FP/SP + a constant.
+     Putting them inside a shNadd prevents that folding.  */
+  bool virtual_base_p
+    = REG_P (operands[1]) && VIRTUAL_REGISTER_P (operands[1]);
+
   /* If we can shift the constant by 1, 2, or 3 bit positions
      and the result is a cheaper constant, then do so.  */
   ival = INTVAL (operands[2]);
   if (TARGET_ZBA
+      && !virtual_base_p
       && (((ival % 2) == 0 && budget1
 	   > riscv_const_insns (GEN_INT (ival >> 1), true))
 	   || ((ival % 4) == 0 && budget1
