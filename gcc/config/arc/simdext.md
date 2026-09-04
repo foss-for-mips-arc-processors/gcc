@@ -2042,9 +2042,20 @@
   [(set_attr "length" "8")
    (set_attr "type" "multi")])
 
-(define_insn "reduc_plus_scal_v4hi"
-  [(set (match_operand:HI 0 "even_register_operand" "=r")
-	(unspec:HI [(match_operand:V4HI 1 "even_register_operand" "r")]
+(define_expand "reduc_plus_scal_v4hi"
+  [(match_operand:HI 0 "register_operand")
+   (match_operand:V4HI 1 "even_register_operand")]
+  "TARGET_PLUS_QMACW"
+  {
+    rtx tmp = gen_reg_rtx (DImode);
+    emit_insn (gen_qmpyh_v4hi (tmp, operands[1]));
+    emit_move_insn (operands[0], gen_lowpart (HImode, tmp));
+    DONE;
+  })
+
+(define_insn "qmpyh_v4hi"
+  [(set (match_operand:DI 0 "even_register_operand" "=r")
+	(unspec:DI [(match_operand:V4HI 1 "even_register_operand" "r")]
 		   UNSPEC_ARC_QMPYH))
    (clobber (reg:DI ARCV2_ACC))]
   "TARGET_PLUS_QMACW"
@@ -2052,12 +2063,23 @@
   [(set_attr "length" "4")
    (set_attr "type" "multi")])
 
-(define_insn "reduc_plus_scal_v2si"
-  [(set (match_operand:SI 0 "even_register_operand" "=r")
-	(unspec:SI [(match_operand:V2SI 1 "even_register_operand" "r")]
+(define_expand "reduc_plus_scal_v2si"
+  [(match_operand:SI 0 "register_operand")
+   (match_operand:V2SI 1 "even_register_operand")]
+  "TARGET_PLUS_QMACW"
+  {
+    rtx tmp = gen_reg_rtx (DImode);
+    emit_insn (gen_dmpywh_v2si (tmp, operands[1]));
+    emit_move_insn (operands[0], gen_lowpart (SImode, tmp));
+    DONE;
+  })
+
+(define_insn "dmpywh_v2si"
+  [(set (match_operand:DI 0 "even_register_operand" "=r")
+	(unspec:DI [(match_operand:V2SI 1 "even_register_operand" "r")]
 		   UNSPEC_ARC_DMPYWH))
    (clobber (reg:DI ARCV2_ACC))]
-  "TARGET_PLUS_DMPY"
+  "TARGET_PLUS_QMACW"
   "dmpywh\\t%0,%1,1"
   [(set_attr "length" "4")
    (set_attr "type" "multi")])
