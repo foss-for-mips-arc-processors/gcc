@@ -35,6 +35,6 @@ __umul128(const uint64_t a, const uint64_t b, uint64_t * const productHi)
 }
 
 /* Check that the compiler generates vadd2+macdu */
-/* { dg-final { scan-assembler "vadd23" } } */
+/* { dg-final { scan-assembler "vadd2" } } */
 /* { dg-final { scan-assembler "macdu" } } */
 
