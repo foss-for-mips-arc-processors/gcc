@@ -445,6 +445,11 @@ struct arc64_args
 #define MOVE_MAX (2*UNITS_PER_WORD)
 #define MAX_MOVE_MAX 16
 
+/* 'm' is redefined as a restricted memory constraint that can be safely used
+   in inline asm.  We use 'e' instead for the unrestricted memory operand
+   constraint.  */
+#define TARGET_MEM_CONSTRAINT 'e'
+
 /* The base cost overhead of a memcpy call, for MOVE_RATIO and friends.  */
 #define ARC64_CALL_RATIO 8
 

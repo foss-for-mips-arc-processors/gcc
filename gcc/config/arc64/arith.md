@@ -1487,7 +1487,7 @@
 
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,Ustor")
-	(match_operand:VALL 1 "nonimmediate_operand" "r,m,r"))]
+	(match_operand:VALL 1 "nonimmediate_operand" "r,e,r"))]
   "TARGET_SIMD && TARGET_64BIT
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
@@ -2448,7 +2448,7 @@
 
 (define_insn "*mov<mode>"
   [(set (match_operand:VALLF_64 0 "arc64_dest_operand"  "=w,    w,Ufpms,*r,*w,*r,*r,*Ustor")
-	(match_operand:VALLF_64 1 "nonimmediate_operand" "w,Ufpms,    w,*w,*r,*r,*m,*r"))]
+	(match_operand:VALLF_64 1 "nonimmediate_operand" "w,Ufpms,    w,*w,*r,*r,*e,*r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"

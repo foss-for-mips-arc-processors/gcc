@@ -5642,6 +5642,29 @@ arc64_legitimate_store_address_p (machine_mode mode, rtx addr)
   return arc64_legitimate_address_1_p (mode, addr, true, false, true);
 }
 
+/* Used by the 'm' constraint.  */
+
+bool
+arc64_legitimate_asm_address_p (machine_mode mode, rtx addr)
+{
+  switch (GET_CODE (addr))
+    {
+    case PRE_INC:
+    case PRE_DEC:
+    case POST_INC:
+    case POST_DEC:
+    case PRE_MODIFY:
+    case POST_MODIFY:
+    case LO_SUM:
+      return false;
+
+    default:
+      break;
+    }
+
+  return arc64_legitimate_address_1_p (mode, addr, true, false, false);
+}
+
 /* Return true if an address fits a short load/store instruction.  */
 
 bool

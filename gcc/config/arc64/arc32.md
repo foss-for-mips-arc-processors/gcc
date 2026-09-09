@@ -5,7 +5,7 @@
 
 (define_insn_and_split "*arc32_movdi"
   [(set (match_operand:DI 0 "arc64_dest_operand"  "=r,r,Ustor")
-	(match_operand:DI 1 "nonimmediate_operand" "r,m,r"))]
+	(match_operand:DI 1 "nonimmediate_operand" "r,e,r"))]
   "!TARGET_64BIT
    && (register_operand (operands[0], DImode)
        || register_operand (operands[1], DImode))"
@@ -24,7 +24,7 @@
 
 (define_insn_and_split "*arc32_mov<mode>"
   [(set (match_operand:VALL 0 "arc64_dest_operand"  "=r,r,Ustor")
-	(match_operand:VALL 1 "nonimmediate_operand" "r,m,r"))]
+	(match_operand:VALL 1 "nonimmediate_operand" "r,e,r"))]
   "!TARGET_64BIT && TARGET_SIMD
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"

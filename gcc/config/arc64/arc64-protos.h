@@ -20,6 +20,7 @@ extern void arc64_expand_epilogue (bool);
 extern bool arc64_limm_addr_p (rtx);
 extern bool arc64_is_long_call_p (rtx);
 extern bool arc64_legitimate_store_address_p (machine_mode, rtx);
+extern bool arc64_legitimate_asm_address_p (machine_mode, rtx);
 extern bool arc64_short_access_p (rtx, machine_mode, bool);
 extern rtx arc64_eh_return_handler_rtx (void);
 extern int arc64_asm_preferred_eh_data_format (int, int);

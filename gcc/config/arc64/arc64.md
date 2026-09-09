@@ -810,7 +810,7 @@ xorl"
 (define_insn "*arc64_movqi"
   [(set
     (match_operand:QI 0 "arc64_dest_operand"   "=qh,    q, r,    q,Ustms,Ustor,Ucnst, r,Ustor")
-    (match_operand:QI 1 "general_operand" " qhS03MV,U08S0,ri,Uldms,    q,S06S0,    i, m, r"))
+    (match_operand:QI 1 "general_operand" " qhS03MV,U08S0,ri,Uldms,    q,S06S0,    i, e, r"))
    ]
    ; in general, at least one of the operands must be a register
    "register_operand (operands[0], QImode)
@@ -838,7 +838,7 @@ xorl"
 (define_insn "*arc64_movhi"
   [(set
     (match_operand:HI 0 "arc64_dest_operand"  "=qh,r,    q,    r,h,r,   q,Ustms,Ustw6,Ucnst, r,Ustor")
-    (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0,    i, m, r"))
+    (match_operand:HI 1 "general_operand" "qhS03MV,r,U08S0,S12S0,i,i,Uldms,   q,S06S0,    i, e, r"))
    ]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
@@ -866,7 +866,7 @@ xorl"
 (define_insn "*arc64_movsi"
   [(set
     (match_operand:SI 0 "arc64_dest_operand"      "=qh,r,    q,    r,    r,h,r,    q,Ustms,Ustor,Ucnst,RBLNKq,r, Ustk<,Ustor")
-    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,i,i,Uldms,    q,S06S0,    i, Ustk>,m,RBLNKq,    r"))
+    (match_operand:SI 1 "arc64_movl_operand"  "qhS03MV,r,U08S0,S12S0,SyPic,i,i,Uldms,    q,S06S0,    i, Ustk>,e,RBLNKq,    r"))
    ]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
@@ -907,7 +907,7 @@ xorl"
 ;; Softcore float move.
 (define_insn "*movsf_softfp"
    [(set (match_operand:SF 0 "arc64_dest_operand" "=qh,r,qh,r,    q,Ustms,r,Ustor")
-	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,    q,m,r"))
+	 (match_operand:SF 1 "general_operand"    "qhZ,r, E,E,Uldms,    q,e,r"))
    ]
    "!ARC64_HAS_FP_BASE
    && (register_operand (operands[0], SFmode)
@@ -929,7 +929,7 @@ xorl"
 ;; FIXME! add short instruction selection
 (define_insn "*mov<mode>_hardfp"
   [(set (match_operand:GPF_HF 0 "arc64_dest_operand" "=w,    w,Ufpms,*r,*w,*r,*r,*r,*Ustor")
-	(match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G,*m,    *r"))]
+	(match_operand:GPF_HF 1 "arc64_movf_operand"  "w,Ufpms,    w,*w,*r,*r,*G,*e,    *r"))]
   "ARC64_HAS_FP_BASE
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
@@ -949,7 +949,7 @@ xorl"
 ;; move 128bit
 (define_insn_and_split "*mov<mode>_insn"
   [(set (match_operand:A128 0 "arc64_dest_operand"  "=r,r,r,Ustk<,Ustor")
-	(match_operand:A128 1 "nonimmediate_operand" "r,Ustk>,m,r,r"))]
+	(match_operand:A128 1 "nonimmediate_operand" "r,Ustk>,e,r,r"))]
   "TARGET_WIDE_LDST
    && (register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
@@ -974,7 +974,7 @@ xorl"
 ;;
 (define_insn "*arc64_movdi"
    [(set (match_operand:DI 0 "arc64_dest_operand" "=qh,    q,    r,    r,r,    r,         r,    r,    r,Ucnst,    r,r,Ustk<,Ustor")
-	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,BCLRX,BSETX,r,S12S0,S32S0SymMV,U38S0,SyPic,S32S0,Ustk>,m,    r, r"))]
+	 (match_operand:DI 1 "arc64_movl_operand"  "qh,U08S0,BCLRX,BSETX,r,S12S0,S32S0SymMV,U38S0,SyPic,S32S0,Ustk>,e,    r, r"))]
    "TARGET_64BIT
     && (register_operand (operands[0], DImode)
         || register_operand (operands[1], DImode)
@@ -1949,7 +1949,7 @@ xorl"
 (define_insn "*zero_extend<mode>si2"
   [(set (match_operand:SI 0 "register_operand"        "=q,r,    q,r")
 	(zero_extend:SI
-	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,Uldms,m")))]
+	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,Uldms,e")))]
    ""
    "@
    ext<exttab>_s\\t%0,%1
@@ -1962,7 +1962,7 @@ xorl"
 (define_insn "*zero_extend<mode>di2"
   [(set (match_operand:DI 0 "register_operand"      "=r,    q,r")
 	(zero_extend:DI
-	 (match_operand:EXT 1 "nonimmediate_operand" "r,Uldms,m")))]
+	 (match_operand:EXT 1 "nonimmediate_operand" "r,Uldms,e")))]
    "TARGET_64BIT"
    "@
    bmskl\\t%0,%1,<sizen>
@@ -1975,7 +1975,7 @@ xorl"
 (define_insn "*sign_extend<mode>di2"
   [(set (match_operand:DI 0 "register_operand"       "=r,r")
 	(sign_extend:DI
-	 (match_operand:EXT 1 "nonimmediate_operand"  "r,m")))]
+	 (match_operand:EXT 1 "nonimmediate_operand"  "r,e")))]
    "((!TARGET_VOLATILE_DI) || (!MEM_P (operands[1])
 			       || !MEM_VOLATILE_P (operands[1])))
     && TARGET_64BIT"
@@ -1988,7 +1988,7 @@ xorl"
 (define_insn "*sign_extend<mode>si2"
   [(set (match_operand:SI 0 "register_operand" "=q,r,r")
 	(sign_extend:SI
-	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,m")))]
+	 (match_operand:SHORT 1 "nonimmediate_operand" "q,r,e")))]
   ""
   "@
   sex<exttab>_s\\t%0,%1

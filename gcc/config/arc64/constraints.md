@@ -55,6 +55,14 @@
   (and (match_code "reg")
        (match_test "REGNO (op) == R58_REGNUM")))
 
+; This defines 'm' as a restricted memory constraint that can be safely used in
+; inline asm.
+(define_memory_constraint "m"
+  "A memory operand whose address is one of @code{[Rb]}, @code{[Rb,s9]} or
+@code{[limm]}."
+  (and (match_code "mem")
+       (match_test "arc64_legitimate_asm_address_p (mode, XEXP (op, 0))")))
+
 ; Usc constant is only used for storing long constants, hence we can
 ; have only [b,s9], and [b] types of addresses.
 (define_memory_constraint "Ucnst" "@internal
