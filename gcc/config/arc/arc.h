@@ -1,4 +1,4 @@
-/* Definitions of target machine for GNU compiler, Synopsys DesignWare ARC cpu.
+/* Definitions of target machine for GNU compiler, MIPS ARC cpu.
    Copyright (C) 1994-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.

@@ -1,7 +1,7 @@
-/* Synopsys DesignWare ARC SIMD include file.
+/* MIPS ARC SIMD include file.
    Copyright (C) 2007-2026 Free Software Foundation, Inc.
-   Written by Saurabh Verma (saurabh.verma@celunite.com) on behalf os Synopsys
-   Inc.
+   Written by Saurabh Verma (saurabh.verma@celunite.com) on behalf of MIPS
+   Holding, Inc.
 
    This file is part of GCC.
 

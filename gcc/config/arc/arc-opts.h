@@ -1,4 +1,4 @@
-/* GCC option-handling definitions for the Synopsys DesignWare ARC architecture.
+/* GCC option-handling definitions for the MIPS ARC architecture.
 
    Copyright (C) 2007-2026 Free Software Foundation, Inc.
 
