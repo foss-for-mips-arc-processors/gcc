@@ -885,8 +885,19 @@ enum riscv_fusion_pairs
   RISCV_FUSE_FLDFST_PAIR_DEC = HOST_WIDE_INT_1U << 26,
 };
 
+/* Possible directions for a memory-pair candidate.  */
+enum riscv_fusion_direction
+{
+  RISCV_FUSION_NONE,
+  RISCV_FUSION_INC,
+  RISCV_FUSION_DEC,
+  RISCV_FUSION_ANY
+};
+
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+extern enum riscv_fusion_direction riscv_fuse_mem_direction (rtx_insn *);
 extern unsigned HOST_WIDE_INT riscv_get_fusible_ops (void);
 
 /* Routines implemented in thead.cc.  */
