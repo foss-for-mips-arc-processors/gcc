@@ -31,8 +31,8 @@ MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zfinx_zdinx_zicsr/mabi=ilp
 # RMX-500
 MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rmx-500-series
 
-# RMX-700
-MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rmx-700-series
+# RMX-700 shares the RMX-500 libraries
+MULTILIB_REUSE      += march.rv32imafd_zca_zcb_zba_zbb_zbs/mabi.ilp32d/mtune.arc-v-rmx-500-series=march.rv32imafd_zca_zcb_zba_zbb_zbs/mabi.ilp32d/mtune.arc-v-rmx-700-series
 
 # RHX-100
 MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rhx-100-series
