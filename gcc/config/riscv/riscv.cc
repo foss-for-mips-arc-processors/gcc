@@ -12373,6 +12373,11 @@ riscv_override_options_internal (struct gcc_options *opts)
 		 ? &optimize_size_tune_info
 		 : cpu->tune_param;
 
+  /* Enable scheduling fusion for load/store-pair tunes.  */
+  if (!OPTION_SET_P (flag_schedule_fusion))
+    opts->x_flag_schedule_fusion
+      = riscv_fuse_mem_direction (nullptr) != RISCV_FUSION_NONE;
+
   /* If not optimizing for size, set the default
       alignment to what the target wants.  */
   if (!opts->x_optimize_size)
@@ -12481,6 +12486,12 @@ riscv_override_options_after_change (void)
     }
   else if (!OPTION_SET_P (flag_cunroll_grow_size))
     flag_cunroll_grow_size = flag_peel_loops || optimize >= 3;
+
+  /* Restore the tune's fusion default after optimization option changes.
+     The initial option override sets tune_param later.  */
+  if (tune_param && !OPTION_SET_P (flag_schedule_fusion))
+    flag_schedule_fusion
+      = riscv_fuse_mem_direction (nullptr) != RISCV_FUSION_NONE;
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */
@@ -16941,6 +16952,8 @@ riscv_memtag_tag_bitsize ()
 #define TARGET_SCHED_MACRO_FUSION_P riscv_macro_fusion_p
 #undef TARGET_SCHED_MACRO_FUSION_PAIR_P
 #define TARGET_SCHED_MACRO_FUSION_PAIR_P riscv_macro_fusion_pair_p
+#undef TARGET_SCHED_FUSION_PRIORITY
+#define TARGET_SCHED_FUSION_PRIORITY riscv_sched_fusion_priority
 
 #undef TARGET_SCHED_INIT
 #define TARGET_SCHED_INIT riscv_sched_init

@@ -633,13 +633,13 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
   return true;
 }
 
-/* Load/store classes used by fusion checks.  */
+/* Load/store classes used by fusion checks and rule masks.  */
 enum sched_fusion_type
 {
-  SCHED_FUSION_LD_SIGN_EXTEND = 0,
-  SCHED_FUSION_LD_ZERO_EXTEND,
-  SCHED_FUSION_LD,
-  SCHED_FUSION_ST
+  SCHED_FUSION_LD_SIGN_EXTEND = 1 << 0,
+  SCHED_FUSION_LD_ZERO_EXTEND = 1 << 1,
+  SCHED_FUSION_LD = 1 << 2,
+  SCHED_FUSION_ST = 1 << 3
 };
 
 /* Fusion-relevant information about a scalar load or store.  */
@@ -648,6 +648,8 @@ struct riscv_fusion_mem_info
 {
   enum sched_fusion_type type;
   struct riscv_address_info addr;
+  /* The register operand, or const0_rtx for a zero store.  */
+  rtx reg;
   machine_mode mode;
   bool fp_p;
 };
@@ -768,7 +770,109 @@ riscv_fuse_mem_p (rtx_insn *insn, struct riscv_fusion_mem_info *info)
   else
     return false;
 
+  /* Retain the register operand for pair dependency checks.  */
+  info->reg = isload_p ? dest : src;
   return true;
+}
+
+/* Constraints shared by memory-pair classification and matching.  */
+
+struct riscv_fusion_mem_rule
+{
+  enum riscv_fusion_pairs op;
+  /* Bit N permits an N-byte access.  */
+  unsigned HOST_WIDE_INT access_sizes;
+  /* Mask of sched_fusion_type values.  */
+  unsigned int types;
+  /* Whether the access uses the floating-point register file.  */
+  bool fp_p;
+  /* Whether the memory mode must be a scalar integer mode.  */
+  bool scalar_int_p;
+  /* Supported address order, independent of scheduling preferences.  */
+  enum riscv_fusion_direction direction;
+  /* Positive multiple of the access size used to align the lower offset.  */
+  unsigned int alignment_factor;
+};
+
+static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
+{
+  { RISCV_FUSE_LDST_PAIR_INC, (1U << 4) | (1U << 8),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND | SCHED_FUSION_ST,
+    false, false, RISCV_FUSION_INC, 1 },
+  { RISCV_FUSE_LDST_PAIR_DEC, (1U << 4) | (1U << 8),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND | SCHED_FUSION_ST,
+    false, false, RISCV_FUSION_DEC, 1 },
+  { RISCV_FUSE_FLDFST_PAIR_INC, (1U << 4) | (1U << 8),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+    | SCHED_FUSION_LD_ZERO_EXTEND | SCHED_FUSION_ST,
+    true, false, RISCV_FUSION_INC, 1 },
+  { RISCV_FUSE_FLDFST_PAIR_DEC, (1U << 4) | (1U << 8),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+    | SCHED_FUSION_LD_ZERO_EXTEND | SCHED_FUSION_ST,
+    true, false, RISCV_FUSION_DEC, 1 },
+  /* Allow 1-, 2-, 4- and 8-byte stores.  */
+  { RISCV_FUSE_ALIGNED_STD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
+    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 }
+};
+
+/* Return true if MEM satisfies RULE's single-instruction constraints.
+   Leave scheduling phases and pair constraints to the operation checker.  */
+
+static bool
+riscv_fuse_mem_candidate_p (const struct riscv_fusion_mem_info *mem,
+			    const struct riscv_fusion_mem_rule &rule)
+{
+  /* Check the memory mode independently of the register file.  */
+  if (mem->addr.type != ADDRESS_REG
+      || !CONST_INT_P (mem->addr.offset)
+      || mem->fp_p != rule.fp_p
+      || !(rule.types & mem->type)
+      || (rule.scalar_int_p && !SCALAR_INT_MODE_P (mem->mode)))
+    return false;
+
+  /* Bound the shift used to test the access-size mask.  */
+  unsigned int access_size = GET_MODE_SIZE (mem->mode).to_constant ();
+  if (access_size >= HOST_BITS_PER_WIDE_INT
+      || !(rule.access_sizes & (HOST_WIDE_INT_1U << access_size)))
+    return false;
+
+  /* Both members of an aligned pair have access-size-aligned offsets.  */
+  return INTVAL (mem->addr.offset) % access_size == 0;
+}
+
+/* Return a memory-pair scheduling direction for INSN under the current tune.
+   A null INSN queries support without checking a specific instruction.  */
+
+enum riscv_fusion_direction
+riscv_fuse_mem_direction (rtx_insn *insn)
+{
+  struct riscv_fusion_mem_info mem;
+  if (insn && !riscv_fuse_mem_p (insn, &mem))
+    return RISCV_FUSION_NONE;
+
+  unsigned HOST_WIDE_INT fusible_ops = riscv_get_fusible_ops ();
+  bool inc_p = false, dec_p = false, any_p = false;
+  /* Collect directions from all enabled rules that accept this access.  */
+  for (const riscv_fusion_mem_rule &rule : riscv_fusion_mem_rules)
+    {
+      if (!(fusible_ops & rule.op)
+	  || (insn && !riscv_fuse_mem_candidate_p (&mem, rule)))
+	continue;
+
+      inc_p |= rule.direction == RISCV_FUSION_INC;
+      dec_p |= rule.direction == RISCV_FUSION_DEC;
+      any_p |= rule.direction == RISCV_FUSION_ANY;
+    }
+
+  /* Prefer directional rules over bidirectional rules to preserve their
+     scheduling order when both are eligible.  */
+  if (inc_p && dec_p)
+    return RISCV_FUSION_ANY;
+  if (inc_p)
+    return RISCV_FUSION_INC;
+  if (dec_p)
+    return RISCV_FUSION_DEC;
+  return any_p ? RISCV_FUSION_ANY : RISCV_FUSION_NONE;
 }
 
 /* Extract an add-type instruction followed by an integer load or store that
@@ -839,72 +943,120 @@ riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
   return !riscv_fuse_same_reg_p (SET_SRC (mem_set), update_dest);
 }
 
-/* Extract a pair of scalar loads or stores with the same mode and base
-   register.  Store whether they are loads in *LOAD_P.  */
+/* Check scalar load/store pair operation OP, sharing candidate eligibility
+   with the priority hook.  Leave scheduling phase checks to the caller.  */
 
 static bool
 riscv_fuse_mem_pair_p (rtx_insn *prev, rtx_insn *curr,
-			 struct riscv_fusion_mem_info *prev_mem,
-			 struct riscv_fusion_mem_info *curr_mem,
-			 bool *load_p)
+		       enum riscv_fusion_pairs op)
 {
-  if (!riscv_fuse_sets_p (prev, curr)
-      || !riscv_fuse_mem_p (prev, prev_mem)
-      || !riscv_fuse_mem_p (curr, curr_mem))
+  /* Match the caller's operation, regardless of other enabled rules.  */
+  const riscv_fusion_mem_rule *rule = nullptr;
+  for (const riscv_fusion_mem_rule &candidate : riscv_fusion_mem_rules)
+    if (candidate.op == op)
+      {
+	rule = &candidate;
+	break;
+      }
+  gcc_assert (rule);
+
+  struct riscv_fusion_mem_info prev_mem, curr_mem;
+  if (!riscv_fuse_mem_p (prev, &prev_mem)
+      || !riscv_fuse_mem_candidate_p (&prev_mem, *rule)
+      || !riscv_fuse_mem_p (curr, &curr_mem)
+      || !riscv_fuse_mem_candidate_p (&curr_mem, *rule))
     return false;
 
-  bool prev_load_p = prev_mem->type != SCHED_FUSION_ST;
-  bool curr_load_p = curr_mem->type != SCHED_FUSION_ST;
+  /* Check the relationship between the two eligible accesses.  */
+  bool prev_load_p = prev_mem.type != SCHED_FUSION_ST;
+  bool curr_load_p = curr_mem.type != SCHED_FUSION_ST;
   if (prev_load_p != curr_load_p
-      || prev_mem->fp_p != curr_mem->fp_p
-      || prev_mem->mode != curr_mem->mode
-      || prev_mem->addr.type != ADDRESS_REG
-      || curr_mem->addr.type != ADDRESS_REG
-      || !CONST_INT_P (prev_mem->addr.offset)
-      || !CONST_INT_P (curr_mem->addr.offset)
-      || !riscv_fuse_same_reg_p (prev_mem->addr.reg,
-				   curr_mem->addr.reg))
+      || prev_mem.fp_p != curr_mem.fp_p
+      || prev_mem.mode != curr_mem.mode
+      || !riscv_fuse_same_reg_p (prev_mem.addr.reg, curr_mem.addr.reg))
     return false;
 
-  *load_p = prev_load_p;
-  return true;
+  /* Loads need distinct results, and the first must preserve the base.  */
+  if (prev_load_p
+      && (riscv_fuse_same_reg_p (prev_mem.reg, curr_mem.reg)
+	  || riscv_fuse_same_reg_p (prev_mem.addr.reg, prev_mem.reg)))
+    return false;
+
+  HOST_WIDE_INT prev_offset = INTVAL (prev_mem.addr.offset);
+  HOST_WIDE_INT curr_offset = INTVAL (curr_mem.addr.offset);
+  bool inc_p = prev_offset < curr_offset;
+  if (rule->direction != RISCV_FUSION_ANY
+      && inc_p != (rule->direction == RISCV_FUSION_INC))
+    return false;
+
+  /* Use the lower offset for the pair alignment check.  */
+  if (!inc_p)
+    std::swap (prev_offset, curr_offset);
+
+  /* Use unsigned subtraction to avoid overflow for opposite-signed offsets.  */
+  unsigned HOST_WIDE_INT diff = ((unsigned HOST_WIDE_INT) curr_offset
+				- (unsigned HOST_WIDE_INT) prev_offset);
+  HOST_WIDE_INT access_size = GET_MODE_SIZE (prev_mem.mode).to_constant ();
+  HOST_WIDE_INT alignment = rule->alignment_factor * access_size;
+  return (diff == (unsigned HOST_WIDE_INT) access_size
+	  && prev_offset % alignment == 0);
 }
 
-/* Check common adjacent load/store-pair constraints.  INC_P selects ascending
-   offsets and FP_P selects floating-point rather than integer accesses.  */
+/* Implement TARGET_SCHED_FUSION_PRIORITY.  Group load/store pair candidates
+   by register file, access kind, mode and base register, then by offset.  */
 
-static bool
-riscv_fuse_ldst_pair_p (rtx_insn *prev, rtx_insn *curr,
-			  bool inc_p, bool fp_p)
+void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri,
+			     int *fusion_pri, int *pri)
 {
-  struct riscv_fusion_mem_info prev_mem, curr_mem;
-  bool load_p;
-  if (!riscv_fuse_mem_pair_p (prev, curr, &prev_mem, &curr_mem,
-				&load_p)
-      || prev_mem.fp_p != fp_p
-      || prev_mem.type == SCHED_FUSION_LD_ZERO_EXTEND
-      || curr_mem.type == SCHED_FUSION_LD_ZERO_EXTEND)
-    return false;
+  struct riscv_fusion_mem_info mem;
+  unsigned int base_regno;
+  bool isload_p, fp_p, inc_p;
+  int fusion_type, tmp;
 
-  HOST_WIDE_INT access_size = GET_MODE_SIZE (prev_mem.mode).to_constant ();
-  if (access_size != 4 && access_size != 8)
-    return false;
+  gcc_assert (INSN_P (insn));
 
-  if (load_p)
-    {
-      rtx prev_dest = SET_DEST (single_set (prev));
-      rtx curr_dest = SET_DEST (single_set (curr));
-      if (riscv_fuse_same_reg_p (prev_dest, curr_dest)
-	  || riscv_fuse_same_reg_p (prev_mem.addr.reg, prev_dest))
-	return false;
-    }
+  /* Keep default priorities unless this instruction is a pair candidate.  */
+  tmp = max_pri - 1;
+  *fusion_pri = tmp;
+  *pri = tmp;
 
-  HOST_WIDE_INT diff = inc_p
-		       ? INTVAL (curr_mem.addr.offset)
-			 - INTVAL (prev_mem.addr.offset)
-		       : INTVAL (prev_mem.addr.offset)
-			 - INTVAL (curr_mem.addr.offset);
-  return diff == access_size;
+  enum riscv_fusion_direction direction
+    = riscv_fuse_mem_direction (insn);
+  if (direction == RISCV_FUSION_NONE || !riscv_fuse_mem_p (insn, &mem))
+    return;
+
+  base_regno = riscv_regno (mem.addr.reg);
+  if (base_regno >= FIRST_PSEUDO_REGISTER)
+    return;
+
+  isload_p = mem.type != SCHED_FUSION_ST;
+  fp_p = mem.fp_p;
+  /* Prefer decreasing offsets by default when either direction is possible,
+     matching frame save/restore order.  */
+  inc_p = direction == RISCV_FUSION_INC;
+
+  /* Give each load/store class and base register a distinct priority below
+     that of unrelated instructions.  */
+  fusion_type = (fp_p ? 2 : 0) + (isload_p ? 0 : 1);
+  fusion_type *= NUM_MACHINE_MODES;
+  fusion_type += (int) mem.mode + 1;
+  *fusion_pri -= (fusion_type * FIRST_PSEUDO_REGISTER
+		  + (int) base_regno);
+
+  tmp /= 2;
+  HOST_WIDE_INT off_val = INTVAL (mem.addr.offset);
+  /* Use unsigned arithmetic to handle the most negative offset.  */
+  unsigned HOST_WIDE_INT magnitude = off_val < 0
+				       ? -(unsigned HOST_WIDE_INT) off_val
+				       : off_val;
+  int offset_pri = magnitude & 0xfffff;
+
+  /* Order offsets in the preferred pair direction.  */
+  if (inc_p == (off_val >= 0))
+    *pri = tmp - offset_pri;
+  else
+    *pri = tmp + offset_pri;
 }
 
 /* Check the common RTL for ZEXTW, ZEXTWS and ZEXTH fusion.  */
@@ -1483,6 +1635,7 @@ riscv_fuse_auipc_ld (rtx_insn *prev, rtx_insn *curr)
    curr (store) == (set (mem (rs1, offset2)) (reg rs3))
 
    Constraints:
+     access size is 1, 2, 4 or 8 bytes
      both stores use the same scalar integer mode
      min (offset1, offset2) is aligned to twice the access size
      abs (offset1 - offset2) equals the access size.  */
@@ -1490,27 +1643,7 @@ riscv_fuse_auipc_ld (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_aligned_std (rtx_insn *prev, rtx_insn *curr)
 {
-  struct riscv_fusion_mem_info prev_mem, curr_mem;
-  bool load_p;
-  if (!riscv_fuse_mem_pair_p (prev, curr, &prev_mem, &curr_mem,
-				&load_p)
-      || load_p
-      || prev_mem.fp_p
-      || !SCALAR_INT_MODE_P (prev_mem.mode))
-    return false;
-
-  unsigned int mode_size
-    = estimated_poly_value (GET_MODE_SIZE (curr_mem.mode));
-  HOST_WIDE_INT prev_offset = INTVAL (prev_mem.addr.offset);
-  HOST_WIDE_INT curr_offset = INTVAL (curr_mem.addr.offset);
-  if (prev_offset > curr_offset)
-    std::swap (prev_offset, curr_offset);
-
-  if (prev_offset % (2 * mode_size) == 0
-      && prev_offset + mode_size == curr_offset)
-    return true;
-
-  return false;
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ALIGNED_STD);
 }
 
 /* Check for RISCV_FUSE_LDST_PAIR_INC fusion.
@@ -1524,13 +1657,14 @@ riscv_fuse_aligned_std (rtx_insn *prev, rtx_insn *curr)
    Constraints:
      access size is 4 or 8 bytes
      offset2 - offset1 equals the access size
+     offsets are aligned to the access size
      loads are not zero-extending
      for loads, rd1 != rd2 and rd1 != rs1.  */
 
 static bool
 riscv_fuse_ldst_pair_inc (rtx_insn *prev, rtx_insn *curr)
 {
-  return riscv_fuse_ldst_pair_p (prev, curr, true, false);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_LDST_PAIR_INC);
 }
 
 /* Check for RISCV_FUSE_LDST_PAIR_DEC fusion.
@@ -1544,13 +1678,14 @@ riscv_fuse_ldst_pair_inc (rtx_insn *prev, rtx_insn *curr)
    Constraints:
      access size is 4 or 8 bytes
      offset1 - offset2 equals the access size
+     offsets are aligned to the access size
      loads are not zero-extending
      for loads, rd1 != rd2 and rd1 != rs1.  */
 
 static bool
 riscv_fuse_ldst_pair_dec (rtx_insn *prev, rtx_insn *curr)
 {
-  return riscv_fuse_ldst_pair_p (prev, curr, false, false);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_LDST_PAIR_DEC);
 }
 
 /* Check for RISCV_FUSE_FLDFST_PAIR_INC fusion.
@@ -1564,12 +1699,13 @@ riscv_fuse_ldst_pair_dec (rtx_insn *prev, rtx_insn *curr)
    Constraints:
      access size is 4 or 8 bytes
      offset2 - offset1 equals the access size
+     offsets are aligned to the access size
      for loads, frd1 != frd2.  */
 
 static bool
 riscv_fuse_fldfst_pair_inc (rtx_insn *prev, rtx_insn *curr)
 {
-  return riscv_fuse_ldst_pair_p (prev, curr, true, true);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_FLDFST_PAIR_INC);
 }
 
 /* Check for RISCV_FUSE_FLDFST_PAIR_DEC fusion.
@@ -1583,12 +1719,13 @@ riscv_fuse_fldfst_pair_inc (rtx_insn *prev, rtx_insn *curr)
    Constraints:
      access size is 4 or 8 bytes
      offset1 - offset2 equals the access size
+     offsets are aligned to the access size
      for loads, frd1 != frd2.  */
 
 static bool
 riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
 {
-  return riscv_fuse_ldst_pair_p (prev, curr, false, true);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_FLDFST_PAIR_DEC);
 }
 
 /* Check for RISCV_FUSE_BFEXT fusion.
