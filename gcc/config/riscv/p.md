@@ -46,13 +46,11 @@
   UNSPEC_UNZIP16HP
   UNSPEC_WZIP8P
   UNSPEC_WZIP16P
-  UNSPEC_PSLLI
   UNSPEC_PSSLAI
   UNSPEC_SSLAI
   UNSPEC_PSEXT_B
   UNSPEC_PSEXT_H
   UNSPEC_PZEXT
-  UNSPEC_PSLL
   UNSPEC_PMIN
   UNSPEC_PMAX
   UNSPEC_PMINU
@@ -69,17 +67,13 @@
   UNSPEC_PSSHAR
   UNSPEC_PSSHL
   UNSPEC_PSSHLR
-  UNSPEC_PSRL
-  UNSPEC_PSRLI
   UNSPEC_PUSATI
   UNSPEC_PSABS
   UNSPEC_PABD
   UNSPEC_PABDU
-  UNSPEC_PSRAI
   UNSPEC_PSATI
   UNSPEC_SATI
   UNSPEC_USATI
-  UNSPEC_PSRA
   UNSPEC_PABDSUMU
   UNSPEC_PABDSUMAU
   UNSPEC_PMUL
@@ -414,28 +408,6 @@
 (define_mode_attr UPMERGE_NAME [(PV4QI "u8x4") (PV2HI "u16x2")
                                 (PV8QI "u8x8") (PV4HI "u16x4")
                                 (PV2SI "u32x2")])
-; Packed Comparison: result is always unsigned.  Input signedness varies:
-; pmseq/pmsne accept both (two intrinsic variants, same instruction);
-; pmslt/pmsgt/pmsge/pmsle take signed inputs; pmsltu/pmsgtu/pmsgeu/pmsleu
-; take unsigned inputs.  PV4QI and UV4QI share the same machine mode, so the
-; insns operate on the V*/UV* mode interchangeably; the builtin ftype carries
-; the signedness of the inputs.
-; Builtin/intrinsic naming: a suffix is added only to disambiguate.
-; pmseq/pmsne are sign-agnostic, so the input signedness must be encoded
-; explicitly (pmseq_i8x4_u8x4 signed in, pmseq_u8x4_u8x4 unsigned in).
-; pmslt/pmsgt/pmsge/pmsle carry signedness in the opcode name (s = signed),
-; and pmsltu/pmsgtu/pmsgeu/pmsleu in the opcode (u = unsigned), so the input
-; signedness is unambiguous and only the (unsigned) result width is named,
-; e.g. pmslt_u8x4 (signed in) and pmsltu_u8x4 (unsigned in).
-(define_mode_attr PCMP_SNAME [(PV4QI "i8x4_u8x4") (PV2HI "i16x2_u16x2")
-                              (PV8QI "i8x8_u8x8") (PV4HI "i16x4_u16x4")
-                              (PV2SI "i32x2_u32x2")])
-(define_mode_attr PCMP_UNAME [(PV4QI "u8x4_u8x4") (PV2HI "u16x2_u16x2")
-                              (PV8QI "u8x8_u8x8") (PV4HI "u16x4_u16x4")
-                              (PV2SI "u32x2_u32x2")])
-(define_mode_attr PCMP_ONAME [(PV4QI "u8x4") (PV2HI "u16x2")
-                              (PV8QI "u8x8") (PV4HI "u16x4")
-                              (PV2SI "u32x2")])
 
 ;Packed Saturating Addition and Subtraction
 

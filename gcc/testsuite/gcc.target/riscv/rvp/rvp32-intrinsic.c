@@ -1586,7 +1586,7 @@ uint8x4_t test_pmslt_u8x4(int8x4_t a, int8x4_t b)
 /*
 **test_pmsgt_u8x4:
 ** ...
-** pmsgt.b\ta[0-9],a[0-9],a[0-9]
+** pmslt.b\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint8x4_t test_pmsgt_u8x4(int8x4_t a, int8x4_t b)
@@ -1608,7 +1608,7 @@ uint8x4_t test_pmsltu_u8x4(uint8x4_t a, uint8x4_t b)
 /*
 **test_pmsgtu_u8x4:
 ** ...
-** pmsgtu.b\ta[0-9],a[0-9],a[0-9]
+** pmsltu.b\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint8x4_t test_pmsgtu_u8x4(uint8x4_t a, uint8x4_t b)
@@ -1655,7 +1655,7 @@ uint8x4_t test_pmsge_u8x4(int8x4_t a, int8x4_t b)
 /*
 **test_pmsle_u8x4:
 ** ...
-** pmsgt.b\ta[0-9],a[0-9],a[0-9]
+** pmslt.b\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
 */
@@ -1679,7 +1679,7 @@ uint8x4_t test_pmsgeu_u8x4(uint8x4_t a, uint8x4_t b)
 /*
 **test_pmsleu_u8x4:
 ** ...
-** pmsgtu.b\ta[0-9],a[0-9],a[0-9]
+** pmsltu.b\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
 */
@@ -1724,7 +1724,7 @@ uint16x2_t test_pmslt_u16x2(int16x2_t a, int16x2_t b)
 /*
 **test_pmsgt_u16x2:
 ** ...
-** pmsgt.h\ta[0-9],a[0-9],a[0-9]
+** pmslt.h\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint16x2_t test_pmsgt_u16x2(int16x2_t a, int16x2_t b)
@@ -1746,7 +1746,7 @@ uint16x2_t test_pmsltu_u16x2(uint16x2_t a, uint16x2_t b)
 /*
 **test_pmsgtu_u16x2:
 ** ...
-** pmsgtu.h\ta[0-9],a[0-9],a[0-9]
+** pmsltu.h\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint16x2_t test_pmsgtu_u16x2(uint16x2_t a, uint16x2_t b)
@@ -1793,7 +1793,7 @@ uint16x2_t test_pmsge_u16x2(int16x2_t a, int16x2_t b)
 /*
 **test_pmsle_u16x2:
 ** ...
-** pmsgt.h\ta[0-9],a[0-9],a[0-9]
+** pmslt.h\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
 */
@@ -1817,7 +1817,7 @@ uint16x2_t test_pmsgeu_u16x2(uint16x2_t a, uint16x2_t b)
 /*
 **test_pmsleu_u16x2:
 ** ...
-** pmsgtu.h\ta[0-9],a[0-9],a[0-9]
+** pmsltu.h\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
 */
@@ -1864,7 +1864,7 @@ uint8x8_t test_pmslt_u8x8(int8x8_t a, int8x8_t b)
 /*
 **test_pmsgt_u8x8:
 ** ...
-** pmsgt.db\ta[0-9],a[0-9],a[0-9]
+** pmslt.db\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint8x8_t test_pmsgt_u8x8(int8x8_t a, int8x8_t b)
@@ -1886,7 +1886,7 @@ uint8x8_t test_pmsltu_u8x8(uint8x8_t a, uint8x8_t b)
 /*
 **test_pmsgtu_u8x8:
 ** ...
-** pmsgtu.db\ta[0-9],a[0-9],a[0-9]
+** pmsltu.db\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint8x8_t test_pmsgtu_u8x8(uint8x8_t a, uint8x8_t b)
@@ -1936,7 +1936,7 @@ uint8x8_t test_pmsge_u8x8(int8x8_t a, int8x8_t b)
 /*
 **test_pmsle_u8x8:
 ** ...
-** pmsgt.db\ta[0-9],a[0-9],a[0-9]
+** pmslt.db\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
@@ -1962,7 +1962,7 @@ uint8x8_t test_pmsgeu_u8x8(uint8x8_t a, uint8x8_t b)
 /*
 **test_pmsleu_u8x8:
 ** ...
-** pmsgtu.db\ta[0-9],a[0-9],a[0-9]
+** pmsltu.db\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
@@ -2008,7 +2008,7 @@ uint16x4_t test_pmslt_u16x4(int16x4_t a, int16x4_t b)
 /*
 **test_pmsgt_u16x4:
 ** ...
-** pmsgt.dh\ta[0-9],a[0-9],a[0-9]
+** pmslt.dh\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint16x4_t test_pmsgt_u16x4(int16x4_t a, int16x4_t b)
@@ -2030,7 +2030,7 @@ uint16x4_t test_pmsltu_u16x4(uint16x4_t a, uint16x4_t b)
 /*
 **test_pmsgtu_u16x4:
 ** ...
-** pmsgtu.dh\ta[0-9],a[0-9],a[0-9]
+** pmsltu.dh\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint16x4_t test_pmsgtu_u16x4(uint16x4_t a, uint16x4_t b)
@@ -2080,7 +2080,7 @@ uint16x4_t test_pmsge_u16x4(int16x4_t a, int16x4_t b)
 /*
 **test_pmsle_u16x4:
 ** ...
-** pmsgt.dh\ta[0-9],a[0-9],a[0-9]
+** pmslt.dh\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
@@ -2106,7 +2106,7 @@ uint16x4_t test_pmsgeu_u16x4(uint16x4_t a, uint16x4_t b)
 /*
 **test_pmsleu_u16x4:
 ** ...
-** pmsgtu.dh\ta[0-9],a[0-9],a[0-9]
+** pmsltu.dh\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
@@ -2152,7 +2152,7 @@ uint32x2_t test_pmslt_u32x2(int32x2_t a, int32x2_t b)
 /*
 **test_pmsgt_u32x2:
 ** ...
-** pmsgt.dw\ta[0-9],a[0-9],a[0-9]
+** pmslt.dw\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint32x2_t test_pmsgt_u32x2(int32x2_t a, int32x2_t b)
@@ -2174,7 +2174,7 @@ uint32x2_t test_pmsltu_u32x2(uint32x2_t a, uint32x2_t b)
 /*
 **test_pmsgtu_u32x2:
 ** ...
-** pmsgtu.dw\ta[0-9],a[0-9],a[0-9]
+** pmsltu.dw\ta[0-9],a[0-9],a[0-9]
 ** ...
 */
 uint32x2_t test_pmsgtu_u32x2(uint32x2_t a, uint32x2_t b)
@@ -2224,7 +2224,7 @@ uint32x2_t test_pmsge_u32x2(int32x2_t a, int32x2_t b)
 /*
 **test_pmsle_u32x2:
 ** ...
-** pmsgt.dw\ta[0-9],a[0-9],a[0-9]
+** pmslt.dw\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
@@ -2250,7 +2250,7 @@ uint32x2_t test_pmsgeu_u32x2(uint32x2_t a, uint32x2_t b)
 /*
 **test_pmsleu_u32x2:
 ** ...
-** pmsgtu.dw\ta[0-9],a[0-9],a[0-9]
+** pmsltu.dw\ta[0-9],a[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** not\ta[0-9],a[0-9]
 ** ...
