@@ -1,6 +1,5 @@
 /* { dg-do run } */
-/* { dg-skip-if "" { *-*-* } { "-mcpu=*" } { "-mcpu=hs38_linux" } } */
-/* { dg-options "-O3 -mcpu=hs38_linux -save-temps -fdump-rtl-expand" } */
+/* { dg-options "-O3 -save-temps -fdump-rtl-expand" } */
 
 typedef int v2si __attribute__ ((vector_size (8)));
 
@@ -53,8 +52,8 @@ main (void)
   return 0;
 }
 
-/* { dg-final { scan-rtl-dump "unspec:DI \\\[\\n\[^\\n\]*\\n\[^\\n\]*UNSPEC_ARC_DMPYWH" "expand" } } */
-/* { dg-final { scan-rtl-dump "unspec:DI \\\[\\n\[^\\n\]*\\n\[^\\n\]*UNSPEC_ARC_QMPYH" "expand" } } */
+/* { dg-final { scan-rtl-dump "unspec:DI \\\[\\n\[^\\n\]*\\n\[^\\n\]*UNSPEC_ARC_DMPYWH" "expand" { target qmacw } } } */
+/* { dg-final { scan-rtl-dump "unspec:DI \\\[\\n\[^\\n\]*\\n\[^\\n\]*UNSPEC_ARC_QMPYH" "expand" { target qmacw } } } */
 
 /* register pair must use an even destination.  */
 /* { dg-final { scan-assembler-not "dmpywh\\s+r\[0-9\]*\[13579\]," } } */
