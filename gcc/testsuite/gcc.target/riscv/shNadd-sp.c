@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" } } */
-/* { dg-options "-march=rv32i_zba" { target rv32 } } */
-/* { dg-options "-march=rv64i_zba" { target rv64 } } */
+/* { dg-options "-march=rv32i_zba -mabi=ilp32" { target rv32 } } */
+/* { dg-options "-march=rv64i_zba -mabi=lp64" { target rv64 } } */
 
 void bar (void *);
 
