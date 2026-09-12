@@ -13669,6 +13669,181 @@ riscv_gpr_save_operation_p (rtx op)
   return true;
 }
 
+/* If X is a PLUS of a CONST_INT, return the two terms in *BASE_PTR
+   and *OFFSET_PTR.  Return X in *BASE_PTR and 0 in *OFFSET_PTR otherwise.  */
+
+static void
+riscv_split_plus (rtx x, rtx *base_ptr, HOST_WIDE_INT *offset_ptr)
+{
+  if (GET_CODE (x) == PLUS && CONST_INT_P (XEXP (x, 1)))
+    {
+      *base_ptr = XEXP (x, 0);
+      *offset_ptr = INTVAL (XEXP (x, 1));
+    }
+  else
+    {
+      *base_ptr = x;
+      *offset_ptr = 0;
+    }
+}
+
+bool
+riscv_load_store_bonding_p (rtx *operands, machine_mode mode, bool load_p)
+{
+  rtx reg1, reg2, mem1, mem2, base1, base2;
+  enum reg_class rc1, rc2;
+  HOST_WIDE_INT offset1, offset2, mode_size;
+
+  if (load_p)
+    {
+      reg1 = operands[0];
+      reg2 = operands[2];
+      mem1 = operands[1];
+      mem2 = operands[3];
+    }
+  else
+    {
+      reg1 = operands[1];
+      reg2 = operands[3];
+      mem1 = operands[0];
+      mem2 = operands[2];
+    }
+
+  if (riscv_address_insns (XEXP (mem1, 0), mode, false) == 0
+      || riscv_address_insns (XEXP (mem2, 0), mode, false) == 0)
+    return false;
+
+  riscv_split_plus (XEXP (mem1, 0), &base1, &offset1);
+  riscv_split_plus (XEXP (mem2, 0), &base2, &offset2);
+
+  /* Base regs do not match.  */
+  if (!REG_P (base1) || !rtx_equal_p (base1, base2))
+    return false;
+
+  /* Either of the loads is clobbering base register.  It is legitimate to bond
+     loads if second load clobbers base register.  However, hardware does not
+     support such bonding.  */
+  if (load_p
+      && (REGNO (reg1) == REGNO (base1)
+	  || (REGNO (reg2) == REGNO (base1))))
+    return false;
+
+  /* Loading in same registers.  */
+  if (load_p
+      && REGNO (reg1) == REGNO (reg2))
+    return false;
+
+  /* The loads/stores are not of same type.  */
+  rc1 = REGNO_REG_CLASS (REGNO (reg1));
+  rc2 = REGNO_REG_CLASS (REGNO (reg2));
+  if (rc1 != rc2
+      && !reg_class_subset_p (rc1, rc2)
+      && !reg_class_subset_p (rc2, rc1))
+    return false;
+
+  /* Make sure offset1 is aligned to the mode size.  */
+  mode_size = GET_MODE_SIZE (mode).to_constant();
+  if ((offset1 & (mode_size - 1)) != 0)
+    return false;
+
+  if (abs (offset1 - offset2) != mode_size)
+    return false;
+
+  return true;
+}
+
+const char *
+riscv_output_join2_insns (rtx *operands, machine_mode mode, bool load_p,
+			  bool sign_extend_p)
+{
+  rtx reg1, reg2, mem1, mem2, base1, base2;
+  HOST_WIDE_INT offset1, offset2;
+
+  if (load_p)
+    {
+      reg1 = operands[0];
+      reg2 = operands[2];
+      mem1 = operands[1];
+      mem2 = operands[3];
+    }
+  else
+    {
+      reg1 = operands[1];
+      reg2 = operands[3];
+      mem1 = operands[0];
+      mem2 = operands[2];
+    }
+
+  gcc_assert (riscv_address_insns (XEXP (mem1, 0), mode, false));
+  gcc_assert (riscv_address_insns (XEXP (mem2, 0), mode, false));
+
+  riscv_split_plus (XEXP (mem1, 0), &base1, &offset1);
+  riscv_split_plus (XEXP (mem2, 0), &base2, &offset2);
+
+  /* Check if we want to output ldp/sdp/lwp/swp.  */
+  if (TARGET_XMIPSLSP
+      && abs (offset1 - offset2) == GET_MODE_SIZE (mode).to_constant()
+      && offset1 >= 0 && offset2 >= 0
+      && (offset1 < (1 << 7) || offset2 < (1 << 7))
+      && (mode == DImode || mode == SImode)
+      && REGNO (base1) == REGNO (base2)
+      && ((load_p && REGNO (reg1) != REGNO (base1)
+	   && REGNO (reg2) != REGNO (base1)) || !load_p))
+  {
+    if (offset1 < offset2)
+    {
+      if (load_p)
+	return mode == DImode ? "mips.ldp\t%0,%2,%1" : "mips.lwp\t%0,%2,%1";
+      else
+	return mode == DImode ? "mips.sdp\t%z1,%z3,%0" : "mips.swp\t%z1,%z3,%0";
+    }
+    else
+    {
+      if (load_p)
+	return mode == DImode ? "mips.ldp\t%2,%0,%3" : "mips.lwp\t%2,%0,%3";
+      else
+	return mode == DImode ? "mips.sdp\t%z3,%z1,%2" : "mips.swp\t%z3,%z1,%2";
+    }
+  }
+
+  if (!load_p || !reg_overlap_mentioned_p (operands[0], operands[3]))
+    {
+    /* Special treatment to use lw.  */
+    if (sign_extend_p && mode == SImode) {
+      output_asm_insn ("lw\t%0,%1", operands);
+      output_asm_insn ("lw\t%2,%3", operands);
+
+    }
+    else
+    {
+      output_asm_insn (riscv_output_move (operands[0], operands[1]),
+					  operands);
+      output_asm_insn (riscv_output_move (operands[2], operands[3]),
+					  &operands[2]);
+    }
+  }
+  else
+  {
+    /* Make sure operands[2] and operands[1] don't overlap.  */
+    gcc_assert(!reg_overlap_mentioned_p (operands[2], operands[1]));
+
+    /* Special treatment to use lw.  */
+    if (sign_extend_p && mode == SImode)
+    {
+      output_asm_insn ("lw\t%2,%3", operands);
+      output_asm_insn ("lw\t%0,%1", operands);
+    }
+    else
+    {
+      output_asm_insn (riscv_output_move (operands[2], operands[3]),
+					  &operands[2]);
+      output_asm_insn (riscv_output_move (operands[0], operands[1]), operands);
+    }
+  }
+
+  return "";
+}
+
 /* Implement TARGET_ASAN_SHADOW_OFFSET.  */
 
 static unsigned HOST_WIDE_INT
