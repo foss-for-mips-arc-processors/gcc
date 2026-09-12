@@ -1535,6 +1535,7 @@ static const riscv_extra_ext_flag_table_t riscv_extra_ext_flag_table[] =
   RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_riscv_isa_flags, MASK_VECTOR),
 
   RISCV_EXT_FLAG_ENTRY ("xmipstrig", x_riscv_xmips_subext, MASK_XMIPSTRIG),
+  RISCV_EXT_FLAG_ENTRY ("xmipslsp", x_riscv_xmips_subext, MASK_XMIPSLSP),
 
   {NULL, NULL, NULL, 0}
 };
