@@ -452,3 +452,7 @@ Use 128-bit long double.
 marc-v-rmx-500-series-advanced-fusion
 Target Mask(ARCV_ADVANCED_FUSION)
 Explicitly disable or enable advanced fusion for the RMX-500 core.
+
+mload-store-bonding
+Target Var(TARGET_LOAD_STORE_BONDING) Init(1)
+Emit two loads or two stores to help hardware bonding.

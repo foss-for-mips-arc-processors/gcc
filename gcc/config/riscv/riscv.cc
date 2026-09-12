@@ -9696,6 +9696,241 @@ riscv_emit_stack_tie (rtx reg)
     emit_insn (gen_stack_tiedi (stack_pointer_rtx, reg));
 }
 
+/* Return TRUE if OPERANDS represents a load or store
+   that can be later bonded.  LOAD_P is set to TRUE
+   if it's a load.  Return FALSE otherwise.  */
+
+static bool
+riscv_load_store_p (rtx *operands, bool *load_p)
+{
+  rtx mem;
+  rtx dest = operands[0];
+  rtx src = operands[1];
+
+  if ((GET_CODE (src) == REG || src == const0_rtx)
+      && GET_CODE ((mem = dest)) == MEM)
+    *load_p = false;
+  else if (GET_CODE ((mem = src)) == MEM && GET_CODE (dest) == REG)
+    *load_p = true;
+  else
+    return false;
+
+  if (*load_p && MEM_VOLATILE_P (mem))
+    return false;
+
+  return true;
+}
+
+/* Return TRUE if operands OPERANDS represent two consecutive instructions
+   than can be bonded as load-load/store-store pair in mode MODE.
+   Return FALSE otherwise.  */
+
+static bool
+riscv_bonding_p (rtx *operands, machine_mode mode)
+{
+  bool load_p, load_p2;
+
+  /* Check the supported modes.  */
+  if (mode == HImode || mode == SImode)
+    {
+      /* Ok.  */
+    }
+  else if (mode == DImode)
+    {
+      if (!TARGET_64BIT)
+	return false;
+    }
+  else if (mode == SFmode)
+    {
+      if (!TARGET_HARD_FLOAT)
+	return false;
+    }
+  else if (mode == DFmode)
+    {
+      if (!(TARGET_HARD_FLOAT && TARGET_DOUBLE_FLOAT))
+	return false;
+    }
+  else
+    {
+      return false;
+    }
+
+  if (!riscv_load_store_p (&operands[0], &load_p)
+      || !riscv_load_store_p (&operands[2], &load_p2)
+      || load_p != load_p2)
+    return false;
+
+  return riscv_load_store_bonding_p (operands, mode, load_p);
+}
+
+/* Return TRUE if INSN1 and INSN2 can be bonded, FALSE otherwise.  */
+
+bool
+riscv_load_store_bonding_insn_p (rtx insn1, rtx insn2)
+{
+  rtx operands[4];
+  rtx pat1, pat2;
+
+  gcc_assert (INSN_P (insn1) && INSN_P (insn2));
+
+  pat1 = PATTERN (insn1);
+  pat2 = PATTERN (insn2);
+
+  if (GET_CODE (pat1) == SET && GET_CODE (pat2) == SET)
+    {
+      machine_mode mode;
+
+      operands[0] = SET_DEST (pat1);
+      operands[1] = SET_SRC (pat1);
+      operands[2] = SET_DEST (pat2);
+      operands[3] = SET_SRC (pat2);
+
+      /* We take the mode from either SET_DESTs and the remaining operands
+	 and modes will be checked later.  */
+      mode = GET_MODE (operands[0]);
+
+      return riscv_bonding_p (operands, mode);
+    }
+
+  return false;
+}
+
+/* If X is a PLUS of a CONST_INT, return the two terms in *BASE_PTR
+   and *OFFSET_PTR.  Return X in *BASE_PTR and 0 in *OFFSET_PTR otherwise.  */
+
+static void
+riscv_split_plus (rtx x, rtx *base_ptr, HOST_WIDE_INT *offset_ptr)
+{
+  if (GET_CODE (x) == PLUS && CONST_INT_P (XEXP (x, 1)))
+    {
+      *base_ptr = XEXP (x, 0);
+      *offset_ptr = INTVAL (XEXP (x, 1));
+    }
+  else
+    {
+      *base_ptr = x;
+      *offset_ptr = 0;
+    }
+}
+
+static void
+riscv_load_store_bond_insns_in_range (rtx_insn *from, rtx_insn *to)
+{
+  rtx_insn *cur, *next;
+
+  if (from == NULL || to == NULL || from == to)
+    return;
+
+  for (cur = from, next = NEXT_INSN (from);
+       next;
+       cur = next, next = NEXT_INSN (next))
+    {
+      if (INSN_P (cur) && INSN_P (next)
+	  && riscv_load_store_bonding_insn_p (cur, next))
+	{
+	  rtx_insn *bonded;
+	  int code;
+	  rtx base1, base2;
+	  HOST_WIDE_INT offset1, offset2;
+	  rtx par = gen_rtx_PARALLEL (VOIDmode, rtvec_alloc (2));
+
+	  XVECEXP (par, 0, 0) = PATTERN (cur);
+	  XVECEXP (par, 0, 1) = PATTERN (next);
+
+	  bonded = emit_insn_before (par, cur);
+	  code = recog_memoized (bonded);
+
+	  if (code < 0)
+	    {
+	      delete_insn (bonded);
+	      continue;
+	    }
+
+	  base1 = base2 = NULL_RTX;
+
+	  if (GET_CODE (SET_SRC (single_set (cur))) == REG
+	      && GET_CODE (SET_DEST (single_set (cur))) == MEM)
+	    {
+	      riscv_split_plus (XEXP (SET_DEST (single_set (cur)), 0),
+				      &base1, &offset1);
+	      riscv_split_plus (XEXP (SET_DEST (single_set (next)), 0),
+				      &base2, &offset2);
+	    }
+
+	  if (base1 != NULL_RTX
+	      && GET_CODE (base1) == REG
+	      && REGNO (base1) == STACK_POINTER_REGNUM)
+	    {
+	      rtx dwarf, dwarf1 = NULL_RTX, dwarf2 = NULL_RTX;
+	      rtx note1, note2;
+	      int len = 0;
+	      int dwarf_index = 0;
+
+	      gcc_assert (base2 != NULL_RTX && GET_CODE (base2) == REG
+			  && REGNO (base2) == STACK_POINTER_REGNUM);
+
+	      if ((note1 = find_reg_note (cur, REG_FRAME_RELATED_EXPR, 0)))
+		{
+		  dwarf1 = XEXP (note1, 0);
+		  if (GET_CODE (dwarf1) == PARALLEL)
+		    len += XVECLEN (dwarf1, 0);
+		  else
+		    len += 1;
+		}
+
+	      if ((note2 = find_reg_note (next, REG_FRAME_RELATED_EXPR, 0)))
+		{
+		  dwarf2 = XEXP (note2, 0);
+		  if (GET_CODE (dwarf2) == PARALLEL)
+		    len += XVECLEN (dwarf2, 0);
+		  else
+		    len += 1;
+		}
+
+	      dwarf = gen_rtx_PARALLEL (VOIDmode, rtvec_alloc (len));
+
+	      if (dwarf1 && GET_CODE (dwarf1) == PARALLEL)
+		{
+		  int i;
+		  for (i = 0; i < XVECLEN (dwarf1, 0); i++)
+		    {
+		      XVECEXP (dwarf, 0, dwarf_index++) = XVECEXP (dwarf1,
+								   0, i);
+		    }
+		}
+	      else if (dwarf1)
+		XVECEXP (dwarf, 0, dwarf_index++) = dwarf1;
+
+	      if (dwarf2 && GET_CODE (dwarf2) == PARALLEL)
+		{
+		  int i;
+		  for (i = 0; i < XVECLEN (dwarf2, 0); i++)
+		    {
+		      XVECEXP (dwarf, 0, dwarf_index++) = XVECEXP (dwarf2,
+								   0, i);
+		    }
+		}
+	      else if (dwarf2)
+		 XVECEXP (dwarf, 0, dwarf_index++) = dwarf2;
+
+	      RTX_FRAME_RELATED_P (bonded) = 1;
+	      add_reg_note (bonded, REG_FRAME_RELATED_EXPR, dwarf);
+	    }
+
+	  remove_insn (cur);
+	  remove_insn (next);
+	  cur = bonded;
+	  next = bonded;
+	}
+    }
+}
+
+static void
+riscv_load_store_bond_insns ()
+{
+  riscv_load_store_bond_insns_in_range (get_insns (), get_last_insn ());
+}
+
 /*zcmp multi push and pop code_for_push_pop function ptr array  */
 static const code_for_push_pop_t code_for_push_pop[ZCMP_MAX_GRP_SLOTS][ZCMP_OP_NUM]
   = {{code_for_gpr_multi_push_up_to_ra, code_for_gpr_multi_pop_up_to_ra,
@@ -10217,6 +10452,9 @@ riscv_expand_prologue (void)
       else
 	dump_stack_clash_frame_info (NO_PROBE_SMALL_FRAME, true);
     }
+
+  if (ENABLE_LD_ST_PAIRS && optimize)
+    riscv_load_store_bond_insns ();
 }
 
 static rtx
@@ -10635,6 +10873,9 @@ riscv_expand_epilogue (int style)
       else
 	emit_jump_insn (gen_simple_return_internal (ra));
     }
+
+  if (ENABLE_LD_ST_PAIRS && optimize)
+    riscv_load_store_bond_insns ();
 }
 
 /* Implement EPILOGUE_USES.  */
@@ -13667,24 +13908,6 @@ riscv_gpr_save_operation_p (rtx op)
 	}
     }
   return true;
-}
-
-/* If X is a PLUS of a CONST_INT, return the two terms in *BASE_PTR
-   and *OFFSET_PTR.  Return X in *BASE_PTR and 0 in *OFFSET_PTR otherwise.  */
-
-static void
-riscv_split_plus (rtx x, rtx *base_ptr, HOST_WIDE_INT *offset_ptr)
-{
-  if (GET_CODE (x) == PLUS && CONST_INT_P (XEXP (x, 1)))
-    {
-      *base_ptr = XEXP (x, 0);
-      *offset_ptr = INTVAL (XEXP (x, 1));
-    }
-  else
-    {
-      *base_ptr = x;
-      *offset_ptr = 0;
-    }
 }
 
 bool
