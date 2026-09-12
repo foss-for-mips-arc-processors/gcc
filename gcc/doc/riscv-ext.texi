@@ -734,6 +734,10 @@
 @tab 1.0
 @tab Mips trigonometryextension
 
+@item @samp{xmipslsp}
+@tab 1.0
+@tab Mips load/store pairs extension
+
 @item @samp{xandesperf}
 @tab 5.0
 @tab Andes performace extension
