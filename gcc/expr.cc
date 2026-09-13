@@ -14552,15 +14552,19 @@ int_expr_size (const_tree exp)
 }
 
 /* Return the quotient of polynomial long division of x^2N by POLYNOMIAL
-   in GF (2^N).
+   in GF (2^N).  The quotient has degree N, so for N == 64 it does not fit
+   in the return type.  Its leading coefficient is always one, so in that
+   case return the remaining N low-order coefficients and leave the leading
+   one implicit.
    Author: Richard Sandiford <richard.sandiford@arm.com>  */
 
 unsigned HOST_WIDE_INT
 gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT polynomial,
 			     unsigned short n)
 {
-  /* The result has degree N, so needs N + 1 bits.  */
-  gcc_assert (n < 64);
+  /* The result has degree N, so needs N + 1 bits.  For N == 64 the leading
+     coefficient shifts out of QUOTIENT below and stays implicit.  */
+  gcc_assert (n <= 64);
 
   /* Perform a division step for the x^2N coefficient.  At this point the
      quotient and remainder have N implicit trailing zeros.  */

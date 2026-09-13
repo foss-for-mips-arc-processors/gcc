@@ -1385,7 +1385,7 @@
   "clmulr\t%0,%1,%2"
   [(set_attr "type" "clmul")])
 
-;; Reversed CRC 8, 16, 32
+;; Reversed CRC 8, 16, 32, 64
 (define_expand "crc_rev<ANYI1:mode><ANYI:mode>4"
 	;; return value (calculated CRC)
   [(set (match_operand:ANYI 0 "register_operand")
@@ -1404,10 +1404,11 @@
      (E.g.  CRC64's quotient may need 65 bits,
      we can't keep it in 64 bit variable.)
      then use clmul instruction to implement the CRC.
-     We can also use clmulr for CRC-32 on RV32, requiring ZBC.  */
+     We can also use clmulr for a word-sized CRC (CRC-32 on RV32, CRC-64 on
+     RV64), requiring ZBC.  */
   if (((TARGET_ZBKC || TARGET_ZBC || TARGET_ZVBC)
 	&& <ANYI:MODE>mode < word_mode)
-      || (!TARGET_64BIT && TARGET_ZBC && <ANYI:MODE>mode == word_mode))
+      || (TARGET_ZBC && <ANYI:MODE>mode == word_mode))
     expand_reversed_crc_using_clmul (<ANYI:MODE>mode, <ANYI1:MODE>mode,
 				     operands);
   else

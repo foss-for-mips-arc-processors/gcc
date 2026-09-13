@@ -13424,7 +13424,7 @@ riscv_optab_supported_p (int op, machine_mode, machine_mode result_mode,
   if (op == crc_rev_optab && opt_type != OPTIMIZE_FOR_SPEED)
     return (((TARGET_ZBKC || TARGET_ZBC || TARGET_ZVBC)
 	     && result_mode < word_mode)
-	    || (!TARGET_64BIT && TARGET_ZBC && result_mode == word_mode));
+	    || (TARGET_ZBC && result_mode == word_mode));
 
   return true;
 }
@@ -15843,15 +15843,27 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
   gcc_assert (!CONST_INT_P (operands[0]));
   gcc_assert (CONST_INT_P (operands[3]));
   unsigned short crc_size = GET_MODE_BITSIZE (crc_mode);
-  gcc_assert (crc_size <= 32);
+  gcc_assert (crc_size <= BITS_PER_WORD);
   unsigned short data_size = GET_MODE_BITSIZE (data_mode);
   rtx polynomial = operands[3];
+
+  /* A word-sized CRC has no room for the leading coefficient of the
+     quotient, nor for the reflected polynomial shifted left by one.  Use
+     clmulr, which is clmulh of an operand already shifted left by one:
+
+       clmulh (a, ref_poly << 1) = clmulr (a, ref_poly)
+
+     so both the shift and the leading coefficient can be dropped.  */
+  bool use_clmulr = crc_size == BITS_PER_WORD;
+  gcc_assert (TARGET_ZBC || !use_clmulr);
 
   /* Calculate the quotient.  */
   unsigned HOST_WIDE_INT
   q = gf2n_poly_long_div_quotient (UINTVAL (polynomial), crc_size);
-  /* Reflect the calculated quotient.  */
-  q = reflect_hwi (q, crc_size + 1);
+  /* Reflect the calculated quotient.  Its leading coefficient is always one
+     and reflects to bit 0, so it need not be returned to be accounted for
+     here.  */
+  q = (reflect_hwi (q, crc_size) << 1) | 1;
   rtx t0 = gen_reg_rtx (word_mode);
   riscv_emit_move (t0, gen_int_mode (q, word_mode));
 
@@ -15859,9 +15871,6 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
   unsigned HOST_WIDE_INT
   ref_polynomial = reflect_hwi (UINTVAL (polynomial),
 				crc_size);
-
-  bool use_clmulr = crc_size == BITS_PER_WORD;
-  gcc_assert (TARGET_ZBC || !use_clmulr);
 
   rtx t1 = gen_reg_rtx (word_mode);
   if (use_clmulr)
@@ -15890,8 +15899,10 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
 
       if (use_clmulr)
 	{
-	  gcc_assert (!TARGET_64BIT);
-	  emit_insn (gen_riscv_clmulr_si (a0, a0, t1));
+	  if (TARGET_64BIT)
+	    emit_insn (gen_riscv_clmulr_di (a0, a0, t1));
+	  else
+	    emit_insn (gen_riscv_clmulr_si (a0, a0, t1));
 	}
       else
 	{
