@@ -145,11 +145,14 @@ RVP_OP_ATTRS ty __riscv_##name (ty __rs1)                                  \
     return op __rs1;                                                       \
   }
 
-#define RVP_BINARY_OP(name, ty, op)                                        \
-RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
+#define RVP_VECTOR_OP(name, ty, ty2, rty, op)                              \
+RVP_OP_ATTRS rty __riscv_##name (ty __rs1, ty2 __rs2)                      \
   {                                                                        \
-    return __rs1 op __rs2;                                                 \
+    return (rty) (__rs1 op __rs2);                                         \
   }
+
+#define RVP_BINARY_OP(name, ty, op)                                        \
+  RVP_VECTOR_OP (name, ty, ty, ty, op)
 
 #define RVP_SPLAT2(ty, x) ((ty){(x), (x)})
 #define RVP_SPLAT4(ty, x) ((ty){(x), (x), (x), (x)})
@@ -167,6 +170,12 @@ RVP_OP_ATTRS ty __riscv_##name (ty __rs1, scalar_ty __rs2)                 \
   {                                                                        \
     return __rs1 op splat (ty, __rs2);                                     \
   }
+
+#define RVP_SCALAR_SHIFT_OP(name, ty, scalar_ty, op)                       \
+  RVP_VECTOR_OP (name, ty, scalar_ty, ty, op)
+
+#define RVP_CMP_OP(name, ty, rty, op)                                      \
+  RVP_VECTOR_OP (name, ty, ty, rty, op)
 
 #define RVP_LOAD(name, vector_type, element_type, memory_type)              \
 RVP_OP_ATTRS vector_type __riscv_##name (element_type *__p)                 \
@@ -656,66 +665,66 @@ CREATE_RVP_INTRINSIC (uint16x4_t, pmaxu_u16x4, uint16x4_t, uint16x4_t)
 CREATE_RVP_INTRINSIC (uint32x2_t, pmaxu_u32x2, uint32x2_t, uint32x2_t)
 
 /* Packed Comparison.  */
-CREATE_RVP_INTRINSIC (uint8x4_t, pmseq_i8x4_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmseq_u8x4_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmslt_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsgt_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsge_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsle_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsltu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsgtu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsgeu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsleu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsne_i8x4_u8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmsne_u8x4_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmseq_i16x2_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmseq_u16x2_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmslt_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsgt_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsge_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsle_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsltu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsgtu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsgeu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsleu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsne_i16x2_u16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmsne_u16x2_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmseq_i8x8_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmseq_u8x8_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmslt_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsgt_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsge_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsle_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsltu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsgtu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsgeu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsleu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsne_i8x8_u8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmsne_u8x8_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmseq_i16x4_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmseq_u16x4_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmslt_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsgt_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsge_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsle_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsltu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsgtu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsgeu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsleu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsne_i16x4_u16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmsne_u16x4_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmseq_i32x2_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmseq_u32x2_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmslt_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsgt_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsge_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsle_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsltu_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsgtu_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsgeu_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsleu_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsne_i32x2_u32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmsne_u32x2_u32x2, uint32x2_t, uint32x2_t)
+RVP_CMP_OP (pmseq_i8x4_u8x4, int8x4_t, uint8x4_t, ==)
+RVP_CMP_OP (pmseq_u8x4_u8x4, uint8x4_t, uint8x4_t, ==)
+RVP_CMP_OP (pmslt_u8x4, int8x4_t, uint8x4_t, <)
+RVP_CMP_OP (pmsgt_u8x4, int8x4_t, uint8x4_t, >)
+RVP_CMP_OP (pmsge_u8x4, int8x4_t, uint8x4_t, >=)
+RVP_CMP_OP (pmsle_u8x4, int8x4_t, uint8x4_t, <=)
+RVP_CMP_OP (pmsltu_u8x4, uint8x4_t, uint8x4_t, <)
+RVP_CMP_OP (pmsgtu_u8x4, uint8x4_t, uint8x4_t, >)
+RVP_CMP_OP (pmsgeu_u8x4, uint8x4_t, uint8x4_t, >=)
+RVP_CMP_OP (pmsleu_u8x4, uint8x4_t, uint8x4_t, <=)
+RVP_CMP_OP (pmsne_i8x4_u8x4, int8x4_t, uint8x4_t, !=)
+RVP_CMP_OP (pmsne_u8x4_u8x4, uint8x4_t, uint8x4_t, !=)
+RVP_CMP_OP (pmseq_i16x2_u16x2, int16x2_t, uint16x2_t, ==)
+RVP_CMP_OP (pmseq_u16x2_u16x2, uint16x2_t, uint16x2_t, ==)
+RVP_CMP_OP (pmslt_u16x2, int16x2_t, uint16x2_t, <)
+RVP_CMP_OP (pmsgt_u16x2, int16x2_t, uint16x2_t, >)
+RVP_CMP_OP (pmsge_u16x2, int16x2_t, uint16x2_t, >=)
+RVP_CMP_OP (pmsle_u16x2, int16x2_t, uint16x2_t, <=)
+RVP_CMP_OP (pmsltu_u16x2, uint16x2_t, uint16x2_t, <)
+RVP_CMP_OP (pmsgtu_u16x2, uint16x2_t, uint16x2_t, >)
+RVP_CMP_OP (pmsgeu_u16x2, uint16x2_t, uint16x2_t, >=)
+RVP_CMP_OP (pmsleu_u16x2, uint16x2_t, uint16x2_t, <=)
+RVP_CMP_OP (pmsne_i16x2_u16x2, int16x2_t, uint16x2_t, !=)
+RVP_CMP_OP (pmsne_u16x2_u16x2, uint16x2_t, uint16x2_t, !=)
+RVP_CMP_OP (pmseq_i8x8_u8x8, int8x8_t, uint8x8_t, ==)
+RVP_CMP_OP (pmseq_u8x8_u8x8, uint8x8_t, uint8x8_t, ==)
+RVP_CMP_OP (pmslt_u8x8, int8x8_t, uint8x8_t, <)
+RVP_CMP_OP (pmsgt_u8x8, int8x8_t, uint8x8_t, >)
+RVP_CMP_OP (pmsge_u8x8, int8x8_t, uint8x8_t, >=)
+RVP_CMP_OP (pmsle_u8x8, int8x8_t, uint8x8_t, <=)
+RVP_CMP_OP (pmsltu_u8x8, uint8x8_t, uint8x8_t, <)
+RVP_CMP_OP (pmsgtu_u8x8, uint8x8_t, uint8x8_t, >)
+RVP_CMP_OP (pmsgeu_u8x8, uint8x8_t, uint8x8_t, >=)
+RVP_CMP_OP (pmsleu_u8x8, uint8x8_t, uint8x8_t, <=)
+RVP_CMP_OP (pmsne_i8x8_u8x8, int8x8_t, uint8x8_t, !=)
+RVP_CMP_OP (pmsne_u8x8_u8x8, uint8x8_t, uint8x8_t, !=)
+RVP_CMP_OP (pmseq_i16x4_u16x4, int16x4_t, uint16x4_t, ==)
+RVP_CMP_OP (pmseq_u16x4_u16x4, uint16x4_t, uint16x4_t, ==)
+RVP_CMP_OP (pmslt_u16x4, int16x4_t, uint16x4_t, <)
+RVP_CMP_OP (pmsgt_u16x4, int16x4_t, uint16x4_t, >)
+RVP_CMP_OP (pmsge_u16x4, int16x4_t, uint16x4_t, >=)
+RVP_CMP_OP (pmsle_u16x4, int16x4_t, uint16x4_t, <=)
+RVP_CMP_OP (pmsltu_u16x4, uint16x4_t, uint16x4_t, <)
+RVP_CMP_OP (pmsgtu_u16x4, uint16x4_t, uint16x4_t, >)
+RVP_CMP_OP (pmsgeu_u16x4, uint16x4_t, uint16x4_t, >=)
+RVP_CMP_OP (pmsleu_u16x4, uint16x4_t, uint16x4_t, <=)
+RVP_CMP_OP (pmsne_i16x4_u16x4, int16x4_t, uint16x4_t, !=)
+RVP_CMP_OP (pmsne_u16x4_u16x4, uint16x4_t, uint16x4_t, !=)
+RVP_CMP_OP (pmseq_i32x2_u32x2, int32x2_t, uint32x2_t, ==)
+RVP_CMP_OP (pmseq_u32x2_u32x2, uint32x2_t, uint32x2_t, ==)
+RVP_CMP_OP (pmslt_u32x2, int32x2_t, uint32x2_t, <)
+RVP_CMP_OP (pmsgt_u32x2, int32x2_t, uint32x2_t, >)
+RVP_CMP_OP (pmsge_u32x2, int32x2_t, uint32x2_t, >=)
+RVP_CMP_OP (pmsle_u32x2, int32x2_t, uint32x2_t, <=)
+RVP_CMP_OP (pmsltu_u32x2, uint32x2_t, uint32x2_t, <)
+RVP_CMP_OP (pmsgtu_u32x2, uint32x2_t, uint32x2_t, >)
+RVP_CMP_OP (pmsgeu_u32x2, uint32x2_t, uint32x2_t, >=)
+RVP_CMP_OP (pmsleu_u32x2, uint32x2_t, uint32x2_t, <=)
+RVP_CMP_OP (pmsne_i32x2_u32x2, int32x2_t, uint32x2_t, !=)
+RVP_CMP_OP (pmsne_u32x2_u32x2, uint32x2_t, uint32x2_t, !=)
 
 /* Packed Merge.  */
 CREATE_RVP_INTRINSIC (uint8x4_t, pmerge_u8x4, uint8x4_t, uint8x4_t,
@@ -755,26 +764,26 @@ CREATE_RVP_INTRINSIC (int16x4_t, psati_i16x4, int16x4_t, unsigned)
 CREATE_RVP_INTRINSIC (int32x2_t, psati_i32x2, int32x2_t, unsigned)
 
 /* Packed Shifts.  */
-CREATE_RVP_INTRINSIC (uint8x4_t, psll_s_u8x4, uint8x4_t, unsigned)
-CREATE_RVP_INTRINSIC (int8x4_t, psll_s_i8x4, int8x4_t, unsigned)
-CREATE_RVP_INTRINSIC (uint16x2_t, psll_s_u16x2, uint16x2_t, unsigned)
-CREATE_RVP_INTRINSIC (int16x2_t, psll_s_i16x2, int16x2_t, unsigned)
-CREATE_RVP_INTRINSIC (uint8x4_t, psrl_s_u8x4, uint8x4_t, unsigned)
-CREATE_RVP_INTRINSIC (uint16x2_t, psrl_s_u16x2, uint16x2_t, unsigned)
-CREATE_RVP_INTRINSIC (int8x4_t, psra_s_i8x4, int8x4_t, unsigned)
-CREATE_RVP_INTRINSIC (int16x2_t, psra_s_i16x2, int16x2_t, unsigned)
-CREATE_RVP_INTRINSIC (uint8x8_t, psll_s_u8x8, uint8x8_t, unsigned)
-CREATE_RVP_INTRINSIC (int8x8_t, psll_s_i8x8, int8x8_t, unsigned)
-CREATE_RVP_INTRINSIC (uint16x4_t, psll_s_u16x4, uint16x4_t, unsigned)
-CREATE_RVP_INTRINSIC (int16x4_t, psll_s_i16x4, int16x4_t, unsigned)
-CREATE_RVP_INTRINSIC (uint32x2_t, psll_s_u32x2, uint32x2_t, unsigned)
-CREATE_RVP_INTRINSIC (int32x2_t, psll_s_i32x2, int32x2_t, unsigned)
-CREATE_RVP_INTRINSIC (uint8x8_t, psrl_s_u8x8, uint8x8_t, unsigned)
-CREATE_RVP_INTRINSIC (uint16x4_t, psrl_s_u16x4, uint16x4_t, unsigned)
-CREATE_RVP_INTRINSIC (uint32x2_t, psrl_s_u32x2, uint32x2_t, unsigned)
-CREATE_RVP_INTRINSIC (int8x8_t, psra_s_i8x8, int8x8_t, unsigned)
-CREATE_RVP_INTRINSIC (int16x4_t, psra_s_i16x4, int16x4_t, unsigned)
-CREATE_RVP_INTRINSIC (int32x2_t, psra_s_i32x2, int32x2_t, unsigned)
+RVP_SCALAR_SHIFT_OP (psll_s_u8x4,  uint8x4_t,  unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_i8x4,  int8x4_t,   unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_u16x2, uint16x2_t, unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_i16x2, int16x2_t,  unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psrl_s_u8x4,  uint8x4_t,  unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psrl_s_u16x2, uint16x2_t, unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psra_s_i8x4,  int8x4_t,   unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psra_s_i16x2, int16x2_t,  unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psll_s_u8x8,  uint8x8_t,  unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_i8x8,  int8x8_t,   unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_u16x4, uint16x4_t, unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_i16x4, int16x4_t,  unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_u32x2, uint32x2_t, unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psll_s_i32x2, int32x2_t,  unsigned, <<)
+RVP_SCALAR_SHIFT_OP (psrl_s_u8x8,  uint8x8_t,  unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psrl_s_u16x4, uint16x4_t, unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psrl_s_u32x2, uint32x2_t, unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psra_s_i8x8,  int8x8_t,   unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psra_s_i16x4, int16x4_t,  unsigned, >>)
+RVP_SCALAR_SHIFT_OP (psra_s_i32x2, int32x2_t,  unsigned, >>)
 
 /* Packed Saturating and Rounding Shifts.  */
 CREATE_RVP_INTRINSIC (int16x2_t, pssha_s_i16x2, int16x2_t, int)
@@ -947,7 +956,7 @@ __riscv_pwadd_i16x4 (int8x4_t __rs1, int8x4_t __rs2)
 
   __zipped.__bytes = __builtin_riscv_pzip_i8x8 (__rs1, __rs2);
   return (__builtin_riscv_psext_b_i16x4 (__zipped.__halves)
-	  + __builtin_riscv_psra_s_i16x4 (__zipped.__halves, 8));
+	  + __riscv_psra_s_i16x4 (__zipped.__halves, 8));
 }
 
 RVP_OP_ATTRS int32x2_t
@@ -984,7 +993,7 @@ __riscv_pwsub_i16x4 (int8x4_t __rs1, int8x4_t __rs2)
 
   __zipped.__bytes = __builtin_riscv_pzip_i8x8 (__rs1, __rs2);
   return (__builtin_riscv_psext_b_i16x4 (__zipped.__halves)
-	  - __builtin_riscv_psra_s_i16x4 (__zipped.__halves, 8));
+	  - __riscv_psra_s_i16x4 (__zipped.__halves, 8));
 }
 
 RVP_OP_ATTRS int32x2_t
@@ -1087,14 +1096,14 @@ RVP_OP_ATTRS uint16x4_t
 __riscv_pwsll_s_u16x4 (uint8x4_t __rs1, unsigned int __shamt)
 {
   uint16x4_t __wide = __builtin_riscv_pwcvtu_u16x4 (__rs1);
-  return __builtin_riscv_psll_s_u16x4 (__wide, __shamt);
+  return __riscv_psll_s_u16x4 (__wide, __shamt);
 }
 
 RVP_OP_ATTRS uint32x2_t
 __riscv_pwsll_s_u32x2 (uint16x2_t __rs1, unsigned int __shamt)
 {
   uint32x2_t __wide = __builtin_riscv_pwcvtu_u32x2 (__rs1);
-  return __builtin_riscv_psll_s_u32x2 (__wide, __shamt);
+  return __riscv_psll_s_u32x2 (__wide, __shamt);
 }
 
 RVP_OP_ATTRS int16x4_t
@@ -1106,14 +1115,14 @@ __riscv_pwsla_s_i16x4 (int8x4_t __rs1, unsigned int __shamt)
       int16x4_t __wide = __builtin_riscv_pwcvth_i16x4 (__rs1);
 
       if (__shift <= 8)
-	return __builtin_riscv_psra_s_i16x4 (__wide, 8 - __shift);
+	return __riscv_psra_s_i16x4 (__wide, 8 - __shift);
       if (__shift < 16)
-	return __builtin_riscv_psll_s_i16x4 (__wide, __shift - 8);
+	return __riscv_psll_s_i16x4 (__wide, __shift - 8);
       return (int16x4_t) { 0, 0, 0, 0 };
     }
 
   int16x4_t __wide = __builtin_riscv_pwcvt_i16x4 (__rs1);
-  return __builtin_riscv_psll_s_i16x4 (__wide, __shamt);
+  return __riscv_psll_s_i16x4 (__wide, __shamt);
 }
 
 RVP_OP_ATTRS int32x2_t
@@ -1125,39 +1134,39 @@ __riscv_pwsla_s_i32x2 (int16x2_t __rs1, unsigned int __shamt)
       int32x2_t __wide = __builtin_riscv_pwcvth_i32x2 (__rs1);
 
       if (__shift <= 16)
-	return __builtin_riscv_psra_s_i32x2 (__wide, 16 - __shift);
-      return __builtin_riscv_psll_s_i32x2 (__wide, __shift - 16);
+	return __riscv_psra_s_i32x2 (__wide, 16 - __shift);
+      return __riscv_psll_s_i32x2 (__wide, __shift - 16);
     }
 
   int32x2_t __wide = __builtin_riscv_pwcvt_i32x2 (__rs1);
-  return __builtin_riscv_psll_s_i32x2 (__wide, __shamt);
+  return __riscv_psll_s_i32x2 (__wide, __shamt);
 }
 
 RVP_OP_ATTRS uint8x4_t
 __riscv_pnsrl_s_u8x4 (uint16x4_t __rs1, unsigned int __shamt)
 {
-  uint16x4_t __shifted = __builtin_riscv_psrl_s_u16x4 (__rs1, __shamt);
+  uint16x4_t __shifted = __riscv_psrl_s_u16x4 (__rs1, __shamt);
   return __builtin_riscv_pncvt_u8x4 (__shifted);
 }
 
 RVP_OP_ATTRS uint16x2_t
 __riscv_pnsrl_s_u16x2 (uint32x2_t __rs1, unsigned int __shamt)
 {
-  uint32x2_t __shifted = __builtin_riscv_psrl_s_u32x2 (__rs1, __shamt);
+  uint32x2_t __shifted = __riscv_psrl_s_u32x2 (__rs1, __shamt);
   return __builtin_riscv_pncvt_u16x2 (__shifted);
 }
 
 RVP_OP_ATTRS int8x4_t
 __riscv_pnsra_s_i8x4 (int16x4_t __rs1, unsigned int __shamt)
 {
-  int16x4_t __shifted = __builtin_riscv_psra_s_i16x4 (__rs1, __shamt);
+  int16x4_t __shifted = __riscv_psra_s_i16x4 (__rs1, __shamt);
   return __builtin_riscv_pncvt_i8x4 (__shifted);
 }
 
 RVP_OP_ATTRS int16x2_t
 __riscv_pnsra_s_i16x2 (int32x2_t __rs1, unsigned int __shamt)
 {
-  int32x2_t __shifted = __builtin_riscv_psra_s_i32x2 (__rs1, __shamt);
+  int32x2_t __shifted = __riscv_psra_s_i32x2 (__rs1, __shamt);
   return __builtin_riscv_pncvt_i16x2 (__shifted);
 }
 
@@ -1192,7 +1201,7 @@ CREATE_RVP_INTRINSIC (int16x2_t, pnclipr_s_i16x2, int32x2_t, unsigned)
 RVP_OP_ATTRS uint8x4_t
 __riscv_pnclipu_s_u8x4 (uint16x4_t __rs1, unsigned int __shamt)
 {
-  uint16x4_t __shifted = __builtin_riscv_psrl_s_u16x4 (__rs1, __shamt);
+  uint16x4_t __shifted = __riscv_psrl_s_u16x4 (__rs1, __shamt);
   uint8x8_t __narrowed
     = __builtin_riscv_pnclipup_u8x8 (__shifted, (uint16x4_t) { 0 });
   return RVP_SUBVECTOR_GET (uint8x8_t, uint8x4_t, __narrowed, 0);
@@ -1201,7 +1210,7 @@ __riscv_pnclipu_s_u8x4 (uint16x4_t __rs1, unsigned int __shamt)
 RVP_OP_ATTRS uint16x2_t
 __riscv_pnclipu_s_u16x2 (uint32x2_t __rs1, unsigned int __shamt)
 {
-  uint32x2_t __shifted = __builtin_riscv_psrl_s_u32x2 (__rs1, __shamt);
+  uint32x2_t __shifted = __riscv_psrl_s_u32x2 (__rs1, __shamt);
   uint16x4_t __narrowed
     = __builtin_riscv_pnclipup_u16x4 (__shifted, (uint32x2_t) { 0 });
   return RVP_SUBVECTOR_GET (uint16x4_t, uint16x2_t, __narrowed, 0);
@@ -1230,7 +1239,7 @@ __riscv_pnclipru_s_u16x2 (uint32x2_t __rs1, unsigned int __shamt)
 RVP_OP_ATTRS int8x4_t
 __riscv_pnclip_s_i8x4 (int16x4_t __rs1, unsigned int __shamt)
 {
-  int16x4_t __shifted = __builtin_riscv_psra_s_i16x4 (__rs1, __shamt);
+  int16x4_t __shifted = __riscv_psra_s_i16x4 (__rs1, __shamt);
   int8x8_t __narrowed
     = __builtin_riscv_pnclipp_i8x8 (__shifted, (int16x4_t) { 0 });
   return RVP_SUBVECTOR_GET (int8x8_t, int8x4_t, __narrowed, 0);
@@ -1239,7 +1248,7 @@ __riscv_pnclip_s_i8x4 (int16x4_t __rs1, unsigned int __shamt)
 RVP_OP_ATTRS int16x2_t
 __riscv_pnclip_s_i16x2 (int32x2_t __rs1, unsigned int __shamt)
 {
-  int32x2_t __shifted = __builtin_riscv_psra_s_i32x2 (__rs1, __shamt);
+  int32x2_t __shifted = __riscv_psra_s_i32x2 (__rs1, __shamt);
   int16x4_t __narrowed
     = __builtin_riscv_pnclipp_i16x4 (__shifted, (int32x2_t) { 0 });
   return RVP_SUBVECTOR_GET (int16x4_t, int16x2_t, __narrowed, 0);
