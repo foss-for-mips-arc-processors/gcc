@@ -3,6 +3,7 @@
 FAIL: g++.target/riscv/rvv/base/pr122448.C
 FAIL: g++.target/riscv/rvv/base/pr123808-2.C
 FAIL: g++.target/riscv/rvv/base/pr123808.C
+FAIL: gcc.dg/tree-ssa/pr125734.c
 FAIL: gcc.dg/vect/pr53773.c
 FAIL: gcc.dg/vect/pr65310.c
 FAIL: gcc.dg/vect/pr88598-1.c
@@ -10,6 +11,7 @@ FAIL: gcc.dg/vect/pr88598-2.c
 FAIL: gcc.dg/vect/pr88598-3.c
 FAIL: gcc.dg/vect/vect-gather-2.c
 FAIL: gcc.target/riscv/czero-bext.c
+FAIL: gcc.target/riscv/pr123883-b.c
 FAIL: gcc.target/riscv/rvv/autovec/early-break-5.c
 FAIL: gcc.target/riscv/rvv/autovec/pr121742.c
 FAIL: gcc.target/riscv/rvv/autovec/pr121780.c
@@ -29,3 +31,4 @@ UNRESOLVED: gcc.target/riscv/rvv/autovec/pr121845.c
 UNRESOLVED: gcc.target/riscv/rvv/autovec/pr123097-run.c
 UNRESOLVED: gcc.target/riscv/rvv/autovec/pr126049.c
 UNRESOLVED: gcc.target/riscv/rvv/pr120297.c
+XPASS: g++.old-deja/g++.pt/ptrmem6.C
