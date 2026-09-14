@@ -396,33 +396,6 @@
   [(set_attr "type" "shift")
    (set_attr "mode" "<MODE>")])
 
-;; 4-byte packed vector shift (PV4QI/PV2HI, RV32 and RV64)
-;; Scalar-optab names; kept for RTL-level builtin emission compatibility.
-(define_insn "<rvp_shift_optab><mode>3"
-  [(set (match_operand:PV32 0 "register_operand" "=r, r")
-	(shift_op:PV32
-	  (match_operand:PV32 1 "register_operand" "r, r")
-	  (match_operand:SI 2 "reg_or_int_operand" "r, I")))]
-  "TARGET_RVP"
-  "@
-   <rvp_shift_insn>.<rvp_width>s\t%0,%1,%2
-   <rvp_shift_insn>i.<rvp_width>\t%0,%1,%2"
-  [(set_attr "type" "shift")
-   (set_attr "mode" "<MODE>")])
-
-;; 8-byte packed vector shift: RV64 single register, RV32 register pair
-(define_insn "<rvp_shift_optab><mode>3"
-  [(set (match_operand:PV64 0 "register_operand" "=r, r")
-	(shift_op:PV64
-	  (match_operand:PV64 1 "register_operand" "r, r")
-	  (match_operand:SI 2 "reg_or_int_operand" "r, I")))]
-  "TARGET_RVP"
-  "@
-   <rvp_shift_insn>.%d0s\t%0,%1,%2
-   <rvp_shift_insn>i.%d0\t%0,%1,%2"
-  [(set_attr "type" "shift")
-   (set_attr "mode" "<MODE>")])
-
 ;; Packed multiply high for the single-register modes (pmulh.b/.h/.w).
 (define_insn "<mulh_prefix>mul<mode>3_highpart"
   [(set (match_operand:PVMULH1 0 "register_operand" "=r")
