@@ -33,6 +33,10 @@ jobs:
             arch: rv32i_zicsr_zifencei_zihintpause_a_zca_zcf_d_f_m_zcb_zcmp_zcmt_zba_zbb_zbc_zbs_zicond_zicbom_zicbop_zihintntl
             abi: ilp32d
             tune: arc-v-rhx-100-series
+          - label: rv32-m8500
+            arch: rv32imafdb_zce_zbc_zicbop_zimop_zcmop_zicond_zihintntl_zihintpause_zawrs_zabha_zbkb_zbkx_zfa_zicbom_zicboz_zifencei_zicsr_zicntr_zilsd_ziccamoa_ziccif_zicclsm_xmipscmov_xmipslsp_xmipstrig
+            abi: ilp32d
+            tune: mips-m8500
 
     env:
       RISCV: ${{ github.workspace }}/install
@@ -70,16 +74,37 @@ jobs:
         run: |
           # sourceware.org rate-limits GitHub Actions runners over HTTPS,
           # fetch the via the git:// instead.
-          git submodule set-url binutils git://sourceware.org/git/binutils-gdb.git
           git submodule set-url newlib git://sourceware.org/git/newlib-cygwin.git
+
+          git submodule set-url binutils \
+            https://github.com/foss-for-synopsys-dwc-arc-processors/binutils-gdb.git
+          git submodule set-branch --branch arc-2026.09 binutils
+
           git submodule sync binutils newlib
 
           # Only fetch submodules required for a newlib (--disable-linux) build:
           # binutils, newlib, dejagnu. GCC sources come from the PR checkout
           # via --with-gcc-src, so we don't initialize the gcc submodule.
-          git submodule update --init --depth 1 --recursive binutils
+          # --remote takes the branch tip set above rather than the superproject's
+          # pinned commit; the build only re-runs `submodule update` when a
+          # submodule is missing, so this checkout survives it.
+          git submodule update --init --remote --depth 1 --recursive binutils
           git submodule update --init --depth 1 --recursive newlib
           git submodule update --init --depth 1 --recursive dejagnu
+
+      - name: Teach the QEMU wrapper about the mips-m8500 extensions
+        working-directory: riscv-gnu-toolchain
+        run: |
+          # scripts/march-to-cpu-opt derives the QEMU_CPU string from a test
+          # binary's ISA attributes, but only enables the extensions it knows
+          # about. QEMU implements these three as CPU properties, the script
+          # does not list them, so without this their instructions trap as
+          # illegal at run time. xmipstrig stays out: QEMU has no property of
+          # that name and would reject the whole -cpu string, so the handful of
+          # tests that execute mips.f*.s instructions fail instead.
+          sed -i 's/^QEMU_SUPPORTED_EXTS = {$/&\n    "zilsd",\n    "xmipscmov",\n    "xmipslsp",/' \
+            scripts/march-to-cpu-opt
+          grep -q '"xmipscmov",' scripts/march-to-cpu-opt
 
       - name: Configure riscv-gnu-toolchain
         working-directory: riscv-gnu-toolchain
