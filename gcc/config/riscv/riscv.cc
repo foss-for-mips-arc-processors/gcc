@@ -16746,13 +16746,9 @@ synthesize_add (rtx operands[3])
 
       ival -= saturated;
 
-      /* The first add may be an FP relative address during reload.  FP
-	 may be replaced with (sp + C).  We don't want that to already
-	 be saturated as (sp + C) would then exceed a simm12 field.  So
-	 emit the smaller offset first and the saturated constant last.  */
-      rtx x = gen_rtx_PLUS (word_mode, operands[1], GEN_INT (ival));
+      rtx x = gen_rtx_PLUS (word_mode, operands[1], GEN_INT (saturated));
       emit_insn (gen_rtx_SET (operands[0], x));
-      rtx output = gen_rtx_PLUS (word_mode, operands[0], GEN_INT (saturated));
+      rtx output = gen_rtx_PLUS (word_mode, operands[0], GEN_INT (ival));
       emit_insn (gen_rtx_SET (operands[0], output));
       return true;
     }
@@ -16855,18 +16851,14 @@ synthesize_add_extended (rtx operands[3])
 
       ival -= saturated;
 
-      /* The first add may be an FP relative address during reload.  FP
-	 may be replaced with (sp + C).  We don't want that to already
-	 be saturated as (sp + C) would then exceed a simm12 field.  So
-	 emit the smaller offset first and the saturated constant last.  */
       rtx temp = gen_reg_rtx (DImode);
-      emit_insn (gen_addsi3_extended (temp, operands[1], GEN_INT (ival)));
+      emit_insn (gen_addsi3_extended (temp, operands[1], GEN_INT (saturated)));
       temp = gen_lowpart (SImode, temp);
       SUBREG_PROMOTED_VAR_P (temp) = 1;
       SUBREG_PROMOTED_SET (temp, SRP_SIGNED);
       emit_insn (gen_rtx_SET (operands[0], temp));
       rtx t = gen_reg_rtx (DImode);
-      emit_insn (gen_addsi3_extended (t, operands[0], GEN_INT (saturated)));
+      emit_insn (gen_addsi3_extended (t, operands[0], GEN_INT (ival)));
       t = gen_lowpart (SImode, t);
       SUBREG_PROMOTED_VAR_P (t) = 1;
       SUBREG_PROMOTED_SET (t, SRP_SIGNED);
