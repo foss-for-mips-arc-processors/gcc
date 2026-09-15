@@ -1,7 +1,9 @@
 name: ARC GCC test
 
 on:
-  push:
+  # TEMPORARY: push runs are disabled while the rv32-m8500 allowlist is being
+  # established, so the ARC jobs don't compete for runners. Restore before
+  # merging.
   workflow_dispatch:
 
 permissions:

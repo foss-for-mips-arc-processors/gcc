@@ -21,18 +21,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: rv64gc
-            arch: rv64gc
-            abi: lp64d
-            tune: rocket
-          - label: rv32gc
-            arch: rv32gc
-            abi: ilp32d
-            tune: rocket
-          - label: rv32-rhx
-            arch: rv32i_zicsr_zifencei_zihintpause_a_zca_zcf_d_f_m_zcb_zcmp_zcmt_zba_zbb_zbc_zbs_zicond_zicbom_zicbop_zihintntl
-            abi: ilp32d
-            tune: arc-v-rhx-100-series
+          # TEMPORARY: every target but rv32-m8500 is disabled while its
+          # allowlist is being established. Restore before merging.
+          # - label: rv64gc
+          #   arch: rv64gc
+          #   abi: lp64d
+          #   tune: rocket
+          # - label: rv32gc
+          #   arch: rv32gc
+          #   abi: ilp32d
+          #   tune: rocket
+          # - label: rv32-rhx
+          #   arch: rv32i_zicsr_zifencei_zihintpause_a_zca_zcf_d_f_m_zcb_zcmp_zcmt_zba_zbb_zbc_zbs_zicond_zicbom_zicbop_zihintntl
+          #   abi: ilp32d
+          #   tune: arc-v-rhx-100-series
           # The -mcpu=mips-m8500 ISA string, minus xmipsexectl which this GCC
           # does not know yet (it only gates mips.ehb/ihb/pause, which GCC
           # never generates on its own).
