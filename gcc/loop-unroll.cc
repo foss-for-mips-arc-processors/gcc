@@ -663,6 +663,25 @@ unroll_loop_constant_iterations (class loop *loop)
 	     max_unroll, num_loop_insns (loop));
 }
 
+/* Return the number of conditional branches the prologue emitted by
+   unroll_loop_runtime_iterations would contain when a loop is unrolled
+   NUNROLL times.  The prologue dispatches on the iteration count modulo
+   the unroll factor, so it costs one branch and one peeled copy of the
+   loop body per nonzero remainder.  */
+
+static unsigned
+unroll_runtime_peel_branches (unsigned nunroll)
+{
+  unsigned i;
+
+  /* unroll_loop_runtime_iterations rounds the unroll factor down to a
+     power of two.  */
+  for (i = 1; 2 * i <= nunroll; i *= 2)
+    continue;
+
+  return i - 1;
+}
+
 /* Decide whether to unroll LOOP iterating runtime computable number of times
    and how much.  */
 static void
@@ -731,6 +750,18 @@ decide_unroll_runtime_iterations (class loop *loop, int flags)
     {
       if (dump_file)
 	fprintf (dump_file, ";; Not unrolling loop, doesn't roll\n");
+      return;
+    }
+
+  /* The peeled prologue is a chain of conditional branches, none of which
+     the loop body needs; leave such a loop to decide_unroll_stupid, which
+     unrolls without a prologue at the cost of keeping the exit test in
+     every copy.  */
+  if (unroll_runtime_peel_branches (nunroll)
+      > (unsigned) param_max_unroll_peel_branches)
+    {
+      if (dump_file)
+	fprintf (dump_file, ";; Not unrolling, peeled prologue too large\n");
       return;
     }
 
@@ -1179,8 +1210,13 @@ decide_unroll_stupid (class loop *loop, int flags)
   /* Check for simple loops.  */
   desc = get_simple_loop_desc (loop);
 
-  /* Check simpleness.  */
-  if (desc->simple_p && !desc->assumptions)
+  /* Check simpleness.  Such loops belong to decide_unroll_runtime_iterations,
+     unless it gave them up because their peeled prologue would be too
+     large, in which case unrolling stupidly is the remaining way to unroll
+     them at all.  */
+  if (desc->simple_p && !desc->assumptions
+      && (unroll_runtime_peel_branches (nunroll)
+	  <= (unsigned) param_max_unroll_peel_branches))
     {
       if (dump_file)
 	fprintf (dump_file, ";; Loop is simple\n");

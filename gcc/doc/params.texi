@@ -472,6 +472,13 @@ this parameter also determines how many times the loop code is unrolled.
 @item max-unroll-times
 The maximum number of unrollings of a single loop.
 
+@paindex max-unroll-peel-branches
+@item max-unroll-peel-branches
+The maximum number of branches allowed in the prologue peeled when unrolling
+a loop whose number of iterations is only known at run time.  A loop needing
+a larger prologue is instead unrolled without one, keeping the exit test in
+every copy of the body.
+
 @paindex max-peeled-insns
 @item max-peeled-insns
 The maximum number of instructions that a loop may have to be peeled.
