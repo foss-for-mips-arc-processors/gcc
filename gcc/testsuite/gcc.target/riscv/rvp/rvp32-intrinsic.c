@@ -1350,9 +1350,7 @@ uint32_t test_predsumu_u16x4_u32(uint16x4_t a, uint32_t b)
 
 /*
 **test_pmin_i8x4:
-** ...
-** pmin.b\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmin.b\ta0,a0,a1
 */
 int8x4_t test_pmin_i8x4(int8x4_t a, int8x4_t b)
 {
@@ -1361,9 +1359,7 @@ int8x4_t test_pmin_i8x4(int8x4_t a, int8x4_t b)
 
 /*
 **test_pmin_i16x2:
-** ...
-** pmin.h\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmin.h\ta0,a0,a1
 */
 int16x2_t test_pmin_i16x2(int16x2_t a, int16x2_t b)
 {
@@ -1372,9 +1368,7 @@ int16x2_t test_pmin_i16x2(int16x2_t a, int16x2_t b)
 
 /*
 **test_pminu_u8x4:
-** ...
-** pminu.b\ta[0-9],a[0-9],a[0-9]
-** ...
+** pminu.b\ta0,a0,a1
 */
 uint8x4_t test_pminu_u8x4(uint8x4_t a, uint8x4_t b)
 {
@@ -1383,9 +1377,7 @@ uint8x4_t test_pminu_u8x4(uint8x4_t a, uint8x4_t b)
 
 /*
 **test_pminu_u16x2:
-** ...
-** pminu.h\ta[0-9],a[0-9],a[0-9]
-** ...
+** pminu.h\ta0,a0,a1
 */
 uint16x2_t test_pminu_u16x2(uint16x2_t a, uint16x2_t b)
 {
@@ -1394,9 +1386,7 @@ uint16x2_t test_pminu_u16x2(uint16x2_t a, uint16x2_t b)
 
 /*
 **test_pmax_i8x4:
-** ...
-** pmax.b\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmax.b\ta0,a0,a1
 */
 int8x4_t test_pmax_i8x4(int8x4_t a, int8x4_t b)
 {
@@ -1405,9 +1395,7 @@ int8x4_t test_pmax_i8x4(int8x4_t a, int8x4_t b)
 
 /*
 **test_pmax_i16x2:
-** ...
-** pmax.h\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmax.h\ta0,a0,a1
 */
 int16x2_t test_pmax_i16x2(int16x2_t a, int16x2_t b)
 {
@@ -1416,9 +1404,7 @@ int16x2_t test_pmax_i16x2(int16x2_t a, int16x2_t b)
 
 /*
 **test_pmaxu_u8x4:
-** ...
-** pmaxu.b\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmaxu.b\ta0,a0,a1
 */
 uint8x4_t test_pmaxu_u8x4(uint8x4_t a, uint8x4_t b)
 {
@@ -1427,9 +1413,7 @@ uint8x4_t test_pmaxu_u8x4(uint8x4_t a, uint8x4_t b)
 
 /*
 **test_pmaxu_u16x2:
-** ...
-** pmaxu.h\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmaxu.h\ta0,a0,a1
 */
 uint16x2_t test_pmaxu_u16x2(uint16x2_t a, uint16x2_t b)
 {
@@ -1440,9 +1424,7 @@ uint16x2_t test_pmaxu_u16x2(uint16x2_t a, uint16x2_t b)
 
 /*
 **test_pmin_i8x8:
-** ...
-** pmin.db\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmin.db\ta0,a0,a2
 */
 int8x8_t test_pmin_i8x8(int8x8_t a, int8x8_t b)
 {
@@ -1451,9 +1433,7 @@ int8x8_t test_pmin_i8x8(int8x8_t a, int8x8_t b)
 
 /*
 **test_pmin_i32x2:
-** ...
-** pmin.dw\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmin.dw\ta0,a0,a2
 */
 int32x2_t test_pmin_i32x2(int32x2_t a, int32x2_t b)
 {
@@ -1462,9 +1442,7 @@ int32x2_t test_pmin_i32x2(int32x2_t a, int32x2_t b)
 
 /*
 **test_pminu_u8x8:
-** ...
-** pminu.db\ta[0-9],a[0-9],a[0-9]
-** ...
+** pminu.db\ta0,a0,a2
 */
 uint8x8_t test_pminu_u8x8(uint8x8_t a, uint8x8_t b)
 {
@@ -1473,9 +1451,7 @@ uint8x8_t test_pminu_u8x8(uint8x8_t a, uint8x8_t b)
 
 /*
 **test_pminu_u16x4:
-** ...
-** pminu.dh\ta[0-9],a[0-9],a[0-9]
-** ...
+** pminu.dh\ta0,a0,a2
 */
 uint16x4_t test_pminu_u16x4(uint16x4_t a, uint16x4_t b)
 {
@@ -1484,9 +1460,7 @@ uint16x4_t test_pminu_u16x4(uint16x4_t a, uint16x4_t b)
 
 /*
 **test_pminu_u32x2:
-** ...
-** pminu.dw\ta[0-9],a[0-9],a[0-9]
-** ...
+** pminu.dw\ta0,a0,a2
 */
 uint32x2_t test_pminu_u32x2(uint32x2_t a, uint32x2_t b)
 {
@@ -1495,9 +1469,7 @@ uint32x2_t test_pminu_u32x2(uint32x2_t a, uint32x2_t b)
 
 /*
 **test_pmax_i8x8:
-** ...
-** pmax.db\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmax.db\ta0,a0,a2
 */
 int8x8_t test_pmax_i8x8(int8x8_t a, int8x8_t b)
 {
@@ -1506,9 +1478,7 @@ int8x8_t test_pmax_i8x8(int8x8_t a, int8x8_t b)
 
 /*
 **test_pmax_i32x2:
-** ...
-** pmax.dw\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmax.dw\ta0,a0,a2
 */
 int32x2_t test_pmax_i32x2(int32x2_t a, int32x2_t b)
 {
@@ -1517,9 +1487,7 @@ int32x2_t test_pmax_i32x2(int32x2_t a, int32x2_t b)
 
 /*
 **test_pmaxu_u8x8:
-** ...
-** pmaxu.db\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmaxu.db\ta0,a0,a2
 */
 uint8x8_t test_pmaxu_u8x8(uint8x8_t a, uint8x8_t b)
 {
@@ -1528,9 +1496,7 @@ uint8x8_t test_pmaxu_u8x8(uint8x8_t a, uint8x8_t b)
 
 /*
 **test_pmaxu_u16x4:
-** ...
-** pmaxu.dh\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmaxu.dh\ta0,a0,a2
 */
 uint16x4_t test_pmaxu_u16x4(uint16x4_t a, uint16x4_t b)
 {
@@ -1539,9 +1505,7 @@ uint16x4_t test_pmaxu_u16x4(uint16x4_t a, uint16x4_t b)
 
 /*
 **test_pmaxu_u32x2:
-** ...
-** pmaxu.dw\ta[0-9],a[0-9],a[0-9]
-** ...
+** pmaxu.dw\ta0,a0,a2
 */
 uint32x2_t test_pmaxu_u32x2(uint32x2_t a, uint32x2_t b)
 {
