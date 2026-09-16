@@ -183,6 +183,12 @@ RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
     return ((__rs1 cmp __rs2) & __rs1) | (~(__rs1 cmp __rs2) & __rs2);     \
   }
 
+#define RVP_SH1ADD_OP(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
+  {                                                                        \
+    return (__rs1 << 1) + __rs2;                                           \
+  }
+
 #define RVP_LOAD(name, vector_type, element_type, memory_type)              \
 RVP_OP_ATTRS vector_type __riscv_##name (element_type *__p)                 \
   {                                                                        \
@@ -571,13 +577,13 @@ CREATE_RVP_INTRINSIC (uint16x4_t, pasubu_u16x4, uint16x4_t, uint16x4_t)
 CREATE_RVP_INTRINSIC (uint32x2_t, pasubu_u32x2, uint32x2_t, uint32x2_t)
 
 /* Packed Shift-Add.  */
-CREATE_RVP_INTRINSIC (int16x2_t, psh1add_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, psh1add_u16x2, uint16x2_t, uint16x2_t)
+RVP_SH1ADD_OP (psh1add_i16x2, int16x2_t)
+RVP_SH1ADD_OP (psh1add_u16x2, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, pssh1sadd_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (int16x4_t, psh1add_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, psh1add_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int32x2_t, psh1add_i32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, psh1add_u32x2, uint32x2_t, uint32x2_t)
+RVP_SH1ADD_OP (psh1add_i16x4, int16x4_t)
+RVP_SH1ADD_OP (psh1add_u16x4, uint16x4_t)
+RVP_SH1ADD_OP (psh1add_i32x2, int32x2_t)
+RVP_SH1ADD_OP (psh1add_u32x2, uint32x2_t)
 CREATE_RVP_INTRINSIC (int16x4_t, pssh1sadd_i16x4, int16x4_t, int16x4_t)
 CREATE_RVP_INTRINSIC (int32x2_t, pssh1sadd_i32x2, int32x2_t, int32x2_t)
 

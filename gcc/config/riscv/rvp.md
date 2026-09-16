@@ -370,8 +370,10 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
-;; 4-byte packed vector shift (PV4QI/PV2HI, RV32 and RV64)
-(define_insn "v<rvp_shift_optab><mode>3"
+;; 4-byte packed vector shift (PV4QI/PV2HI, RV32 and RV64).
+;; The standard ashl/lshr/ashr optabs match directly without broadcasting
+;; the amount into a vector first.
+(define_insn "<rvp_shift_optab><mode>3"
   [(set (match_operand:PV32 0 "register_operand" "=r, r")
 	(shift_op:PV32
 	  (match_operand:PV32 1 "register_operand" "r, r")
@@ -384,7 +386,7 @@
    (set_attr "mode" "<MODE>")])
 
 ;; 8-byte packed vector shift: RV64 single register, RV32 register pair
-(define_insn "v<rvp_shift_optab><mode>3"
+(define_insn "<rvp_shift_optab><mode>3"
   [(set (match_operand:PV64 0 "register_operand" "=r, r")
 	(shift_op:PV64
 	  (match_operand:PV64 1 "register_operand" "r, r")

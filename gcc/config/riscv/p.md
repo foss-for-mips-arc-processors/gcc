@@ -279,7 +279,6 @@
   UNSPEC_PASUB
   UNSPEC_PAADDU
   UNSPEC_PASUBU
-  UNSPEC_PSH1ADD
   UNSPEC_PSSH1SADD
   UNSPEC_PWCVT_B
   UNSPEC_PWCVT_H
@@ -737,25 +736,9 @@
   "pasubu.<SAT_SUFFIX>\t%0,%1,%2"
   [(set_attr "type" "simd")])
 
-;Packed Shift-Add
-
-(define_insn "riscv_psh1add_<SAT_NAME>"
-  [(set (match_operand:SHADD32 0 "register_operand" "=r")
-        (unspec:SHADD32 [(match_operand:SHADD32 1 "register_operand" "r")
-                         (match_operand:SHADD32 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP"
-  "psh1add.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_psh1add_<USAT_NAME>"
-  [(set (match_operand:SHADD32 0 "register_operand" "=r")
-        (unspec:SHADD32 [(match_operand:SHADD32 1 "register_operand" "r")
-                         (match_operand:SHADD32 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP"
-  "psh1add.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
+;; Packed Shift-Add.  The non-saturating psh1add intrinsics are lowered
+;; through the *psh1add<mode>3 combiner patterns in rvp.md; only the
+;; saturating pssh1sadd keeps a dedicated pattern here.
 
 (define_insn "riscv_pssh1sadd_<SAT_NAME>"
   [(set (match_operand:SHADD32 0 "register_operand" "=r")
@@ -764,70 +747,6 @@
          UNSPEC_PSSH1SADD))]
   "TARGET_RVP"
   "pssh1sadd.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_expand "riscv_psh1add_<SAT_NAME>"
-  [(set (match_operand:SHADD64 0 "register_operand")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand")
-                         (match_operand:SHADD64 2 "register_operand")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP"
-{
-  if (TARGET_64BIT)
-    emit_insn (gen_riscv_psh1add_<SAT_NAME>_rv64 (operands[0], operands[1], operands[2]));
-  else
-    emit_insn (gen_riscv_psh1add_<SAT_NAME>_rv32 (operands[0], operands[1], operands[2]));
-  DONE;
-})
-
-(define_insn "riscv_psh1add_<SAT_NAME>_rv32"
-  [(set (match_operand:SHADD64 0 "register_operand" "=R")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand" "r")
-                         (match_operand:SHADD64 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "psh1add.<DSAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_psh1add_<SAT_NAME>_rv64"
-  [(set (match_operand:SHADD64 0 "register_operand" "=r")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand" "r")
-                         (match_operand:SHADD64 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP && TARGET_64BIT"
-  "psh1add.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_expand "riscv_psh1add_<USAT_NAME>"
-  [(set (match_operand:SHADD64 0 "register_operand")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand")
-                         (match_operand:SHADD64 2 "register_operand")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP"
-{
-  if (TARGET_64BIT)
-    emit_insn (gen_riscv_psh1add_<USAT_NAME>_rv64 (operands[0], operands[1], operands[2]));
-  else
-    emit_insn (gen_riscv_psh1add_<USAT_NAME>_rv32 (operands[0], operands[1], operands[2]));
-  DONE;
-})
-
-(define_insn "riscv_psh1add_<USAT_NAME>_rv32"
-  [(set (match_operand:SHADD64 0 "register_operand" "=R")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand" "r")
-                         (match_operand:SHADD64 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "psh1add.<DSAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_psh1add_<USAT_NAME>_rv64"
-  [(set (match_operand:SHADD64 0 "register_operand" "=r")
-        (unspec:SHADD64 [(match_operand:SHADD64 1 "register_operand" "r")
-                         (match_operand:SHADD64 2 "register_operand" "r")]
-         UNSPEC_PSH1ADD))]
-  "TARGET_RVP && TARGET_64BIT"
-  "psh1add.<SAT_SUFFIX>\t%0,%1,%2"
   [(set_attr "type" "simd")])
 
 (define_expand "riscv_pssh1sadd_<SAT_NAME>"
