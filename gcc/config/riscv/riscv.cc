@@ -4118,7 +4118,7 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
 	     already we can just elide the nop move here and be done.  */
 	  if (need_int_reg_p)
 	    emit_move_insn (dest, gen_lowpart (GET_MODE (dest), int_reg));
-	  else if (!rtx_equal_p (dest, int_reg)) 
+	  else if (!rtx_equal_p (dest, int_reg))
 	    emit_move_insn (dest, int_reg);
 	  return true;
 	}
