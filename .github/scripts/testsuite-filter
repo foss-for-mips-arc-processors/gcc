@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Filter GCC testsuite .sum results against a hierarchical allowlist.
+
+Adapted from riscv-gnu-toolchain's `scripts/testsuite-filter`
+(https://github.com/riscv-collab/riscv-gnu-toolchain). The matching model is
+identical: known-acceptable `FAIL/XPASS/UNRESOLVED/ERROR` results are curated
+as `STATUS: testpath` lines, split across allowlist files that are layered by
+target so that failures shared by every target live once in `common.log`.
+
+Differences from the upstream script:
+
+  * The target (arch/abi/libc) is passed explicitly on the command line rather
+    than parsed out of each .sum's "Running target" variation lines. Our CI
+    builds one `--disable-multilib` target per job, so there is exactly one
+    variation per run and the matrix already knows what it is. This also lets
+    the same script serve RISC-V and ARC, whose variation lines differ.
+  * The `Arch` parser degrades gracefully for non-RISC-V arches (e.g. ARC),
+    treating the whole arch string as the base with no extensions.
+  * `--out` writes the surviving (non-allowlisted) results to a file so the
+    workflow can upload them as an artifact.
+
+Allowlist file selection, given (libc, arch, abi, tune), includes every file
+below that exists under <allowlist-dir>/<tool>/:
+
+    common.log
+    <libc>.log
+    <base_arch>.log              <abi>.log              <base_arch>.<abi>.log
+    <libc>.<base_arch>.log       <libc>.<abi>.log       <libc>.<base_arch>.<abi>.log
+  and, for each RISC-V extension <ext>, the corresponding <ext> permutations.
+
+When an mtune is given, a more specific layer is added on top: a tune-wide
+<tune>.log (this mtune across all arches) plus a `.<tune>` qualified sibling of
+each tune-agnostic file above (e.g. <base_arch>.<abi>.<tune>.log). The
+tune-agnostic files keep applying to every mtune - like common.log, but scoped
+to an arch/abi - while the tune files add failures seen only under that mtune.
+A result is accepted if it is listed in any selected file, so the layers are
+cumulative: common, then <base_arch>..., then the mtune-specific files.
+"""
+
+from __future__ import print_function
+
+import argparse
+import os
+import re
+import sys
+
+UNEXPECTED_RE = re.compile(r"^(FAIL|XPASS|UNRESOLVED|ERROR)\b")
+
+
+class Arch:
+    """Decompose an -march string into a base arch + extension list.
+
+    RISC-V arches (rv32/rv64/rv128, optionally with a 'g' shorthand) are split
+    into their canonical extensions. Anything else (e.g. an ARC cpu name) is
+    kept whole with no extensions so the same allowlist machinery applies.
+    """
+
+    def __init__(self, arch):
+        m = re.match(r"rv(32|64|128)", arch)
+        if not m:
+            self.base_arch = arch
+            self.ext = []
+            return
+
+        arch = re.sub(r"^rv(32|64|128)g", r"rv\1imafd", arch)
+        self.base_arch = m.group(0)
+        self.ext = []
+        i = len(self.base_arch)
+        while i < len(arch):
+            ext = arch[i]
+            if ext in ("x", "s", "z"):
+                extlen = 1
+                while (i + extlen) < len(arch) and arch[i + extlen] != "_":
+                    extlen += 1
+                self.ext.append(arch[i:i + extlen])
+                i += extlen
+            elif ext == "_":
+                i += 1
+            else:
+                self.ext.append(ext)
+                i += 1
+
+
+def get_allowlist_files(arch, abi, libc, tune, base_dir):
+    """Return existing allowlist files applicable to (arch, abi, libc, tune).
+
+    The tune-agnostic layer (common.log plus the libc/arch/abi/ext
+    permutations) applies to every mtune. When a tune is given, a more specific
+    layer is added on top: a `.<tune>` qualified sibling of each tune-agnostic
+    file plus a tune-wide <tune>.log. A result is accepted if it is listed in
+    any selected file, so the layers are cumulative.
+    """
+    a = Arch(arch)
+    names = []
+
+    def add(name):
+        if name not in names:
+            names.append(name)
+
+    # --- tune-agnostic layer (applies to all mtunes) ---
+    add("common.log")
+    if libc:
+        add("%s.log" % libc)
+    add("%s.log" % a.base_arch)
+    if abi:
+        add("%s.log" % abi)
+        add("%s.%s.log" % (a.base_arch, abi))
+    if libc:
+        add("%s.%s.log" % (libc, a.base_arch))
+        if abi:
+            add("%s.%s.log" % (libc, abi))
+            add("%s.%s.%s.log" % (libc, a.base_arch, abi))
+
+    for ext in a.ext:
+        add("%s.log" % ext)
+        add("%s.%s.log" % (a.base_arch, ext))
+        if abi:
+            add("%s.%s.log" % (ext, abi))
+            add("%s.%s.%s.log" % (a.base_arch, ext, abi))
+        if libc:
+            add("%s.%s.log" % (libc, ext))
+            add("%s.%s.%s.log" % (libc, a.base_arch, ext))
+            if abi:
+                add("%s.%s.%s.log" % (libc, ext, abi))
+                add("%s.%s.%s.%s.log" % (libc, a.base_arch, ext, abi))
+
+    # --- tune-specific layer (applies only to this mtune) ---
+    if tune:
+        for name in list(names):
+            if name == "common.log":
+                continue
+            add("%s.%s.log" % (name[:-len(".log")], tune))
+        add("%s.log" % tune)
+
+    files = []
+    for name in names:
+        path = os.path.join(base_dir, name)
+        if os.path.exists(path):
+            files.append(path)
+    return files
+
+
+def read_allowlist(files):
+    """Map testpath -> list of `STATUS: testpath` allowlist entries."""
+    allowlist = {}
+    for fname in files:
+        with open(fname) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line[0] == "#":
+                    continue
+                parts = line.split(" ")
+                if len(parts) < 2:
+                    print("Corrupt allowlist line in %s: %r" % (fname, line),
+                          file=sys.stderr)
+                    continue
+                key = parts[1]
+                allowlist.setdefault(key, []).append(line)
+    return allowlist
+
+
+def read_unexpected(sum_files):
+    """Collect stripped unexpected-result lines from the .sum files."""
+    results = []
+    for sum_file in sum_files:
+        with open(sum_file, errors="replace") as f:
+            for line in f:
+                if UNEXPECTED_RE.match(line):
+                    results.append(line.strip())
+    return results
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--tool", default="gcc",
+                   help="allowlist subdirectory / toolset (default: gcc)")
+    p.add_argument("--libc", default="",
+                   help="C library tag, e.g. newlib (default: none)")
+    p.add_argument("--arch", required=True,
+                   help="target arch, e.g. rv32gc or an ARC cpu name")
+    p.add_argument("--abi", default="",
+                   help="target ABI, e.g. ilp32d (default: none)")
+    p.add_argument("--tune", default="",
+                   help="target mtune, e.g. arc-v-rhx-100-series (default: none)")
+    p.add_argument("--allowlist-dir", required=True,
+                   help="base allowlist directory (contains <tool>/)")
+    p.add_argument("--out", default="",
+                   help="write surviving non-allowlisted results here")
+    p.add_argument("sums", nargs="+",
+                   help="testsuite .sum files (space- or comma-separated)")
+    args = p.parse_args()
+
+    sum_files = []
+    for s in args.sums:
+        sum_files.extend(part for part in s.split(",") if part)
+
+    base_dir = os.path.join(args.allowlist_dir, args.tool)
+    allow_files = get_allowlist_files(args.arch, args.abi, args.libc,
+                                      args.tune, base_dir)
+    print("Allowlist files applied (%d):" % len(allow_files))
+    for f in allow_files:
+        print("  %s" % os.path.relpath(f))
+    allowlist = read_allowlist(allow_files)
+
+    unexpected = read_unexpected(sum_files)
+
+    surviving = []
+    allowlisted = 0
+    for ur in unexpected:
+        key = ur.split(" ")[1] if len(ur.split(" ")) > 1 else ""
+        if key in allowlist and any(ur.startswith(e) for e in allowlist[key]):
+            allowlisted += 1
+        else:
+            surviving.append(ur)
+
+    print("\n.sum files scanned:       %d" % len(sum_files))
+    print("Unexpected results:       %d" % len(unexpected))
+    print("Allowlisted (ignored):    %d" % allowlisted)
+    print("Surviving (regressions):  %d" % len(surviving))
+
+    if args.out:
+        with open(args.out, "w") as f:
+            for ur in surviving:
+                f.write(ur + "\n")
+
+    if surviving:
+        print("\n=== Non-allowlisted results ===")
+        for ur in surviving:
+            print(ur)
+
+    if not sum_files:
+        print("::error::No .sum files supplied.", file=sys.stderr)
+        sys.exit(2)
+
+    sys.exit(1 if surviving else 0)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,47 @@
+/* Intrinsic define macros for MIPS m8500 trig extension
+   Copyright (C) 2026 Free Software Foundation, Inc.
+   Contributed by Artemiy Volkov (artemiy@synopsys.com), Synopsys Inc.
+
+   This file is part of GCC.
+
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published
+   by the Free Software Foundation; either version 3, or (at your
+   option) any later version.
+
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
+
+   Under Section 7 of GPL version 3, you are granted additional
+   permissions described in the GCC Runtime Library Exception, version
+   3.1, as published by the Free Software Foundation.
+
+   You should have received a copy of the GNU General Public License and
+   a copy of the GCC Runtime Library Exception along with this program;
+   see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+   <http://www.gnu.org/licenses/>.  */
+
+RISCV_BUILTIN (mips_fsin_hz, "mips_fsin_hz", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_fcos_hz, "mips_fcos_hz", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_ftan_hz, "mips_ftan_hz", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_fatan_hz, "mips_fatan_hz", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_ffexp2, "mips_ffexp2", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_fversin_hz, "mips_fversin_hz", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_ffrecip, "mips_ffrecip", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_ffsqrt, "mips_ffsqrt", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_ffrsqrt, "mips_ffrsqrt", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_fftanh, "mips_fftanh", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),
+RISCV_BUILTIN (mips_fflog2, "mips_fflog2", RISCV_BUILTIN_DIRECT,
+				RISCV_SF_FTYPE_SF, trig),

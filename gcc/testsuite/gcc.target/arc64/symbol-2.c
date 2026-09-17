@@ -1,0 +1,27 @@
+/* Test whether a symbol ends up to be accessed directly.  */
+/* { dg-do compile { target fpic } } */
+/* { dg-options "-O2 -fpic -w" } */
+/* { dg-final { scan-assembler-times "@_nl_C_locobj" 1 } } */
+/* { dg-final { scan-assembler-times "@_nl_C_locobj@gotpc" 1 } } */
+struct s {
+  int a;
+} _nl_C_locobj;
+
+extern int f1();
+extern int f2(int,int,int,void*);
+extern int f3(int,int,int,struct s);
+
+int b;
+int c()
+{
+  char *d;
+  for (; d[0];)
+    if (b)
+      if (c < '9')
+	{
+	  char e = ({ (&_nl_C_locobj)->a; });
+	  if (e == 'i' && f1())
+	    f2(0, 0, 0, &_nl_C_locobj);
+	  e == 'n' && f3(0, 0, 0, _nl_C_locobj);
+	}
+}
