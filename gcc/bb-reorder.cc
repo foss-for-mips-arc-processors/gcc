@@ -327,6 +327,47 @@ find_traces (int *n_traces, struct trace *traces)
     }
 }
 
+/* Estimate back-edge flow into HEADER while TRACE is being built and
+   currently ends at LATCH along BACK_EDGE.  The original 4/5 trip-count
+   heuristic used only BACK_EDGE->count (), which underestimates when the
+   header has extra latches or jump-threaded entries.  Subtract the tree
+   edge that first reached HEADER in this trace; the remainder is flow
+   from every other predecessor.  Never return less than BACK_EDGE's
+   own count, so the heuristic is only relaxed.  */
+
+static profile_count
+trace_loop_back_count (struct trace *trace, basic_block latch, edge back_edge)
+{
+  basic_block header = back_edge->dest;
+  basic_block tree_pred = NULL;
+  basic_block t;
+  profile_count back = back_edge->count ();
+
+  for (t = trace->first; t; t = (basic_block) t->aux)
+    {
+      if ((basic_block) t->aux == header)
+	{
+	  tree_pred = t;
+	  break;
+	}
+      if (t == latch)
+	break;
+    }
+
+  if (tree_pred && header->count.initialized_p ())
+    {
+      edge tree_e = find_edge (tree_pred, header);
+      if (tree_e && tree_e->count ().initialized_p ()
+	  && header->count > tree_e->count ())
+	{
+	  profile_count all_back = header->count - tree_e->count ();
+	  if (all_back > back)
+	    back = all_back;
+	}
+    }
+  return back;
+}
+
 /* Rotate loop whose back edge is BACK_EDGE in the tail of trace TRACE
    (with sequential number TRACE_N).  */
 
@@ -684,7 +725,7 @@ find_traces_1_round (int branch_th, profile_count count_th,
 		  /* We do nothing with one basic block loops.  */
 		  if (best_edge->dest != bb)
 		    {
-		      if (best_edge->count ()
+		      if (trace_loop_back_count (trace, bb, best_edge)
 			  > best_edge->dest->count.apply_scale (4, 5))
 			{
 			  /* The loop has at least 4 iterations.  If the loop
