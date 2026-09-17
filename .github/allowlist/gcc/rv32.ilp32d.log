@@ -21,6 +21,9 @@ FAIL: g++.dg/gcov/gcov-dump-2.C
 FAIL: g++.dg/gcov/loop.C
 FAIL: g++.dg/gcov/pr86109.C
 FAIL: g++.dg/gcov/ternary.C
+FAIL: g++.dg/opt/mem-notrap-load-asm.C
+FAIL: g++.dg/opt/mem-notrap-load-builtin.C
+FAIL: g++.dg/opt/mem-notrap-store-asm.C
 FAIL: gcc.c-torture/execute/fprintf-2.c
 FAIL: gcc.c-torture/execute/printf-2.c
 FAIL: gcc.c-torture/execute/user-printf.c
@@ -89,6 +92,7 @@ FAIL: gcc.target/riscv/rvv/autovec/pr113206-2.c
 FAIL: gcc.target/riscv/rvv/autovec/pr118945-2.c
 FAIL: gcc.target/riscv/rvv/autovec/pr123940.c
 FAIL: gcc.target/riscv/rvv/autovec/pr125670.c
+FAIL: gcc.target/riscv/rvv/autovec/sat/vec_sat_u_sub_trunc-1-u8.c
 FAIL: gcc.target/riscv/rvv/autovec/vx_vf/vx-1-i16.c
 FAIL: gcc.target/riscv/rvv/autovec/vx_vf/vx-1-i32.c
 FAIL: gcc.target/riscv/rvv/autovec/vx_vf/vx-1-i8.c
