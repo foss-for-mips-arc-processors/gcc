@@ -3199,7 +3199,7 @@ xorl"
     ARC64_VUNSPEC_SR)]
   ""
   "sr\\t%0,[%1]"
-  [(set_attr "length" "4,4,4,8")
+  [(set_attr "length" "4,4,8,4")
    (set_attr "type" "sr")])
 
 (define_insn "lrl"
@@ -3219,7 +3219,7 @@ xorl"
     ARC64_VUNSPEC_SRL)]
   ""
   "srl\\t%0,[%1]"
-  [(set_attr "length" "4,4,4,8")
+  [(set_attr "length" "4,4,8,4")
    (set_attr "type" "sr")])
 
 (define_insn "flag"
