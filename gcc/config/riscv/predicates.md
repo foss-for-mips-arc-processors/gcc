@@ -744,6 +744,11 @@
          && type == SYMBOL_PCREL);
 })
 
+;; Return 1 if the operand is in non-volatile memory.
+(define_predicate "non_volatile_mem_operand"
+  (and (match_operand 0 "memory_operand")
+       (not (match_test "MEM_VOLATILE_P (op)"))))
+
 ;; Shadow stack operands only allow x1, x5 registers
 (define_predicate "x1x5_operand"
   (and (match_operand 0 "register_operand")

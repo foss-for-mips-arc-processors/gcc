@@ -927,4 +927,7 @@ enum
   RISCV_REVISION_VERSION_BASE = 1,
 };
 
+extern bool riscv_load_store_bonding_p (rtx *, machine_mode, bool);
+extern const char *riscv_output_join2_insns (rtx *, machine_mode, bool, bool);
+
 #endif /* ! GCC_RISCV_PROTOS_H */
