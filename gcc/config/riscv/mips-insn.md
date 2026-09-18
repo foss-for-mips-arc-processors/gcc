@@ -114,20 +114,35 @@
                    (any_extend:DI (match_dup 3)))])]
   "")
 
-;; Match paired HI/SI/DI/SF/DFmode load/stores.
-(define_insn "*join2_load_store<JOIN_MODE:mode>"
-  [(set (match_operand:JOIN_MODE 0 "nonimmediate_operand" "=r,f,m,m")
-        (match_operand:JOIN_MODE 1 "nonimmediate_operand" "m,m,r,f"))
-   (set (match_operand:JOIN_MODE 2 "nonimmediate_operand" "=r,f,m,m")
-        (match_operand:JOIN_MODE 3 "nonimmediate_operand" "m,m,r,f"))]
+;; Match paired HI/SI/DI/SF/DFmode loads
+(define_insn "*join2_load<JOIN_MODE:mode>"
+  [(set (match_operand:JOIN_MODE 0 "register_operand" "=r,f")
+        (match_operand:JOIN_MODE 1 "memory_operand" "m,m"))
+   (set (match_operand:JOIN_MODE 2 "register_operand" "=r,f")
+        (match_operand:JOIN_MODE 3 "memory_operand" "m,m"))]
+   "TARGET_XMIPSLSP && reload_completed"
+   {
+     bool load_p = true;
+     return riscv_output_join2_insns (operands, <JOIN_MODE:MODE>mode, load_p,
+                                      false);
+   }
+  [(set_attr "move_type" "load,fpload")
+   (set_attr "mode" "<JOIN_MODE:MODE>")])
+
+;; Match paired HI/SI/DI/SF/DFmode stores.
+(define_insn "*join2_store<JOIN_MODE:mode>"
+  [(set (match_operand:JOIN_MODE 0 "memory_operand" "=m,m")
+        (match_operand:JOIN_MODE 1 "register_operand" "r,f"))
+   (set (match_operand:JOIN_MODE 2 "memory_operand" "=m,m")
+        (match_operand:JOIN_MODE 3 "register_operand" "r,f"))]
   "TARGET_XMIPSLSP && reload_completed"
   {
-    bool load_p = (which_alternative == 0 || which_alternative == 1);
+    bool load_p = false;
     return riscv_output_join2_insns (operands, <JOIN_MODE:MODE>mode, load_p,
-                                     false);
+                                    false);
   }
-  [(set_attr "move_type" "load,fpload,store,fpstore")
-   (set_attr "mode" "<JOIN_MODE:MODE>")])
+  [(set_attr "move_type" "store,fpstore")
+    (set_attr "mode" "<JOIN_MODE:MODE>")])
 
 ;; Match paired HImode loads.
 (define_insn "*join2_loadsihi"
