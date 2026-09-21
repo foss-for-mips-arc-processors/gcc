@@ -177,6 +177,18 @@ RVP_OP_ATTRS ty __riscv_##name (ty __rs1, scalar_ty __rs2)                 \
 #define RVP_CMP_OP(name, ty, rty, op)                                      \
   RVP_VECTOR_OP (name, ty, ty, rty, op)
 
+#define RVP_MINMAX_OP(name, ty, cmp)                                       \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
+  {                                                                        \
+    return ((__rs1 cmp __rs2) & __rs1) | (~(__rs1 cmp __rs2) & __rs2);     \
+  }
+
+#define RVP_SH1ADD_OP(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
+  {                                                                        \
+    return (__rs1 << 1) + __rs2;                                           \
+  }
+
 #define RVP_LOAD(name, vector_type, element_type, memory_type)              \
 RVP_OP_ATTRS vector_type __riscv_##name (element_type *__p)                 \
   {                                                                        \
@@ -565,13 +577,13 @@ CREATE_RVP_INTRINSIC (uint16x4_t, pasubu_u16x4, uint16x4_t, uint16x4_t)
 CREATE_RVP_INTRINSIC (uint32x2_t, pasubu_u32x2, uint32x2_t, uint32x2_t)
 
 /* Packed Shift-Add.  */
-CREATE_RVP_INTRINSIC (int16x2_t, psh1add_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, psh1add_u16x2, uint16x2_t, uint16x2_t)
+RVP_SH1ADD_OP (psh1add_i16x2, int16x2_t)
+RVP_SH1ADD_OP (psh1add_u16x2, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, pssh1sadd_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (int16x4_t, psh1add_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, psh1add_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int32x2_t, psh1add_i32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, psh1add_u32x2, uint32x2_t, uint32x2_t)
+RVP_SH1ADD_OP (psh1add_i16x4, int16x4_t)
+RVP_SH1ADD_OP (psh1add_u16x4, uint16x4_t)
+RVP_SH1ADD_OP (psh1add_i32x2, int32x2_t)
+RVP_SH1ADD_OP (psh1add_u32x2, uint32x2_t)
 CREATE_RVP_INTRINSIC (int16x4_t, pssh1sadd_i16x4, int16x4_t, int16x4_t)
 CREATE_RVP_INTRINSIC (int32x2_t, pssh1sadd_i32x2, int32x2_t, int32x2_t)
 
@@ -643,26 +655,26 @@ CREATE_RVP_INTRINSIC (int64_t, predsum_i32x2_i64, int32x2_t, int64_t)
 CREATE_RVP_INTRINSIC (uint64_t, predsumu_u32x2_u64, uint32x2_t, uint64_t)
 
 /* Packed Minimum and Maximum.  */
-CREATE_RVP_INTRINSIC (int8x4_t, pmin_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (int16x2_t, pmin_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pminu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pminu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (int8x4_t, pmax_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (int16x2_t, pmax_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pmaxu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmaxu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (int8x8_t, pmin_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (int16x4_t, pmin_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (int32x2_t, pmin_i32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pminu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pminu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pminu_u32x2, uint32x2_t, uint32x2_t)
-CREATE_RVP_INTRINSIC (int8x8_t, pmax_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (int16x4_t, pmax_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (int32x2_t, pmax_i32x2, int32x2_t, int32x2_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pmaxu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pmaxu_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (uint32x2_t, pmaxu_u32x2, uint32x2_t, uint32x2_t)
+RVP_MINMAX_OP (pmin_i8x4,   int8x4_t,   <)
+RVP_MINMAX_OP (pmin_i16x2,  int16x2_t,  <)
+RVP_MINMAX_OP (pminu_u8x4,  uint8x4_t,  <)
+RVP_MINMAX_OP (pminu_u16x2, uint16x2_t, <)
+RVP_MINMAX_OP (pmax_i8x4,   int8x4_t,   >)
+RVP_MINMAX_OP (pmax_i16x2,  int16x2_t,  >)
+RVP_MINMAX_OP (pmaxu_u8x4,  uint8x4_t,  >)
+RVP_MINMAX_OP (pmaxu_u16x2, uint16x2_t, >)
+RVP_MINMAX_OP (pmin_i8x8,   int8x8_t,   <)
+RVP_MINMAX_OP (pmin_i16x4,  int16x4_t,  <)
+RVP_MINMAX_OP (pmin_i32x2,  int32x2_t,  <)
+RVP_MINMAX_OP (pminu_u8x8,  uint8x8_t,  <)
+RVP_MINMAX_OP (pminu_u16x4, uint16x4_t, <)
+RVP_MINMAX_OP (pminu_u32x2, uint32x2_t, <)
+RVP_MINMAX_OP (pmax_i8x8,   int8x8_t,   >)
+RVP_MINMAX_OP (pmax_i16x4,  int16x4_t,  >)
+RVP_MINMAX_OP (pmax_i32x2,  int32x2_t,  >)
+RVP_MINMAX_OP (pmaxu_u8x8,  uint8x8_t,  >)
+RVP_MINMAX_OP (pmaxu_u16x4, uint16x4_t, >)
+RVP_MINMAX_OP (pmaxu_u32x2, uint32x2_t, >)
 
 /* Packed Comparison.  */
 RVP_CMP_OP (pmseq_i8x4_u8x4, int8x4_t, uint8x4_t, ==)
