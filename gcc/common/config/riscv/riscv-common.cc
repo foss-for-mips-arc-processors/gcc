@@ -1534,8 +1534,19 @@ static const riscv_extra_ext_flag_table_t riscv_extra_ext_flag_table[] =
   RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_riscv_isa_flags, MASK_FULL_V),
   RISCV_EXT_FLAG_ENTRY ("xarcvmxmd", x_riscv_isa_flags, MASK_VECTOR),
 
+  RISCV_EXT_FLAG_ENTRY ("xmipscmov", x_riscv_xmips_subext, MASK_XMIPSCMOV),
+  RISCV_EXT_FLAG_ENTRY ("xmipscbop", x_riscv_xmips_subext, MASK_XMIPSCBOP),
   RISCV_EXT_FLAG_ENTRY ("xmipstrig", x_riscv_xmips_subext, MASK_XMIPSTRIG),
   RISCV_EXT_FLAG_ENTRY ("xmipslsp", x_riscv_xmips_subext, MASK_XMIPSLSP),
+  RISCV_EXT_FLAG_ENTRY ("xmipsuarchdis", x_riscv_xmips_subext, MASK_XMIPSUARCHDIS),
+  RISCV_EXT_FLAG_ENTRY ("xmipsfeatdis", x_riscv_xmips_subext, MASK_XMIPSFEATDIS),
+  RISCV_EXT_FLAG_ENTRY ("xmipsdebugbase", x_riscv_xmips_subext, MASK_XMIPSDEBUGBASE),
+  RISCV_EXT_FLAG_ENTRY ("xmipswfe", x_riscv_xmips_subext, MASK_XMIPSWFE),
+  RISCV_EXT_FLAG_ENTRY ("xmipsrtmt", x_riscv_xmips_subext, MASK_XMIPSRTMT),
+  RISCV_EXT_FLAG_ENTRY ("xmipssecarch", x_riscv_xmips_subext, MASK_XMIPSSECARCH),
+  RISCV_EXT_FLAG_ENTRY ("xmipsclicvirt", x_riscv_xmips_subext, MASK_XMIPSCLICVIRT),
+  RISCV_EXT_FLAG_ENTRY ("xmipscache", x_riscv_xmips_subext, MASK_XMIPSCACHE),
+  RISCV_EXT_FLAG_ENTRY ("xmipssecdebug", x_riscv_xmips_subext, MASK_XMIPSSECDEBUG),
 
   {NULL, NULL, NULL, 0}
 };
