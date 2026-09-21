@@ -732,11 +732,47 @@
 
 @item @samp{xmipstrig}
 @tab 1.0
-@tab Mips trigonometryextension
+@tab Mips trigonometry extension
 
 @item @samp{xmipslsp}
 @tab 1.0
 @tab Mips load/store pairs extension
+
+@item @samp{xmipsuarchdis}
+@tab 1.0
+@tab Mips micro-architecture specific disable bits extension
+
+@item @samp{xmipsfeatdis}
+@tab 1.0
+@tab Mips control cross-implementation disable bits extension
+
+@item @samp{xmipsdebugbase}
+@tab 1.0
+@tab Mips point to the base of the per-hart debug memory extension
+
+@item @samp{xmipswfe}
+@tab 1.0
+@tab Mips wait for event extension
+
+@item @samp{xmipsrtmt}
+@tab 1.0
+@tab Mips rtmt extension
+
+@item @samp{xmipssecarch}
+@tab 1.0
+@tab Mips security architecture extension
+
+@item @samp{xmipsclicvirt}
+@tab 1.0
+@tab Mips virtualized interrupt identification extension
+
+@item @samp{xmipscache}
+@tab 1.0
+@tab Mips Cache presence reporting and geometry information extension
+
+@item @samp{xmipssecdebug}
+@tab 1.0
+@tab Mips security debug extension
 
 @item @samp{xandesperf}
 @tab 5.0
