@@ -50,7 +50,7 @@ DEFINE_RISCV_EXT (
 DEFINE_RISCV_EXT (
   /* NAME.  */ xmipstrig,
   /* UPPERCASE_NAME.  */ XMIPSTRIG,
-  /* FULL_NAME.  */ "Mips trigonometryextension",
+  /* FULL_NAME.  */ "Mips trigonometry extension",
   /* DESC.  */ "",
   /* URL.  */ ,
   /* DEP_EXTS.  */ ({"f"}),
@@ -64,6 +64,123 @@ DEFINE_RISCV_EXT (
   /* NAME.  */ xmipslsp,
   /* UPPERCASE_NAME.  */ XMIPSLSP,
   /* FULL_NAME.  */ "Mips load/store pairs extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsuarchdis,
+  /* UPPERCASE_NAME.  */ XMIPSUARCHDIS,
+  /* FULL_NAME.  */ "Mips micro-architecture specific disable bits extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsfeatdis,
+  /* UPPERCASE_NAME.  */ XMIPSFEATDIS,
+  /* FULL_NAME.  */ "Mips control cross-implementation disable bits extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsdebugbase,
+  /* UPPERCASE_NAME.  */ XMIPSDEBUGBASE,
+  /* FULL_NAME.  */ "Mips point to the base of the per-hart debug memory extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipswfe,
+  /* UPPERCASE_NAME.  */ XMIPSWFE,
+  /* FULL_NAME.  */ "Mips wait for event extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsrtmt,
+  /* UPPERCASE_NAME.  */ XMIPSRTMT,
+  /* FULL_NAME.  */ "Mips rtmt extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipssecarch,
+  /* UPPERCASE_NAME.  */ XMIPSSECARCH,
+  /* FULL_NAME.  */ "Mips security architecture extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsclicvirt,
+  /* UPPERCASE_NAME.  */ XMIPSCLICVIRT,
+  /* FULL_NAME.  */ "Mips virtualized interrupt identification extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipscache,
+  /* UPPERCASE_NAME.  */ XMIPSCACHE,
+  /* FULL_NAME.  */ "Mips Cache presence reporting and geometry information extension",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipssecdebug,
+  /* UPPERCASE_NAME.  */ XMIPSSECDEBUG,
+  /* FULL_NAME.  */ "Mips security debug extension",
   /* DESC.  */ "",
   /* URL.  */ ,
   /* DEP_EXTS.  */ ({}),
