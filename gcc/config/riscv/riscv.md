@@ -821,8 +821,7 @@
 		(match_operand:P 2 "const_two_s12"    " MiG,r")))]
   "!riscv_reg_frame_related (operands[0])
    && !riscv_reg_frame_related (operands[1])
-   && !(REG_P (operands[1]) && REGNO (operands[1]) == STACK_POINTER_REGNUM)
-   && !(REG_P (operands[1]) && REGNO (operands[1]) == HARD_FRAME_POINTER_REGNUM)"
+   && !(REG_P (operands[1]) && REGNO (operands[1]) == STACK_POINTER_REGNUM)"
 {
   /* operand matching MiG constraint is always meant to be split.  */
   if (which_alternative == 0)
