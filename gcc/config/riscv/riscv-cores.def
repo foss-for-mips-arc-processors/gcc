@@ -185,6 +185,14 @@ RISCV_CORE("xiangshan-kunminghu",   "rv64imafdcbvh_sdtrig_sha_shcounterenw_"
 RISCV_CORE("mips-p8700",      "rv64imfd_zicsr_zifencei_zalrsc_zba_zbb",
 			      "mips-p8700")
 
+RISCV_CORE("mips-m8500",      "rv32imafdb_zce_zbc_zicbop_zimop_zcmop_"
+                              "zicond_zihintntl_zihintpause_"
+                              "zawrs_zabha_zbkb_zbkx_zfa_"
+                              "zicbom_zicboz_zifencei_zicsr_zicntr_zilsd_"
+                              "ziccamoa_ziccif_zicclsm_"
+                              "xmipscmov_xmipsexectl_xmipslsp_xmipstrig",
+                              "mips-m8500")
+
 RISCV_CORE("andes-n22",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
 RISCV_CORE("andes-n25",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
 RISCV_CORE("andes-a25",       "rv32imafdc_zicsr_zifencei_xandesperf", "andes-25-series")
