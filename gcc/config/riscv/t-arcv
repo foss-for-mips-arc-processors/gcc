@@ -40,6 +40,12 @@ arcv_march_variants += rv32imafd_zca
 arcv_march_variants += rv32imafc_zcb_zba_zbb_zbs
 arcv_march_variants += rv32imafd_zca_zcb_zba_zbb_zbs
 
+# -march multilib options for MIPS m8500
+arcv_march_variants += rv32ima_zba_zbb_zbs_zabha_zicond_zihintpause_zicbop_zimop
+arcv_march_variants += rv32imac_zcb_zba_zbb_zbs_zabha_zcmp_zcmt_zicond_zihintpause_zicbop_zimop_zcmop
+arcv_march_variants += rv32imafd_zba_zbb_zbs_zabha_zca_zcb_zcmp_zcmt_zcf_zicond_zihintpause_zicbop_zimop_zcmop_zfa
+arcv_march_variants += rv32imafd_zba_zbb_zbs_zabha_zicond_zihintpause_zicbop_zimop_zfa
+
 # -march multilib options for RPX-100
 arcv_march_variants += rv64i
 arcv_march_variants += rv64ic
@@ -59,8 +65,8 @@ MULTILIB_DIRNAMES   += $(arcv_march_variants)
 MULTILIB_OPTIONS    += mabi=ilp32e/mabi=ilp32/mabi=ilp32f/mabi=ilp32d/mabi=lp64/mabi=lp64d
 MULTILIB_DIRNAMES   +=      ilp32e      ilp32      ilp32f      ilp32d      lp64      lp64d
 
-MULTILIB_OPTIONS    += mtune=arc-v-rmx-500-series/mtune=arc-v-rmx-700-series/mtune=arc-v-rhx-100-series/mtune=arc-v-rpx-100-series
-MULTILIB_DIRNAMES   +=       rmx500                     rmx700                     rhx100                     rpx100
+MULTILIB_OPTIONS    += mtune=arc-v-rmx-500-series/mtune=arc-v-rmx-700-series/mtune=arc-v-rhx-100-series/mtune=arc-v-rpx-100-series/mtune=mips-m8500
+MULTILIB_DIRNAMES   +=       rmx500                     rmx700                     rhx100                     rpx100                     m8500
 
 MULTILIB_OPTIONS    += mcmodel=medany
 MULTILIB_DIRNAMES   +=         medany
@@ -134,6 +140,12 @@ MULTILIB_REQUIRED   += march=rv32imafd_zca/mabi=ilp32d/mtune=arc-v-rhx-100-serie
 MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs/mabi=ilp32/mtune=arc-v-rhx-100-series
 MULTILIB_REQUIRED   += march=rv32imafc_zcb_zba_zbb_zbs/mabi=ilp32f/mtune=arc-v-rhx-100-series
 MULTILIB_REQUIRED   += march=rv32imafd_zca_zcb_zba_zbb_zbs/mabi=ilp32d/mtune=arc-v-rhx-100-series
+
+# Configurations for MIPS m8500
+MULTILIB_REQUIRED   += march=rv32ima_zba_zbb_zbs_zabha_zicond_zihintpause_zicbop_zimop/mabi=ilp32/mtune=mips-m8500
+MULTILIB_REQUIRED   += march=rv32imac_zcb_zba_zbb_zbs_zabha_zcmp_zcmt_zicond_zihintpause_zicbop_zimop_zcmop/mabi=ilp32/mtune=mips-m8500
+MULTILIB_REQUIRED   += march=rv32imafd_zba_zbb_zbs_zabha_zca_zcb_zcmp_zcmt_zcf_zicond_zihintpause_zicbop_zimop_zcmop_zfa/mabi=ilp32d/mtune=mips-m8500
+MULTILIB_REQUIRED   += march=rv32imafd_zba_zbb_zbs_zabha_zicond_zihintpause_zicbop_zimop_zfa/mabi=ilp32d/mtune=mips-m8500
 
 # Configurations for RPX-100 - general
 MULTILIB_REQUIRED   += march=rv64i/mabi=lp64/mtune=arc-v-rpx-100-series/mcmodel=medany
