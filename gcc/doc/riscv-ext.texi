@@ -774,6 +774,10 @@
 @tab 1.0
 @tab Mips security debug extension
 
+@item @samp{xmipsexectl}
+@tab 1.0
+@tab Mips execution barriers and pause extension
+
 @item @samp{xandesperf}
 @tab 5.0
 @tab Andes performace extension
