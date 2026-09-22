@@ -487,6 +487,8 @@ Mask(XMIPSCACHE) Var(riscv_xmips_subext)
 
 Mask(XMIPSSECDEBUG) Var(riscv_xmips_subext)
 
+Mask(XMIPSEXECTL) Var(riscv_xmips_subext)
+
 Mask(XANDESPERF) Var(riscv_xandes_subext)
 
 Mask(XANDESBFHCVT) Var(riscv_xandes_subext)
