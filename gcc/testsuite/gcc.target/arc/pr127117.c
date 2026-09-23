@@ -1,5 +1,6 @@
 /* { dg-do run } */
-/* { dg-options "-O2 -mnorm" } */
+/* { dg-require-effective-target norm } */
+/* { dg-options "-O2" } */
 
 unsigned __attribute__ ((noipa))
 clz (unsigned x)
