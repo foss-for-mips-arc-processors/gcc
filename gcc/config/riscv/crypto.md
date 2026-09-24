@@ -113,7 +113,7 @@
 			 (match_operand 2 "immediate_operand" "n"))
 	       (zero_extend:X
 		 (match_operand:HX 3 "register_operand" "r"))))]
-  "TARGET_ZBKB && INTVAL (operands[2]) == BITS_PER_WORD / 2"
+  "(TARGET_ZBKB || TARGET_RVP) && INTVAL (operands[2]) == BITS_PER_WORD / 2"
   "pack\t%0,%3,%1"
   [(set_attr "type" "crypto")])
 

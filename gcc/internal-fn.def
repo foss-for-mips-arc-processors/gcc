@@ -272,6 +272,8 @@ DEF_INTERNAL_SIGNED_OPTAB_FN (AVG_FLOOR, ECF_CONST | ECF_NOTHROW, first,
 			      savg_floor, uavg_floor, binary)
 DEF_INTERNAL_SIGNED_OPTAB_FN (AVG_CEIL, ECF_CONST | ECF_NOTHROW, first,
 			      savg_ceil, uavg_ceil, binary)
+DEF_INTERNAL_SIGNED_OPTAB_FN (AVG_SUB_FLOOR, ECF_CONST | ECF_NOTHROW, first,
+			      savg_sub_floor, uavg_sub_floor, binary)
 
 DEF_INTERNAL_SIGNED_OPTAB_FN (MULH, ECF_CONST | ECF_NOTHROW, first,
 			      smul_highpart, umul_highpart, binary)

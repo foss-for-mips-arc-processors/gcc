@@ -176,7 +176,7 @@
 
 ;; This attribute gives the integer mode that has half the size of
 ;; the controlling mode.
-(define_mode_attr HALFMODE [(DF "SI") (DI "SI") (TF "DI")])
+(define_mode_attr HALFMODE [(DF "SI") (DI "SI") (TF "DI") (PV4HI "PV4QI") (PV2SI "PV2HI")])
 
 ;; Give the number of bits in the mode
 (define_mode_attr sizen [(QI "8") (HI "16") (SI "32") (DI "64")])

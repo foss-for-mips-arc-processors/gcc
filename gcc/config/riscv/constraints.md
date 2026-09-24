@@ -219,6 +219,11 @@
        (ior (match_test "!TARGET_XTHEADVECTOR && satisfies_constraint_K (op)")
 	    (match_test "TARGET_XTHEADVECTOR && satisfies_constraint_J (op)"))))
 
+;; P-extension const_vector constraint
+(define_constraint "vc"
+  "A P-extension const_vector that can be loaded with PLI/PLUI."
+  (match_test "riscv_rvp_const_vector_p (op)"))
+
 (define_constraint "Wc0"
   "@internal
  A constraint that matches a vector of immediate all zeros."
@@ -346,6 +351,40 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE (ival, 0, 127)")))
 
+;; P-extension PLI/PLUI constraints
+;; PLI: Os<bits> for signed immediates (matches Ou<bits> naming)
+;; PLUI: Yph<shift> for upper/shifted immediates
+
+;; 8-bit signed immediate for PLI.B (-128 to 127)
+(define_constraint "Os08"
+  "@internal
+   An 8-bit signed immediate for P-extension PLI.B."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -128, 127)")))
+
+;; 10-bit signed immediate for PLI.H/PLI.W (-512 to 511)
+(define_constraint "Os10"
+  "@internal
+   A 10-bit signed immediate for P-extension PLI.H/PLI.W."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -512, 511)")))
+
+;; PLUI.H immediate: (imm10 << 6) where imm10 in [-512, 511]
+(define_constraint "Yph06"
+  "@internal
+   A shifted 10-bit immediate for P-extension PLUI.H (imm10 << 6)."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3f) == 0
+		    && IN_RANGE (ival >> 6, -512, 511)")))
+
+;; PLUI.W immediate: (imm10 << 22) where imm10 in [-512, 511]
+(define_constraint "Yph22"
+  "@internal
+   A shifted 10-bit immediate for P-extension PLUI.W (imm10 << 22)."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3fffff) == 0
+		    && IN_RANGE (ival >> 22, -512, 511)")))
+
 (define_constraint "ads_Bext"
   "Sequence bit extract."
   (and (match_code "const_int")
@@ -465,3 +504,79 @@
   "Validate support of APEX_XC instruction format."
   (and (match_code "const_int")
        (match_test "arcv_apex_format_supports_p (INTVAL (op), APEX_XC)")))
+
+;; =================================================================
+;; RISC-V P-Extension Immediate Constraints
+;; =================================================================
+(define_constraint "Wpb"
+  "An 8-bit immediate for pli.b / pli.db (-128 to 255)."
+  (and (match_code "const_int")
+       ;; Include both the signed and unsigned 8-bit ranges, since unsigned
+       ;; constants can reach this predicate after sign extension.
+       (match_test "IN_RANGE (ival, -128, 255)")))
+
+(define_constraint "Wpi"
+  "A 10-bit signed immediate for pli.h (-512 to 511)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -512, 511)")))
+
+(define_constraint "Wpu"
+  "A 10-bit unsigned immediate shifted left by 6 for plui.h."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3F) == 0 && IN_RANGE (ival, 0, 65472)")))
+
+(define_constraint "Wpw"
+  "A 10-bit signed immediate shifted left by 22 for plui.w (RV64 only)."
+  (and (match_code "const_int")
+       (match_test "(ival & 0x3FFFFF) == 0
+		    && IN_RANGE (ival >> 22, -512, 511)")))
+
+(define_constraint "u3"
+  "A 3-bit unsigned immediate for P-extension instructions (0-7)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 7)")))
+
+(define_constraint "u4"
+  "A 4-bit unsigned immediate for P-extension instructions (0-15)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 15)")))
+
+(define_constraint "w4"
+  "A 4-bit negative immediate for P-extension instructions (-15 to -1)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -15, -1)")))
+
+(define_constraint "u5"
+  "A 5-bit unsigned immediate (0-31)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 31)")))
+
+(define_constraint "u6"
+  "A 6-bit unsigned immediate (0-63)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 0, 63)")))
+
+(define_constraint "Ws4"
+  "A signed saturation width encoded in 4 bits (1-16)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 1, 16)")))
+
+(define_constraint "Ws5"
+  "A signed saturation width encoded in 5 bits (1-32)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 1, 32)")))
+
+(define_constraint "Ws6"
+  "A signed saturation width encoded in 6 bits (1-64)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, 1, 64)")))
+
+(define_constraint "w5"
+  "A 5-bit negative immediate (-31 to -1)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -31, -1)")))
+
+(define_constraint "w6"
+  "A 6-bit negative immediate (-63 to -1)."
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (ival, -63, -1)")))

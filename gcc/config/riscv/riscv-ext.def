@@ -208,6 +208,19 @@ DEFINE_RISCV_EXT(
   /* EXTRA_EXTENSION_FLAGS */ 0)
 
 DEFINE_RISCV_EXT(
+  /* NAME */ p,
+  /* UPPERCASE_NAME */ RVP,
+  /* FULL_NAME */ "Packed SIMD extension",
+  /* DESC */ "",
+  /* URL */ ,
+  /* DEP_EXTS */ ({"zba", "zbb", "zmmul"}),
+  /* SUPPORTED_VERSIONS */ ({{0, 21}}),
+  /* FLAG_GROUP */ base,
+  /* BITMASK_GROUP_ID */ 0,
+  /* BITMASK_BIT_POSITION*/ 15,
+  /* EXTRA_EXTENSION_FLAGS */ 0)
+
+DEFINE_RISCV_EXT(
   /* NAME */ h,
   /* UPPERCASE_NAME */ RVH,
   /* FULL_NAME */ "Hypervisor extension",

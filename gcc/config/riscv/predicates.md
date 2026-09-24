@@ -260,6 +260,10 @@
   if (TARGET_ZBS && SINGLE_BIT_MASK_OPERAND (INTVAL (op)))
     return false;
 
+  /* Check whether the constant can be loaded with P-extension PLI/PLUI.  */
+  if (TARGET_RVP && riscv_pli_operand_p (INTVAL (op)))
+    return false;
+
   /* Otherwise check whether the constant can be loaded in a single
      instruction.  */
   return !LUI_OPERAND (INTVAL (op)) && !SMALL_OPERAND (INTVAL (op));
@@ -349,6 +353,10 @@
        need to be more permissive.  */
     case SUBREG:
       return REG_P (SUBREG_REG (op));
+
+    case CONST_VECTOR:
+      /* P-extension const_vector that can be loaded with PLI/PLUI.  */
+      return riscv_rvp_const_vector_p (op);
 
     default:
       return true;
@@ -795,3 +803,21 @@
 (define_predicate "ads_extract_size_imm_di"
   (and (match_code "const_int")
 	   (match_test "IN_RANGE (INTVAL (op), 1, 64)")))
+
+;; P-extension predicates
+
+(define_predicate "const_int4_operand"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 0, 15)")))
+
+(define_predicate "sati_width4_operand"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 1, 16)")))
+
+(define_predicate "sati_width5_operand"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 1, 32)")))
+
+(define_predicate "sati_width6_operand"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 1, 64)")))

@@ -3493,7 +3493,7 @@ vect_recog_average_pattern (vec_info *vinfo,
     return NULL;
 
   /* Check whether the shift input can be seen as a tree of additions on
-     2 or 3 widened inputs.
+     2 or 3 widened inputs, or a subtraction on 2 widened inputs.
 
      Note that the pattern should be a win even if the result of one or
      more additions is reused elsewhere: if the pattern matches, we'd be
@@ -3505,8 +3505,16 @@ vect_recog_average_pattern (vec_info *vinfo,
 					    IFN_VEC_WIDEN_PLUS, false, 3,
 					    unprom, &new_type);
   if (nops == 0)
-    return NULL;
-  if (nops == 3)
+    {
+      /* Try matching subtraction: (a - b) >> 1  */
+      nops = vect_widened_op_tree (vinfo, plus_stmt_info, MINUS_EXPR,
+				   IFN_VEC_WIDEN_MINUS, false, 2,
+				   unprom, &new_type);
+      if (nops != 2)
+	return NULL;
+      ifn = IFN_AVG_SUB_FLOOR;
+    }
+  else if (nops == 3)
     {
       /* Check that one operand is 1.  */
       unsigned int i;
@@ -3567,6 +3575,10 @@ vect_recog_average_pattern (vec_info *vinfo,
 
   if (direct_internal_fn_supported_p (ifn, new_vectype, OPTIMIZE_FOR_SPEED))
     ;
+  else if (ifn == IFN_AVG_SUB_FLOOR)
+    /* The fallback path below implements averaging-add, not averaging-sub.
+       Do not use it for IFN_AVG_SUB_FLOOR as it would miscompile code.  */
+    return NULL;
   else if (TYPE_UNSIGNED (new_type)
 	   && optab_for_tree_code (RSHIFT_EXPR, new_vectype, optab_scalar)
 	   && optab_for_tree_code (PLUS_EXPR, new_vectype, optab_default)

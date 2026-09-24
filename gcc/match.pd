@@ -6256,6 +6256,29 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (if (integer_zerop (@0))
    @2)))
 
+/* Recognize unsigned absolute difference pattern in VEC_COND_EXPR.
+   Transform: (a > b ? a - b : b - a) -> umax(a, b) - umin(a, b)
+   This enables better code generation using uabd instructions
+   on targets that support them (e.g., RISC-V P-extension pabdu).  */
+(for cmp (gt ge)
+     rcmp (lt le)
+ (simplify
+  (vec_cond (cmp @0 @1) (minus @0 @1) (minus @1 @0))
+  (if (VECTOR_INTEGER_TYPE_P (type) && TYPE_UNSIGNED (type))
+   (minus (max @0 @1) (min @0 @1))))
+ (simplify
+  (vec_cond (rcmp @0 @1) (minus @1 @0) (minus @0 @1))
+  (if (VECTOR_INTEGER_TYPE_P (type) && TYPE_UNSIGNED (type))
+   (minus (max @0 @1) (min @0 @1)))))
+
+/* Recognize abs(a - b) pattern and convert to smax(a, b) - smin(a, b).
+   This enables better code generation using sabd instructions
+   on targets that support them (e.g., RISC-V P-extension pabd).  */
+(simplify
+ (abs (minus @0 @1))
+ (if (VECTOR_INTEGER_TYPE_P (type))
+  (minus (max @0 @1) (min @0 @1))))
+
 /* Sink unary operations to branches, but only if we do fold both.  */
 (for op (negate bit_not abs absu)
  (simplify

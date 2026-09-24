@@ -54,6 +54,10 @@
 @tab 1.0
 @tab Vector extension
 
+@item @samp{p}
+@tab 0.21
+@tab Packed SIMD extension
+
 @item @samp{h}
 @tab 1.0
 @tab Hypervisor extension

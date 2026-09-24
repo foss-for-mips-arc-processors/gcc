@@ -127,6 +127,8 @@ Mask(RVB) Var(riscv_base_subext)
 
 Mask(RVV) Var(riscv_base_subext)
 
+Mask(RVP) Var(riscv_base_subext)
+
 Mask(RVH) Var(riscv_base_subext)
 
 Mask(ZIC64B) Var(riscv_zi_subext)

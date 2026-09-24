@@ -140,11 +140,27 @@ extern void riscv_expand_sssub (rtx, rtx, rtx);
 extern void riscv_expand_usmul (rtx, rtx, rtx);
 extern void riscv_expand_ustrunc (rtx, rtx);
 extern void riscv_expand_sstrunc (rtx, rtx);
+extern void riscv_p_expand_vec_cmp (rtx *);
+extern void riscv_p_expand_vcond_mask (rtx *);
+#ifdef GCC_TARGET_H
+extern bool riscv_expand_pext_vec_perm_const (machine_mode, machine_mode, rtx,
+                                              rtx, rtx,
+                                              const vec_perm_indices &);
+#endif
 extern int riscv_register_move_cost (machine_mode, reg_class_t, reg_class_t);
 extern bool synthesize_ior_xor (rtx_code, rtx [3]);
 extern bool synthesize_and (rtx [3]);
 extern bool synthesize_add (rtx [3]);
 extern bool synthesize_add_extended (rtx [3]);
+extern bool riscv_pext_mode_supported_p (machine_mode);
+
+/* P-extension packed load immediate (PLI/PLUI) support.  */
+extern bool riscv_pli_operand_p (HOST_WIDE_INT);
+extern bool riscv_rvp_const_vector_p (rtx);
+extern bool riscv_const_vector_broadcast_val_p (rtx, HOST_WIDE_INT);
+extern int  riscv_psati_imm (rtx);
+extern bool riscv_psati_bounds_p (rtx, rtx, int);
+extern bool riscv_pusati_bounds_p (rtx, int);
 
 #ifdef RTX_CODE
 extern void riscv_expand_int_scc (rtx, enum rtx_code, rtx, rtx, bool *invert_ptr = 0);
@@ -153,6 +169,7 @@ extern void riscv_expand_float_scc (rtx, enum rtx_code, rtx, rtx,
 extern void riscv_expand_conditional_branch (rtx, enum rtx_code, rtx, rtx);
 extern rtx riscv_emit_unary (enum rtx_code code, rtx dest, rtx x);
 extern rtx riscv_emit_binary (enum rtx_code code, rtx dest, rtx x, rtx y);
+extern void riscv_emit_packed_not (rtx dest, rtx src, machine_mode mode);
 #endif
 extern bool riscv_expand_conditional_move (rtx, rtx, rtx, rtx);
 extern rtx riscv_legitimize_call_address (rtx);
