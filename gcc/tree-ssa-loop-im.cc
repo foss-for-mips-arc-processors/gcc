@@ -142,8 +142,6 @@ public:
 				   different modes.  */
 };
 
-static bool in_loop_pipeline;
-
 /* We use six bits per loop in the ref->dep_loop bitmap to record
    the dep_kind x dep_state combinations.  */
 
@@ -1277,22 +1275,6 @@ compute_invariantness (basic_block bb)
 
       if (lim_data->cost >= LIM_EXPENSIVE)
 	set_profitable_level (stmt);
-      /* When we run before PRE and PRE is active hoist all expressions
-	 to the always executed loop since PRE would do so anyway
-	 and we can preserve range info while PRE cannot.  */
-      else if (flag_tree_pre && !in_loop_pipeline
-	       && outermost)
-	{
-	  class loop *mloop = lim_data->max_loop;
-	  if (loop_depth (outermost) > loop_depth (mloop))
-	    {
-	      mloop = outermost;
-	      if (dump_file && (dump_flags & TDF_DETAILS))
-		fprintf (dump_file, "  constraining to loop depth %d\n\n\n",
-			 loop_depth (mloop));
-	    }
-	  set_level (stmt, bb->loop_father, mloop);
-	}
     }
 }
 
@@ -3877,7 +3859,7 @@ public:
 unsigned int
 pass_lim::execute (function *fun)
 {
-  in_loop_pipeline = scev_initialized_p ();
+  bool in_loop_pipeline = scev_initialized_p ();
   if (!in_loop_pipeline)
     loop_optimizer_init (LOOPS_NORMAL | LOOPS_HAVE_RECORDED_EXITS);
 
