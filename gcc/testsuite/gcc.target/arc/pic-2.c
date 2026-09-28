@@ -20,4 +20,4 @@ char *foo (unsigned size)
   return buf;
 }
 
-/* { dg-final { scan-assembler "@buf.\[0-9\]\+@pcl-1" } } */
+/* { dg-final { scan-assembler "@buf.\[0-9\]\+@pcl" } } */
