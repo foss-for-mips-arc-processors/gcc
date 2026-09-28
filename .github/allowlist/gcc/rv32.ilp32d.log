@@ -112,6 +112,37 @@ FAIL: gcc.target/riscv/rvv/autovec/vx_vf/vx-6-u64.c
 FAIL: gcc.target/riscv/rvv/pr122474.c
 FAIL: gcc.target/riscv/rvv/vsetvl/pr117974.c
 FAIL: gcc.target/riscv/unroll-small-loop-cunroll.c
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-11.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-12.c   -O2   scan-assembler-times vsetvli 3
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-12.c   -O2   scan-assembler-times vsetvli\\s+[a-x0-9]+,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-13.c   -O2   scan-assembler-times vsetvli 3
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-13.c   -O2   scan-assembler-times vsetvli\\s+[a-x0-9]+,\\s*zero,\\s*e16,\\s*m1,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-2.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-4.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli 2
+FAIL: gcc.target/riscv/rvv/vsetvl/vlmax_back_prop-6.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli\\s+zero,\\s*zero,\\s*e16,\\s*mf4,\\s*t[au],\\s*m[au] 1
+FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-23.c   -O2   scan-assembler-times vsetvli 5
+FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-23.c   -O2 -flto -fno-use-linker-plugin -flto-partition=none   scan-assembler-times vsetvli 5
+FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-23.c   -O2 -flto -fuse-linker-plugin -fno-fat-lto-objects   scan-assembler-times vsetvli 5
 UNRESOLVED: gcc.target/riscv/ext-dce-4.c
 UNRESOLVED: gcc.target/riscv/load32-zalasr.c
 UNRESOLVED: gcc.target/riscv/load32.c
@@ -127,3 +158,5 @@ UNRESOLVED: gcc.target/riscv/unroll-explicit-attr-cunroll.c
 UNRESOLVED: gcc.target/riscv/unroll-small-loop-cunroll.c
 XPASS: gcc.dg/vect/costmodel/riscv/rvv/pr113281-1.c
 XPASS: gcc.dg/vect/costmodel/riscv/rvv/pr113281-2.c
+XPASS: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-5.c scan-tree-dump-times vect "Preferring smaller LMUL loop because it has unexpected spills" 1
+XPASS: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul4-7.c scan-tree-dump-times vect "Preferring smaller LMUL loop because it has unexpected spills" 1
