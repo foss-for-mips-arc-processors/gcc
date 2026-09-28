@@ -4866,9 +4866,9 @@
 
     if (TARGET_64BIT)
       {
-	if (poly == reflect_hwi (0xedb88320u, 32))
+	if (poly == reflect_128i (0xedb88320u, 32))
 	  crc_insn = gen_loongarch_crc_w_<size>_w;
-	else if (poly == reflect_hwi (0x82f63b78u, 32))
+	else if (poly == reflect_128i (0x82f63b78u, 32))
 	  crc_insn = gen_loongarch_crcc_w_<size>_w;
       }
 

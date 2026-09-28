@@ -191,10 +191,10 @@ least_common_multiple (HOST_WIDE_INT a, HOST_WIDE_INT b)
 
 /* Reflect (reverse) the bits of a given VALUE within a specified BITWIDTH.  */
 
-unsigned HOST_WIDE_INT
-reflect_hwi (unsigned HOST_WIDE_INT value, unsigned bitwidth)
+__uint128_t
+reflect_128i (__uint128_t value, unsigned bitwidth)
 {
-  unsigned HOST_WIDE_INT reflected_value = 0;
+  __uint128_t reflected_value = 0;
   /* Loop through each bit in the specified BITWIDTH.  */
   for (size_t i = 0; i < bitwidth; i++)
     {

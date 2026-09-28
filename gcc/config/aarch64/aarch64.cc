@@ -33027,11 +33027,11 @@ aarch64_expand_reversed_crc_using_pmull (scalar_mode crc_mode,
   unsigned HOST_WIDE_INT
       q = gf2n_poly_long_div_quotient (UINTVAL (polynomial), crc_size);
   /* Reflect the calculated quotient.  */
-  q = reflect_hwi (q, crc_size + 1);
+  q = reflect_128i (q, crc_size + 1);
   rtx t0 = force_reg (DImode, gen_int_mode (q, DImode));
 
   /* Reflect the polynomial.  */
-  unsigned HOST_WIDE_INT ref_polynomial = reflect_hwi (UINTVAL (polynomial),
+  unsigned HOST_WIDE_INT ref_polynomial = reflect_128i (UINTVAL (polynomial),
 						       crc_size);
   /* An unshifted multiplier would require the final result to be extracted
      using a shift right by DATA_SIZE - 1 bits.  Shift the multiplier left

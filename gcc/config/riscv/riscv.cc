@@ -14139,7 +14139,7 @@ riscv_optab_supported_p (int op, machine_mode, machine_mode result_mode,
   if (op == crc_rev_optab && opt_type != OPTIMIZE_FOR_SPEED)
     return (((TARGET_ZBKC || TARGET_ZBC || TARGET_ZVBC)
 	     && result_mode < word_mode)
-	    || (!TARGET_64BIT && TARGET_ZBC && result_mode == word_mode));
+	    || (TARGET_ZBC && result_mode == word_mode));
 
   return true;
 }
@@ -16598,21 +16598,21 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
   gcc_assert (!CONST_INT_P (operands[0]));
   gcc_assert (CONST_INT_P (operands[3]));
   unsigned short crc_size = GET_MODE_BITSIZE (crc_mode);
-  gcc_assert (crc_size <= 32);
+  gcc_assert (crc_size <= 64);
   unsigned short data_size = GET_MODE_BITSIZE (data_mode);
   rtx polynomial = operands[3];
 
   /* Calculate the quotient.  */
-  unsigned HOST_WIDE_INT
+  __uint128_t
   q = gf2n_poly_long_div_quotient (UINTVAL (polynomial), crc_size);
   /* Reflect the calculated quotient.  */
-  q = reflect_hwi (q, crc_size + 1);
+  q = reflect_128i (q, crc_size + 1);
   rtx t0 = gen_reg_rtx (word_mode);
-  riscv_emit_move (t0, gen_int_mode (q, word_mode));
+  riscv_emit_move (t0, gen_int_mode ((unsigned HOST_WIDE_INT) q, word_mode));
 
   /* Reflect the polynomial.  */
   unsigned HOST_WIDE_INT
-  ref_polynomial = reflect_hwi (UINTVAL (polynomial),
+  ref_polynomial = reflect_128i (UINTVAL (polynomial),
 				crc_size);
 
   bool use_clmulr = crc_size == BITS_PER_WORD;
@@ -16645,8 +16645,10 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
 
       if (use_clmulr)
 	{
-	  gcc_assert (!TARGET_64BIT);
-	  emit_insn (gen_riscv_clmulr_si (a0, a0, t1));
+	  if (TARGET_64BIT)
+	    emit_insn (gen_riscv_clmulr_di (a0, a0, t1));
+	  else
+	    emit_insn (gen_riscv_clmulr_si (a0, a0, t1));
 	}
       else
 	{

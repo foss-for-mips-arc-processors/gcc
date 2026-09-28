@@ -380,7 +380,7 @@ extern bool non_mem_decl_p (tree);
 
 /* Return the quotient of the polynomial long division of x^2N by POLYNOMIAL
    in GF (2^N).  */
-extern unsigned HOST_WIDE_INT
+extern __uint128_t
 gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT, unsigned short);
 
 /* Generate table-based CRC.  */
