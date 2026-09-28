@@ -49,6 +49,15 @@ FAIL: gcc.target/arc/mult-cmp0.c
 FAIL: gcc.target/arc/overflow-1.c
 FAIL: gcc.target/arc/overflow-2.c
 FAIL: tmpdir-g++.dg-struct-layout-1/t001
+FAIL: c-c++-common/cpp/has-include-1.c  -std=c++20 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-1.c  -std=c++29 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-1.c  -std=c++98 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-next-1.c  -std=c++20 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-next-1.c  -std=c++29 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-next-1.c  -std=c++98 (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-1.c  -Wc++-compat  (test for excess errors)
+FAIL: c-c++-common/cpp/has-include-next-1.c  -Wc++-compat  (test for excess errors)
+FAIL: gcc.target/arc/pic-2.c scan-assembler @buf.[0-9]+@pcl-1
 UNRESOLVED: g++.dg/pr94920-1.C
 UNRESOLVED: gcc.dg/torture/pr23821.c
 UNRESOLVED: gcc.dg/tree-prof/indir-call-prof-malloc.c
