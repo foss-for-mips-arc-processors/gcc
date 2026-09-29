@@ -41,7 +41,7 @@
                                   (DF "TARGET_DOUBLE_FLOAT")])
 
 ;; 2 HI/SI/DI/SF/DF loads are joined.
-;; Daimyo does not support bonding of two LBs, hence QI mode is not included.
+;; i8500 does not support bonding of two LBs, hence QI mode is not included.
 ;; The loads must be non-volatile as they might be reordered at the time of asm
 ;; generation.
 (define_peephole2
@@ -58,7 +58,7 @@
   "")
 
 ;; 2 HI/SI/DI/SF/DF stores are joined.
-;; Daimyo does not support bonding of two SBs, hence QI mode is not included.
+;; i8500 does not support bonding of two SBs, hence QI mode is not included.
 (define_peephole2
   [(set (match_operand:JOIN_MODE 0 "memory_operand")
         (match_operand:JOIN_MODE 1 "register_operand"))
