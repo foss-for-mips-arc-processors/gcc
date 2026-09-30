@@ -21,12 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: rv64gc
-            arch: rv64gc
+          - label: rv64gc_zbc
+            arch: rv64gc_zbc
             abi: lp64d
             tune: rocket
-          - label: rv32gc
-            arch: rv32gc
+          - label: rv32gc_zbc
+            arch: rv32gc_zbc
             abi: ilp32d
             tune: rocket
           - label: rv32-rhx
