@@ -246,7 +246,8 @@
 (define_expand "sinsf2"
   [(match_operand:SF 0 "register_operand")
    (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_1_BY_2PI);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
@@ -258,7 +259,8 @@
 (define_expand "asinsf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx temp = riscv_output_asinf_hz (operands[0], operands[1]);
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
@@ -284,7 +286,8 @@
 (define_expand "acossf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     emit_insn (gen_riscv_mips_acosf_hz (operands[0], operands[1]));
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
@@ -305,7 +308,8 @@
 (define_expand "cossf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_1_BY_2PI);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
@@ -326,7 +330,8 @@
 (define_expand "tansf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_1_BY_2PI);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
@@ -347,7 +352,8 @@
 (define_expand "atansf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
     emit_insn (gen_riscv_mips_fatan_hz (operands[0], operands[1]));
@@ -397,7 +403,8 @@
 (define_expand "tanhsf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     emit_insn (gen_riscv_mips_fftanh (operands[0], operands[1]));
     DONE;
@@ -416,7 +423,8 @@
 (define_expand "log2sf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     emit_insn (gen_riscv_mips_fflog2 (operands[0], operands[1]));
     DONE;
@@ -426,7 +434,8 @@
 (define_expand "logsf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_LN_OF_2);
     emit_insn (gen_riscv_mips_fflog2 (operands[0], operands[1]));
@@ -438,7 +447,8 @@
 (define_expand "log10sf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_LOG10_OF_2);
     emit_insn (gen_riscv_mips_fflog2 (operands[0], operands[1]));
@@ -459,7 +469,8 @@
 (define_expand "expsf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_LOG2_OF_E);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
@@ -472,7 +483,8 @@
 (define_expand "exp10sf2"
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_LOG2_OF_10);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
@@ -504,7 +516,8 @@
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")
 	 (match_operand:SF 2 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx temp_reg1 = gen_reg_rtx (SFmode);
     rtx temp_reg2 = gen_reg_rtx (SFmode);
@@ -522,7 +535,8 @@
   [(match_operand:SF 0 "register_operand")
 	 (match_operand:SF 1 "register_operand")
  	 (match_operand:SF 2 "register_operand")]
-  "TARGET_XMIPSTRIG && flag_unsafe_math_optimizations"
+  "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
+    && flag_unsafe_math_optimizations"
   {
     rtx temp_reg1 = gen_reg_rtx (SFmode);
 
