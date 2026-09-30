@@ -456,3 +456,7 @@ Explicitly disable or enable advanced fusion for the RMX-500 core.
 mload-store-bonding
 Target Var(TARGET_LOAD_STORE_BONDING) Init(1)
 Emit two loads or two stores to help hardware bonding.
+
+mexperimental-mips-trig-mapping
+Target Var(TARGET_MIPS_EXP_TRIG_MAP) Init(0)
+Map libm trig functions to mips trig instructions (experimental).
