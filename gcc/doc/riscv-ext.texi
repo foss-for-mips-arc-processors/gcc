@@ -778,6 +778,42 @@
 @tab 1.0
 @tab Mips execution barriers and pause extension
 
+@item @samp{xmipscorextend}
+@tab 1.0
+@tab CorExtend support
+
+@item @samp{xmipscbom}
+@tab 1.0
+@tab MIPS cache maintenance
+
+@item @samp{xmipsmginv}
+@tab 1.0
+@tab Machine global invalidate operations on TLBs and instruction caches
+
+@item @samp{xmipsmemerr}
+@tab 1.0
+@tab Cache / bus error reporting and configuration
+
+@item @samp{xmipsmdiag}
+@tab 1.0
+@tab Support for accessing machine-dependent structures
+
+@item @samp{xmipsdspram}
+@tab 1.0
+@tab Data Scratch Pad RAM support.
+
+@item @samp{xmipsispram}
+@tab 1.0
+@tab Instruction Scratch Pad RAM support
+
+@item @samp{xmipserl}
+@tab 1.0
+@tab Error Level feature
+
+@item @samp{xmipspma}
+@tab 1.0
+@tab Configurable PMAs that buddy up with PMP registers
+
 @item @samp{xandesperf}
 @tab 5.0
 @tab Andes performace extension
