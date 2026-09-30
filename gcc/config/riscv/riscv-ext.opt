@@ -489,6 +489,24 @@ Mask(XMIPSSECDEBUG) Var(riscv_xmips_subext)
 
 Mask(XMIPSEXECTL) Var(riscv_xmips_subext)
 
+Mask(XMIPSCOREXTEND) Var(riscv_xmips_subext)
+
+Mask(XMIPSCBOM) Var(riscv_xmips_subext)
+
+Mask(XMIPSMGINV) Var(riscv_xmips_subext)
+
+Mask(XMIPSMEMERR) Var(riscv_xmips_subext)
+
+Mask(XMIPSMDIAG) Var(riscv_xmips_subext)
+
+Mask(XMIPSDSPRAM) Var(riscv_xmips_subext)
+
+Mask(XMIPSISPRAM) Var(riscv_xmips_subext)
+
+Mask(XMIPSERL) Var(riscv_xmips_subext)
+
+Mask(XMIPSPMA) Var(riscv_xmips_subext)
+
 Mask(XANDESPERF) Var(riscv_xandes_subext)
 
 Mask(XANDESBFHCVT) Var(riscv_xandes_subext)
