@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32imafd_xmipstrig_zfa -mtune=mips-m8500 -mabi=ilp32d -ffast-math" } */
+/* { dg-options "-march=rv32imafd_xmipstrig_zfa -mtune=mips-m8500 -mabi=ilp32d -ffast-math -mexperimental-mips-trig-mapping" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O2" "-Os" "-Oz" "-g" "-flto" } } */
 /* { dg-final { check-function-bodies "**" "" } } */
 /* MIPS riscv cpu m8500 - test trig support */
@@ -64,8 +64,9 @@ float test_tanh(float x) {
 
 /*
 **test_log2f:
+**  ...
 **	mips\.fflog2\.s\s+fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float log2f(float x);
 float test_log2f(float x) {
@@ -74,10 +75,11 @@ float test_log2f(float x) {
 
 /*
 **test_logf:
+**  ...
 **	mips\.fflog2\.s\s+fa[0-7],fa[0-7]
 **	mips\.flti\.s\s+fa[0-7],6
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float logf(float x);
 float test_logf(float x) {
@@ -86,10 +88,11 @@ float test_logf(float x) {
 
 /*
 **test_log10:
+**  ...
 **	mips\.fflog2\.s\s+fa[0-7],fa[0-7]
 **	mips\.flti\.s\s+fa[0-7],9
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float log10f(float x);
 float test_log10(float x) {
@@ -98,10 +101,11 @@ float test_log10(float x) {
 
 /*
 **test_expf:
+**  ...
 **	mips\.flti\.s\s+fa[0-7],7
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.ffexp2\.s\s+fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float expf(float x);
 float test_expf(float x) {
@@ -110,10 +114,11 @@ float test_expf(float x) {
 
 /*
 **test_exp10f:
+**  ...
 **	mips\.flti\.s\s+fa[0-7],8
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.ffexp2\.s\s+fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float exp10f(float x);
 float test_exp10f(float x) {
@@ -122,6 +127,7 @@ float test_exp10f(float x) {
 
 /*
 **test_asinf:
+**  ...
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
 **	fli\.s\s+fa[0-7],1\.0
@@ -138,7 +144,7 @@ float test_exp10f(float x) {
 **	fmax\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.flti\.s\s+fa[0-7],3
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float asinf(float x);
 float test_asinf(float x) {
@@ -147,6 +153,7 @@ float test_asinf(float x) {
 
 /*
 **test_acosf:
+**  ...
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
 **	fli\.s\s+fa[0-7],1\.0
@@ -164,7 +171,7 @@ float test_asinf(float x) {
 **	fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.flti\.s\s+fa[0-7],3
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	ret
+**  ...
 */
 extern float acosf(float x);
 float test_acosf(float x) {
