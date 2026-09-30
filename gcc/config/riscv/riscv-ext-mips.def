@@ -202,3 +202,120 @@ DEFINE_RISCV_EXT (
   /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
   /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
   /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipscorextend,
+  /* UPPERCASE_NAME.  */ XMIPSCOREXTEND,
+  /* FULL_NAME.  */ "CorExtend support",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipscbom,
+  /* UPPERCASE_NAME.  */ XMIPSCBOM,
+  /* FULL_NAME.  */ "MIPS cache maintenance",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsmginv,
+  /* UPPERCASE_NAME.  */ XMIPSMGINV,
+  /* FULL_NAME.  */ "Machine global invalidate operations on TLBs and instruction caches",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsmemerr,
+  /* UPPERCASE_NAME.  */ XMIPSMEMERR,
+  /* FULL_NAME.  */ "Cache / bus error reporting and configuration",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsmdiag,
+  /* UPPERCASE_NAME.  */ XMIPSMDIAG,
+  /* FULL_NAME.  */ "Support for accessing machine-dependent structures",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsdspram,
+  /* UPPERCASE_NAME.  */ XMIPSDSPRAM,
+  /* FULL_NAME.  */ "Data Scratch Pad RAM support.",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipsispram,
+  /* UPPERCASE_NAME.  */ XMIPSISPRAM,
+  /* FULL_NAME.  */ "Instruction Scratch Pad RAM support",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipserl,
+  /* UPPERCASE_NAME.  */ XMIPSERL,
+  /* FULL_NAME.  */ "Error Level feature",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
+
+DEFINE_RISCV_EXT (
+  /* NAME.  */ xmipspma,
+  /* UPPERCASE_NAME.  */ XMIPSPMA,
+  /* FULL_NAME.  */ "Configurable PMAs that buddy up with PMP registers",
+  /* DESC.  */ "",
+  /* URL.  */ ,
+  /* DEP_EXTS.  */ ({}),
+  /* SUPPORTED_VERSIONS.  */ ({{1, 0}}),
+  /* FLAG_GROUP.  */ xmips,
+  /* BITMASK_GROUP_ID.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* BITMASK_BIT_POSITION.  */ BITMASK_NOT_YET_ALLOCATED,
+  /* EXTRA_EXTENSION_FLAGS.  */ 0)
