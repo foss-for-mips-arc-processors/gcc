@@ -14563,16 +14563,14 @@ int_expr_size (const_tree exp)
 }
 
 /* Return the quotient of polynomial long division of x^2N by POLYNOMIAL
-   in GF (2^N).
+   in GF (2^N).  The result has degree N, so if N > 63, the result will
+   not fit in a HOST_WIDE_INT.  This must be taken into account by the caller.
    Author: Richard Sandiford <richard.sandiford@arm.com>  */
 
 unsigned HOST_WIDE_INT
 gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT polynomial,
 			     unsigned short n)
 {
-  /* The result has degree N, so needs N + 1 bits.  */
-  gcc_assert (n < 64);
-
   /* Perform a division step for the x^2N coefficient.  At this point the
      quotient and remainder have N implicit trailing zeros.  */
   unsigned HOST_WIDE_INT quotient = 1;
