@@ -14572,15 +14572,15 @@ int_expr_size (const_tree exp)
 }
 
 /* Return the quotient of polynomial long division of x^2N by POLYNOMIAL
-   in GF (2^N).
+   in GF (2^N).  For N = 64, the result is the last 63 bits of the quotient,
+   The caller must take the implicit leading 1 bit into account.
    Author: Richard Sandiford <richard.sandiford@arm.com>  */
 
 unsigned HOST_WIDE_INT
 gf2n_poly_long_div_quotient (unsigned HOST_WIDE_INT polynomial,
 			     unsigned short n)
 {
-  /* The result has degree N, so needs N + 1 bits.  */
-  gcc_assert (n < 64);
+  gcc_assert (n <= 64);
 
   /* Perform a division step for the x^2N coefficient.  At this point the
      quotient and remainder have N implicit trailing zeros.  */
