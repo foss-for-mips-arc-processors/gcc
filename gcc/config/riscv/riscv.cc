@@ -14035,6 +14035,12 @@ riscv_output_join2_insns (rtx *operands, machine_mode mode, bool load_p,
       && (offset1 < (1 << 7) || offset2 < (1 << 7))
       && (mode == DImode || mode == SImode)
       && REGNO (base1) == REGNO (base2)
+      && (!TARGET_DOUBLE_ALIGN
+   /* We restrict to sp as base that is aligned to 16 bytes,
+      to guarantee double alignment.  */
+   || (REGNO (base1) == STACK_POINTER_REGNUM
+       && (((offset1 < offset2) ? offset1 : offset2)
+      & ((GET_MODE_SIZE (mode).to_constant () * 2) - 1)) == 0))
       && ((load_p && REGNO (reg1) != REGNO (base1)
 	   && REGNO (reg2) != REGNO (base1)) || !load_p))
   {
