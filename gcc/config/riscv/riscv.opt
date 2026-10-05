@@ -460,3 +460,7 @@ Emit two loads or two stores to help hardware bonding.
 mexperimental-mips-trig-mapping
 Target Var(TARGET_MIPS_EXP_TRIG_MAP) Init(0)
 Map libm trig functions to mips trig instructions (experimental).
+
+mdouble-align
+Target Var(TARGET_DOUBLE_ALIGN) Init(1)
+Ensure double alignment for load/store pair instructions.
