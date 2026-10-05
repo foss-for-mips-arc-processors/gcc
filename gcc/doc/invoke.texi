@@ -649,7 +649,7 @@ Objective-C and Objective-C++ Dialects}.
 -fno-sched-spec  -fno-signed-zeros
 -fno-toplevel-reorder  -fno-trapping-math  -fno-zero-initialized-in-bss
 -fomit-frame-pointer  -foptimize-crc  -foptimize-sibling-calls
--fpartial-inlining  -fpeel-loops  -fpredictive-commoning
+-fpartial-inlining  -fpeel-loops  -fpointer-chasing  -fpredictive-commoning
 -fprefetch-loop-arrays
 -fprofile-correction
 -fprofile-use  -fprofile-use=@var{path}  -fprofile-partial-training
@@ -16687,6 +16687,11 @@ with @option{-fmalloc-dce=2} also comparisons with @code{NULL} pointer are
 considered safe to remove.
 
 The default is @option{-fmalloc-dce=2}.  See also @option{-fallocation-dce}.
+
+@item -fpointer-chasing
+@opindex fpointer-chasing
+Optimizes pointer-chasing loops by moving a pointer-chasing load
+to a loop header block.  Enabled by @option{-O2} and higher.
 
 @opindex fmove-loop-invariants
 @opindex fno-move-loop-invariants

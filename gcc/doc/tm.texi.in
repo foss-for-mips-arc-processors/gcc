@@ -4794,6 +4794,8 @@ Define this macro if a non-short-circuit operation produced by
 
 @hook TARGET_NEW_ADDRESS_PROFITABLE_P
 
+@hook TARGET_POINTER_CHASING_LOAD_PROFITABLE_P
+
 @hook TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P
 
 @hook TARGET_ESTIMATED_POLY_VALUE
