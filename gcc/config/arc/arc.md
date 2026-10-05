@@ -55,7 +55,8 @@
 ;;   f  frame pointer                           r27
 ;;   Rgp global pointer                         r26
 ;;   g  general reg, memory, constant
-;;   m  memory
+;;   e  memory
+;;   m  memory, restricted to the addresses inline asm can print
 ;;   p  memory address
 ;;   q  registers commonly used in
 ;;      16-bit insns                            r0-r3, r12-r15
@@ -576,8 +577,8 @@ archs4x, archs4xd"
 ; The iscompact attribute allows the epilogue expander to know for which
 ; insns it should lengthen the return insn.
 (define_insn "*movqi_insn"
-  [(set (match_operand:QI 0 "move_dest_operand" "=q, q,r,q,   h, w, w,???w,h, w,q,S,!*x,  r,r, Ucm,m,???m,  m,Usc")
-	(match_operand:QI 1 "move_src_operand"  "rL,rP,q,P,hCm1,cL, I,?Rac,i,?i,T,q,Usd,Ucm,m,?Rac,c,?Rac,Cm3,i"))]
+  [(set (match_operand:QI 0 "move_dest_operand" "=q, q,r,q,   h, w, w,???w,h, w,q,S,!*x,  r,r, Ucm,e,???e,  e,Usc")
+	(match_operand:QI 1 "move_src_operand"  "rL,rP,q,P,hCm1,cL, I,?Rac,i,?i,T,q,Usd,Ucm,e,?Rac,c,?Rac,Cm3,i"))]
   "register_operand (operands[0], QImode)
    || register_operand (operands[1], QImode)
    || (CONSTANT_P (operands[1])
@@ -618,8 +619,8 @@ archs4x, archs4xd"
   "if (prepare_move_operands (operands, HImode)) DONE;")
 
 (define_insn "*movhi_insn"
-  [(set (match_operand:HI 0 "move_dest_operand" "=q, q,r,q,   h, w, w,???w,q,h, w,q,S,  r,r, Ucm,m,???m,  m,VUsc")
-	(match_operand:HI 1 "move_src_operand" " rL,rP,q,P,hCm1,cL, I,?Rac,i,i,?i,T,q,Ucm,m,?Rac,c,?Rac,Cm3,i"))]
+  [(set (match_operand:HI 0 "move_dest_operand" "=q, q,r,q,   h, w, w,???w,q,h, w,q,S,  r,r, Ucm,e,???e,  e,VUsc")
+	(match_operand:HI 1 "move_src_operand" " rL,rP,q,P,hCm1,cL, I,?Rac,i,i,?i,T,q,Ucm,e,?Rac,c,?Rac,Cm3,i"))]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)
    || (CONSTANT_P (operands[1])
@@ -669,8 +670,8 @@ archs4x, archs4xd"
 ; the iscompact attribute allows the epilogue expander to know for which
 ; insns it should lengthen the return insn.
 (define_insn_and_split "*movsi_insn"		; 0  1 2 3    4   5 6   7   8   9  10  11  12  13  14  15  16    17      18  19  20    21   22 23  24   25 26  27  28
-  [(set (match_operand:SI 0 "move_dest_operand" "=q, q,r,q,   h, rl,r,  r,  r,  r, ?r,  r,  q,  h, rl,  q,  S,   Us<,qRck,!*x,  r,!*Rsd,!*Rcd,r,Ucm,  Usd,m,  m,VUsc")
-	(match_operand:SI 1 "move_src_operand"  "rL,rP,q,P,hCm1,rLl,I,Clo,Chi,Cbi,Cpc,Clb,Cax,Cal,Cal,Uts,q,qRck,   Us>,Usd,Ucm,  Usd,  Ucd,m,  r,!*Rzd,r,Cm3, C32"))]
+  [(set (match_operand:SI 0 "move_dest_operand" "=q, q,r,q,   h, rl,r,  r,  r,  r, ?r,  r,  q,  h, rl,  q,  S,   Us<,qRck,!*x,  r,!*Rsd,!*Rcd,r,Ucm,  Usd,e,  e,VUsc")
+	(match_operand:SI 1 "move_src_operand"  "rL,rP,q,P,hCm1,rLl,I,Clo,Chi,Cbi,Cpc,Clb,Cax,Cal,Cal,Uts,q,qRck,   Us>,Usd,Ucm,  Usd,  Ucd,e,  r,!*Rzd,r,Cm3, C32"))]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)
    || (CONSTANT_P (operands[1])
@@ -743,7 +744,7 @@ archs4x, archs4xd"
 ;; Since the cached copy can cause a write-back at unpredictable times,
 ;; we first write cached, then we write uncached.
 (define_insn "store_direct"
-  [(set (match_operand:SI 0 "move_dest_operand" "=m")
+  [(set (match_operand:SI 0 "move_dest_operand" "=e")
       (unspec:SI [(match_operand:SI 1 "register_operand" "c")]
        UNSPEC_ARC_DIRECT))]
   ""
@@ -1242,8 +1243,8 @@ archs4x, archs4xd"
   ")
 
 (define_insn_and_split "*movdi_insn"
-  [(set (match_operand:DI 0 "move_dest_operand"      "=r, r,r,   m")
-	(match_operand:DI 1 "move_double_src_operand" "r,Hi,m,rCm3"))]
+  [(set (match_operand:DI 0 "move_dest_operand"      "=r, r,r,   e")
+	(match_operand:DI 1 "move_double_src_operand" "r,Hi,e,rCm3"))]
   "register_operand (operands[0], DImode)
    || register_operand (operands[1], DImode)
    || (satisfies_constraint_Cm3 (operands[1])
@@ -1271,8 +1272,8 @@ archs4x, archs4xd"
   "if (prepare_move_operands (operands, SFmode)) DONE;")
 
 (define_insn "*movsf_insn"
-  [(set (match_operand:SF 0 "move_dest_operand"   "=h,h,   r,r,  q,S,Usc,r,m")
-	(match_operand:SF 1 "move_src_operand"  "hCfZ,E,rCfZ,E,Uts,q,  E,m,r"))]
+  [(set (match_operand:SF 0 "move_dest_operand"   "=h,h,   r,r,  q,S,Usc,r,e")
+	(match_operand:SF 1 "move_src_operand"  "hCfZ,E,rCfZ,E,Uts,q,  E,e,r"))]
   "register_operand (operands[0], SFmode)
    || register_operand (operands[1], SFmode)
    || (CONSTANT_P (operands[1])
@@ -1300,8 +1301,8 @@ archs4x, archs4xd"
   "if (prepare_move_operands (operands, DFmode)) DONE;")
 
 (define_insn_and_split "*movdf_insn"
-  [(set (match_operand:DF 0 "move_dest_operand"      "=D,r,r,r,r,m")
-	(match_operand:DF 1 "move_double_src_operand" "r,D,r,E,m,r"))]
+  [(set (match_operand:DF 0 "move_dest_operand"      "=D,r,r,r,r,e")
+	(match_operand:DF 1 "move_double_src_operand" "r,D,r,E,e,r"))]
   "(register_operand (operands[0], DFmode)
     || register_operand (operands[1], DFmode))"
   "@
@@ -1744,7 +1745,7 @@ archs4x, archs4xd"
 (define_insn "*zero_extendqihi2_i"
   [(set (match_operand:HI 0 "dest_reg_operand" "=q,q,r,r,r,r")
 	(zero_extend:HI
-	 (match_operand:QI 1 "nonvol_nonimm_operand" "0,q,0,r,Ucm,m")))]
+	 (match_operand:QI 1 "nonvol_nonimm_operand" "0,q,0,r,Ucm,e")))]
   ""
   "@
    extb%?\\t%0,%1
@@ -1767,7 +1768,7 @@ archs4x, archs4xd"
 (define_insn "*zero_extendqisi2_ac"
   [(set (match_operand:SI 0 "dest_reg_operand"    "=q,q,r,r,q,!*x,r,r")
 	(zero_extend:SI
-	 (match_operand:QI 1 "nonvol_nonimm_operand" "0,q,0,r,T,Usd,Ucm,m")))]
+	 (match_operand:QI 1 "nonvol_nonimm_operand" "0,q,0,r,T,Usd,Ucm,e")))]
   ""
   "@
    extb%?\\t%0,%1
@@ -1792,7 +1793,7 @@ archs4x, archs4xd"
 (define_insn "*zero_extendhisi2_i"
   [(set (match_operand:SI 0 "dest_reg_operand" "=q,q,r,r,!x,q,r,r")
 	(zero_extend:SI
-	 (match_operand:HI 1 "nonvol_nonimm_operand" "0,q,0,r,Usd,T,Ucm,m")))]
+	 (match_operand:HI 1 "nonvol_nonimm_operand" "0,q,0,r,Usd,T,Ucm,e")))]
   ""
   "@
    ext%_%?\\t%0,%1
@@ -1819,7 +1820,7 @@ archs4x, archs4xd"
 (define_insn "*extendqihi2_i"
   [(set (match_operand:HI 0 "dest_reg_operand" "=q,r,r,r")
 	(sign_extend:HI
-	 (match_operand:QI 1 "nonvol_nonimm_operand" "q,r,Uex,m")))]
+	 (match_operand:QI 1 "nonvol_nonimm_operand" "q,r,Uex,e")))]
   ""
   "@
    sexb%?\\t%0,%1
@@ -1840,7 +1841,7 @@ archs4x, archs4xd"
 (define_insn "*extendqisi2_ac"
   [(set (match_operand:SI 0 "dest_reg_operand" "=q,r,r,r")
 	(sign_extend:SI
-	 (match_operand:QI 1 "nonvol_nonimm_operand" "q,r,Uex,m")))]
+	 (match_operand:QI 1 "nonvol_nonimm_operand" "q,r,Uex,e")))]
   ""
   "@
    sexb%?\\t%0,%1
@@ -1861,7 +1862,7 @@ archs4x, archs4xd"
 (define_insn "*extendhisi2_i"
   [(set (match_operand:SI 0 "dest_reg_operand" "=q,r,q,r,r")
 	(sign_extend:SI
-	 (match_operand:HI 1 "nonvol_nonimm_operand" "q,r,Ucd,Uex,m")))]
+	 (match_operand:HI 1 "nonvol_nonimm_operand" "q,r,Ucd,Uex,e")))]
   ""
   "@
    sex%_%?\\t%0,%1
@@ -4781,14 +4782,14 @@ archs4x, archs4xd"
 
 (define_insn "lddi<mode>"
   [(set (match_operand:ALLI 0 "register_operand" "=r")
-	(unspec_volatile:ALLI [(match_operand:ALLI 1 "memory_operand" "m")]
+	(unspec_volatile:ALLI [(match_operand:ALLI 1 "memory_operand" "e")]
 			      VUNSPEC_ARC_LDDI))]
   ""
   "ld<mALLI>%U1.di\\t%0,%1"
   [(set_attr "type" "load")])
 
 (define_insn "stdi<mode>"
-  [(unspec_volatile [(match_operand:ALLI 0 "move_dest_operand" "m,m,Usc")
+  [(unspec_volatile [(match_operand:ALLI 0 "move_dest_operand" "e,e,Usc")
 		     (match_operand:ALLI 1 "nonmemory_operand" "r,Cm3,i")]
 		    VUNSPEC_ARC_STDI)]
   ""
@@ -4797,7 +4798,7 @@ archs4x, archs4xd"
    (set_attr "type" "store")])
 
 (define_insn_and_split "*stdidi_split"
-  [(unspec_volatile [(match_operand:DI 0 "non_mod_move_dest_operand" "m")
+  [(unspec_volatile [(match_operand:DI 0 "non_mod_move_dest_operand" "e")
 		     (match_operand:DI 1 "register_operand" "r")]
 		    VUNSPEC_ARC_STDI)]
   "!TARGET_LL64"
@@ -4817,7 +4818,7 @@ archs4x, archs4xd"
 
 (define_insn_and_split "*lddidi_split"
   [(set (match_operand:DI 0 "register_operand" "=r")
-	(unspec_volatile:DI [(match_operand:DI 1 "memory_operand" "m")]
+	(unspec_volatile:DI [(match_operand:DI 1 "memory_operand" "e")]
 			    VUNSPEC_ARC_LDDI))]
   "!TARGET_LL64"
   "#"
@@ -5165,7 +5166,7 @@ archs4x, archs4xd"
 ;; memory.
 (define_insn_and_split "loop_end"
   [(set (pc)
-	(if_then_else (ne (match_operand:SI 0 "nonimmediate_operand" "+r,!m")
+	(if_then_else (ne (match_operand:SI 0 "nonimmediate_operand" "+r,!e")
 			  (const_int 1))
 		      (label_ref (match_operand 1 "" ""))
 		      (pc)))
@@ -5211,7 +5212,7 @@ archs4x, archs4xd"
 (define_insn_and_split "dbnz"
   [(set (pc)
 	(if_then_else
-	 (ne (plus:SI (match_operand:SI 0 "nonimmediate_operand" "+rl,m")
+	 (ne (plus:SI (match_operand:SI 0 "nonimmediate_operand" "+rl,e")
 		      (const_int -1))
 	     (const_int 0))
 	 (label_ref (match_operand 1 "" ""))
@@ -5596,7 +5597,7 @@ archs4x, archs4xd"
 
 (define_expand "reload_<mode>_load"
   [(parallel [(match_operand:SRI 0 "register_operand" "=r")
-	      (match_operand:SRI 1 "memory_operand" "m")
+	      (match_operand:SRI 1 "memory_operand" "e")
 	      (match_operand:SI 2 "register_operand" "=&r")])]
   ""
 {
@@ -5605,7 +5606,7 @@ archs4x, archs4xd"
 })
 
 (define_expand "reload_<mode>_store"
-  [(parallel [(match_operand:SRI 0 "memory_operand" "=m")
+  [(parallel [(match_operand:SRI 0 "memory_operand" "=e")
 	      (match_operand:SRI 1 "register_operand" "r")
 	      (match_operand:SI 2 "register_operand" "=&r")])]
   ""
