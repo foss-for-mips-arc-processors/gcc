@@ -288,6 +288,16 @@
        (match_test "op == CONST0_RTX (SFmode)")))
 
 ;; Memory constraints
+
+; This defines 'm' as a restricted memory constraint that can be safely used in
+; inline asm.
+(define_memory_constraint "m"
+  "A memory operand whose address is one of @code{[Rb]}, @code{[Rb,s9]},
+@code{[limm]}.  A scaled @code{s9} offset and a small data reference need the
+asm template to use the @code{%U} modifier."
+  (and (match_code "mem")
+       (match_test "arc_legitimate_asm_address_p (mode, XEXP (op, 0))")))
+
 (define_memory_constraint "T"
   "@internal
    A valid memory operand for ARCompact load instructions"

@@ -66,6 +66,7 @@ void arc_asm_output_aligned_decl_local (FILE *, tree, const char *,
 extern rtx arc_return_addr_rtx (int , rtx);
 extern bool check_if_valid_regno_const (rtx *, int);
 extern bool arc_legitimate_constant_p (machine_mode, rtx);
+extern bool arc_legitimate_asm_address_p (machine_mode, rtx);
 extern bool arc_legitimate_pic_addr_p (rtx);
 extern bool arc_raw_symbolic_reference_mentioned_p (rtx, bool);
 extern bool arc_is_longcall_p (rtx);

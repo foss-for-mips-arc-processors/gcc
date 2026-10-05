@@ -211,8 +211,8 @@
 )
 
 (define_insn "movv8hi_insn"
-  [(set (match_operand:V8HI 0 "vector_register_or_memory_operand" "=v,m,v")
-	(match_operand:V8HI 1 "vector_register_or_memory_operand" "m,v,v"))]
+  [(set (match_operand:V8HI 0 "vector_register_or_memory_operand" "=v,e,v")
+	(match_operand:V8HI 1 "vector_register_or_memory_operand" "e,v,v"))]
   "TARGET_SIMD_SET && !(GET_CODE (operands[0]) == MEM && GET_CODE(operands[1]) == MEM)"
   "@
     vld128r\\t%0,%1
@@ -223,8 +223,8 @@
    (set_attr "cond" "nocond, nocond, nocond")])
 
 (define_insn "movti_insn"
-  [(set (match_operand:TI 0 "vector_register_or_memory_operand" "=v,m,v")
-	(match_operand:TI 1 "vector_register_or_memory_operand" "m,v,v"))]
+  [(set (match_operand:TI 0 "vector_register_or_memory_operand" "=v,e,v")
+	(match_operand:TI 1 "vector_register_or_memory_operand" "e,v,v"))]
   ""
   "@
     vld128r\\t%0,%1
@@ -1426,8 +1426,8 @@
    }")
 
 (define_insn_and_split "*movv2hi_insn"
-  [(set (match_operand:V2HI 0 "move_dest_operand" "=r,r,r,m")
-	(match_operand:V2HI 1 "general_operand"    "i,r,m,r"))]
+  [(set (match_operand:V2HI 0 "move_dest_operand" "=r,r,r,e")
+	(match_operand:V2HI 1 "general_operand"    "i,r,e,r"))]
   "(register_operand (operands[0], V2HImode)
     || register_operand (operands[1], V2HImode))"
   "@
@@ -1472,8 +1472,8 @@
    }")
 
 (define_insn_and_split "*mov<mode>_insn"
-  [(set (match_operand:VWH 0 "move_dest_operand" "=r,r,r,m")
-	(match_operand:VWH 1 "general_operand"    "i,r,m,r"))]
+  [(set (match_operand:VWH 0 "move_dest_operand" "=r,r,r,e")
+	(match_operand:VWH 1 "general_operand"    "i,r,e,r"))]
   "(register_operand (operands[0], <MODE>mode)
        || register_operand (operands[1], <MODE>mode))"
   "@
