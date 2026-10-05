@@ -1027,6 +1027,14 @@ satisfy all users.  What these modes are, and what they apply to are
 completely target-specific.  The code for this pass is located in
 @file{mode-switching.cc}.
 
+@cindex pointer chasing loop optimization
+@item Pointer chasing loop optimization
+
+This pass looks at innermost loops and moves a pointer-chasing load
+to the loop header.  Pointer chasing loop optimization is performed
+immediately before modulo scheduling.  The code for this pass is
+located in @file{pointer-chasing.cc}.
+
 @cindex modulo scheduling
 @cindex sms, swing, software pipelining
 @item Modulo scheduling

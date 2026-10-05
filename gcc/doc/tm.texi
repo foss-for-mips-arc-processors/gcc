@@ -7471,6 +7471,11 @@ scheduler from undoing address optimizations.  The instruction containing the
 memref is @var{insn}.  The default implementation returns @code{true}.
 @end deftypefn
 
+@deftypefn {Target Hook} bool TARGET_POINTER_CHASING_LOAD_PROFITABLE_P (void)
+This hook returns true if hoisting pointer-chasing load is profitable.
+The default implementation returns @code{false}.
+@end deftypefn
+
 @deftypefn {Target Hook} bool TARGET_NO_SPECULATION_IN_DELAY_SLOTS_P (void)
 This predicate controls the use of the eager delay slot filler to disallow
 speculatively executed instructions being placed in delay slots.  Targets

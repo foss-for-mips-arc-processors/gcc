@@ -17399,6 +17399,15 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
   return true;
 }
 
+/* Implement TARGET_POINTER_CHASING_LOAD_PROFITABLE_P.  */
+
+bool
+riscv_pointer_chasing_load_profitable_p ()
+{
+  /* Hoisting pointer chasing load is profitable on Daimyo.  */
+  return TARGET_MIPS;
+}
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.half\t"
@@ -17834,6 +17843,10 @@ riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
 
 #undef TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS
 #define TARGET_CALL_FUSAGE_CONTAINS_NON_CALLEE_CLOBBERS true
+
+#undef TARGET_POINTER_CHASING_LOAD_PROFITABLE_P
+#define TARGET_POINTER_CHASING_LOAD_PROFITABLE_P  \
+  riscv_pointer_chasing_load_profitable_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

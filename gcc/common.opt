@@ -2558,6 +2558,10 @@ fpartial-inlining
 Common Var(flag_partial_inlining) Optimization
 Perform partial inlining.
 
+fpointer-chasing
+Common Var(flag_pointer_chasing) Init(1) Optimization
+Perform pointer-chasing loop optimization.
+
 fpre-ipa-mem-report
 Common Var(pre_ipa_mem_report)
 Report on memory allocation before interprocedural optimization.

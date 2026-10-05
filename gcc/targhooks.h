@@ -312,6 +312,8 @@ extern bool default_have_speculation_safe_value (bool);
 extern bool speculation_safe_value_not_needed (bool);
 extern rtx default_speculation_safe_value (machine_mode, rtx, rtx, rtx);
 
+extern bool default_pointer_chasing_load_profitable_p ();
+
 extern bool default_memtag_can_tag_addresses ();
 extern uint8_t default_memtag_tag_bitsize ();
 extern uint8_t default_memtag_granule_size ();

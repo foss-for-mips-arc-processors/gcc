@@ -1361,6 +1361,10 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 
 #define HARD_REGNO_RENAME_OK(FROM, TO) riscv_hard_regno_rename_ok (FROM, TO)
 
+/* TARGET_MIPS checks if cores are from MIPS.  */
+#define TARGET_MIPS (riscv_microarchitecture == mips_i8500  \
+  || riscv_microarchitecture == mips_p8700)
+
 #define ENABLE_LD_ST_PAIRS \
   (TARGET_XMIPSLSP || TARGET_LOAD_STORE_BONDING)
 
