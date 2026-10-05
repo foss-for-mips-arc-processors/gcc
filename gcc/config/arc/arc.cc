@@ -6693,6 +6693,35 @@ arc_legitimate_address_p (machine_mode mode, rtx x, bool strict,
   return false;
 }
 
+/* Used by the 'm' constraint.  */
+
+bool
+arc_legitimate_asm_address_p (machine_mode mode, rtx addr)
+{
+  switch (GET_CODE (addr))
+    {
+    case PRE_INC:
+    case PRE_DEC:
+    case POST_INC:
+    case POST_DEC:
+    case PRE_MODIFY:
+    case POST_MODIFY:
+      return false;
+
+    case PLUS:
+      /* Filter out the index register forms.  */
+      if (!RTX_OK_FOR_BASE_P (XEXP (addr, 0), true)
+	  || !RTX_OK_FOR_OFFSET_P (mode, XEXP (addr, 1)))
+	return false;
+      break;
+
+    default:
+      break;
+    }
+
+  return arc_legitimate_address_p (mode, addr, true);
+}
+
 /* Return true iff ADDR (a legitimate address expression)
    has an effect that depends on the machine mode it is used for.  */
 
