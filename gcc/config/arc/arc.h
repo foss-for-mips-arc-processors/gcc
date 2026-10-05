@@ -1448,6 +1448,11 @@ do { \
    in one reasonably fast instruction.  */
 #define MOVE_MAX 4
 
+/* 'm' is redefined as a restricted memory constraint that can be safely used
+   in inline asm.  We use 'e' instead for the unrestricted memory operand
+   constraint.  */
+#define TARGET_MEM_CONSTRAINT 'e'
+
 /* Undo the effects of the cpymem pattern presence on STORE_BY_PIECES_P .  */
 #define MOVE_RATIO(SPEED) ((SPEED) ? 15 : 3)
 
