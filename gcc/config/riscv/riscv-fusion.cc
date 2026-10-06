@@ -820,7 +820,14 @@ static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
     true, false, RISCV_FUSION_DEC, 1 },
   /* Allow 1-, 2-, 4- and 8-byte stores.  */
   { RISCV_FUSE_ALIGNED_STD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
-    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 }
+    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 },
+  /* RHX-100 adjacent scalar pairs.  */
+  { RISCV_FUSE_ADJACENT_LOAD, (1U << 1) | (1U << 2) | (1U << 4),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+    | SCHED_FUSION_LD_ZERO_EXTEND,
+    false, false, RISCV_FUSION_ANY, 1 },
+  { RISCV_FUSE_ADJACENT_STORE, (1U << 4),
+    SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 }
 };
 
 /* Return true if MEM satisfies RULE's single-instruction constraints.
@@ -2032,73 +2039,6 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Return TRUE if two memory operands can be fused based on their addresses.
-   Checks if MEM0 and MEM1 have the same base register with adjacent offsets,
-   making them suitable for fusion (e.g., adjacent load/store pairs).  */
-
-static bool
-riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
-{
-  rtx base0, base1, tmp;
-  HOST_WIDE_INT off0 = 0, off1 = 0;
-
-  if (GET_CODE (mem0) == SIGN_EXTEND || GET_CODE (mem0) == ZERO_EXTEND)
-    mem0 = XEXP (mem0, 0);
-
-  if (GET_CODE (mem1) == SIGN_EXTEND || GET_CODE (mem1) == ZERO_EXTEND)
-    mem1 = XEXP (mem1, 0);
-
-  if (!MEM_P (mem0) || !MEM_P (mem1))
-    return false;
-
-  if (GET_MODE (mem0) != GET_MODE (mem1))
-    return false;
-
-  if (TARGET_ARCV_RHX100
-      && !arcv_pair_fusion_mode_allowed_p (GET_MODE (mem0), is_load))
-    return false;
-
-  rtx mem_addr0 = XEXP (mem0, 0);
-  rtx mem_addr1 = XEXP (mem1, 0);
-
-  if (GET_CODE (mem_addr0) == PLUS)
-    {
-      base0 = XEXP (mem_addr0, 0);
-      tmp = XEXP (mem_addr0, 1);
-      if (!REG_P (base0) || !CONST_INT_P (tmp))
-       return false;
-      off0 = INTVAL (tmp);
-    }
-  else if (REG_P (mem_addr0))
-    base0 = mem_addr0;
-  else
-    return false;
-
-  if (GET_CODE (mem_addr1) == PLUS)
-    {
-      base1 = XEXP (mem_addr1, 0);
-      tmp = XEXP (mem_addr1, 1);
-      if (!REG_P (base1) || !CONST_INT_P (tmp))
-       return false;
-      off1 = INTVAL (tmp);
-    }
-  else if (REG_P (mem_addr1))
-    base1 = mem_addr1;
-  else
-    return false;
-
-  /* Check if we have the same base.  */
-  if (REGNO (base0) != REGNO (base1))
-    return false;
-
-  /* Fuse adjacent aligned addresses.  */
-  if ((off0 % GET_MODE_SIZE (GET_MODE (mem0)).to_constant () == 0)
-      && (abs (off1 - off0) == GET_MODE_SIZE (GET_MODE (mem0)).to_constant ()))
-    return true;
-
-  return false;
-}
-
 /* Return true if CURR should not be fused with PREV because CURR and the
    next fusible insn form a better adjacent load/store pair.  */
 
@@ -2109,22 +2049,12 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
   if (!next)
     return false;
 
-  rtx curr_set = single_set (curr);
-  rtx next_set = single_set (next);
-  if (!curr_set || !next_set)
-    return false;
-
   if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
-      && get_attr_type (curr) == TYPE_LOAD
-      && get_attr_type (next) == TYPE_LOAD
-      && riscv_adjacent_memops_p (SET_SRC (curr_set), SET_SRC (next_set), true))
+      && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_LOAD))
     return true;
 
-  return riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
-	 && get_attr_type (curr) == TYPE_STORE
-	 && get_attr_type (next) == TYPE_STORE
-	 && riscv_adjacent_memops_p (SET_DEST (curr_set),
-				     SET_DEST (next_set), false);
+  return (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
+	  && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_STORE));
 }
 
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
@@ -2376,7 +2306,7 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF1))))
    curr (ld) == (set (reg:SI rD2)
 		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF2))))
-   where OFF2 == OFF1 + 4 or OFF2 == OFF1 - 4  */
+   where OFF2 == OFF1 + MODE_SIZE or OFF2 == OFF1 - MODE_SIZE  */
 
 static bool
 riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
@@ -2385,16 +2315,7 @@ riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (get_attr_type (prev) != TYPE_LOAD
-      || get_attr_type (curr) != TYPE_LOAD)
-    return false;
-
-  return riscv_adjacent_memops_p (SET_SRC (prev_set), SET_SRC (curr_set), true);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_LOAD);
 }
 
 /* Check for RISCV_FUSE_ADJACENT_STORE fusion.
@@ -2411,17 +2332,7 @@ riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (get_attr_type (prev) != TYPE_STORE
-      || get_attr_type (curr) != TYPE_STORE)
-    return false;
-
-  return riscv_adjacent_memops_p (SET_DEST (prev_set),
-				  SET_DEST (curr_set), false);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_STORE);
 }
 
 /* Check for RISCV_FUSE_LS_UPDATE fusion (load/store with address update).
