@@ -2128,15 +2128,8 @@ riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set, curr_set;
-  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
-      || get_attr_type (prev) != TYPE_SHIFT
-      || get_attr_type (curr) != TYPE_SHIFT)
-    return false;
-
-  return (riscv_set_is_slli_p (prev_set)
-	  && riscv_set_is_srai_p (curr_set)
-	  && riscv_fuse_same_dest_p (prev_set, curr_set, true));
+  return (riscv_fuse_shift_pair_p (prev, curr, false, true)
+	  && riscv_set_is_srai_p (single_set (curr)));
 }
 
 /* Check for RISCV_FUSE_MULT_ADD fusion.
