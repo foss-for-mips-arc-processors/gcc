@@ -2154,27 +2154,17 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 
   rtx prev_src = SET_SRC (prev_set);
   rtx curr_src = SET_SRC (curr_set);
-  if (GET_CODE (prev_src) == SIGN_EXTEND
-      && GET_MODE (prev_src) == DImode)
-    prev_src = XEXP (prev_src, 0);
-  if (GET_CODE (curr_src) == SIGN_EXTEND
-      && GET_MODE (curr_src) == DImode)
-    curr_src = XEXP (curr_src, 0);
+  rtx word_src;
+  if (riscv_set_extract_word_binary_p (prev_set, MULT, &word_src))
+    prev_src = word_src;
+  if (riscv_set_extract_word_binary_p (curr_set, PLUS, &word_src))
+    curr_src = word_src;
 
   if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
       || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
     return false;
 
-  rtx mult_dest = SET_DEST (prev_set);
-  if (!REG_P (mult_dest))
-    return false;
-  unsigned int mult_dest_regno = REGNO (mult_dest);
-
-  if (REG_P (XEXP (curr_src, 0))
-      && REGNO (XEXP (curr_src, 0)) == mult_dest_regno)
-    return true;
-
-  return false;
+  return riscv_fuse_same_reg_p (XEXP (curr_src, 0), SET_DEST (prev_set));
 }
 
 /* Check for RISCV_FUSE_LI_BRANCH fusion.
