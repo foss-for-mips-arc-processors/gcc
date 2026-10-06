@@ -2186,18 +2186,10 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
   if (!any_condjump_p (curr))
     return false;
 
-  rtx prev_dest = SET_DEST (prev_set);
-  if (!REG_P (prev_dest))
-    return false;
-
   /* Check if the loaded register is used in the branch condition.  */
   rtx cond = XEXP (SET_SRC (curr_set), 0);
-  unsigned int prev_dest_regno = REGNO (prev_dest);
-  if ((REG_P (XEXP (cond, 0)) && REGNO (XEXP (cond, 0)) == prev_dest_regno)
-      || (REG_P (XEXP (cond, 1)) && REGNO (XEXP (cond, 1)) == prev_dest_regno))
-    return true;
-
-  return false;
+  return (riscv_fuse_same_reg_p (XEXP (cond, 0), SET_DEST (prev_set))
+	  || riscv_fuse_same_reg_p (XEXP (cond, 1), SET_DEST (prev_set)));
 }
 
 /* Check for RISCV_FUSE_ADJACENT_LOAD fusion.
