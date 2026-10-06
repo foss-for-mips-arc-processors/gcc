@@ -472,3 +472,7 @@ Map libm trig functions to mips trig instructions (experimental).
 mdouble-align
 Target Var(TARGET_DOUBLE_ALIGN) Init(1)
 Ensure double alignment for load/store pair instructions.
+
+mprefer-lrsc
+Target Var(TARGET_PREFER_LRSC) Init(0)
+Prefer to emit LR/SC instead of AMO for atomic builtin functions.
