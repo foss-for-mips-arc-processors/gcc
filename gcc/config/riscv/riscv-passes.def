@@ -27,3 +27,4 @@ INSERT_PASS_AFTER (pass_cse2, 1, pass_vector_permconst);
 
 
 INSERT_PASS_AFTER (pass_reorder_blocks, 1, pass_cprop_hardreg);
+INSERT_PASS_BEFORE (pass_peephole2, 1, pass_ldst_bonding);
