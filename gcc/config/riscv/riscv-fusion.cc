@@ -2064,13 +2064,8 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
 static bool
 riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set)
-    return false;
-
-  enum attr_type p_type = get_attr_type (prev);
-  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE))
+  rtx curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, NULL, &curr_set))
     return false;
 
   enum attr_type c_type = get_attr_type (curr);
@@ -2089,16 +2084,14 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   rtx c_src = SET_SRC (curr_set);
-  rtx c_dest = SET_DEST (curr_set);
-
   if (CONSTANT_P (c_src))
     return false;
 
-  int c_rs1 = INVALID_REGNUM;
-  int c_rs2 = INVALID_REGNUM;
+  unsigned int c_rs1 = INVALID_REGNUM;
+  unsigned int c_rs2 = INVALID_REGNUM;
 
-  if (REG_P (c_src))
-    c_rs1 = REGNO (c_src);
+  if (REG_P (c_src) || SUBREG_P (c_src))
+    c_rs1 = riscv_regno (c_src);
   else
     {
       rtx op = c_src;
@@ -2114,81 +2107,46 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 	  rtx x = XEXP (op, i);
 	  if (GET_CODE (x) == NOT)
 	    x = XEXP (x, 0);
-	  if (SUBREG_P (x))
-	    x = SUBREG_REG (x);
-	  if (!REG_P (x))
+	  unsigned int regno = riscv_regno (x);
+	  if (regno == INVALID_REGNUM)
 	    continue;
 
-	  if (c_rs1 == (int) INVALID_REGNUM)
-	    c_rs1 = REGNO (x);
+	  if (c_rs1 == INVALID_REGNUM)
+	    c_rs1 = regno;
 	  else
 	    {
-	      c_rs2 = REGNO (x);
+	      c_rs2 = regno;
 	      break;
 	    }
 	}
-
-      if (c_rs1 == (int) INVALID_REGNUM)
-	return false;
     }
 
-  switch (p_type)
+  if (c_rs1 == INVALID_REGNUM)
+    return false;
+
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (prev, &mem) || mem.fp_p)
+    return false;
+
+  unsigned int base_regno = riscv_regno (mem.addr.reg);
+  if (base_regno != c_rs1)
+    return false;
+
+  if (mem.type != SCHED_FUSION_ST)
     {
-    case TYPE_LOAD:
-      {
-	if (!REG_P (c_dest))
-	  return false;
-	int c_rd = REGNO (c_dest);
-
-	rtx p_mem = SET_SRC (prev_set);
-
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx p_dest = SET_DEST (prev_set);
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset)
-	    || !REG_P (p_dest))
-	  return false;
-
-	int p_rs = REGNO (base);
-	int p_rd = REGNO (p_dest);
-
-	return (p_rs == c_rs1
-		&& p_rs != p_rd
-		&& p_rd != c_rd
-		&& !reg_overlap_mentioned_p (p_dest, c_src));
-      }
-
-    case TYPE_STORE:
-      {
-	rtx p_mem = SET_DEST (prev_set);
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset))
-	  return false;
-
-	int p_rs = REGNO (base);
-
-	if (p_rs != c_rs1)
-	  return false;
-
-	if (c_rs2 == (int) INVALID_REGNUM)
-	  return true;
-
-	rtx data = SET_SRC (prev_set);
-	if (!REG_P (data))
-	  return false;
-
-	int p_rs2 = REGNO (data);
-	return p_rs2 == c_rs2;
-      }
-
-    default:
-      return false;
+      unsigned int p_rd = riscv_regno (mem.reg);
+      unsigned int c_rd = riscv_regno (SET_DEST (curr_set));
+      return (p_rd != INVALID_REGNUM
+	      && c_rd != INVALID_REGNUM
+	      && p_rd != base_regno
+	      && p_rd != c_rd
+	      && !reg_overlap_mentioned_p (mem.reg, c_src));
     }
+
+  if (c_rs2 == INVALID_REGNUM)
+    return true;
+
+  return riscv_regno (mem.reg) == c_rs2;
 }
 
 
