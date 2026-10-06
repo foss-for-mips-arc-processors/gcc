@@ -339,7 +339,7 @@
 
 (define_address_constraint "ZD"
   "An address operand that is valid for a mips prefetch instruction"
-  (match_test "TARGET_XMIPSCBOP && riscv_prefetch_offset_address_p (op, mode)"))
+  (match_operand 0 "mips_prefetch_operand"))
 
 (define_constraint "Ou07"
   "A 7-bit unsigned immediate."
