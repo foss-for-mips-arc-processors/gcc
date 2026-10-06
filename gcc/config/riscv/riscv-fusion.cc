@@ -2336,11 +2336,11 @@ riscv_fuse_lui_ld_independent_p (rtx_insn *lui, rtx_insn *load)
   if (!lui_set || !load_set || any_condjump_p (load))
     return false;
 
-  if (!REG_P (SET_DEST (lui_set)) || !REG_P (SET_DEST (load_set))
-      || riscv_fuse_same_reg_p (SET_DEST (lui_set), SET_DEST (load_set)))
-    return false;
-
-  if (get_attr_type (load) != TYPE_LOAD)
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (load, &mem)
+      || mem.type == SCHED_FUSION_ST
+      || mem.fp_p
+      || riscv_fuse_same_reg_p (SET_DEST (lui_set), mem.reg))
     return false;
 
   rtx src = SET_SRC (lui_set);
