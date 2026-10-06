@@ -13210,6 +13210,13 @@ riscv_option_override (void)
 
   riscv_override_options_internal (&global_options);
 
+  /* If users don't set prefer-lrsc, we will enable for p8700.  */
+  if (!OPTION_SET_P (TARGET_PREFER_LRSC)
+      && riscv_microarchitecture == mips_p8700)
+  {
+    TARGET_PREFER_LRSC = 1;
+  }
+
   /* Save these options as the default ones in case we push and pop them later
      while processing functions with potential target attributes.  */
   target_option_default_node = target_option_current_node
