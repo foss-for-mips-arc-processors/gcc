@@ -278,6 +278,10 @@ minline-strlen
 Target Var(riscv_inline_strlen) Init(1)
 Inline strlen calls if possible.
 
+-param=riscv-load-store-alias-check-limit=
+Target Joined UInteger Var(riscv_load_store_alias_check_limit) Init(8) IntegerRange(0, 65536) Param
+Limit on number of alias checks performed when attempting to form an load/store bonding.
+
 -param=riscv-strcmp-inline-limit=
 Target RejectNegative Joined UInteger Var(riscv_strcmp_inline_limit) Init(64)
 Max number of bytes to compare as part of inlined strcmp/strncmp routines (default: 64).
@@ -455,7 +459,11 @@ Explicitly disable or enable advanced fusion for the RMX-500 core.
 
 mload-store-bonding
 Target Var(TARGET_LOAD_STORE_BONDING) Init(1)
-Emit two loads or two stores to help hardware bonding.
+Emit two loads or two stores to help hardware bonding in prologue abd epilogue.
+
+mlate-load-store-bonding
+Target Var(TARGET_LATE_LOAD_STORE_BONDING) Init(1)
+Emit two loads or stores together to help hardware bonding.
 
 mexperimental-mips-trig-mapping
 Target Var(TARGET_MIPS_EXP_TRIG_MAP) Init(0)
