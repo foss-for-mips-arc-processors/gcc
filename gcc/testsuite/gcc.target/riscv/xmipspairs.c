@@ -22,5 +22,5 @@ MYTEST(4, unsigned long)
 MYTEST(5, int)
 MYTEST(6, unsigned long)
 
-/* { dg-final { scan-assembler-times "mips.lwp" 6 } } */
+/* { dg-final { scan-assembler-times "mips.lwp" 8 } } */
 /* { dg-final { scan-assembler-times "mips.swp" 10 } } */
