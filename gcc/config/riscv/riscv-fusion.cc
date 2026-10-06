@@ -919,13 +919,52 @@ riscv_fuse_add_mem_p (rtx_insn *prev, rtx_insn *curr,
   return true;
 }
 
-/* Match an in-place ADDI-type address update and a scalar load or store using
-   the updated address.  LOAD_P selects loads rather than stores, and
-   PREINDEX_P selects whether the update precedes the memory instruction.  */
+/* Predicate for instruction matching to be used in other fusions.
+   2nd parameter specifies whether word versions are allowed in RV64 case.
+   3rd parameter is *SRC0, in which the register source is stored.  */
+
+typedef bool (*riscv_fuse_update_pred_fn) (rtx_insn *, bool, rtx *);
+
+/* ALU/move address update predicate for RISCV_FUSE_LS_UPDATE.  */
 
 static bool
-riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
-			    bool load_p, bool preindex_p)
+riscv_insn_is_ls_update_p (rtx_insn *insn, bool, rtx *src0)
+{
+  enum attr_type type = get_attr_type (insn);
+  if (!(type == TYPE_ARITH
+	|| type == TYPE_LOGICAL
+	|| type == TYPE_SHIFT
+	|| type == TYPE_SLT
+	|| type == TYPE_BITMANIP
+	|| type == TYPE_MIN
+	|| type == TYPE_MAX
+	|| type == TYPE_MINU
+	|| type == TYPE_MAXU
+	|| type == TYPE_CLZ
+	|| type == TYPE_CTZ
+	|| type == TYPE_MOVE))
+    return false;
+
+  rtx set = single_set (insn);
+  if (!set || !reg_overlap_mentioned_p (SET_DEST (set), SET_SRC (set)))
+    return false;
+
+  if (src0)
+    *src0 = SET_DEST (set);
+  return true;
+}
+
+/* Match an in-place address update and a scalar load or store using
+   the updated address.  LOAD_P selects loads rather than stores, and
+   PREINDEX_P selects whether the update precedes the memory instruction.
+   A helper predicate selects the update instructions, and allow_word_p is
+   passed to it.  */
+
+static bool
+riscv_fuse_update_mem_p (rtx_insn *prev, rtx_insn *curr,
+			       bool load_p, bool preindex_p,
+			       riscv_fuse_update_pred_fn update_p,
+			       bool allow_word_p)
 {
   rtx prev_set, curr_set;
   if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
@@ -939,7 +978,7 @@ riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
   rtx update_base = NULL_RTX;
   struct riscv_fusion_mem_info mem;
 
-  if (!riscv_insn_is_addi_type_p (update_insn, false, &update_base)
+  if (!update_p (update_insn, allow_word_p, &update_base)
       || update_base == NULL_RTX
       || !riscv_fuse_mem_p (mem_insn, &mem)
       || (load_p
@@ -956,6 +995,18 @@ riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
     return true;
 
   return !riscv_fuse_same_reg_p (SET_SRC (mem_set), update_dest);
+}
+
+/* Match an in-place ADDI-type address update and a scalar load or store using
+   the updated address.  LOAD_P selects loads rather than stores, and
+   PREINDEX_P selects whether the update precedes the memory instruction.  */
+
+static bool
+riscv_fuse_indexed_mem_p (rtx_insn *prev, rtx_insn *curr,
+			  bool load_p, bool preindex_p)
+{
+  return riscv_fuse_update_mem_p (prev, curr, load_p, preindex_p,
+					riscv_insn_is_addi_type_p, false);
 }
 
 /* Check scalar load/store pair operation OP, sharing candidate eligibility
@@ -2057,141 +2108,6 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
 	  && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_STORE));
 }
 
-/* Return true if PREV and CURR constitute an ordered load/store + op/opimm
-   pair, for the purposes of macro-op fusion.
-   This is a more general form that combines load+arith and store+arith.  */
-
-static bool
-riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
-{
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set)
-    return false;
-
-  enum attr_type p_type = get_attr_type (prev);
-  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE))
-    return false;
-
-  enum attr_type c_type = get_attr_type (curr);
-  if (!(c_type == TYPE_ARITH
-	|| c_type == TYPE_LOGICAL
-	|| c_type == TYPE_SHIFT
-	|| c_type == TYPE_SLT
-	|| c_type == TYPE_BITMANIP
-	|| c_type == TYPE_MIN
-	|| c_type == TYPE_MAX
-	|| c_type == TYPE_MINU
-	|| c_type == TYPE_MAXU
-	|| c_type == TYPE_CLZ
-	|| c_type == TYPE_CTZ
-	|| c_type == TYPE_MOVE))
-    return false;
-
-  rtx c_src = SET_SRC (curr_set);
-  rtx c_dest = SET_DEST (curr_set);
-
-  if (CONSTANT_P (c_src))
-    return false;
-
-  int c_rs1 = INVALID_REGNUM;
-  int c_rs2 = INVALID_REGNUM;
-
-  if (REG_P (c_src))
-    c_rs1 = REGNO (c_src);
-  else
-    {
-      rtx op = c_src;
-      if (GET_CODE (op) == NOT && BINARY_P (XEXP (op, 0)))
-	op = XEXP (op, 0);
-
-      const char *fmt = GET_RTX_FORMAT (GET_CODE (op));
-      for (int i = 0; i < GET_RTX_LENGTH (GET_CODE (op)); i++)
-	{
-	  if (fmt[i] != 'e')
-	    continue;
-
-	  rtx x = XEXP (op, i);
-	  if (GET_CODE (x) == NOT)
-	    x = XEXP (x, 0);
-	  if (SUBREG_P (x))
-	    x = SUBREG_REG (x);
-	  if (!REG_P (x))
-	    continue;
-
-	  if (c_rs1 == (int) INVALID_REGNUM)
-	    c_rs1 = REGNO (x);
-	  else
-	    {
-	      c_rs2 = REGNO (x);
-	      break;
-	    }
-	}
-
-      if (c_rs1 == (int) INVALID_REGNUM)
-	return false;
-    }
-
-  switch (p_type)
-    {
-    case TYPE_LOAD:
-      {
-	if (!REG_P (c_dest))
-	  return false;
-	int c_rd = REGNO (c_dest);
-
-	rtx p_mem = SET_SRC (prev_set);
-
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx p_dest = SET_DEST (prev_set);
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset)
-	    || !REG_P (p_dest))
-	  return false;
-
-	int p_rs = REGNO (base);
-	int p_rd = REGNO (p_dest);
-
-	return (p_rs == c_rs1
-		&& p_rs != p_rd
-		&& p_rd != c_rd
-		&& !reg_overlap_mentioned_p (p_dest, c_src));
-      }
-
-    case TYPE_STORE:
-      {
-	rtx p_mem = SET_DEST (prev_set);
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset))
-	  return false;
-
-	int p_rs = REGNO (base);
-
-	if (p_rs != c_rs1)
-	  return false;
-
-	if (c_rs2 == (int) INVALID_REGNUM)
-	  return true;
-
-	rtx data = SET_SRC (prev_set);
-	if (!REG_P (data))
-	  return false;
-
-	int p_rs2 = REGNO (data);
-	return p_rs2 == c_rs2;
-      }
-
-    default:
-      return false;
-    }
-}
-
-
 /* Check for RISCV_FUSE_BFEXT_SRLI fusion.
    prev (slli) == (set (reg rd) (ashift (reg rs) (const_int)))
    curr (srli) == (set (reg rd) (lshiftrt (reg rd) (const_int)))
@@ -2348,16 +2264,17 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
   if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
-  return (riscv_ls_update_pair_p (prev, curr)
-	  || riscv_ls_update_pair_p (curr, prev));
+  return (riscv_fuse_update_mem_p (prev, curr, true, true,
+					 riscv_insn_is_ls_update_p, true)
+	  || riscv_fuse_update_mem_p (prev, curr, true, false,
+					    riscv_insn_is_ls_update_p, true)
+	  || riscv_fuse_update_mem_p (prev, curr, false, true,
+					    riscv_insn_is_ls_update_p, true)
+	  || riscv_fuse_update_mem_p (prev, curr, false, false,
+					    riscv_insn_is_ls_update_p, true));
 }
 
 static bool
