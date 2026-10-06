@@ -38,7 +38,7 @@ private:
   void legacy_fold_cond (gcond *, edge *);
   tree legacy_fold_cond_overflow (gimple *stmt);
   tree fold_cond_with_ops (tree_code, tree, tree, gimple *s);
-  bool simplify_casted_compare (tree_code &cond_code, tree &op0, tree &op1);
+  bool simplify_casted_compare (tree_code &cond_code, tree &op0, tree &op1, gimple *stmt);
   bool simplify_truth_ops_using_ranges (gimple_stmt_iterator *, gimple *);
   bool simplify_div_or_mod_using_ranges (gimple_stmt_iterator *, gimple *);
   bool simplify_abs_using_ranges (gimple_stmt_iterator *, gimple *);
@@ -56,6 +56,7 @@ private:
   bool op_with_boolean_value_range_p (tree, gimple *);
   void set_and_propagate_unexecutable (edge e);
   void cleanup_edges_and_switches (void);
+  bool op_is_potential_phiopt_target (gcond *, tree &);
 
   /* Vectors of edges that need removing and switch statements that
      need updating.  It is expected that a pass using the simplification

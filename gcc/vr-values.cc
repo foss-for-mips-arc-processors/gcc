@@ -51,6 +51,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "cfghooks.h"
 #include "range-op.h"
 #include "gimple-range.h"
+#include "tree-ssa-phiopt.h"
 
 /* Return true if op is in a boolean [0, 1] value-range.  */
 
@@ -1219,9 +1220,73 @@ simplify_using_ranges::simplify_compare_using_ranges_1 (tree_code &cond_code, tr
 	}
     }
   // Try to simplify casted conditions.
-  if (simplify_casted_compare (cond_code, op0, op1))
+  if (simplify_casted_compare (cond_code, op0, op1, stmt))
     happened = true;
   return happened;
+}
+
+/* If cond statement has an operand that is equivalent to an argument of the
+  subsequent PHI, return true.  */
+
+bool
+simplify_using_ranges::op_is_potential_phiopt_target (gcond *cond, tree &op)
+{
+  basic_block bb, bb1, bb2;
+  edge e1, e2;
+
+
+  bb = gimple_bb (cond);
+  if (safe_dyn_cast <gcond *> (*gsi_last_bb (bb)) != cond)
+    return false;
+
+  e1 = EDGE_SUCC (bb, 0);
+  bb1 = e1->dest;
+  e2 = EDGE_SUCC (bb, 1);
+  bb2 = e2->dest;
+
+  /* We cannot do the optimization on abnormal edges.  */
+  if ((e1->flags & EDGE_ABNORMAL) != 0
+      || (e2->flags & EDGE_ABNORMAL) != 0)
+    return false;
+
+  /* If either bb1's succ or bb2 or bb2's succ is non NULL.  */
+  if (EDGE_COUNT (bb1->succs) == 0
+      || EDGE_COUNT (bb2->succs) == 0)
+    return false;
+
+  if (EDGE_SUCC (bb1, 0)->dest == bb2)
+    ;
+  else if (EDGE_SUCC (bb2, 0)->dest == bb1)
+    {
+      std::swap (bb1, bb2);
+      std::swap (e1, e2);
+    }
+  else
+    return false;
+
+  e1 = EDGE_SUCC (bb1, 0);
+
+  /* Make sure that bb1 is just a fall through.  */
+  if (!single_succ_p (bb1)
+      || (e1->flags & EDGE_FALLTHRU) == 0)
+    return false;
+
+  gphi *phi = single_non_singleton_phi_for_edges (phi_nodes (bb2), e1, e2);
+  if (!phi)
+    return false;
+
+  tree arg0 = gimple_phi_arg_def (phi, e1->dest_idx);
+  tree arg1 = gimple_phi_arg_def (phi, e2->dest_idx);
+
+  /* Something is wrong if we cannot find the arguments in the PHI
+      node.  */
+  gcc_assert (arg0 != NULL_TREE && arg1 != NULL_TREE);
+
+  if (operand_equal_for_phi_arg_p (arg0, op)
+      || operand_equal_for_phi_arg_p (arg1, op))
+    return true;
+
+  return false;
 }
 
 /* Simplify OP0 code OP1 when OP1 is a constant and OP0 was a SSA_NAME
@@ -1229,7 +1294,8 @@ simplify_using_ranges::simplify_compare_using_ranges_1 (tree_code &cond_code, tr
    Doing so makes the conversion dead which helps subsequent passes.  */
 
 bool
-simplify_using_ranges::simplify_casted_compare (tree_code &, tree &op0, tree &op1)
+simplify_using_ranges::simplify_casted_compare (tree_code &, tree &op0,
+      tree &op1, gimple *stmt)
 {
 
   /* If we have a comparison of an SSA_NAME (OP0) against a constant,
@@ -1278,6 +1344,10 @@ simplify_using_ranges::simplify_casted_compare (tree_code &, tree &op0, tree &op
 				    TYPE_SIGN (TREE_TYPE (op0)))
 	      && int_fits_type_p (op1, TREE_TYPE (innerop)))
 	    {
+	      if (gimple_code (stmt) == GIMPLE_COND
+		  && op_is_potential_phiopt_target (as_a<gcond*> (stmt), op0))
+	      return false;
+
 	      tree newconst = fold_convert (TREE_TYPE (innerop), op1);
 	      op0 = innerop;
 	      op1 = newconst;
