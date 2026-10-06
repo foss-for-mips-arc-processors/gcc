@@ -2255,12 +2255,17 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
 {
-  return (get_attr_type (store) == TYPE_STORE
-	  && REG_P (SET_DEST (lui_set))
-	  && ((get_attr_type (lui) == TYPE_MOVE
-	       && GET_CODE (SET_SRC (lui_set)) == HIGH)
-	      || (CONST_INT_P (SET_SRC (lui_set))
-		  && LUI_NONZERO_OPERAND (INTVAL (SET_SRC (lui_set))))));
+  struct riscv_fusion_mem_info mem;
+  if (riscv_regno (SET_DEST (lui_set)) == INVALID_REGNUM
+      || !riscv_fuse_mem_p (store, &mem)
+      || mem.type != SCHED_FUSION_ST
+      || mem.fp_p)
+    return false;
+
+  rtx src = SET_SRC (lui_set);
+  return ((get_attr_type (lui) == TYPE_MOVE && GET_CODE (src) == HIGH)
+	  || (CONST_INT_P (src)
+	      && LUI_NONZERO_OPERAND (INTVAL (src))));
 }
 
 /* Check for RISCV_FUSE_LUI_ST fusion.
