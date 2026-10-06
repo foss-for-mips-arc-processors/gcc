@@ -108,7 +108,7 @@
    (match_operand:SI 2 "const_int_operand")]		     ;; model
   "TARGET_ZAAMO || TARGET_ZALRSC"
 {
-  if (TARGET_ZAAMO)
+  if (!TARGET_ZALRSC || (TARGET_ZAAMO && !TARGET_PREFER_LRSC))
     emit_insn (gen_amo_atomic_<atomic_optab><mode> (operands[0], operands[1],
 						    operands[2]));
   else
@@ -137,7 +137,7 @@
 	   (match_operand:SI 2 "const_int_operand")] ;; model
 	 UNSPEC_SYNC_OLD_OP))
    (clobber (match_scratch:GPR 3 "=&r"))]	     ;; tmp_1
-  "!TARGET_ZAAMO && TARGET_ZALRSC"
+  "(!TARGET_ZAAMO || TARGET_PREFER_LRSC) && TARGET_ZALRSC"
   {
     return "1:\;"
 	   "lr.<amo>%I2\t%3, %0\;"
@@ -157,7 +157,7 @@
    (match_operand:SI 3 "const_int_operand")]		     ;; model
   "TARGET_ZAAMO || TARGET_ZALRSC"
   {
-    if (TARGET_ZAAMO)
+    if (!TARGET_ZALRSC || (TARGET_ZAAMO && !TARGET_PREFER_LRSC))
       emit_insn (gen_amo_atomic_fetch_<atomic_optab><mode> (operands[0], operands[1],
 							    operands[2], operands[3]));
     else
@@ -190,7 +190,7 @@
 	   (match_operand:SI 3 "const_int_operand")] ;; model
 	 UNSPEC_SYNC_OLD_OP))
    (clobber (match_scratch:GPR 4 "=&r"))]	  ;; tmp_1
-  "!TARGET_ZAAMO && TARGET_ZALRSC"
+  "(!TARGET_ZAAMO || TARGET_PREFER_LRSC) && TARGET_ZALRSC"
   {
     return "1:\;"
 	   "lr.<amo>%I3\t%0, %1\;"
@@ -388,7 +388,7 @@
 	SUBREG_PROMOTED_SET (t, SRP_SIGNED);
 	emit_move_insn (operands[0], t);
       }
-    else if (TARGET_ZAAMO)
+    else if (!TARGET_ZALRSC || (TARGET_ZAAMO && !TARGET_PREFER_LRSC))
       emit_insn (gen_amo_atomic_exchange<mode> (operands[0], operands[1],
 					    operands[2], operands[3]));
     else
@@ -432,7 +432,7 @@
    (set (match_dup 1)
 	(match_operand:GPR 2 "reg_or_0_operand" "rJ"))
    (clobber (match_scratch:GPR 4 "=&r"))]	  ;; tmp_1
-  "!TARGET_ZAAMO && TARGET_ZALRSC"
+  "(!TARGET_ZAAMO || TARGET_PREFER_LRSC) && TARGET_ZALRSC"
   {
     return "1:\;"
 	   "lr.<amo>%I3\t%0, %1\;"
@@ -829,7 +829,7 @@
   rtx shifted_set = gen_reg_rtx (SImode);
   riscv_lshift_subword (QImode, set, shift, &shifted_set);
 
-  if (TARGET_ZAAMO)
+  if (!TARGET_ZALRSC || (TARGET_ZAAMO && !TARGET_PREFER_LRSC))
     emit_insn (gen_amo_atomic_fetch_orsi (old, aligned_mem, shifted_set, model));
   else if (TARGET_ZALRSC)
     emit_insn (gen_lrsc_atomic_fetch_orsi (old, aligned_mem, shifted_set, model));
