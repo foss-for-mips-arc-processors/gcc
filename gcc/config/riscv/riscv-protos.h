@@ -883,6 +883,17 @@ enum riscv_fusion_pairs
   RISCV_FUSE_LDST_PAIR_DEC = HOST_WIDE_INT_1U << 24,
   RISCV_FUSE_FLDFST_PAIR_INC = HOST_WIDE_INT_1U << 25,
   RISCV_FUSE_FLDFST_PAIR_DEC = HOST_WIDE_INT_1U << 26,
+  /* ARC-V RHX-100.  Bits above the Jin Ma set so the masks do not alias.  */
+  RISCV_FUSE_MULT_ADD = HOST_WIDE_INT_1U << 27,
+  RISCV_FUSE_LI_BRANCH = HOST_WIDE_INT_1U << 28,
+  RISCV_FUSE_ADJACENT_LOAD = HOST_WIDE_INT_1U << 29,
+  RISCV_FUSE_ADJACENT_STORE = HOST_WIDE_INT_1U << 30,
+  RISCV_FUSE_LS_UPDATE = HOST_WIDE_INT_1U << 31,
+  RISCV_FUSE_LUI_ST = HOST_WIDE_INT_1U << 32,
+  RISCV_FUSE_LI_STORE = HOST_WIDE_INT_1U << 33,
+  RISCV_FUSE_LUI_LD_REV = HOST_WIDE_INT_1U << 34,
+  RISCV_FUSE_BFEXT_SRLI = HOST_WIDE_INT_1U << 35,
+  RISCV_FUSE_BFEXT_SRAI = HOST_WIDE_INT_1U << 36,
 };
 
 /* Possible directions for a memory-pair candidate.  */
@@ -896,6 +907,7 @@ enum riscv_fusion_direction
 
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
 extern enum riscv_fusion_pairs riscv_get_fusion_pair_type (rtx_insn *,
 						    rtx_insn *);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
@@ -931,6 +943,16 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
+
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
+extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+extern void arcv_sched_init (void);
+extern int arcv_sched_reorder2 (rtx_insn **, int *);
+extern int arcv_sched_adjust_priority (rtx_insn *, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, int);
+extern bool arcv_can_issue_more_p (int, int, rtx_insn *);
+extern int arcv_sched_variable_issue (rtx_insn *, int);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);
