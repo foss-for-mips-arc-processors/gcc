@@ -131,6 +131,14 @@ struct pair_fusion {
   // paired accesses.
   virtual bool pair_mem_ok_with_policy (rtx base_mem, bool load_p) = 0;
 
+  virtual bool pair_reg_and_mem_ok_with_policy (
+      rtx first_insn __attribute__((unused)),
+      rtx second_insn __attribute__((unused)),
+      bool load_p __attribute__((unused)))
+  {
+    return true;
+  }
+
   // Generate the pattern for a paired access.  PATS gives the patterns
   // for the individual memory accesses (which by this point must share a
   // common base register).  If WRITEBACK is non-NULL, then this rtx
