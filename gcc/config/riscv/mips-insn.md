@@ -49,7 +49,7 @@
         (match_operand:JOIN_MODE 1 "non_volatile_mem_operand"))
     (set (match_operand:JOIN_MODE 2 "register_operand")
         (match_operand:JOIN_MODE 3 "non_volatile_mem_operand"))]
-    "TARGET_XMIPSLSP
+    "ENABLE_LD_ST_PAIRS
     && riscv_load_store_bonding_p (operands, <JOIN_MODE:MODE>mode, true)"
     [(parallel [(set (match_dup 0)
                     (match_dup 1))
@@ -64,7 +64,7 @@
         (match_operand:JOIN_MODE 1 "register_operand"))
     (set (match_operand:JOIN_MODE 2 "memory_operand")
         (match_operand:JOIN_MODE 3 "register_operand"))]
-    "TARGET_XMIPSLSP
+    "ENABLE_LD_ST_PAIRS
     && riscv_load_store_bonding_p (operands, <JOIN_MODE:MODE>mode, false)"
   [(parallel [(set (match_dup 0)
                    (match_dup 1))
@@ -78,7 +78,7 @@
         (any_extend:SI (match_operand:HI 1 "non_volatile_mem_operand")))
    (set (match_operand:SI 2 "register_operand")
         (any_extend:SI (match_operand:HI 3 "non_volatile_mem_operand")))]
-  "TARGET_XMIPSLSP
+  "ENABLE_LD_ST_PAIRS
    && riscv_load_store_bonding_p (operands, HImode, true)"
   [(parallel [(set (match_dup 0)
                    (any_extend:SI (match_dup 1)))
@@ -92,7 +92,7 @@
         (any_extend:DI (match_operand:HI 1 "non_volatile_mem_operand")))
    (set (match_operand:DI 2 "register_operand")
         (any_extend:DI (match_operand:HI 3 "non_volatile_mem_operand")))]
-  "TARGET_XMIPSLSP && TARGET_64BIT
+  "ENABLE_LD_ST_PAIRS && TARGET_64BIT
    && riscv_load_store_bonding_p (operands, HImode, true)"
   [(parallel [(set (match_dup 0)
                    (any_extend:DI (match_dup 1)))
@@ -106,7 +106,7 @@
         (any_extend:DI (match_operand:SI 1 "non_volatile_mem_operand")))
    (set (match_operand:DI 2 "register_operand")
         (any_extend:DI (match_operand:SI 3 "non_volatile_mem_operand")))]
-  "TARGET_XMIPSLSP && TARGET_64BIT
+  "ENABLE_LD_ST_PAIRS && TARGET_64BIT
    && riscv_load_store_bonding_p (operands, SImode, true)"
   [(parallel [(set (match_dup 0)
                    (any_extend:DI (match_dup 1)))
@@ -120,7 +120,7 @@
         (match_operand:JOIN_MODE 1 "memory_operand" "m,m"))
    (set (match_operand:JOIN_MODE 2 "register_operand" "=r,f")
         (match_operand:JOIN_MODE 3 "memory_operand" "m,m"))]
-   "TARGET_XMIPSLSP && reload_completed"
+   "ENABLE_LD_ST_PAIRS && reload_completed"
    {
      bool load_p = true;
      return riscv_output_join2_insns (operands, <JOIN_MODE:MODE>mode, load_p,
@@ -135,7 +135,7 @@
         (match_operand:JOIN_MODE 1 "register_operand" "r,f"))
    (set (match_operand:JOIN_MODE 2 "memory_operand" "=m,m")
         (match_operand:JOIN_MODE 3 "register_operand" "r,f"))]
-  "TARGET_XMIPSLSP && reload_completed"
+  "ENABLE_LD_ST_PAIRS && reload_completed"
   {
     bool load_p = false;
     return riscv_output_join2_insns (operands, <JOIN_MODE:MODE>mode, load_p,
@@ -150,7 +150,7 @@
         (any_extend:SI (match_operand:HI 1 "non_volatile_mem_operand" "m")))
    (set (match_operand:SI 2 "register_operand" "=r")
         (any_extend:SI (match_operand:HI 3 "non_volatile_mem_operand" "m")))]
-  "TARGET_XMIPSLSP && reload_completed"
+  "ENABLE_LD_ST_PAIRS && reload_completed"
   {
     if (!reg_overlap_mentioned_p (operands[0], operands[3]))
     {
@@ -175,7 +175,7 @@
         (any_extend:DI (match_operand:HI 1 "non_volatile_mem_operand" "m")))
    (set (match_operand:DI 2 "register_operand" "=r")
         (any_extend:DI (match_operand:HI 3 "non_volatile_mem_operand" "m")))]
-  "TARGET_XMIPSLSP && TARGET_64BIT && reload_completed"
+  "ENABLE_LD_ST_PAIRS && TARGET_64BIT && reload_completed"
   {
     if (!reg_overlap_mentioned_p (operands[0], operands[3]))
     {
@@ -200,7 +200,7 @@
         (zero_extend:DI (match_operand:SI 1 "non_volatile_mem_operand" "m")))
    (set (match_operand:DI 2 "register_operand" "=r")
         (zero_extend:DI (match_operand:SI 3 "non_volatile_mem_operand" "m")))]
-  "TARGET_XMIPSLSP && TARGET_64BIT && reload_completed"
+  "ENABLE_LD_ST_PAIRS && TARGET_64BIT && reload_completed"
   {
     if (!reg_overlap_mentioned_p (operands[0], operands[3]))
     {
@@ -225,7 +225,7 @@
         (sign_extend:DI (match_operand:SI 1 "non_volatile_mem_operand" "m")))
    (set (match_operand:DI 2 "register_operand" "=r")
         (sign_extend:DI (match_operand:SI 3 "non_volatile_mem_operand" "m")))]
-  "TARGET_XMIPSLSP && TARGET_64BIT && reload_completed"
+  "ENABLE_LD_ST_PAIRS && TARGET_64BIT && reload_completed"
   {
     return riscv_output_join2_insns (operands, SImode, true, true);
   }
