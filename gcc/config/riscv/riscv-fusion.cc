@@ -2311,11 +2311,13 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
   if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
+  struct riscv_fusion_mem_info mem;
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
-      && get_attr_type (curr) == TYPE_STORE
-      && REG_P (SET_SRC (curr_set)) && REG_P (SET_DEST (prev_set))
-      && REGNO (SET_SRC (curr_set)) == REGNO (SET_DEST (prev_set)))
+      && riscv_fuse_mem_p (curr, &mem)
+      && mem.type == SCHED_FUSION_ST
+      && !mem.fp_p
+      && riscv_fuse_same_reg_p (mem.reg, SET_DEST (prev_set)))
     return true;
 
   return false;
