@@ -130,7 +130,7 @@ riscv_set_extract_word_binary_p (rtx set, rtx_code code, rtx *binary_src)
 /* Return a comparable register number for X, accounting for hard-register
    SUBREG offsets, or INVALID_REGNUM.  */
 
-static unsigned int
+unsigned int
 riscv_regno (rtx x)
 {
   int regno = true_regnum (x);
@@ -641,27 +641,6 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
   return true;
 }
 
-/* Load/store classes used by fusion checks and rule masks.  */
-enum sched_fusion_type
-{
-  SCHED_FUSION_LD_SIGN_EXTEND = 1 << 0,
-  SCHED_FUSION_LD_ZERO_EXTEND = 1 << 1,
-  SCHED_FUSION_LD = 1 << 2,
-  SCHED_FUSION_ST = 1 << 3
-};
-
-/* Fusion-relevant information about a scalar load or store.  */
-
-struct riscv_fusion_mem_info
-{
-  enum sched_fusion_type type;
-  struct riscv_address_info addr;
-  /* The register operand, or const0_rtx for a zero store.  */
-  rtx reg;
-  machine_mode mode;
-  bool fp_p;
-};
-
 /* Extract fusion-relevant information from scalar load/store address X.  */
 
 static bool
@@ -711,7 +690,7 @@ riscv_fuse_extract_address (rtx x, struct riscv_address_info *addr)
    or:
      (set (mem addr) (reg frs1)).  */
 
-static bool
+bool
 riscv_fuse_mem_p (rtx_insn *insn, struct riscv_fusion_mem_info *info)
 {
   gcc_assert (INSN_P (insn));

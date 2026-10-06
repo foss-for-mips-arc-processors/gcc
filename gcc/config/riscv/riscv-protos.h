@@ -905,6 +905,27 @@ enum riscv_fusion_direction
   RISCV_FUSION_ANY
 };
 
+/* Load/store classes used by fusion checks and rule masks.  */
+enum sched_fusion_type
+{
+  SCHED_FUSION_LD_SIGN_EXTEND = 1 << 0,
+  SCHED_FUSION_LD_ZERO_EXTEND = 1 << 1,
+  SCHED_FUSION_LD = 1 << 2,
+  SCHED_FUSION_ST = 1 << 3
+};
+
+/* Fusion-relevant information about a scalar load or store.  */
+
+struct riscv_fusion_mem_info
+{
+  enum sched_fusion_type type;
+  struct riscv_address_info addr;
+  /* The register operand, or const0_rtx for a zero store.  */
+  rtx reg;
+  machine_mode mode;
+  bool fp_p;
+};
+
 extern bool riscv_macro_fusion_p (void);
 extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
 extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
@@ -912,6 +933,8 @@ extern enum riscv_fusion_pairs riscv_get_fusion_pair_type (rtx_insn *,
 						    rtx_insn *);
 extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern enum riscv_fusion_direction riscv_fuse_mem_direction (rtx_insn *);
+extern bool riscv_fuse_mem_p (rtx_insn *, struct riscv_fusion_mem_info *);
+extern unsigned int riscv_regno (rtx);
 extern unsigned HOST_WIDE_INT riscv_get_fusible_ops (void);
 
 /* Routines implemented in thead.cc.  */
@@ -945,7 +968,6 @@ extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
 
 /* Routines implemented in arcv.cc.  */
-extern bool arcv_pair_fusion_mode_allowed_p (machine_mode, bool);
 extern bool arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
