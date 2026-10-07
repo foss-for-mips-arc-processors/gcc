@@ -121,3 +121,8 @@ UrlSuffix(gcc/RISC-V-Options.html#index-mfence-tso)
 mautovec-segment
 UrlSuffix(gcc/RISC-V-Options.html#index-mautovec-segment)
 
+; skipping UrlSuffix for 'mmpy-option=' due to finding no URLs
+
+munroll-only-small-loops
+UrlSuffix(gcc/RISC-V-Options.html#index-munroll-only-small-loops)
+
