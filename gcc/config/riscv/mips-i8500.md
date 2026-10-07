@@ -137,3 +137,29 @@
       (and (eq_attr "type" "fsqrt")
       (eq_attr "mode" "DF")))
   "mips_i8500_fpu_long*36")
+
+;; Even if a specific type attribute is not implemented by a processor
+;; tune variant, the pipeline description must still provide a valid
+;; reservation to prevent scheduling errors.
+
+(define_insn_reservation "mips_i8500_unknown" 1
+  (and (eq_attr "tune" "mips_i8500")
+       (eq_attr "type" "vctz, vssegts, vldm, vldox, rdvl, vmffs, vidiv, vnclip,
+        vandn, vfredu, vsha2cl, vmsfs, vssegtox, vired, vbrev8, vfncvtftoi,
+        vsts, vector, vfcmp, vimuladd, vldr, vfwmuladd, vfmerge, vclmul, vgmul,
+        vimov, vfcvtitof, vslideup, vrev8, vfwredo, vstux, vsmul, viwmuladd,
+        vimovxv, vfsgnj, vsha2ch, vsalu, vmalu, vnshift, vimerge, viminmax,
+        vghsh, sf_vqmacc, vfcvtftoi, vlsegdff, vmpop, vfslide1up, vfalu,
+        vaeskf1, vfslide1down, vsm4k, vsm3c, vfncvtbf16, vfwcvtftoi, vror,
+        ghost, wrvxrm, vlsegdux, rdfrm, vfwalu, vfmuladd, vlsegdox, vfwmaccbf16,
+        wrfrm, vaesem, vfwcvtftof, vste, vfwmul, vaeskf2, vfdiv, vgather,
+        viwalu, vbrev, rdvlenb, vfwcvtbf16, vfclass, vsha2ms, sf_vfnrclip,
+        vwsll, vfrecp, imul_fused, vclz, vfredo, sf_vc, vldff, vlsegde, viwmul,
+        vldux, vicmp, viwred, vlds, vfncvtftof, vstox, vfmov, vfwredu,
+        vislide1down, vmidx, vslidedown, vislide1up, vaesdm, vsm3me, vfmovvf,
+        vstm, vsetvl_pre, vssegtux, sf_vc_se, vrol, vcompress, vext, vstr,
+        vfsqrt, vsshift, vfmovfv, vcpop, vshift, vsm4r, vimovvx, vialu, vmiota,
+        arcv_dsp_vector, flti, vclmulh, vimul, vfmul, vsetvl, vaesdf,
+        vfncvtitof, alu_fused, vfwcvtitof, vmov, ftrig, vssegte, vaesef, vicalu,
+        vaesz, vlsegds, vaalu, vfminmax, vlde"))
+  "mips_i8500_control_alu0")
