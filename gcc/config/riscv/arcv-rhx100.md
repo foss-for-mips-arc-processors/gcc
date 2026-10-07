@@ -44,7 +44,7 @@
 		condmove,mvpair,zicond,cpop,clmul"))
   "((arcv_rhx100_issueA_fuse0 + arcv_rhx100_ALU_A_fuse0_early) | (arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse1_early)) | ((arcv_rhx100_issueB_fuse0 + arcv_rhx100_ALU_B_fuse0_early) | (arcv_rhx100_issueB_fuse1 + arcv_rhx100_ALU_B_fuse1_early))")
 
-(define_insn_reservation "arcv_rhx100_MPY_fused" 4
+(define_insn_reservation "arcv_rhx100_mpy32_fused" 4
   (and (eq_attr "tune" "arcv_rhx100,arcv_rpx100")
        (eq_attr "type" "imul_fused"))
   "(arcv_rhx100_issueA_fuse0 + arcv_rhx100_issueA_fuse1 + arcv_rhx100_ALU_A_fuse0_early + arcv_rhx100_ALU_A_fuse1_early + arcv_rhx100_MPY), nothing*3")
@@ -65,9 +65,11 @@
   "arcv_rhx100_issueA_fuse0 + arcv_rhx100_DIV, nothing*11")
 
 (define_insn_reservation "arcv_rhx100_mpy32_insn" 4
-  (and (eq_attr "tune" "arcv_rhx100,arcv_rpx100")
-       (eq_attr "type" "imul")
-       (eq_attr "mode" "SI"))
+  (ior (and (eq_attr "tune" "arcv_rhx100")
+	    (eq_attr "type" "imul"))
+       (and (eq_attr "tune" "arcv_rpx100")
+	    (eq_attr "type" "imul")
+	    (eq_attr "mode" "SI")))
   "arcv_rhx100_issueA_fuse0 + arcv_rhx100_MPY, nothing*3")
 
 (define_insn_reservation "arcv_rhx100_mpy64l_insn" 6
@@ -202,7 +204,7 @@
 (define_bypass 2 "arcv_rhx100_fmul*"  "arcv_rhx100_fmul*" "arcv_fmadd_acc_bypass_p")
 
 ;; Even if a specific type attribute is not implemented by a processor
-;; tune variant, the pipeline description must still provide a valid 
+;; tune variant, the pipeline description must still provide a valid
 ;; reservation to prevent scheduling errors.
 
 (define_insn_reservation "arcv_rhx100_unknown" 1
