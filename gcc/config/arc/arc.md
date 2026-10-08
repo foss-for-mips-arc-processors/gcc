@@ -4551,7 +4551,9 @@ archs4x, archs4xd"
   "#"
   "reload_completed"
   [(set (match_dup 0) (zero_extend:SI (clrsb:HI (match_dup 1))))]
-  "operands[0] = simplify_gen_subreg (SImode, operands[0], HImode, 0);")
+  "operands[0] = simplify_gen_subreg (SImode, operands[0], HImode, 0);"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "two_cycle_core,two_cycle_core")])
 
 (define_insn "normw"
   [(set (match_operand:SI  0 "dest_reg_operand" "=w,w")
@@ -4811,7 +4813,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
-  )
+  [(set_attr "type" "store")])
 
 (define_insn_and_split "*lddidi_split"
   [(set (match_operand:DI 0 "register_operand" "=r")
@@ -4830,6 +4832,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
+  [(set_attr "type" "load")]
   )
 
 (define_insn "trap_s"
