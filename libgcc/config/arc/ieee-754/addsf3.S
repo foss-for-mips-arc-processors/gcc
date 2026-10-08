@@ -112,6 +112,12 @@ __addsf3:
 	min r12,r12,r3
 	bic r1,r0,r2
 	sub_s r3,r12,1
+	; r12 is zero when both inputs are denormal.  The difference is then
+	; already the result fraction and must not be shifted at all; without
+	; the clamp the shift count of -1 would discard it.  max does not
+	; write the flags, which still carry the result of the sub.f above
+	; that the closing bxor.cs needs.
+	max r3,r3,0
 	asl_s r12,r12,23
 	asl r2,r5,r3
 	sub_s r1,r1,r12
@@ -235,9 +241,13 @@ __addsf3:
 .Ldbl1_gt:
 	brhs r6,r9,.Lret_dbl1 ; inf or NaN
 	neg r8,r12
+	; DBL0 is the operand that gets shifted here, so it is DBL0's exponent
+	; that says whether an implicit 1 has to be supplied, not DBL1's.  r6
+	; holds DBL1's exponent and is needed later by .Lsub_done.
+	and r7,r0,r9
 	brhi r8,25,.Lret_dbl1
 .Lsmall_shift_dbl0:
-	breq.d r6,0,.Ldenorm_small_shift_dbl0
+	breq.d r7,0,.Ldenorm_small_shift_dbl0
 	bmsk_s r0,r0,22
 	bset_s r0,r0,23
 .Lfixed_denorm_small_shift_dbl0:
