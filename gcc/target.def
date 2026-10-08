@@ -7662,14 +7662,6 @@ DEFHOOKPOD
 @option{-fsanitize=shadow-call-stack}.  The default value is false.",
  bool, false)
 
-/* Return true if hoisting pointer-chasing load is profitable.  */
-DEFHOOK
-(pointer_chasing_load_profitable_p,
- "This hook returns true if hoisting pointer-chasing load is profitable.\n\
-The default implementation returns @code{false}.",
-bool, (void),
-default_pointer_chasing_load_profitable_p)
-
 /* This value represents whether libatomic is available on
    the target platform.  */
 DEFHOOKPOD

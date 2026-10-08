@@ -619,7 +619,6 @@ extern rtl_opt_pass *make_pass_sms (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_sched (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_live_range_shrinkage (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_early_remat (gcc::context *ctxt);
-extern rtl_opt_pass *make_pass_pointer_chasing (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_ira (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_reload (gcc::context *ctxt);
 extern rtl_opt_pass *make_pass_clean_state (gcc::context *ctxt);
