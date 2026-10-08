@@ -2079,6 +2079,9 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
   if (!next)
     return false;
 
+  if (!single_set (curr) || !single_set (next))
+    return false;
+
   if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
       && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_LOAD))
     return true;
