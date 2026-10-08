@@ -31,10 +31,21 @@ int q(void) {
   return o;
 }
 
+/* q reads the bitfields of struct h back through the int and signed char
+   members of the union, so its result depends on the byte order and on the
+   order in which bitfields are allocated within a storage unit.  */
+
 int main()
 {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  int expected = 64;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  int expected = 112;
+#else
+  return 0;
+#endif
   int t1 =  q();
-  if (t1 != 64)
+  if (t1 != expected)
     __builtin_abort ();
   return 0;
 }
