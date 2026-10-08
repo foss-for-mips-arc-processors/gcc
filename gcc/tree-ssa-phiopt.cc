@@ -56,11 +56,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssa-dce.h"
 #include "tree-ssa-loop-niter.h"
 #include "gimple-predict.h"
-#include "tree-ssa-phiopt.h"
 
 /* Return the singleton PHI in the SEQ of PHIs for edges E0 and E1. */
 
-gphi *
+static gphi *
 single_non_singleton_phi_for_edges (gimple_seq seq, edge e0, edge e1)
 {
   gimple_stmt_iterator i;
