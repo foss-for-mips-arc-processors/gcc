@@ -284,7 +284,12 @@ __adddf3:
 	.balign 4
 .Ldenorm_sub:
 	lsr DBL1L,r6,20
-	xor DBL0H,r6,DBL1H
+	; The result is denormal, so its exponent field has to end up zero.
+	; Clear it in DBL1H and not just in the DBL0H copy, because the
+	; DBL1L == 1 case falls through into .Lsub_done_noshift, which
+	; reassembles the result from DBL1H rather than from DBL0H.
+	xor DBL1H,r6,DBL1H
+	mov_s DBL0H,DBL1H
 	brne.d DBL1L,1,.Lpast_denorm_sub
 	sub_s DBL1L,DBL1L,1
 .Lsub_done_noshift:
@@ -335,7 +340,10 @@ __adddf3:
 	bmsk DBL0H,DBL1H,30
 	lsr r12,DBL0H,20
 	xor_s DBL0H,DBL0H,DBL1H
-	sub_l DBL1L,r12,1
+	; This has to set the flags: the branch below would otherwise test
+	; those left by the xor.f that selected this path, which always has
+	; N set, so the partial normalising shift was never performed.
+	sub.f DBL1L,r12,1
 	bgt .Lpast_denorm
 	j_s.d [blink]
 	add_l DBL0H,DBL0H,r4
@@ -419,9 +427,13 @@ __adddf3:
 .Ldbl1_gt:
 	brhs r6,r9,.Lret_dbl1 ; inf or NaN
 	neg r8,r12
+	; DBL0 is the operand that gets shifted here, so it is DBL0's exponent
+	; that says whether an implicit 1 has to be supplied, not DBL1's.  r6
+	; holds DBL1's exponent and is needed later by .Lsub_done.
+	and r7,DBL0H,r9
 	brhs r8,32,.Large_shift_dbl0
 .Lsmall_shift_dbl0:
-	breq.d r6,0,.Ldenorm_small_shift_dbl0
+	breq.d r7,0,.Ldenorm_small_shift_dbl0
 	bmsk_s DBL0H,DBL0H,19
 	bset_s DBL0H,DBL0H,20
 .Lfixed_denorm_small_shift_dbl0:
@@ -493,11 +505,15 @@ __adddf3:
 .Large_shift_dbl0:
 	brhs r8,55,.Lret_dbl1
 	bmsk_s DBL0H,DBL0H,19
-	brne r6,0,.Lno_denorm_large_shift_dbl0
+	brne r7,0,.Lno_denorm_large_shift_dbl0
+	; A denormal has no implicit 1, so it is shifted one place less.  That
+	; can bring the count back into the small shift and the shift by 32
+	; ranges, exactly as in .Large_shift above, and no implicit 1 may be
+	; inserted on the way to .Lshift32_dbl0.
 	add_s r12,r12,1
-	brne.d r8,33,.Lfixed_denorm_large_shift_dbl0
+	brhi.d r8,33,.Lfixed_denorm_large_shift_dbl0
 	sub r8,r8,1
-	bset_s DBL0H,DBL0H,20
+	breq r8,31,.Lfixed_denorm_small_shift_dbl0
 .Lshift32_dbl0:
 	mov_s r12,DBL0L
 	mov_s DBL0L,DBL0H
