@@ -856,21 +856,21 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   /* If all else fails, schedule a single instruction.  */
   if (ready && *n_readyp > 0
       && NONDEBUG_INSN_P (ready[*n_readyp - 1])
-      && recog_memoized (ready[*n_readyp - 1]) >= 0
-      && !arcv_memop_p (ready[*n_readyp - 1]))
+      && recog_memoized (ready[*n_readyp - 1]) >= 0)
   {
+    rtx_insn *insn = ready[*n_readyp - 1];
+    enum attr_type insn_type = get_attr_type (insn);
+
+    /* Memory operations go to pipeB if available.  */
     if (!sched_state.pipeB_scheduled_p
-	&& arcv_memop_p (ready[*n_readyp - 1]))
+	&& (insn_type == TYPE_LOAD || insn_type == TYPE_STORE))
     {
-      sched_state.alu_pipe_scheduled_p = sched_state.pipeB_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
-      return 1;
+      sched_state.pipeB_scheduled_p = 1;
     }
-    else if (!arcv_memop_p (ready[*n_readyp - 1]))
+    /* Non-memory operations go to ALU pipe.  */
+    else if (insn_type != TYPE_LOAD && insn_type != TYPE_STORE)
     {
-      sched_state.alu_pipe_scheduled_p = sched_state.pipeB_scheduled_p = 1;
-      sched_state.cached_can_issue_more = 1;
-      return 1;
+      sched_state.alu_pipe_scheduled_p = 1;
     }
   }
 
