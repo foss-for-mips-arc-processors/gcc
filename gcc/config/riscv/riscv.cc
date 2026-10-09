@@ -12978,8 +12978,7 @@ riscv_override_options_internal (struct gcc_options *opts)
 
   /* Enable advanced fusion for the ARC-V cores that support it unless
      explicitly disabled.
-     advanced fusion for rmx500 is turned on by an option.
-   */
+     TODO Add arcv_rmx500 once it supports fusion.  */
   if ((riscv_microarchitecture == arcv_rhx100
        || riscv_microarchitecture == arcv_rpx100
        || riscv_microarchitecture == arcv_rmx700)
