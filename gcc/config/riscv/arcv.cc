@@ -307,8 +307,7 @@ arcv_arith_type_insn_p (rtx_insn *insn)
 	 || type == TYPE_MINU
 	 || type == TYPE_MAXU
 	 || type == TYPE_CLZ
-	 || type == TYPE_CTZ
-	 || type == TYPE_MOVE);
+	 || type == TYPE_CTZ);
 }
 
 
@@ -354,34 +353,19 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   rtx c_src = SET_SRC (curr_set);
   rtx c_dest = SET_DEST (curr_set);
 
-  if (CONSTANT_P (c_src))
+  /* Check if curr has at least one register source.  */
+  if (CONST_INT_P (c_src) ||
+      (!CONST_INT_P (c_src) && !REG_P (XEXP (c_src, 0))))
     return false;
 
-  int c_rs1;
-  int c_rs2;
-  bool has_rs2;
-
-  // Move
-  if (REG_P (c_src))
-    {
-      c_rs1 = REGNO (c_src);
-      has_rs2 = false;
-    }
-  // Arithmetic
-  else if ((REG_P (XEXP (c_src, 0))))
-    {
-      c_rs1 = REGNO (XEXP (c_src, 0));
-      /* Check if there is a second source register.  */
-      has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
-		  && REG_P (XEXP (c_src, 1)));
-      c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
-    }
-  else
-    {
-      return false;
-    }
-
+  int c_rs1 = REGNO (XEXP (c_src, 0));
   int c_rd  = REGNO (c_dest);
+
+  /* Check if there is a second source register.  */
+  bool has_rs2 = (GET_RTX_LENGTH (GET_CODE (c_src)) > 1
+		  && REG_P (XEXP (c_src, 1)));
+
+  int c_rs2 = has_rs2 ? REGNO (XEXP (c_src, 1)) : -1;
 
   switch (p_type)
     {
