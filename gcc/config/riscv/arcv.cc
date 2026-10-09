@@ -363,8 +363,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
   enum attr_type p_type = get_attr_type (prev);
   /*Check if the prev instruction is load or store.  */
-  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE
-	|| p_type == TYPE_FPLOAD || p_type == TYPE_FPSTORE))
+  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE))
     return false;
 
   gcc_assert (prev_set && curr_set);
@@ -392,7 +391,6 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   switch (p_type)
     {
     case TYPE_LOAD:
-    case TYPE_FPLOAD:
       {
 	rtx p_src_addr = XEXP (SET_SRC (prev_set), 0);
 	if (!REG_P (p_src_addr))
@@ -409,7 +407,6 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
       }
 
     case TYPE_STORE:
-    case TYPE_FPSTORE:
       {
 	rtx p_dst_addr = XEXP (SET_DEST (prev_set), 0);
 	if (!REG_P (p_dst_addr))
