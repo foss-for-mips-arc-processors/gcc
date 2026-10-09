@@ -859,7 +859,6 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 
 /* Routines implemented in arcv.cc.  */
 extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
-extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
 extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
 extern int arcv_sched_adjust_priority (rtx_insn *, int);
