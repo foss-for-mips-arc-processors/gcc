@@ -133,10 +133,22 @@ riscv_set_extract_word_binary_p (rtx set, rtx_code code, rtx *binary_src)
 unsigned int
 riscv_regno (rtx x)
 {
-  int regno = true_regnum (x);
-  if (regno >= 0
-      && (can_create_pseudo_p () || regno < FIRST_PSEUDO_REGISTER))
-    return regno;
+  /* true_regnum indexes reg_renumber for pseudos without a NULL check.
+     That array is only live around IRA/LRA (and briefly in some loop
+     pressure passes).  Fusion matching runs from sched1/sel-sched before
+     IRA, so fall back to the pseudo's own REGNO when reg_renumber is
+     absent.  Hard registers are always safe for true_regnum.  */
+  if (reg_renumber != NULL || lra_in_progress
+      || (REG_P (x) && HARD_REGISTER_P (x))
+      || (SUBREG_P (x)
+	  && REG_P (SUBREG_REG (x))
+	  && HARD_REGISTER_P (SUBREG_REG (x))))
+    {
+      int regno = true_regnum (x);
+      if (regno >= 0
+	  && (can_create_pseudo_p () || regno < FIRST_PSEUDO_REGISTER))
+	return regno;
+    }
 
   /* Before allocation, use an unassigned pseudo's identity.  Treat every
      SUBREG of the pseudo alike so that matching remains deliberately
@@ -2131,9 +2143,6 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set)
     return false;
 
-  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
-    return false;
-
   rtx prev_src = SET_SRC (prev_set);
   rtx curr_src = SET_SRC (curr_set);
   rtx word_src;
@@ -2144,6 +2153,9 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 
   if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
       || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
+    return false;
+
+  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
     return false;
 
   return riscv_fuse_same_reg_p (XEXP (curr_src, 0), SET_DEST (prev_set));
