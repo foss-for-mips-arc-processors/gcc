@@ -4779,32 +4779,46 @@
 )
 
 (define_insn "madd_split_fused"
-  [(set (match_operand:SI 0 "register_operand" "=&r")
+  [(set (match_operand:SI 0 "register_operand" "=&r,r")
      (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r")
-		 (match_operand:SI 2 "register_operand" "r"))
-	(match_operand:SI 3 "register_operand" "r")))
-]
+	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
+		 (match_operand:SI 2 "register_operand" "r,r"))
+	(match_operand:SI 3 "register_operand" "r,?0")))
+    (clobber (match_scratch:SI 4 "=&r,&r"))]
   "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   {
- return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
+     if (REGNO (operands[0]) == REGNO (operands[3]))
+       {
+	 return "mul\t%4,%1,%2\n\tadd\t%4,%4,%3\n\tmv\t%0,%4";
+       }
+     else
+       {
+	 return "mul\t%0,%1,%2\n\tadd\t%0,%0,%3";
+       }
   }
   [(set_attr "type" "imul_fused")]
 )
 
 (define_insn "madd_split_fused_extended"
-  [(set (match_operand:DI 0 "register_operand" "=&r")
+  [(set (match_operand:DI 0 "register_operand" "=&r,r")
      (sign_extend:DI
       (plus:SI
-	(mult:SI (match_operand:SI 1 "register_operand" "r")
-		 (match_operand:SI 2 "register_operand" "r"))
-	(match_operand:SI 3 "register_operand" "r"))))
-    ]
+	(mult:SI (match_operand:SI 1 "register_operand" "r,r")
+		 (match_operand:SI 2 "register_operand" "r,r"))
+	(match_operand:SI 3 "register_operand" "r,?0"))))
+    (clobber (match_scratch:SI 4 "=&r,&r"))]
   "TARGET_ARCV_ADVANCED_FUSION
    && (TARGET_ZMMUL || TARGET_MUL)"
   {
-   return "mulw\t%0,%1,%2\n\taddw\t%0,%0,%3";
+     if (REGNO (operands[0]) == REGNO (operands[3]))
+       {
+	 return "mulw\t%4,%1,%2\n\taddw\t%4,%4,%3\n\tmv\t%0,%4";
+       }
+     else
+       {
+	 return "mulw\t%0,%1,%2\n\taddw\t%0,%0,%3";
+       }
   }
   [(set_attr "type" "imul_fused")]
 )
