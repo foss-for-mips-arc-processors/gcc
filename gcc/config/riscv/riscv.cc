@@ -4669,7 +4669,7 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	}
       gcc_fallthrough ();
     case SIGN_EXTRACT:
-      if ((TARGET_ARCV_FUSION || TARGET_XTHEADBB)
+      if ((TARGET_ARCV_RHX100 || TARGET_XTHEADBB)
 	  && outer_code == SET
 	  && CONST_INT_P (XEXP (x, 1))
 	  && CONST_INT_P (XEXP (x, 2)))
@@ -11508,7 +11508,7 @@ riscv_sched_init (FILE *, int, int)
 {
   clear_vconfig ();
 
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     arcv_sched_init ();
 }
 
@@ -11517,7 +11517,7 @@ static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 {
 
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
       return 0;
 
@@ -11566,7 +11566,7 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 	}
     }
 
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_variable_issue (insn, more);
 
   return more - 1;
@@ -12350,7 +12350,7 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_macro_fusion_pair_p (prev, curr);
 
   return false;
@@ -12360,7 +12360,7 @@ static void
 riscv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 			     int *pri)
 {
-  if (TARGET_ARCV_FUSION)
+  if (TARGET_ARCV_RHX100)
     {
       arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri);
       return;
@@ -12383,7 +12383,7 @@ riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int c
 			 unsigned int)
 {
   /* Use ARCV-specific cost adjustment for RHX-100.  */
-  if (TARGET_ARCV_FUSION)
+  if (TARGET_ARCV_RHX100)
     return arcv_sched_adjust_cost (insn, dep_type, cost);
 
   /* Only do adjustments for the generic out-of-order scheduling model.  */
@@ -12470,7 +12470,7 @@ riscv_sched_can_speculate_insn (rtx_insn *insn)
 static int
 riscv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_adjust_priority (insn, priority);
 
   return priority;
@@ -12485,7 +12485,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
 		      int *n_readyp,
 		      int clock ATTRIBUTE_UNUSED)
 {
-  if (TARGET_ARCV_FUSION)
+  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
     return arcv_sched_reorder2 (ready, n_readyp);
 
   return 0;

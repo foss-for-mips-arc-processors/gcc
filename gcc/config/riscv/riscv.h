@@ -1014,6 +1014,10 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
    || (riscv_microarchitecture == arcv_rhx100) \
    || (riscv_microarchitecture == arcv_rpx100))
 
+/* True if the target is ARC-V RHX100.  */
+#define TARGET_ARCV_RHX100 \
+  (riscv_microarchitecture == arcv_rhx100)
+
 /* Scaling factor/constant for MIPS trig instructions.  */
 enum flti_index {
   FLTI_CONST_PI_BY_4        = 0,
