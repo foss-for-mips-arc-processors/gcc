@@ -12324,9 +12324,6 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 	}
     }
 
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ARCV))
-    return arcv_macro_fusion_pair_p (prev, curr);
-
   return false;
 }
 
