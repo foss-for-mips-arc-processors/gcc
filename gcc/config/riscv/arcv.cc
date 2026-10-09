@@ -75,6 +75,30 @@ struct arcv_sched_state {
 
 static struct arcv_sched_state sched_state;
 
+/* Return the next possible fusible insn.  */
+
+static rtx_insn *
+arcv_next_fusible_insn (rtx_insn *insn)
+{
+  while (insn)
+    {
+      insn = NEXT_INSN (insn);
+
+      if (insn == 0)
+	break;
+
+      if (NOTE_INSN_BASIC_BLOCK_P (insn) || JUMP_TABLE_DATA_P (insn))
+  return NULL;
+
+      if (!NONDEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE)
+	continue;
+
+  break;
+    }
+
+  return insn;
+}
+
 /* Return TRUE if the target microarchitecture supports macro-op
    fusion for two memory operations of mode MODE (the direction
    of transfer is determined by the IS_LOAD parameter).  */
@@ -635,7 +659,7 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
   /* Look ahead 1 insn to prioritize adjacent load/store pairs.
      If curr and next form a better fusion opportunity, defer this fusion.  */
-  rtx_insn *next = next_nonnote_nondebug_insn_bb (curr);
+  rtx_insn *next = arcv_next_fusible_insn (curr);
   if (next)
     {
       rtx next_set = single_set (next);
@@ -792,12 +816,11 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
       for (int i = 1; i <= *n_readyp; i++)
 	{
 	  rtx_insn *candidate = ready[*n_readyp - i];
-	  rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (candidate);
+	  rtx_insn *next_insn = arcv_next_fusible_insn (candidate);
 	  bool limited_dual_issue = false;
 	  if (NONDEBUG_INSN_P (candidate)
 	      && !SCHED_GROUP_P (candidate)
-	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		  || !SCHED_GROUP_P (next_insn))
+	      && (!next_insn || !SCHED_GROUP_P (next_insn))
 	      && (arcv_macro_fusion_pair_p
 		   (sched_state.last_scheduled_insn, candidate)
 	      /* Limited dual issue is checked only in reorder2
@@ -834,15 +857,13 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     {
       for (int i = 1; i <= *n_readyp; i++)
 	{
-	  rtx_insn* next_insn
-	    = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	  rtx_insn* next_insn = arcv_next_fusible_insn (ready[*n_readyp - i]);
 	  /* Try to fuse the last_scheduled_insn with.  */
 	  /* Fuse only with nondebug insn.  */
 	  if (NONDEBUG_INSN_P (ready[*n_readyp - i])
 	      /* Which have not been already fused.  */
 	      && !SCHED_GROUP_P (ready[*n_readyp - i])
-	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		  || !SCHED_GROUP_P (next_insn))
+	      && (!next_insn || !SCHED_GROUP_P (next_insn))
 	      && arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	    {
@@ -863,16 +884,17 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     {
       for (int i = 1; i <= *n_readyp; i++)
 	{
-	  rtx_insn* next_insn
-	    = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	  rtx_insn* next_insn = arcv_next_fusible_insn (ready[*n_readyp - i]);
 	  if (NONDEBUG_INSN_P (ready[*n_readyp - i])
 	      && !SCHED_GROUP_P (ready[*n_readyp - i])
 	      && active_insn_p (ready[*n_readyp - i])
-	      && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		  || !SCHED_GROUP_P (next_insn))
+	      && (!next_insn || !SCHED_GROUP_P (next_insn))
 	      && arcv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	    {
+	      if (GET_CODE (PATTERN (ready[*n_readyp - i])) == USE)
+		continue;
+
 	      if (arcv_memop_p (ready[*n_readyp - i]))
 	      {
 		if (sched_state.pipeB_scheduled_p)
@@ -905,16 +927,13 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
     for (int i = 2; i <= *n_readyp; i++)
       {
-	rtx_insn* next_insn
-	  = next_nonnote_nondebug_insn_bb (ready[*n_readyp - i]);
+	rtx_insn* next_insn = arcv_next_fusible_insn (ready[*n_readyp - i]);
 	if ((NONDEBUG_INSN_P (ready[*n_readyp - i])
 	     && recog_memoized (ready[*n_readyp - i]) >= 0
 	     && !arcv_memop_p (ready[*n_readyp - i])
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
-	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
-		 || !SCHED_GROUP_P (next_insn)))
+	     && (!next_insn || !SCHED_GROUP_P (next_insn)))
 	    || (next_insn
-		&& NONDEBUG_INSN_P (next_insn)
 		&& recog_memoized (next_insn) >= 0
 		&& !arcv_memop_p (next_insn)))
 	  {
@@ -954,12 +973,15 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 int
 arcv_sched_adjust_priority (rtx_insn *insn, int priority)
 {
+  if (DEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE
+      || GET_CODE (PATTERN (insn)) == CLOBBER)
+    return priority;
+
   /* Bump the priority of fused load-store pairs for easier
      scheduling of the memory pipe.  The specific increase
      value is determined empirically.  */
-  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
-  if (next && single_set (insn) && single_set (next)
-      && SCHED_GROUP_P (next)
+  rtx_insn *next = arcv_next_fusible_insn (insn);
+  if (next && SCHED_GROUP_P (next)
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next) == TYPE_STORE)
 	 || (get_attr_type (insn) == TYPE_LOAD
@@ -1145,16 +1167,15 @@ arcv_can_issue_more_p (int issue_rate, int more)
 int
 arcv_sched_variable_issue (rtx_insn *insn, int more)
 {
-  rtx_insn *next = next_nonnote_nondebug_insn_bb (insn);
+  rtx_insn *next = arcv_next_fusible_insn (insn);
 
   if (riscv_microarchitecture == arcv_rmx500
       || riscv_microarchitecture == arcv_rmx700)
     {
       sched_state.last_scheduled_insn = insn;
 
-      if (single_set (insn)
-	  && (get_attr_type (insn) == TYPE_ALU_FUSED
-	      || get_attr_type (insn) == TYPE_IMUL_FUSED))
+      if (get_attr_type (insn) == TYPE_ALU_FUSED
+	  || get_attr_type (insn) == TYPE_IMUL_FUSED)
 	{
 	  sched_state.cached_can_issue_more = 0;
 	  return 0;
@@ -1164,8 +1185,7 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
       return more - 1;
     }
 
-  if (next && single_set (insn) && single_set (next)
-      && SCHED_GROUP_P (next))
+  if (next && SCHED_GROUP_P (next))
     {
       if (arcv_memop_p (insn) || arcv_memop_p (next))
 	sched_state.pipeB_scheduled_p = 1;
@@ -1173,9 +1193,8 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 	sched_state.alu_pipe_scheduled_p = 1;
     }
 
-  if (single_set (insn)
-      && (get_attr_type (insn) == TYPE_ALU_FUSED
-	  || get_attr_type (insn) == TYPE_IMUL_FUSED))
+  if (get_attr_type (insn) == TYPE_ALU_FUSED
+      || get_attr_type (insn) == TYPE_IMUL_FUSED)
     {
       sched_state.alu_pipe_scheduled_p = 1;
       more -= 1;
