@@ -114,10 +114,7 @@ arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 		     || mode == HImode
 		     || mode == QImode))
 	 || (!is_load && (mode == DImode
-		     || mode == SImode))
-	 || ((riscv_microarchitecture == arcv_rmx500
-			|| riscv_microarchitecture == arcv_rmx700)
-		     && (mode == HFmode || mode == SFmode || mode == DFmode)));
+		       || mode == SImode)));
 }
 
 /* Return TRUE if two addresses can be fused.  */
@@ -336,17 +333,6 @@ arcv_arith_type_insn_p (rtx_insn *insn)
 
 
 static bool
-arcv_fusible_memop_p (rtx_insn *insn)
-{
-  enum attr_type type = get_attr_type (insn);
-  return (type == TYPE_LOAD || type == TYPE_STORE
-	  || ((riscv_microarchitecture == arcv_rmx500
-	      || riscv_microarchitecture == arcv_rmx700)
-	  && (type == TYPE_FPLOAD || type == TYPE_FPSTORE)));
-}
-
-
-static bool
 arcv_memop_p (rtx_insn *insn)
 {
   enum attr_type type = get_attr_type (insn);
@@ -365,8 +351,9 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
   rtx curr_set = single_set (curr);
 
   enum attr_type p_type = get_attr_type (prev);
-  /*Check if the prev instruction is a fusible load or store.  */
-  if (!arcv_fusible_memop_p (prev))
+  /*Check if the prev instruction is load or store.  */
+  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE
+	|| p_type == TYPE_FPLOAD || p_type == TYPE_FPSTORE))
     return false;
 
   gcc_assert (prev_set && curr_set);
@@ -626,12 +613,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   /* Fuse adjacent loads.  */
-  if ((get_attr_type (prev) == TYPE_LOAD
+  if (get_attr_type (prev) == TYPE_LOAD
       && get_attr_type (curr) == TYPE_LOAD)
-      || ((riscv_microarchitecture == arcv_rmx500
-	   || riscv_microarchitecture == arcv_rmx700)
-	&& get_attr_type (prev) == TYPE_FPLOAD
-	&& get_attr_type (curr) == TYPE_FPLOAD))
     {
       if (arcv_fused_addr_p (SET_SRC (prev_set), SET_SRC (curr_set), true))
 	{
@@ -642,12 +625,8 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
     }
 
   /* Fuse adjacent stores.  */
-  if ((get_attr_type (prev) == TYPE_STORE
+  if (get_attr_type (prev) == TYPE_STORE
       && get_attr_type (curr) == TYPE_STORE)
-      || ((riscv_microarchitecture == arcv_rmx500
-	    || riscv_microarchitecture == arcv_rmx700)
-	  && get_attr_type (prev) == TYPE_FPSTORE
-	  && get_attr_type (curr) == TYPE_FPSTORE))
     {
       if (arcv_fused_addr_p (SET_DEST (prev_set), SET_DEST (curr_set), false))
 	{
@@ -666,25 +645,16 @@ arcv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 
       /* Defer if next instruction forms an adjacent load pair with curr.  */
       if (next_set
-	  && ((get_attr_type (curr) == TYPE_LOAD
-	       && get_attr_type (next) == TYPE_LOAD)
-	      || ((riscv_microarchitecture == arcv_rmx500
-		    || riscv_microarchitecture == arcv_rmx700)
-		  && get_attr_type (curr) == TYPE_FPLOAD
-		  && get_attr_type (next) == TYPE_FPLOAD))
-	  && arcv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
+	 && get_attr_type (curr) == TYPE_LOAD
+	 && get_attr_type (next) == TYPE_LOAD
+	 && arcv_fused_addr_p (SET_SRC (curr_set), SET_SRC (next_set), true))
 	return false;
 
       /* Defer if next instruction forms an adjacent store pair with curr.  */
       if (next_set
-	  && ((get_attr_type (curr) == TYPE_STORE
-	       && get_attr_type (next) == TYPE_STORE)
-	      || ((riscv_microarchitecture == arcv_rmx500
-		    || riscv_microarchitecture == arcv_rmx700)
-		  && get_attr_type (curr) == TYPE_FPSTORE
-		  && get_attr_type (next) == TYPE_FPSTORE))
-	  && arcv_fused_addr_p
-		(SET_DEST (curr_set), SET_DEST (next_set), false))
+	 && get_attr_type (curr) == TYPE_STORE
+	 && get_attr_type (next) == TYPE_STORE
+	 && arcv_fused_addr_p (SET_DEST (curr_set), SET_DEST (next_set), false))
 	return false;
     }
 
@@ -985,13 +955,7 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
       && ((get_attr_type (insn) == TYPE_STORE
 	   && get_attr_type (next) == TYPE_STORE)
 	 || (get_attr_type (insn) == TYPE_LOAD
-	     && get_attr_type (next) == TYPE_LOAD)
-	 || ((riscv_microarchitecture == arcv_rmx500
-	      || riscv_microarchitecture == arcv_rmx700)
-	     && ((get_attr_type (insn) == TYPE_FPLOAD
-		  && get_attr_type (next) == TYPE_FPLOAD)
-		|| (get_attr_type (insn) == TYPE_FPSTORE
-		  && get_attr_type (next) == TYPE_FPSTORE)))))
+	     && get_attr_type (next) == TYPE_LOAD)))
     return priority + 1;
 
   return priority;
