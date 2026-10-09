@@ -87,13 +87,21 @@ arcv_next_fusible_insn (rtx_insn *insn)
       if (insn == 0)
 	break;
 
-      if (NOTE_INSN_BASIC_BLOCK_P (insn) || JUMP_TABLE_DATA_P (insn))
-  return NULL;
-
-      if (!NONDEBUG_INSN_P (insn) || GET_CODE (PATTERN (insn)) == USE)
+      if (!NONDEBUG_INSN_P (insn))
 	continue;
 
-  break;
+      if (NOTE_INSN_BASIC_BLOCK_P (insn))
+	return NULL;
+
+      if (GET_CODE (insn) == CODE_LABEL
+	  || GET_CODE (insn) == BARRIER
+	  || GET_CODE (PATTERN (insn)) == USE)
+	continue;
+
+      if (JUMP_TABLE_DATA_P (insn))
+	return NULL;
+
+      break;
     }
 
   return insn;
