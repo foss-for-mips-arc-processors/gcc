@@ -82,6 +82,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "cgraph.h"
 #include "langhooks.h"
 #include "gimplify.h"
+#include "asan.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -9954,7 +9955,8 @@ riscv_for_each_saved_reg (poly_int64 sp_offset, riscv_save_restore_fn fn,
 	    }
 	}
 
-      if (need_shadow_stack_push_pop_p () && epilogue && !sibcall_p
+      if ((need_zicfiss_push_pop_p () || need_shadow_call_stack_push_pop_p ())
+	  && epilogue && !sibcall_p
 	  && !(maybe_eh_return && crtl->calls_eh_return)
 	  && (regno == RETURN_ADDR_REGNUM)
 	  && !cfun->machine->interrupt_handler_p)
@@ -10572,8 +10574,22 @@ riscv_expand_prologue (void)
   if (cfun->machine->naked_p)
     return;
 
-  if (need_shadow_stack_push_pop_p ())
-    emit_insn (gen_sspush (Pmode, gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM)));
+  /* Handle the shadow call stack prologue expand.  */
+  if (need_zicfiss_push_pop_p () || need_shadow_call_stack_push_pop_p ())
+    {
+      /* If zicfiss extension is supported, use hardware instructions.  */
+      if (is_zicfiss_p ())
+	  emit_insn (gen_sspush (Pmode,
+				gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM)));
+
+      /* Otherwise shift to software shadow call stack.  */
+      else
+	{
+	  rtx size = GEN_INT (UNITS_PER_WORD);
+	  rtx neg_size = GEN_INT (-UNITS_PER_WORD);
+	  emit_insn (gen_shadow_call_stack_push (Pmode, size, neg_size));
+	}
+    }
 
   /* Prefer multi-push to save-restore libcall.  */
   if (riscv_use_multi_push (frame))
@@ -11091,7 +11107,8 @@ riscv_expand_epilogue (int style)
       frame->mask = mask;
       frame->fmask = fmask;
       bool use_popret = style == NORMAL_RETURN
-			&& !need_shadow_stack_push_pop_p ();
+			&& !(need_zicfiss_push_pop_p ()
+			      || need_shadow_call_stack_push_pop_p ());
       riscv_gen_multi_pop_insn (use_popret, frame->mask, multipop_size);
       if (use_popret)
 	return;
@@ -11112,16 +11129,35 @@ riscv_expand_epilogue (int style)
     emit_insn (gen_add3_insn (stack_pointer_rtx, stack_pointer_rtx,
 			      EH_RETURN_STACKADJ_RTX));
 
-  if (need_shadow_stack_push_pop_p ()
+  
+  /* At this point, the return address on the stack pointer is already
+    restored to either t0 or ra.
+    If shadow stack is enabled or in case of exception handling
+    the return address is restored to t0.  Otherwise it is
+    restored to ra (ref. see function riscv_for_each_saved_reg).  */
+  bool stack_return_address_in_t0
+        = BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
+          && style != SIBCALL_RETURN
+          && !cfun->machine->interrupt_handler_p
+          && !use_multi_pop;
+
+  /* Handle the shadow call stack epilogue expand.  */
+  if ((need_zicfiss_push_pop_p () || need_shadow_call_stack_push_pop_p ())
       && !((style == EXCEPTION_RETURN) && crtl->calls_eh_return))
     {
-      if (BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
-	  && style != SIBCALL_RETURN
-	  && !cfun->machine->interrupt_handler_p
-	  && !use_multi_pop)
-	emit_insn (gen_sspopchk (Pmode, t0));
+      /* If support for zicfiss available use that.  */
+      if (is_zicfiss_p ())
+	emit_insn (gen_sspopchk (Pmode, stack_return_address_in_t0 ? t0 : ra));
+
+      /* Otherwise shift to software shadow call stack.  */
       else
-	emit_insn (gen_sspopchk (Pmode, ra));
+	{
+	  rtx ra = gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM);
+	  rtx t0 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
+	  rtx neg_size = GEN_INT (-UNITS_PER_WORD);
+	  emit_insn (gen_shadow_call_stack_pop (Pmode,
+			stack_return_address_in_t0 ? t0 : ra, neg_size));
+	}
     }
 
   /* Return from interrupt.  */
@@ -11142,11 +11178,9 @@ riscv_expand_epilogue (int style)
     }
   else if (style != SIBCALL_RETURN)
     {
-      if (need_shadow_stack_push_pop_p ()
+      if ((need_zicfiss_push_pop_p () || need_shadow_call_stack_push_pop_p ())
 	  && !((style == EXCEPTION_RETURN) && crtl->calls_eh_return)
-	  && BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
-	  && !cfun->machine->interrupt_handler_p
-	  && !use_multi_pop)
+	  && stack_return_address_in_t0)
 	emit_jump_insn (gen_simple_return_internal (t0));
       else
 	emit_jump_insn (gen_simple_return_internal (ra));
@@ -11159,6 +11193,9 @@ bool
 riscv_epilogue_uses (unsigned int regno)
 {
   if (regno == RETURN_ADDR_REGNUM)
+    return true;
+
+  if (regno == GP_REGNUM && sanitize_flags_p (SANITIZE_SHADOW_CALL_STACK))
     return true;
 
   if (epilogue_completed && cfun->machine->interrupt_handler_p)
@@ -11348,7 +11385,8 @@ riscv_can_use_return_insn (void)
 {
   return (reload_completed && known_eq (cfun->machine->frame.total_size, 0)
 	  && ! cfun->machine->interrupt_handler_p
-	  && ! need_shadow_stack_push_pop_p ());
+	  && ! need_zicfiss_push_pop_p ()
+	  && ! need_shadow_call_stack_push_pop_p ());
 }
 
 /* Given that there exists at least one variable that is set (produced)
@@ -16096,9 +16134,16 @@ bool is_zicfilp_p ()
   return false;
 }
 
-bool need_shadow_stack_push_pop_p ()
+bool need_zicfiss_push_pop_p ()
 {
   return is_zicfiss_p () && riscv_save_return_addr_reg_p ();
+}
+
+/* Check if -fsanitize=shadow-call-stack applies to this function.  */
+bool need_shadow_call_stack_push_pop_p ()
+{
+  return sanitize_flags_p (SANITIZE_SHADOW_CALL_STACK)
+	  && riscv_save_return_addr_reg_p ();
 }
 
 /* Synthesize OPERANDS[0] = OPERANDS[1] CODE OPERANDS[2].
@@ -17112,6 +17157,9 @@ riscv_memtag_tag_bitsize ()
 #undef TARGET_SHRINK_WRAP_SET_HANDLED_COMPONENTS
 #define TARGET_SHRINK_WRAP_SET_HANDLED_COMPONENTS \
   riscv_set_handled_components
+
+#undef TARGET_HAVE_SHADOW_CALL_STACK
+#define TARGET_HAVE_SHADOW_CALL_STACK true
 
 /* The generic ELF target does not always have TLS support.  */
 #ifdef HAVE_AS_TLS

@@ -17590,7 +17590,7 @@ shadow call stack in the function prologue and restoring the return address
 from the shadow call stack in the function epilogue.  Instrumentation only
 occurs in functions that need to save the return address to the stack.
 
-Currently it only supports the aarch64 platform.  It is specifically
+Currently it only supports the aarch64 and riscv platforms.  It is specifically
 designed for linux kernels that enable the CONFIG_SHADOW_CALL_STACK option.
 For the user space programs, runtime support is not currently provided
 in libc and libgcc.  Users who want to use this feature in user space need
@@ -17603,6 +17603,11 @@ compiled with ShadowCallStack must be compiled with the flag
 @option{-ffixed-x18}, otherwise functions compiled without
 @option{-ffixed-x18} might clobber @code{x18} and so corrupt the shadow
 stack pointer.
+
+On riscv, the instrumentation uses the platform register @code{gp}.
+Unlike aarch64, @code{gp} is a fixed register, hence @option{-ffixed-gp}
+is not needed.  However, this implicitly disables linker relaxation for global
+data which relies on @code{gp} by passing @option{--no-relax-gp} to the linker.
 
 Also, because there is no userspace runtime support, code compiled with
 ShadowCallStack cannot use exception handling.  Use @option{-fno-exceptions}
