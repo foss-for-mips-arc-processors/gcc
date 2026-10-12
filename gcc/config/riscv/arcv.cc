@@ -82,15 +82,13 @@ static struct arcv_sched_state sched_state;
 static bool
 arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
 {
-  if (!TARGET_ARCV_FUSION)
+  if (!TARGET_ARCV_RHX100)
     return true;
 
-  return ((is_load && (mode == DImode
-		     || mode == SImode
+  return ((is_load && (mode == SImode
 		     || mode == HImode
 		     || mode == QImode))
-	 || (!is_load && (mode == DImode
-		       || mode == SImode)));
+	 || (!is_load && mode == SImode));
 }
 
 /* Return TRUE if two addresses can be fused.  */
