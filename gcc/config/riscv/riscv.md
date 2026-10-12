@@ -699,7 +699,7 @@
 (define_attr "tune"
   "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,generic_ooo,mips_p8700,
    mips_m8500,tt_ascalon_d8,andes_25_series,andes_23_series,andes_45_series,
-   spacemit_x60,arcv_rmx100,arcv_rmx500,arcv_rmx700,arcv_rhx100,arcv_rpx100"
+   spacemit_x60,arcv_rmx100,arcv_rmx500,arcv_rmx700,arcv_rhx100"
   (const (symbol_ref "((enum attr_tune) riscv_microarchitecture)")))
 
 ;; Describe a user's asm statement.
@@ -5180,6 +5180,5 @@
 (include "arcv-rmx100.md")
 (include "arcv-rmx500.md")
 (include "arcv-rhx100.md")
-(include "arcv-rpx100.md")
 (include "arcv-udsp.md")
 (include "arcv-apex.md")

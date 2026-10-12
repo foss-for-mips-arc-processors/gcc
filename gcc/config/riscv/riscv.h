@@ -1015,8 +1015,7 @@ extern enum riscv_cc get_riscv_cc (const rtx use);
 #define TARGET_ARCV_FUSION \
   ((riscv_microarchitecture == arcv_rmx500) \
    || (riscv_microarchitecture == arcv_rmx700) \
-   || (riscv_microarchitecture == arcv_rhx100) \
-   || (riscv_microarchitecture == arcv_rpx100))
+   || (riscv_microarchitecture == arcv_rhx100))
 
 /* True if the target is ARC-V RHX100.  */
 #define TARGET_ARCV_RHX100 \

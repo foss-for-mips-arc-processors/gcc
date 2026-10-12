@@ -70,7 +70,6 @@ enum riscv_microarchitecture_type {
   arcv_rmx500,
   arcv_rmx700,
   arcv_rhx100,
-  arcv_rpx100,
 };
 extern enum riscv_microarchitecture_type riscv_microarchitecture;
 
