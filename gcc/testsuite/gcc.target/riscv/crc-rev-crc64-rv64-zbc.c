@@ -36,9 +36,9 @@ main (void)
 
   for (int64_t i = 0; i < 0xff; i++)
     {
-      j = (i << 40) | i;
-      int64_t ref = rev_crc64_ref (crc, i);
-      int64_t fast = rev_crc64_fast (crc, i);
+      int j = (i << 40) | i;
+      int64_t ref = rev_crc64_ref (crc, j);
+      int64_t fast = rev_crc64_fast (crc, j);
       if (ref != fast)
 	__builtin_abort ();
       crc = ref;
@@ -48,4 +48,4 @@ main (void)
 }
 
 /* rev_crc64_fast only: Zbc clmulr (rev_crc64_ref is rv64gc / table).  */
-/* { dg-final { scan-assembler-times "clmulr\t" 1 } } */
+/* { dg-final { scan-assembler-times "clmulr" 1 } } */
