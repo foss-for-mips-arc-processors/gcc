@@ -1451,6 +1451,128 @@ dump_access_strides (vec<data_reference_p> datarefs)
     }
 }
 
+/* Return true if ILOOP has simple reduction with constant init and
+   memory consumer.  */
+
+static bool
+has_const_init_reduction_p (loop_cand &iloop)
+{
+  reduction_p re;
+
+  for (unsigned i = 0; iloop.m_reductions.iterate (i, &re); ++i)
+    if (re->type == SIMPLE_RTYPE
+	&& CONSTANT_CLASS_P (re->init)
+	&& re->consumer != NULL)
+      return true;
+  return false;
+}
+
+/* Return true if the target has a vector mode for the reduction.  */
+
+static bool
+const_reduction_vectorizable_p (loop_cand &iloop)
+{
+  /* -fno-tree-vectorize / vectorizer off.  */
+  if (!flag_tree_loop_vectorize && !flag_tree_slp_vectorize)
+    return false;
+
+  reduction_p re;
+  for (unsigned i = 0; iloop.m_reductions.iterate (i, &re); ++i)
+    {
+      scalar_mode smode;
+
+      if (re->type != SIMPLE_RTYPE
+	  || !CONSTANT_CLASS_P (re->init)
+	  || re->consumer == NULL)
+	continue;
+
+      /* True when preferred_simd_mode is a vector mode.  */
+      if (is_a <scalar_mode> (TYPE_MODE (TREE_TYPE (re->var)), &smode)
+	  && targetm.vectorize.preferred_simd_mode (smode) != word_mode)
+	return true;
+    }
+  return false;
+}
+
+/* Return true if data references in LOOP_NEST fit under
+   param_loop_interchange_size_threshold.  Return false if size or
+   niters is unknown.  */
+
+static bool
+loop_nest_fits_size_threshold_p (vec<class loop *> loop_nest,
+				 vec<data_reference_p> datarefs)
+{
+  /* No threshold configured.  */
+  if (param_loop_interchange_size_threshold == 0 || loop_nest.is_empty ())
+    return false;
+
+  /* param is in KB.  */
+  unsigned HOST_WIDE_INT limit_bytes
+    = ((unsigned HOST_WIDE_INT) param_loop_interchange_size_threshold
+       * 1024);
+  auto_vec<tree, 8> bases;
+  auto_vec<unsigned HOST_WIDE_INT, 8> spans;
+  data_reference_p dr;
+
+  for (unsigned i = 0; datarefs.iterate (i, &dr); ++i)
+    {
+      tree base = DR_BASE_OBJECT (dr);
+      tree access_size = TYPE_SIZE_UNIT (TREE_TYPE (DR_REF (dr)));
+      vec<tree> *stride = DR_ACCESS_STRIDE (dr);
+
+      /* Missing info, treat as does not fit (do not block interchange).  */
+      if (!base || !stride || stride->length () < loop_nest.length ()
+	  || !access_size || TREE_CODE (access_size) != INTEGER_CST)
+	return false;
+
+      unsigned HOST_WIDE_INT bytes = tree_to_uhwi (access_size);
+      if (bytes == 0)
+	return false;
+
+      for (unsigned li = 0; li < loop_nest.length (); ++li)
+	{
+	  HOST_WIDE_INT nit;
+
+	  /* Skip if stride is zero.  */
+	  if (integer_zerop ((*stride)[li]))
+	    continue;
+
+	  nit = get_max_loop_iterations_int (loop_nest[li]);
+	  if (nit <= 0)
+	    nit = get_estimated_loop_iterations_int (loop_nest[li]);
+
+	  /* Unknown trip count, or already bigger than threshold.  */
+	  if (nit <= 0
+	      || (unsigned HOST_WIDE_INT) nit > limit_bytes / bytes)
+	    return false;
+	  bytes *= (unsigned HOST_WIDE_INT) nit;
+	}
+
+      /* Merge refs to the same base.  */
+      unsigned b;
+      for (b = 0; b < bases.length (); ++b)
+	if (operand_equal_p (bases[b], base, 0))
+	  break;
+      if (b == bases.length ())
+	{
+	  bases.safe_push (base);
+	  spans.safe_push (bytes);
+	}
+      else if (bytes > spans[b])
+	spans[b] = bytes;
+    }
+
+  /* total = size(A) + size(B) + ...  vs threshold.  */
+  unsigned HOST_WIDE_INT total = 0;
+  for (unsigned b = 0; b < spans.length (); ++b)
+    {
+      if (total > limit_bytes - spans[b])
+	return false;
+      total += spans[b];
+    }
+  return total > 0;
+}
+
 /* Return true if it's profitable to interchange two loops whose index
    in whole loop nest vector are I_IDX/O_IDX respectively.  The function
    computes and compares three types information from all DATAREFS:
@@ -1459,24 +1581,38 @@ dump_access_strides (vec<data_reference_p> datarefs)
 	and after loop interchange.
      3) Flags indicating if all memory references access sequential memory
 	in ILOOP, before and after loop interchange.
-   If INNMOST_LOOP_P is true, the two loops for interchanging are the two
-   innermost loops in loop nest.  This function also dumps information if
+   O_STMT_COST is the stmt cost of the outer loop after adjustments.
+   When ILOOP is non-null, inner stmt cost and whether the pair is the
+   innermost loops are taken from it.  In that case also refuse interchange
+   of an innermost const-init memory reduction that fits under the size
+   threshold of LOOP_NEST with no useful vector mode.  When ILOOP is null,
+   pass O_STMT_COST as 0 and the outer stride ratio is used.  Dumps if
    DUMP_INFO_P is true.  */
 
 static bool
 should_interchange_loops (unsigned i_idx, unsigned o_idx,
 			  vec<data_reference_p> datarefs,
-			  unsigned i_stmt_cost, unsigned o_stmt_cost,
-			  bool innermost_loops_p, bool dump_info_p = true)
+			  unsigned o_stmt_cost, loop_cand *iloop,
+			  vec<class loop *> loop_nest,
+			  bool dump_info_p = true)
 {
   unsigned HOST_WIDE_INT ratio;
   unsigned i, j, num_old_inv_drs = 0, num_new_inv_drs = 0;
   struct data_reference *dr;
   bool all_seq_dr_before_p = true, all_seq_dr_after_p = true;
+  bool profitable_p = false;
+  bool innermost_loops_p = false;
   widest_int iloop_strides = 0, oloop_strides = 0;
   unsigned num_unresolved_drs = 0;
   unsigned num_resolved_ok_drs = 0;
   unsigned num_resolved_not_ok_drs = 0;
+  unsigned i_stmt_cost = 0;
+
+  if (iloop != NULL)
+    {
+      i_stmt_cost = (unsigned) iloop->m_num_stmts;
+      innermost_loops_p = iloop->m_loop->inner == NULL;
+    }
 
   if (dump_info_p && dump_file && (dump_flags & TDF_DETAILS))
     fprintf (dump_file, "\nData ref strides:\n\tmem_ref:\t\tiloop\toloop\n");
@@ -1583,20 +1719,35 @@ should_interchange_loops (unsigned i_idx, unsigned o_idx,
   ratio = innermost_loops_p ? INNER_STRIDE_RATIO : OUTER_STRIDE_RATIO;
   /* Do interchange if it gives better data locality behavior.  */
   if (wi::gtu_p (iloop_strides, wi::mul (oloop_strides, ratio)))
-    return true;
-  if (wi::gtu_p (iloop_strides, oloop_strides))
+    profitable_p = true;
+  else if (wi::gtu_p (iloop_strides, oloop_strides))
     {
       /* Or it creates more invariant memory references.  */
       if ((!all_seq_dr_before_p || all_seq_dr_after_p)
 	  && num_new_inv_drs > num_old_inv_drs)
-	return true;
+	profitable_p = true;
       /* Or it makes all memory references sequential.  */
-      if (num_new_inv_drs >= num_old_inv_drs
-	  && !all_seq_dr_before_p && all_seq_dr_after_p)
-	return true;
+      else if (num_new_inv_drs >= num_old_inv_drs
+	       && !all_seq_dr_before_p && all_seq_dr_after_p)
+	profitable_p = true;
     }
 
-  return false;
+  /* Don't interchange innermost const-init memory reductions that fit
+     under the size threshold when no useful vector mode is available.  */
+  if (profitable_p
+      && innermost_loops_p
+      && iloop != NULL
+      && has_const_init_reduction_p (*iloop)
+      && !const_reduction_vectorizable_p (*iloop)
+      && loop_nest_fits_size_threshold_p (loop_nest, datarefs))
+    {
+      if (dump_info_p && dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file,
+		 "Not profitable, reduction nest fits size threshold\n");
+      return false;
+    }
+
+  return profitable_p;
 }
 
 /* Try to interchange inner loop of a loop nest to outer level.  */
@@ -1647,9 +1798,8 @@ tree_loop_interchange::interchange (vec<data_reference_p> datarefs,
 
       /* Check profitability for loop interchange.  */
       if (should_interchange_loops (i_idx, o_idx, datarefs,
-				    (unsigned) iloop.m_num_stmts,
-				    (unsigned) stmt_cost,
-				    iloop.m_loop->inner == NULL))
+				    (unsigned) stmt_cost, &iloop,
+				    m_loop_nest))
 	{
 	  if (dump_file && (dump_flags & TDF_DETAILS))
 	    fprintf (dump_file,
@@ -1841,8 +1991,8 @@ should_interchange_loop_nest (class loop *loop_nest, class loop *innermost,
   /* Check if any two adjacent loops should be interchanged.  */
   for (class loop *loop = innermost;
        loop != loop_nest; loop = loop_outer (loop), idx--)
-    if (should_interchange_loops (idx, idx - 1, datarefs, 0, 0,
-				  loop == innermost, false))
+    if (should_interchange_loops (idx, idx - 1, datarefs, 0, NULL, vNULL,
+				  false))
       return true;
 
   return false;

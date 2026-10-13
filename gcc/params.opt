@@ -441,6 +441,11 @@ Size of tiles for loop blocking.
 Common Joined UInteger Var(param_loop_interchange_max_num_stmts) Init(64) Param Optimization
 The maximum number of stmts in loop nest for loop interchange.
 
+-param=loop-interchange-size-threshold=
+Common Joined UInteger Var(param_loop_interchange_size_threshold) Init(16) Param Optimization
+Size threshold in kilobytes for refusing interchange of constant-initialized
+reductions when the nest data size fits below it.
+
 -param=loop-interchange-stride-ratio=
 Common Joined UInteger Var(param_loop_interchange_stride_ratio) Init(2) Param Optimization
 The minimum stride ratio for loop interchange to be profitable.
