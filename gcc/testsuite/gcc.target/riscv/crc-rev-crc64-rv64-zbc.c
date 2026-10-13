@@ -1,4 +1,4 @@
-/* { dg-do run { target { rv64 && riscv_zbc_ok && { ! riscv_abi_e } } } } */
+/* { dg-do run { target { rv64 && riscv_zbc_ok } } } */
 /* { dg-options "-march=rv64gc_zbc -O2" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-Os" "-Oz" } } */
 
