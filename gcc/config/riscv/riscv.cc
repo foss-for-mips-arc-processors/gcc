@@ -15972,14 +15972,14 @@ expand_reversed_crc_using_clmul (scalar_mode crc_mode, scalar_mode data_mode,
   if (crc_size == 64)
     {
       /* Calculate the quotient.
-        x^64 is left implicit at the msb to fit in 64 bits.  */
+	x^64 is left implicit at the msb to fit in 64 bits.  */
       q = gf2n_poly_long_div_quotient (UINTVAL (polynomial), crc_size);
       /* Reflect the calculated quotient.
-        Implicit bit is now missing at the lsb.  */
+	Implicit bit is now missing at the lsb.  */
       q = reflect_hwi (q, crc_size);
       /* Add the implicit bit back at the lsb.
-        This is okay because the extra bit falls outside the 64 lsbs output
-        by clmul.  */
+	This is okay because the extra bit falls outside the 64 lsbs output
+	by clmul.  */
       q = (q << 1) | 1;
     }
   else
