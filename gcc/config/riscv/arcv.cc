@@ -164,7 +164,7 @@ arcv_fused_addr_p (rtx addr0, rtx addr1, bool is_load)
 }
 
 static bool
-arcv_alu_class_insn_p (rtx_insn *insn)
+arcv_alu_or_mul_class_insn_p (rtx_insn *insn)
 {
   enum attr_type type = get_attr_type (insn);
   return (type == TYPE_ARITH
@@ -180,7 +180,8 @@ arcv_alu_class_insn_p (rtx_insn *insn)
 	  || type == TYPE_CTZ
 	  || type == TYPE_CPOP
 	  || type == TYPE_MOVE
-	  || type == TYPE_CONST);
+	  || type == TYPE_CONST
+	  || type == TYPE_IMUL);
 }
 
 static bool
@@ -259,13 +260,15 @@ arcv_rmx500_limited_dual_issue_pair_p (rtx_insn *prev, rtx_insn *curr)
   bool curr_is_load = (curr_type == TYPE_LOAD || curr_type == TYPE_FPLOAD);
   bool prev_is_store = (prev_type == TYPE_STORE || prev_type == TYPE_FPSTORE);
   bool curr_is_store = (curr_type == TYPE_STORE || curr_type == TYPE_FPSTORE);
-  bool prev_is_alu = arcv_alu_class_insn_p (prev);
-  bool curr_is_alu = arcv_alu_class_insn_p (curr);
+  bool prev_is_alu_or_mul = arcv_alu_or_mul_class_insn_p (prev);
+  bool curr_is_alu_or_mul = arcv_alu_or_mul_class_insn_p (curr);
 
-  if ((prev_is_load && curr_is_alu) || (prev_is_alu && curr_is_load))
+  if ((prev_is_load && curr_is_alu_or_mul)
+      || (prev_is_alu_or_mul && curr_is_load))
     valid_pair = true;
 
-  if ((prev_is_store && curr_is_alu) || (prev_is_alu && curr_is_store))
+  if ((prev_is_store && curr_is_alu_or_mul)
+      || (prev_is_alu_or_mul && curr_is_store))
     valid_pair = true;
 
   if ((prev_is_store || prev_is_load) && curr_type == TYPE_BRANCH)
