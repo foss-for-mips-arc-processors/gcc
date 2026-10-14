@@ -1,5 +1,5 @@
 /* { dg-do run { target { rv64 && riscv_zbc_ok } } } */
-/* { dg-options "-march=rv64gc_zbc -O2" } */
+/* { dg-options "-march=rv64gc_zbc -O2 -save-temps" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-Os" "-Oz" } } */
 
 #include <stdint-gcc.h>
@@ -36,7 +36,7 @@ main (void)
 
   for (int64_t i = 0; i < 0xff; i++)
     {
-      int j = (i << 40) | i;
+      int64_t j = (i << 40) | i;
       int64_t ref = rev_crc64_ref (crc, j);
       int64_t fast = rev_crc64_fast (crc, j);
       if (ref != fast)
