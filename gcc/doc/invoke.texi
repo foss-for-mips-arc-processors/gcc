@@ -17590,7 +17590,7 @@ shadow call stack in the function prologue and restoring the return address
 from the shadow call stack in the function epilogue.  Instrumentation only
 occurs in functions that need to save the return address to the stack.
 
-Currently it only supports the aarch64 and riscv platforms.  It is specifically
+Currently it only supports the AArch64 and RISC-V platforms.  It is specifically
 designed for linux kernels that enable the CONFIG_SHADOW_CALL_STACK option.
 For the user space programs, runtime support is not currently provided
 in libc and libgcc.  Users who want to use this feature in user space need
@@ -17604,10 +17604,19 @@ compiled with ShadowCallStack must be compiled with the flag
 @option{-ffixed-x18} might clobber @code{x18} and so corrupt the shadow
 stack pointer.
 
-On riscv, the instrumentation uses the platform register @code{gp}.
-Unlike aarch64, @code{gp} is a fixed register, hence @option{-ffixed-gp}
+On RISC-V, the instrumentation uses the platform register @code{gp}.
+Unlike AArch64, @code{gp} is a fixed register, hence @option{-ffixed-gp}
 is not needed.  However, this implicitly disables linker relaxation for global
 data which relies on @code{gp} by passing @option{--no-relax-gp} to the linker.
+Because @option{--no-relax-gp} is added by the driver,
+@option{-fsanitize=shadow-call-stack} must also be passed when linking.
+
+Runtime support is the responsibility of the user on RISC-V: the shadow call
+stack must be reserved by the linker script, and @code{gp} must be set to its
+base by the startup code before any instrumented function runs.
+
+If the @code{zicfiss} extension is enabled, its hardware shadow stack is used
+instead and @option{-fsanitize=shadow-call-stack} has no further effect.
 
 Also, because there is no userspace runtime support, code compiled with
 ShadowCallStack cannot use exception handling.  Use @option{-fno-exceptions}

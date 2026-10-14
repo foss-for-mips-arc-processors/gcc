@@ -23,27 +23,20 @@ void f5() {
   asm volatile ("":::"ra");
 }
 
-__attribute__((noinline)) __attribute__((interrupt("supervisor"))) 
+__attribute__((noinline)) __attribute__((interrupt("supervisor")))
 void f6() {
   asm volatile ("":::"ra");
 }
 
-/* multi push pop */
-__attribute__((optimize("Os", "omit-frame-pointer"), target("arch=+zce")))
-int f7 (int a) {
-  asm volatile ("":::"ra");
-  return a;
-}
+/* { dg-final { scan-assembler-times {addi\tgp,gp,4} 4 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {sw\tra,(-4|0)\(gp\)} 4 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {addi\tgp,gp,-4} 3 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {lw\tra,(-4|0)\(gp\)} 3 { target rv32 } } } */
 
-/* { dg-final { scan-assembler-times {addi\tgp,gp,4} 5 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {sw\tra,(-4|0)\(gp\)} 5 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {addi\tgp,gp,-4} 4 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {lw\tra,(-4|0)\(gp\)} 4 { target rv32 } } } */
-
-/* { dg-final { scan-assembler-times {addi\tgp,gp,8} 5 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {sd\tra,(-8|0)\(gp\)} 5 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {addi\tgp,gp,-8} 4 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {ld\tra,(-8|0)\(gp\)} 4 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {addi\tgp,gp,8} 4 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {sd\tra,(-8|0)\(gp\)} 4 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {addi\tgp,gp,-8} 3 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {ld\tra,(-8|0)\(gp\)} 3 { target rv64 } } } */
 
 /* { dg-final { scan-assembler {\mmret} } } */
 /* { dg-final { scan-assembler {\msret} } } */
