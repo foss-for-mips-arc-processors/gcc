@@ -801,6 +801,10 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
 bool
 riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
+  if (riscv_microarchitecture == arcv_rpx100
+      && arcv_macro_bonded_mul_pair_p(prev, curr))
+    return true;
+
   /* If fusion is not enabled, then there's nothing to do.  */
   if (!riscv_macro_fusion_p ())
     return false;
