@@ -744,6 +744,16 @@ riscv_fuse_b_alui (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+/* Check for RISCV_FUSE_BONDED_MUL fusion.
+   prev (mulh/mulhu/mulhsu) and curr (mul) of the same inputs, with the
+   high-part destination distinct from both inputs.  */
+
+static bool
+riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
+{
+  return arcv_macro_bonded_mul_pair_p (prev, curr);
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -793,6 +803,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_B_ALUI,
     riscv_fuse_b_alui, "RISCV_FUSE_B_ALUI" },
+  { RISCV_FUSE_BONDED_MUL,
+    riscv_fuse_bonded_mul, "RISCV_FUSE_BONDED_MUL" },
 };
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
