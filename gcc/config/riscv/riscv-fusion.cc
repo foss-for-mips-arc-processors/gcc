@@ -2474,6 +2474,10 @@ riscv_get_fusion_pair_type (rtx_insn *prev, rtx_insn *curr)
 bool
 riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
+  if (riscv_microarchitecture == arcv_rpx100
+      && arcv_macro_bonded_mul_pair_p (prev, curr))
+    return true;
+
   /* Do not extend an existing fusion group.  */
   if (SCHED_GROUP_P (prev))
     return false;
