@@ -869,6 +869,7 @@ enum riscv_fusion_pairs
   RISCV_FUSE_BFEXT = HOST_WIDE_INT_1U << 10,
   RISCV_FUSE_EXPANDED_LD = HOST_WIDE_INT_1U << 11,
   RISCV_FUSE_B_ALUI = HOST_WIDE_INT_1U << 12,
+  RISCV_FUSE_BONDED_MUL = HOST_WIDE_INT_1U << 13,
 };
 
 extern bool riscv_macro_fusion_p (void);
@@ -901,6 +902,7 @@ extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
+extern bool riscv_depends_on_lowpart_bonded_mul_p (int, rtx_insn *);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
