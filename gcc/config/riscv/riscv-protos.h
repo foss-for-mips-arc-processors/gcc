@@ -901,6 +901,9 @@ extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
+/* Routines implemented in arcv.cc.  */
+extern bool arcv_macro_bonded_mul_pair_p (rtx_insn *, rtx_insn *);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, rtx_insn *,int);
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);

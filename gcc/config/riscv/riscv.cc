@@ -11963,9 +11963,12 @@ riscv_get_fusible_ops (void)
    we currently only perform the adjustment when -madjust-lmul-cost is given.
    */
 static int
-riscv_sched_adjust_cost (rtx_insn *, int, rtx_insn *insn, int cost,
+riscv_sched_adjust_cost (rtx_insn *insn, int dep_type, rtx_insn *dep_insn, int cost,
 			 unsigned int)
 {
+  /* Use ARCV-specific cost adjustment for RPX-100.  */
+  if (riscv_microarchitecture == arcv_rpx100)
+    return arcv_sched_adjust_cost (insn, dep_type, dep_insn, cost);
 
   /* Only do adjustments for the generic out-of-order and spacemit_x60
      scheduling model.  */
