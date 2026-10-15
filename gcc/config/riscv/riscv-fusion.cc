@@ -2490,6 +2490,10 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (SCHED_GROUP_P (prev))
     return false;
 
+    if (riscv_microarchitecture == ARCV_RPX100
+	&& arcv_macro_bonded_mul_pair_p(prev, curr))
+	  return true;
+
   enum riscv_fusion_pairs op = riscv_get_fusion_pair_type (prev, curr);
   if (op == RISCV_FUSE_NOTHING)
     return false;

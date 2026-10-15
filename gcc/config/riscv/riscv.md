@@ -1285,15 +1285,53 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
-  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
-
   rtx high = gen_reg_rtx (DImode);
-  emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+
+  if (riscv_microarchitecture == arcv_rpx100)
+    emit_insn (gen_<su>mulditi4_bonded_arcv_rpx100 (high,
+						    operands[1],
+						    operands[2],
+						    low));
+  else
+    {
+      emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+      emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+    }
 
   emit_move_insn (gen_lowpart (DImode, operands[0]), low);
   emit_move_insn (gen_highpart (DImode, operands[0]), high);
   DONE;
 })
+
+(define_insn_and_split "<su>mulditi4_bonded_arcv_rpx100"
+  [(set (match_operand:DI 0 "register_operand" "=&r")
+	  (truncate:DI
+	    (lshiftrt:TI
+	      (mult:TI
+		(any_extend:TI (match_operand:DI 1 "register_operand" "r"))
+		(any_extend:TI (match_operand:DI 2 "register_operand" "r")))
+	      (const_int 64))))
+     (set (match_operand:DI 3 "register_operand" "=r")
+	  (mult:DI (match_dup 1)
+		   (match_dup 2)))]
+  "TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)
+   && riscv_microarchitecture == arcv_rpx100"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0)
+	(truncate:DI
+	  (lshiftrt:TI
+	    (mult:TI
+	      (any_extend:TI (match_dup 1))
+	      (any_extend:TI (match_dup 2)))
+	    (const_int 64))))
+   (set (match_dup 3)
+	(mult:DI (match_dup 1)
+		 (match_dup 2)))]
+  ""
+  [(set_attr "type" "imul")
+   (set_attr "mode" "DI")]
+)
 
 (define_insn "<su>muldi3_highpart"
   [(set (match_operand:DI                0 "register_operand" "=r")
@@ -1317,15 +1355,55 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
-  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
-
   rtx high = gen_reg_rtx (DImode);
-  emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+
+  if (riscv_microarchitecture == arcv_rpx100)
+    {
+      emit_insn (gen_usmulditi4_bonded_arcv_rpx100 (high,
+						    operands[1],
+						    operands[2],
+						    low));
+    }
+  else
+    {
+      emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+      emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+    }
 
   emit_move_insn (gen_lowpart (DImode, operands[0]), low);
   emit_move_insn (gen_highpart (DImode, operands[0]), high);
   DONE;
 })
+
+(define_insn_and_split "usmulditi4_bonded_arcv_rpx100"
+  [(set (match_operand:DI 0 "register_operand" "=&r")
+	  (truncate:DI
+	    (lshiftrt:TI
+	      (mult:TI
+		(zero_extend:TI (match_operand:DI 1 "register_operand" "r"))
+		(sign_extend:TI (match_operand:DI 2 "register_operand" "r")))
+	      (const_int 64))))
+     (set (match_operand:DI 3 "register_operand" "=r")
+	  (mult:DI (match_dup 1)
+		   (match_dup 2)))]
+  "TARGET_64BIT && (TARGET_ZMMUL || TARGET_MUL)
+   && riscv_microarchitecture == arcv_rpx100"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0)
+	(truncate:DI
+	  (lshiftrt:TI
+	    (mult:TI
+	      (zero_extend:TI (match_dup 1))
+	      (sign_extend:TI (match_dup 2)))
+	    (const_int 64))))
+   (set (match_dup 3)
+	(mult:DI (match_dup 1)
+		 (match_dup 2)))]
+  ""
+  [(set_attr "type" "imul")
+   (set_attr "mode" "DI")]
+)
 
 (define_insn "usmuldi3_highpart"
   [(set (match_operand:DI                0 "register_operand" "=r")
