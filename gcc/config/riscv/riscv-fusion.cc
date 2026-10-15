@@ -130,13 +130,25 @@ riscv_set_extract_word_binary_p (rtx set, rtx_code code, rtx *binary_src)
 /* Return a comparable register number for X, accounting for hard-register
    SUBREG offsets, or INVALID_REGNUM.  */
 
-static unsigned int
+unsigned int
 riscv_regno (rtx x)
 {
-  int regno = true_regnum (x);
-  if (regno >= 0
-      && (can_create_pseudo_p () || regno < FIRST_PSEUDO_REGISTER))
-    return regno;
+  /* true_regnum indexes reg_renumber for pseudos without a NULL check.
+     That array is only live around IRA/LRA (and briefly in some loop
+     pressure passes).  Fusion matching runs from sched1/sel-sched before
+     IRA, so fall back to the pseudo's own REGNO when reg_renumber is
+     absent.  Hard registers are always safe for true_regnum.  */
+  if (reg_renumber != NULL || lra_in_progress
+      || (REG_P (x) && HARD_REGISTER_P (x))
+      || (SUBREG_P (x)
+	  && REG_P (SUBREG_REG (x))
+	  && HARD_REGISTER_P (SUBREG_REG (x))))
+    {
+      int regno = true_regnum (x);
+      if (regno >= 0
+	  && (can_create_pseudo_p () || regno < FIRST_PSEUDO_REGISTER))
+	return regno;
+    }
 
   /* Before allocation, use an unassigned pseudo's identity.  Treat every
      SUBREG of the pseudo alike so that matching remains deliberately
@@ -641,27 +653,6 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
   return true;
 }
 
-/* Load/store classes used by fusion checks and rule masks.  */
-enum sched_fusion_type
-{
-  SCHED_FUSION_LD_SIGN_EXTEND = 1 << 0,
-  SCHED_FUSION_LD_ZERO_EXTEND = 1 << 1,
-  SCHED_FUSION_LD = 1 << 2,
-  SCHED_FUSION_ST = 1 << 3
-};
-
-/* Fusion-relevant information about a scalar load or store.  */
-
-struct riscv_fusion_mem_info
-{
-  enum sched_fusion_type type;
-  struct riscv_address_info addr;
-  /* The register operand, or const0_rtx for a zero store.  */
-  rtx reg;
-  machine_mode mode;
-  bool fp_p;
-};
-
 /* Extract fusion-relevant information from scalar load/store address X.  */
 
 static bool
@@ -711,7 +702,7 @@ riscv_fuse_extract_address (rtx x, struct riscv_address_info *addr)
    or:
      (set (mem addr) (reg frs1)).  */
 
-static bool
+bool
 riscv_fuse_mem_p (rtx_insn *insn, struct riscv_fusion_mem_info *info)
 {
   gcc_assert (INSN_P (insn));
@@ -820,7 +811,14 @@ static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
     true, false, RISCV_FUSION_DEC, 1 },
   /* Allow 1-, 2-, 4- and 8-byte stores.  */
   { RISCV_FUSE_ALIGNED_STD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
-    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 }
+    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 },
+  /* RHX-100 adjacent scalar pairs.  */
+  { RISCV_FUSE_ADJACENT_LOAD, (1U << 1) | (1U << 2) | (1U << 4),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+    | SCHED_FUSION_LD_ZERO_EXTEND,
+    false, false, RISCV_FUSION_ANY, 1 },
+  { RISCV_FUSE_ADJACENT_STORE, (1U << 4),
+    SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 }
 };
 
 /* Return true if MEM satisfies RULE's single-instruction constraints.
@@ -2032,73 +2030,6 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Return TRUE if two memory operands can be fused based on their addresses.
-   Checks if MEM0 and MEM1 have the same base register with adjacent offsets,
-   making them suitable for fusion (e.g., adjacent load/store pairs).  */
-
-static bool
-riscv_adjacent_memops_p (rtx mem0, rtx mem1, bool is_load)
-{
-  rtx base0, base1, tmp;
-  HOST_WIDE_INT off0 = 0, off1 = 0;
-
-  if (GET_CODE (mem0) == SIGN_EXTEND || GET_CODE (mem0) == ZERO_EXTEND)
-    mem0 = XEXP (mem0, 0);
-
-  if (GET_CODE (mem1) == SIGN_EXTEND || GET_CODE (mem1) == ZERO_EXTEND)
-    mem1 = XEXP (mem1, 0);
-
-  if (!MEM_P (mem0) || !MEM_P (mem1))
-    return false;
-
-  if (GET_MODE (mem0) != GET_MODE (mem1))
-    return false;
-
-  if (TARGET_ARCV_RHX100
-      && !arcv_pair_fusion_mode_allowed_p (GET_MODE (mem0), is_load))
-    return false;
-
-  rtx mem_addr0 = XEXP (mem0, 0);
-  rtx mem_addr1 = XEXP (mem1, 0);
-
-  if (GET_CODE (mem_addr0) == PLUS)
-    {
-      base0 = XEXP (mem_addr0, 0);
-      tmp = XEXP (mem_addr0, 1);
-      if (!REG_P (base0) || !CONST_INT_P (tmp))
-       return false;
-      off0 = INTVAL (tmp);
-    }
-  else if (REG_P (mem_addr0))
-    base0 = mem_addr0;
-  else
-    return false;
-
-  if (GET_CODE (mem_addr1) == PLUS)
-    {
-      base1 = XEXP (mem_addr1, 0);
-      tmp = XEXP (mem_addr1, 1);
-      if (!REG_P (base1) || !CONST_INT_P (tmp))
-       return false;
-      off1 = INTVAL (tmp);
-    }
-  else if (REG_P (mem_addr1))
-    base1 = mem_addr1;
-  else
-    return false;
-
-  /* Check if we have the same base.  */
-  if (REGNO (base0) != REGNO (base1))
-    return false;
-
-  /* Fuse adjacent aligned addresses.  */
-  if ((off0 % GET_MODE_SIZE (GET_MODE (mem0)).to_constant () == 0)
-      && (abs (off1 - off0) == GET_MODE_SIZE (GET_MODE (mem0)).to_constant ()))
-    return true;
-
-  return false;
-}
-
 /* Return true if CURR should not be fused with PREV because CURR and the
    next fusible insn form a better adjacent load/store pair.  */
 
@@ -2109,22 +2040,15 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
   if (!next)
     return false;
 
-  rtx curr_set = single_set (curr);
-  rtx next_set = single_set (next);
-  if (!curr_set || !next_set)
+  if (!single_set (curr) || !single_set (next))
     return false;
 
   if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
-      && get_attr_type (curr) == TYPE_LOAD
-      && get_attr_type (next) == TYPE_LOAD
-      && riscv_adjacent_memops_p (SET_SRC (curr_set), SET_SRC (next_set), true))
+      && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_LOAD))
     return true;
 
-  return riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
-	 && get_attr_type (curr) == TYPE_STORE
-	 && get_attr_type (next) == TYPE_STORE
-	 && riscv_adjacent_memops_p (SET_DEST (curr_set),
-				     SET_DEST (next_set), false);
+  return (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
+	  && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_STORE));
 }
 
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
@@ -2134,13 +2058,8 @@ riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
 static bool
 riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set)
-    return false;
-
-  enum attr_type p_type = get_attr_type (prev);
-  if (!(p_type == TYPE_LOAD || p_type == TYPE_STORE))
+  rtx curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, NULL, &curr_set))
     return false;
 
   enum attr_type c_type = get_attr_type (curr);
@@ -2159,16 +2078,14 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   rtx c_src = SET_SRC (curr_set);
-  rtx c_dest = SET_DEST (curr_set);
-
   if (CONSTANT_P (c_src))
     return false;
 
-  int c_rs1 = INVALID_REGNUM;
-  int c_rs2 = INVALID_REGNUM;
+  unsigned int c_rs1 = INVALID_REGNUM;
+  unsigned int c_rs2 = INVALID_REGNUM;
 
-  if (REG_P (c_src))
-    c_rs1 = REGNO (c_src);
+  if (REG_P (c_src) || SUBREG_P (c_src))
+    c_rs1 = riscv_regno (c_src);
   else
     {
       rtx op = c_src;
@@ -2184,81 +2101,46 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 	  rtx x = XEXP (op, i);
 	  if (GET_CODE (x) == NOT)
 	    x = XEXP (x, 0);
-	  if (SUBREG_P (x))
-	    x = SUBREG_REG (x);
-	  if (!REG_P (x))
+	  unsigned int regno = riscv_regno (x);
+	  if (regno == INVALID_REGNUM)
 	    continue;
 
-	  if (c_rs1 == (int) INVALID_REGNUM)
-	    c_rs1 = REGNO (x);
+	  if (c_rs1 == INVALID_REGNUM)
+	    c_rs1 = regno;
 	  else
 	    {
-	      c_rs2 = REGNO (x);
+	      c_rs2 = regno;
 	      break;
 	    }
 	}
-
-      if (c_rs1 == (int) INVALID_REGNUM)
-	return false;
     }
 
-  switch (p_type)
+  if (c_rs1 == INVALID_REGNUM)
+    return false;
+
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (prev, &mem) || mem.fp_p)
+    return false;
+
+  unsigned int base_regno = riscv_regno (mem.addr.reg);
+  if (base_regno != c_rs1)
+    return false;
+
+  if (mem.type != SCHED_FUSION_ST)
     {
-    case TYPE_LOAD:
-      {
-	if (!REG_P (c_dest))
-	  return false;
-	int c_rd = REGNO (c_dest);
-
-	rtx p_mem = SET_SRC (prev_set);
-
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx p_dest = SET_DEST (prev_set);
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset)
-	    || !REG_P (p_dest))
-	  return false;
-
-	int p_rs = REGNO (base);
-	int p_rd = REGNO (p_dest);
-
-	return (p_rs == c_rs1
-		&& p_rs != p_rd
-		&& p_rd != c_rd
-		&& !reg_overlap_mentioned_p (p_dest, c_src));
-      }
-
-    case TYPE_STORE:
-      {
-	rtx p_mem = SET_DEST (prev_set);
-	if (!MEM_P (p_mem))
-	  return false;
-
-	rtx base, offset;
-	if (!extract_base_offset_in_addr (p_mem, &base, &offset))
-	  return false;
-
-	int p_rs = REGNO (base);
-
-	if (p_rs != c_rs1)
-	  return false;
-
-	if (c_rs2 == (int) INVALID_REGNUM)
-	  return true;
-
-	rtx data = SET_SRC (prev_set);
-	if (!REG_P (data))
-	  return false;
-
-	int p_rs2 = REGNO (data);
-	return p_rs2 == c_rs2;
-      }
-
-    default:
-      return false;
+      unsigned int p_rd = riscv_regno (mem.reg);
+      unsigned int c_rd = riscv_regno (SET_DEST (curr_set));
+      return (p_rd != INVALID_REGNUM
+	      && c_rd != INVALID_REGNUM
+	      && p_rd != base_regno
+	      && p_rd != c_rd
+	      && !reg_overlap_mentioned_p (mem.reg, c_src));
     }
+
+  if (c_rs2 == INVALID_REGNUM)
+    return true;
+
+  return riscv_regno (mem.reg) == c_rs2;
 }
 
 
@@ -2282,15 +2164,8 @@ riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set, curr_set;
-  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
-      || get_attr_type (prev) != TYPE_SHIFT
-      || get_attr_type (curr) != TYPE_SHIFT)
-    return false;
-
-  return (riscv_set_is_slli_p (prev_set)
-	  && riscv_set_is_srai_p (curr_set)
-	  && riscv_fuse_same_dest_p (prev_set, curr_set, true));
+  return (riscv_fuse_shift_pair_p (prev, curr, false, true)
+	  && riscv_set_is_srai_p (single_set (curr)));
 }
 
 /* Check for RISCV_FUSE_MULT_ADD fusion.
@@ -2310,32 +2185,22 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set)
     return false;
 
-  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
-    return false;
-
   rtx prev_src = SET_SRC (prev_set);
   rtx curr_src = SET_SRC (curr_set);
-  if (GET_CODE (prev_src) == SIGN_EXTEND
-      && GET_MODE (prev_src) == DImode)
-    prev_src = XEXP (prev_src, 0);
-  if (GET_CODE (curr_src) == SIGN_EXTEND
-      && GET_MODE (curr_src) == DImode)
-    curr_src = XEXP (curr_src, 0);
+  rtx word_src;
+  if (riscv_set_extract_word_binary_p (prev_set, MULT, &word_src))
+    prev_src = word_src;
+  if (riscv_set_extract_word_binary_p (curr_set, PLUS, &word_src))
+    curr_src = word_src;
 
   if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
       || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
     return false;
 
-  rtx mult_dest = SET_DEST (prev_set);
-  if (!REG_P (mult_dest))
+  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
     return false;
-  unsigned int mult_dest_regno = REGNO (mult_dest);
 
-  if (REG_P (XEXP (curr_src, 0))
-      && REGNO (XEXP (curr_src, 0)) == mult_dest_regno)
-    return true;
-
-  return false;
+  return riscv_fuse_same_reg_p (XEXP (curr_src, 0), SET_DEST (prev_set));
 }
 
 /* Check for RISCV_FUSE_LI_BRANCH fusion.
@@ -2357,18 +2222,10 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
   if (!any_condjump_p (curr))
     return false;
 
-  rtx prev_dest = SET_DEST (prev_set);
-  if (!REG_P (prev_dest))
-    return false;
-
   /* Check if the loaded register is used in the branch condition.  */
   rtx cond = XEXP (SET_SRC (curr_set), 0);
-  unsigned int prev_dest_regno = REGNO (prev_dest);
-  if ((REG_P (XEXP (cond, 0)) && REGNO (XEXP (cond, 0)) == prev_dest_regno)
-      || (REG_P (XEXP (cond, 1)) && REGNO (XEXP (cond, 1)) == prev_dest_regno))
-    return true;
-
-  return false;
+  return (riscv_fuse_same_reg_p (XEXP (cond, 0), SET_DEST (prev_set))
+	  || riscv_fuse_same_reg_p (XEXP (cond, 1), SET_DEST (prev_set)));
 }
 
 /* Check for RISCV_FUSE_ADJACENT_LOAD fusion.
@@ -2376,7 +2233,7 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF1))))
    curr (ld) == (set (reg:SI rD2)
 		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF2))))
-   where OFF2 == OFF1 + 4 or OFF2 == OFF1 - 4  */
+   where OFF2 == OFF1 + MODE_SIZE or OFF2 == OFF1 - MODE_SIZE  */
 
 static bool
 riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
@@ -2385,16 +2242,7 @@ riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (get_attr_type (prev) != TYPE_LOAD
-      || get_attr_type (curr) != TYPE_LOAD)
-    return false;
-
-  return riscv_adjacent_memops_p (SET_SRC (prev_set), SET_SRC (curr_set), true);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_LOAD);
 }
 
 /* Check for RISCV_FUSE_ADJACENT_STORE fusion.
@@ -2411,17 +2259,7 @@ riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
   if (!reload_completed || sched_fusion)
     return false;
 
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (get_attr_type (prev) != TYPE_STORE
-      || get_attr_type (curr) != TYPE_STORE)
-    return false;
-
-  return riscv_adjacent_memops_p (SET_DEST (prev_set),
-				  SET_DEST (curr_set), false);
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_STORE);
 }
 
 /* Check for RISCV_FUSE_LS_UPDATE fusion (load/store with address update).
@@ -2452,12 +2290,17 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
 {
-  return (get_attr_type (store) == TYPE_STORE
-	  && REG_P (SET_DEST (lui_set))
-	  && ((get_attr_type (lui) == TYPE_MOVE
-	       && GET_CODE (SET_SRC (lui_set)) == HIGH)
-	      || (CONST_INT_P (SET_SRC (lui_set))
-		  && LUI_NONZERO_OPERAND (INTVAL (SET_SRC (lui_set))))));
+  struct riscv_fusion_mem_info mem;
+  if (riscv_regno (SET_DEST (lui_set)) == INVALID_REGNUM
+      || !riscv_fuse_mem_p (store, &mem)
+      || mem.type != SCHED_FUSION_ST
+      || mem.fp_p)
+    return false;
+
+  rtx src = SET_SRC (lui_set);
+  return ((get_attr_type (lui) == TYPE_MOVE && GET_CODE (src) == HIGH)
+	  || (CONST_INT_P (src)
+	      && LUI_NONZERO_OPERAND (INTVAL (src))));
 }
 
 /* Check for RISCV_FUSE_LUI_ST fusion.
@@ -2503,11 +2346,13 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
   if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
+  struct riscv_fusion_mem_info mem;
   if (get_attr_type (prev) == TYPE_MOVE
       && get_attr_move_type (prev) == MOVE_TYPE_CONST
-      && get_attr_type (curr) == TYPE_STORE
-      && REG_P (SET_SRC (curr_set)) && REG_P (SET_DEST (prev_set))
-      && REGNO (SET_SRC (curr_set)) == REGNO (SET_DEST (prev_set)))
+      && riscv_fuse_mem_p (curr, &mem)
+      && mem.type == SCHED_FUSION_ST
+      && !mem.fp_p
+      && riscv_fuse_same_reg_p (mem.reg, SET_DEST (prev_set)))
     return true;
 
   return false;
@@ -2526,11 +2371,11 @@ riscv_fuse_lui_ld_independent_p (rtx_insn *lui, rtx_insn *load)
   if (!lui_set || !load_set || any_condjump_p (load))
     return false;
 
-  if (!REG_P (SET_DEST (lui_set)) || !REG_P (SET_DEST (load_set))
-      || riscv_fuse_same_reg_p (SET_DEST (lui_set), SET_DEST (load_set)))
-    return false;
-
-  if (get_attr_type (load) != TYPE_LOAD)
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (load, &mem)
+      || mem.type == SCHED_FUSION_ST
+      || mem.fp_p
+      || riscv_fuse_same_reg_p (SET_DEST (lui_set), mem.reg))
     return false;
 
   rtx src = SET_SRC (lui_set);

@@ -75,77 +75,25 @@ struct arcv_sched_state {
 
 static struct arcv_sched_state sched_state;
 
-/* If INSN is a load or store of address in the form of [base+offset],
-   extract the two parts and set to BASE and OFFSET.  IS_LOAD is set
-   to TRUE if it's a load.  Return TRUE if INSN is such an instruction,
-   otherwise return FALSE.  */
-
-static bool
-arcv_fusion_load_store (rtx_insn *insn, rtx *base, rtx *offset,
-			machine_mode *mode, bool *is_load)
-{
-  rtx x, dest, src;
-
-  gcc_assert (INSN_P (insn));
-  x = PATTERN (insn);
-  if (GET_CODE (x) != SET)
-    return false;
-
-  src = SET_SRC (x);
-  dest = SET_DEST (x);
-
-  if ((GET_CODE (src) == SIGN_EXTEND || GET_CODE (src) == ZERO_EXTEND)
-      && MEM_P (XEXP (src, 0)))
-    src = XEXP (src, 0);
-
-  if (REG_P (src) && MEM_P (dest))
-    {
-      *is_load = false;
-      if (extract_base_offset_in_addr (dest, base, offset))
-	*mode = GET_MODE (dest);
-    }
-  else if (MEM_P (src) && REG_P (dest))
-    {
-      *is_load = true;
-      if (extract_base_offset_in_addr (src, base, offset))
-	*mode = GET_MODE (src);
-    }
-  else
-    return false;
-
-  return (*base != NULL_RTX && *offset != NULL_RTX);
-}
-
-/* Return TRUE if the target microarchitecture supports macro-op
-   fusion for two memory operations of mode MODE (the direction
-   of transfer is determined by the IS_LOAD parameter).  */
-
-bool
-arcv_pair_fusion_mode_allowed_p (machine_mode mode, bool is_load)
-{
-  return ((is_load && (mode == SImode
-		       || mode == HImode
-		       || mode == QImode))
-	  || (!is_load && mode == SImode));
-}
-
 bool
 arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
 			     int *pri)
 {
-  rtx base, offset;
-  machine_mode mode = SImode;
-  bool is_load;
-
   gcc_assert (INSN_P (insn));
 
   /* Default priority for non-fusible instructions.  */
   int default_pri = max_pri - 1;
 
-  /* Check if this is a fusible load/store instruction.  */
-  if (!arcv_fusion_load_store (insn, &base, &offset, &mode, &is_load)
-      || !arcv_pair_fusion_mode_allowed_p (mode, is_load))
-      return false;
+  struct riscv_fusion_mem_info mem;
+
+  if (!riscv_fuse_mem_p (insn, &mem)
+      || riscv_fuse_mem_direction (insn) == RISCV_FUSION_NONE)
+    return false;
+
+  machine_mode mode = mem.mode;
+  int base = riscv_regno (mem.addr.reg);
+  bool is_load = mem.type & (SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+			     | SCHED_FUSION_LD_ZERO_EXTEND);
 
   /* Start with half the default priority to distinguish fusible from
      non-fusible instructions.  */
@@ -164,13 +112,13 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
      significant component of the priority.  */
   const int BASE_REG_SHIFT = 20;
   const int BASE_REG_MASK = 0xff;
-  priority -= ((REGNO (base) & BASE_REG_MASK) << BASE_REG_SHIFT);
+  priority -= (base & BASE_REG_MASK) << BASE_REG_SHIFT;
 
   /* Calculate fusion priority: group loads/stores with adjacent addresses
      into the same scheduling group.  We divide the offset by (mode_size * 2)
      to group pairs of adjacent accesses, then shift left by 1 to make room
      for the load/store bit.  */
-  int off_val = (int)(INTVAL (offset));
+  int off_val = (int)(INTVAL (mem.addr.offset));
   int addr_group = off_val / (GET_MODE_SIZE (mode).to_constant () * 2);
   *fusion_pri = priority - (addr_group << 1) + is_load;
 
