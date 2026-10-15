@@ -1285,10 +1285,18 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
-  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
-
   rtx high = gen_reg_rtx (DImode);
-  emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+
+  if (riscv_get_fusible_ops () & RISCV_FUSE_BONDED_MUL)
+    {
+      emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+      emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+    }
+  else
+    {
+      emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+      emit_insn (gen_<su>muldi3_highpart (high, operands[1], operands[2]));
+    }
 
   emit_move_insn (gen_lowpart (DImode, operands[0]), low);
   emit_move_insn (gen_highpart (DImode, operands[0]), high);
@@ -1317,10 +1325,18 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
 {
   rtx low = gen_reg_rtx (DImode);
-  emit_insn (gen_muldi3 (low, operands[1], operands[2]));
-
   rtx high = gen_reg_rtx (DImode);
-  emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+
+  if (riscv_get_fusible_ops () & RISCV_FUSE_BONDED_MUL)
+    {
+      emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+      emit_insn (gen_muldi3 (low, operands[2], operands[1]));
+    }
+  else
+    {
+      emit_insn (gen_muldi3 (low, operands[1], operands[2]));
+      emit_insn (gen_usmuldi3_highpart (high, operands[1], operands[2]));
+    }
 
   emit_move_insn (gen_lowpart (DImode, operands[0]), low);
   emit_move_insn (gen_highpart (DImode, operands[0]), high);

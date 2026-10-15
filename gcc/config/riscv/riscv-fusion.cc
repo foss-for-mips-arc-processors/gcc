@@ -147,6 +147,38 @@ riscv_set_is_shNadduw_p (rtx set)
 	  && REG_P (SET_DEST (set)));
 }
 
+/* Check if RTX matches multiply-high pattern, where X is the word mode:
+   (set (reg:X DEST)
+    (truncate:X (lshiftrt:2X (mult:2X (extend:2X (OP0))
+				      (extend:2X (OP1)))
+			     (const_int BITS_PER_WORD)))  */
+
+static bool
+riscv_set_is_multiply_high_pattern_p (rtx src)
+{
+  if (GET_CODE (src) != SET)
+    return false;
+  rtx truncate = SET_SRC (src);
+
+  if (GET_CODE (truncate) != TRUNCATE)
+    return false;
+
+  rtx lshiftrt = XEXP (truncate, 0);
+  if (GET_CODE (lshiftrt) != LSHIFTRT)
+    return false;
+
+  rtx shift_amount = XEXP (lshiftrt, 1);
+  rtx mult = XEXP (lshiftrt, 0);
+
+  if (!CONST_INT_P (shift_amount) || INTVAL (shift_amount) != BITS_PER_WORD)
+    return false;
+
+  if (GET_CODE (mult) != MULT)
+    return false;
+
+  return true;
+}
+
 /* Check the common RTL for ZEXTW, ZEXTWS and ZEXTH fusion.  */
 
 static bool
@@ -744,6 +776,111 @@ riscv_fuse_b_alui (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+/* Extract register operands and destination from multiply high-part pattern.
+   Operands are returned in the order of the assembly instruction.  The usmul
+   pattern emits the operands in the reverse order.
+   Returns true if successful.  */
+
+static bool
+riscv_get_mulh_operands (rtx set_rtx, rtx *op0, rtx *op1, rtx *dest)
+{
+  if (!riscv_set_is_multiply_high_pattern_p (set_rtx))
+    return false;
+
+  rtx mulh_pattern = SET_SRC (set_rtx);
+
+  rtx lshiftrt = XEXP (mulh_pattern, 0);
+  rtx mult = XEXP (lshiftrt, 0);
+
+  rtx operand0 = XEXP (mult, 0);
+  rtx operand1 = XEXP (mult, 1);
+
+  /* Swap operands for usmul pattern.  */
+  if (GET_CODE (operand0) == ZERO_EXTEND
+      && GET_CODE (operand1) == SIGN_EXTEND)
+    std::swap (operand0, operand1);
+
+  /* Strip zero_extend/sign_extend.  */
+  if (GET_CODE (operand0) == ZERO_EXTEND || GET_CODE (operand0) == SIGN_EXTEND)
+    operand0 = XEXP (operand0, 0);
+  if (GET_CODE (operand1) == ZERO_EXTEND || GET_CODE (operand1) == SIGN_EXTEND)
+    operand1 = XEXP (operand1, 0);
+
+  /* Strip subreg.  */
+  if (GET_CODE (operand0) == SUBREG)
+    operand0 = SUBREG_REG (operand0);
+  if (GET_CODE (operand1) == SUBREG)
+    operand1 = SUBREG_REG (operand1);
+
+  if (!REG_P (operand0) || !REG_P (operand1))
+    return false;
+
+  rtx dest_reg = SET_DEST (set_rtx);
+  if (!REG_P (dest_reg))
+    return false;
+
+  *op0 = operand0;
+  *op1 = operand1;
+  *dest = dest_reg;
+  return true;
+}
+
+/* Check for RISCV_FUSE_BONDED_MUL fusion.
+   prev (mulh/mulhu/mulhsu) and curr (mul) of the same inputs, with the
+   high-part destination distinct from both inputs.  */
+
+static bool
+riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set = single_set (prev);
+  rtx curr_set = single_set (curr);
+
+  /* Bond mul hi part and mul low part pair:
+     prev: (set rd_hi (mulh(u/s) rs1 rs2))
+     curr: (set rd_lo (mul rs1 rs2))
+     where rd_hi != rs1 && rd_hi != rs2.  */
+  if (prev_set && curr_set
+      && GET_CODE (SET_SRC (curr_set)) == MULT)
+    {
+      rtx prev_op0, prev_op1, prev_dest;
+      if (riscv_get_mulh_operands (prev_set, &prev_op0, &prev_op1, &prev_dest))
+	{
+	  rtx curr_src = SET_SRC (curr_set);
+
+	  rtx curr_op0 = XEXP (curr_src, 0);
+	  rtx curr_op1 = XEXP (curr_src, 1);
+
+	  /* Check that the operands are the same and in the same order
+	     and check the prev destination is distinct from the operands.  */
+	  if (REG_P (prev_op0) && REG_P (prev_op1)
+	      && REG_P (curr_op0) && REG_P (curr_op1)
+	      && REGNO (prev_op0) == REGNO (curr_op0)
+	      && REGNO (prev_op1) == REGNO (curr_op1)
+	      && REGNO (prev_dest) != REGNO (prev_op0)
+	      && REGNO (prev_dest) != REGNO (prev_op1))
+	    return true;
+	}
+    }
+
+  return false;
+}
+
+bool
+riscv_depends_on_lowpart_bonded_mul_p (int dep_type, rtx_insn *dep_insn)
+{
+  if (dep_type != REG_DEP_TRUE)
+    return false;
+
+  rtx_insn *prev_insn = prev_nondebug_insn (dep_insn);
+  if (!prev_insn)
+    return false;
+
+  if (!riscv_fuse_bonded_mul (prev_insn, dep_insn))
+    return false;
+
+  return true;
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -793,6 +930,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_B_ALUI,
     riscv_fuse_b_alui, "RISCV_FUSE_B_ALUI" },
+  { RISCV_FUSE_BONDED_MUL,
+    riscv_fuse_bonded_mul, "RISCV_FUSE_BONDED_MUL" },
 };
 
 /* Implement TARGET_SCHED_MACRO_FUSION_PAIR_P.  Return true if PREV and CURR
