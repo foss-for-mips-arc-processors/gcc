@@ -65,12 +65,15 @@
        (eq_attr "mul_part" "low"))
   "arcv_rhx100_issueA_fuse0 + arcv_rhx100_MPY, arcv_rhx100_MPY*2")
 
+;; The 1 cycle reservation of the multiplier is only correct for the bonded mul case.
+;; Mul high part is usually generated together with the low part.
+;; Otherwise, this is 3 cycles too optimistic about multiplier reservation.
 (define_insn_reservation "arcv_rhx100_mpy64h_insn" 7
   (and (eq_attr "tune" "arcv_rpx100")
        (eq_attr "type" "imul")
        (eq_attr "mode" "DI")
        (eq_attr "mul_part" "high"))
-  "arcv_rhx100_issueA_fuse0 + arcv_rhx100_MPY, arcv_rhx100_MPY*3")
+  "arcv_rhx100_issueA_fuse0 + arcv_rhx100_MPY")
 
 (define_insn_reservation "arcv_rhx100_load_insn" 3
   (and (eq_attr "tune" "arcv_rhx100,arcv_rpx100")
