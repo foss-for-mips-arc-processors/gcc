@@ -2635,7 +2635,12 @@ riscv*-*-linux*)
 	tm_file="elfos.h gnu-user.h linux.h glibc-stdint.h ${tm_file} riscv/linux.h"
 	case "x${enable_multilib}" in
 	xno) ;;
-	xyes) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
+	xyes)
+    case ${target} in
+      *64-mti-*) tmake_file="${tmake_file} riscv/t-arcv-linux" ;;
+      *) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
+    esac
+    ;;
 	*) echo "Unknown value for enable_multilib"; exit 1
 	esac
 	tmake_file="${tmake_file} riscv/t-riscv riscv/t-linux"
