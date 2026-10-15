@@ -673,12 +673,16 @@
 ;; Is copying of this instruction disallowed?
 (define_attr "cannot_copy" "no,yes" (const_string "no"))
 
+;; Multiply part attribute to distinguish mul (low) from mulh/mulhu/mulhsu (high)
+(define_attr "mul_part" "low,high"
+  (const_string "low"))
+
 ;; Microarchitectures we know how to tune for.
 ;; Keep this in sync with enum riscv_microarchitecture.
 (define_attr "tune"
   "generic,sifive_7,sifive_p400,sifive_p600,xiangshan,generic_ooo,mips_p8700,
    tt_ascalon_d8,tt_ascalon_xg,andes_25_series,andes_23_series,andes_45_series,
-   spacemit_x60,arcv_rmx100,arcv_rhx100,xt_c908"
+   spacemit_x60,arcv_rmx100,arcv_rhx100,arcv_rpx100,xt_c908"
   (const (symbol_ref "((enum attr_tune) riscv_microarchitecture)")))
 
 ;; Describe a user's asm statement.
@@ -1303,7 +1307,8 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
   "mulh<u>\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "DI")])
+   (set_attr "mode" "DI")
+   (set_attr "mul_part" "high")])
 
 (define_expand "usmulditi3"
   [(set (match_operand:TI                          0 "register_operand")
@@ -1334,7 +1339,8 @@
   "(TARGET_ZMMUL || TARGET_MUL) && TARGET_64BIT"
   "mulhsu\t%0,%2,%1"
   [(set_attr "type" "imul")
-   (set_attr "mode" "DI")])
+   (set_attr "mode" "DI")
+   (set_attr "mul_part" "high")])
 
 (define_expand "<u>mulsidi3"
   [(set (match_operand:DI            0 "register_operand" "=r")
@@ -1364,7 +1370,8 @@
   "(TARGET_ZMMUL || TARGET_MUL) && !TARGET_64BIT"
   "mulh<u>\t%0,%1,%2"
   [(set_attr "type" "imul")
-   (set_attr "mode" "SI")])
+   (set_attr "mode" "SI")
+   (set_attr "mul_part" "high")])
 
 
 (define_expand "usmulsidi3"
@@ -1395,7 +1402,8 @@
   "(TARGET_ZMMUL || TARGET_MUL) && !TARGET_64BIT"
   "mulhsu\t%0,%2,%1"
   [(set_attr "type" "imul")
-   (set_attr "mode" "SI")])
+   (set_attr "mode" "SI")
+   (set_attr "mul_part" "high")])
 
 ;;
 ;;  ....................
@@ -5513,7 +5521,7 @@
   [(set (match_operand:GPR 0 "register_operand")
         (ior:GPR (match_operand:GPR 1 "register_operand")
                  (match_operand:GPR 2 "arith_operand")))]
-  ""          
+  ""
   {
     /* If we have shift-add insns and arguments are all registers, steer
        towards PLUS, otherwise steer towards IOR.  */
@@ -5534,7 +5542,7 @@
       }
     DONE;
   }
-) 
+)
 
 (include "bitmanip.md")
 (include "crypto.md")
