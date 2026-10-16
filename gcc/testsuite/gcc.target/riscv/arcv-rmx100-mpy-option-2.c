@@ -1,0 +1,21 @@
+/* { dg-do compile } */
+/* { dg-require-effective-target rv32 } */
+/* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Oz" "-Os" "-Og" } } */
+/* { dg-options "-mtune=arc-v-rmx-100-series -march=rv32im -mabi=ilp32 --param=arcv-mpy-option=10c -fdump-rtl-sched2" } */
+
+void
+bar (int *a)
+{
+  int *addr = (int *) (a[1] * a[2]);
+  *addr = 0;
+}
+
+int
+baz (int *a)
+{
+  int *addr = (int *) (a[1] * a[2]);
+  return *addr;
+}
+
+/* { dg-final { scan-rtl-dump "(?s);; Function bar.*?;;\\s+2-->.*\\*.*:arcv_rmx100_MPY.*?;;\\s+11-->.*\\\[.*\\\]=0" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function baz.*?;;\\s+2-->.*\\*.*:arcv_rmx100_MPY.*?;;\\s+11-->.*=.*\\\[.*\\\]" "sched2" } } */
