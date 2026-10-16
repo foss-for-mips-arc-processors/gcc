@@ -131,6 +131,7 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
     priority += ((-off_val) & OFFSET_MASK);
 
   *pri = priority;
+  return true;
 }
 
   /* Check if RTX matches multiply-high pattern:
