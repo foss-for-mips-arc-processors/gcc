@@ -2030,27 +2030,6 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Return true if CURR should not be fused with PREV because CURR and the
-   next fusible insn form a better adjacent load/store pair.  */
-
-static bool
-riscv_defer_for_adjacent_memop_p (rtx_insn *curr)
-{
-  rtx_insn *next = next_nonnote_nondebug_insn_bb (curr);
-  if (!next)
-    return false;
-
-  if (!single_set (curr) || !single_set (next))
-    return false;
-
-  if (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_LOAD)
-      && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_LOAD))
-    return true;
-
-  return (riscv_fusion_enabled_p (RISCV_FUSE_ADJACENT_STORE)
-	  && riscv_fuse_mem_pair_p (curr, next, RISCV_FUSE_ADJACENT_STORE));
-}
-
 /* Return true if PREV and CURR constitute an ordered load/store + op/opimm
    pair, for the purposes of macro-op fusion.
    This is a more general form that combines load+arith and store+arith.  */
@@ -2280,9 +2259,6 @@ riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  if (riscv_defer_for_adjacent_memop_p (curr))
-    return false;
-
   return (riscv_ls_update_pair_p (prev, curr)
 	  || riscv_ls_update_pair_p (curr, prev));
 }
@@ -2321,9 +2297,6 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set || any_condjump_p (curr))
     return false;
 
-  if (riscv_defer_for_adjacent_memop_p (curr))
-    return false;
-
   return (riscv_lui_st_pair_p (prev, curr, prev_set)
 	  || riscv_lui_st_pair_p (curr, prev, curr_set));
 }
@@ -2341,9 +2314,6 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
-    return false;
-
-  if (riscv_defer_for_adjacent_memop_p (curr))
     return false;
 
   struct riscv_fusion_mem_info mem;
