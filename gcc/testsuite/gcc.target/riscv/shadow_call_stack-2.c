@@ -26,11 +26,11 @@ int main() {
 }
 
 /* { dg-final { scan-assembler-times {addi\tgp,gp,4} 4 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {sw\tra,(-4|0)\(gp\)} 4 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {sw\tra,-4\(gp\)} 4 { target rv32 } } } */
 /* { dg-final { scan-assembler-times {addi\tgp,gp,-4} 4 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {lw\tt0,(-4|0)\(gp\)} 4 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {lw\tt0,-4\(gp\)} 4 { target rv32 } } } */
 
 /* { dg-final { scan-assembler-times {addi\tgp,gp,8} 4 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {sd\tra,(-8|0)\(gp\)} 4 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {sd\tra,-8\(gp\)} 4 { target rv64 } } } */
 /* { dg-final { scan-assembler-times {addi\tgp,gp,-8} 4 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {ld\tt0,(-8|0)\(gp\)} 4 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {ld\tt0,-8\(gp\)} 4 { target rv64 } } } */

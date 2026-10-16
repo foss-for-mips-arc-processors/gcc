@@ -15,11 +15,11 @@ int f1 (int a) {
 /* { dg-final { scan-assembler-times {cm\.pop} 1 } } */
 
 /* { dg-final { scan-assembler-times {addi\tgp,gp,4} 1 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {sw\tra,(-4|0)\(gp\)} 1 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {sw\tra,-4\(gp\)} 1 { target rv32 } } } */
 /* { dg-final { scan-assembler-times {addi\tgp,gp,-4} 1 { target rv32 } } } */
-/* { dg-final { scan-assembler-times {lw\tra,(-4|0)\(gp\)} 1 { target rv32 } } } */
+/* { dg-final { scan-assembler-times {lw\tra,-4\(gp\)} 1 { target rv32 } } } */
 
 /* { dg-final { scan-assembler-times {addi\tgp,gp,8} 1 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {sd\tra,(-8|0)\(gp\)} 1 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {sd\tra,-8\(gp\)} 1 { target rv64 } } } */
 /* { dg-final { scan-assembler-times {addi\tgp,gp,-8} 1 { target rv64 } } } */
-/* { dg-final { scan-assembler-times {ld\tra,(-8|0)\(gp\)} 1 { target rv64 } } } */
+/* { dg-final { scan-assembler-times {ld\tra,-8\(gp\)} 1 { target rv64 } } } */

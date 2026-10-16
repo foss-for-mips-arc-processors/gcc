@@ -10555,6 +10555,35 @@ riscv_allocate_and_probe_stack_space (rtx temp1, HOST_WIDE_INT size)
     }
 }
 
+/* Mark the GP adjustment in the shadow call stack sequence ending at LAST as
+   frame related.  PUSH says which half of the pair this is.  */
+
+static void
+riscv_frame_related_scs_adjust (rtx_insn *last, bool push)
+{
+  rtx gp = gen_rtx_REG (Pmode, GP_REGNUM);
+  rtx_insn *insn;
+
+  for (insn = last; insn; insn = PREV_INSN (insn))
+    {
+      rtx set = single_set (insn);
+      if (set
+	  && REG_P (SET_DEST (set))
+	  && REGNO (SET_DEST (set)) == GP_REGNUM)
+	break;
+    }
+  gcc_assert (insn);
+
+  if (push)
+    add_reg_note (insn, REG_CFA_VAL_EXPRESSION,
+		  gen_rtx_SET (gp, plus_constant (Pmode, gp,
+						  -UNITS_PER_WORD)));
+  else
+    add_reg_note (insn, REG_CFA_RESTORE, gp);
+
+  RTX_FRAME_RELATED_P (insn) = 1;
+}
+
 /* Expand the "prologue" pattern.  */
 
 void
@@ -10581,8 +10610,13 @@ riscv_expand_prologue (void)
 
   /* Otherwise shift to software shadow call stack.  */
   else if (need_shadow_call_stack_push_pop_p ())
-    emit_insn (gen_shadow_call_stack_push (Pmode, GEN_INT (UNITS_PER_WORD),
-					   GEN_INT (-UNITS_PER_WORD)));
+    {
+      rtx_insn *insn
+	= emit_insn (gen_shadow_call_stack_push (Pmode,
+						 GEN_INT (UNITS_PER_WORD),
+						 GEN_INT (-UNITS_PER_WORD)));
+      riscv_frame_related_scs_adjust (insn, true);
+    }
 
   /* Prefer multi-push to save-restore libcall.  */
   if (riscv_use_multi_push (frame))
@@ -11144,8 +11178,12 @@ riscv_expand_epilogue (int style)
 
       /* Otherwise shift to software shadow call stack.  */
       else if (need_shadow_call_stack_push_pop_p ())
-	emit_insn (gen_shadow_call_stack_pop (Pmode, addr_reg,
-					      GEN_INT (-UNITS_PER_WORD)));
+	{
+	  rtx_insn *insn
+	    = emit_insn (gen_shadow_call_stack_pop (Pmode, addr_reg,
+						    GEN_INT (-UNITS_PER_WORD)));
+	  riscv_frame_related_scs_adjust (insn, false);
+	}
     }
 
   /* Return from interrupt.  */
