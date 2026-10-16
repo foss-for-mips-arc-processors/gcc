@@ -1,3 +1,7 @@
+# Linux multilib for RPX-100 and i8500.
+# -mtune keeps the two CPUs in separate directories.  -mcmodel=medany
+# is applied to every library and is not a directory.
+
 empty =
 space = $(empty) $(empty)
 
@@ -6,8 +10,12 @@ MULTILIB_DIRNAMES =
 MULTILIB_REQUIRED =
 MULTILIB_REUSE =
 
+# RPX-100
 arcv_march_variants  = rv64imac_zcb_zba_zbb_zbs
 arcv_march_variants += rv64imafdc_zcb_zba_zbb_zbs
+# i8500
+arcv_march_variants += rv64imacb_zicond_zicbop_zicboz_zcb
+arcv_march_variants += rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa
 
 MULTILIB_OPTIONS    += $(subst $(space),/,$(patsubst %,march=%,$(arcv_march_variants)))
 MULTILIB_DIRNAMES   += $(arcv_march_variants)
@@ -15,7 +23,12 @@ MULTILIB_DIRNAMES   += $(arcv_march_variants)
 MULTILIB_OPTIONS    += mabi=lp64/mabi=lp64d
 MULTILIB_DIRNAMES   += lp64 lp64d
 
-MULTILIB_REQUIRED   += march=rv64imac_zcb_zba_zbb_zbs/mabi=lp64
-MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs/mabi=lp64d
+MULTILIB_OPTIONS    += mtune=arc-v-rpx-100-series/mtune=mips-i8500
+MULTILIB_DIRNAMES   += rpx100 i8500
 
-MULTILIB_EXTRA_OPTS = mtune=arc-v-rpx-100-series mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64imac_zcb_zba_zbb_zbs/mabi=lp64/mtune=arc-v-rpx-100-series
+MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs/mabi=lp64d/mtune=arc-v-rpx-100-series
+MULTILIB_REQUIRED   += march=rv64imacb_zicond_zicbop_zicboz_zcb/mabi=lp64/mtune=mips-i8500
+MULTILIB_REQUIRED   += march=rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa/mabi=lp64d/mtune=mips-i8500
+
+MULTILIB_EXTRA_OPTS = mcmodel=medany
