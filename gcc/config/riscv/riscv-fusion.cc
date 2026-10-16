@@ -2490,7 +2490,7 @@ riscv_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (SCHED_GROUP_P (prev))
     return false;
 
-    if (riscv_microarchitecture == ARCV_RPX100
+    if (riscv_microarchitecture == arcv_rpx100
 	&& arcv_macro_bonded_mul_pair_p(prev, curr))
 	  return true;
 

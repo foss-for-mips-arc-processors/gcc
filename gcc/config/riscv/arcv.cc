@@ -131,6 +131,7 @@ arcv_sched_fusion_priority (rtx_insn *insn, int max_pri, int *fusion_pri,
     priority += ((-off_val) & OFFSET_MASK);
 
   *pri = priority;
+}
 
   /* Check if RTX matches multiply-high pattern:
    (set (reg:DI DEST)
@@ -160,7 +161,6 @@ is_multiply_high_pattern_p (rtx src)
 
   if (GET_CODE (mult) != MULT)
     return false;
->>>>>>> 58b07f33e74 (RISC-V: RPX-100: emit mulh mul pairs in that order)
 
   return true;
 }
@@ -328,6 +328,7 @@ arcv_sched_adjust_priority (rtx_insn *insn, int priority)
     return priority + 1;
 
   return priority;
+}
 
 /* Extract register operands and destinition from multiply high-part pattern.
   returns true if successful.
