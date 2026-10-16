@@ -11157,10 +11157,9 @@ riscv_expand_epilogue (int style)
 			      EH_RETURN_STACKADJ_RTX));
 
   /* At this point, the return address on the stack pointer is already
-    restored to either t0 or ra.
-    If shadow stack is enabled or in case of exception handling
-    the return address is restored to t0.  Otherwise it is
-    restored to ra (ref. see function riscv_for_each_saved_reg).  */
+    restored to either t0 or ra.  If shadow stack is enabled the return
+    address is restored to t0; minus the following conditions.
+    Otherwise it is restored to ra.  (ref: riscv_for_each_saved_reg).  */
   bool stack_return_address_in_t0
 	= BITSET_P (cfun->machine->frame.mask, RETURN_ADDR_REGNUM)
 	  && style != SIBCALL_RETURN
