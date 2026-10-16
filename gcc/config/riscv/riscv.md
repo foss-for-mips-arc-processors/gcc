@@ -4529,7 +4529,7 @@
 {
   rtx stack_slot;
 
-  if (need_shadow_stack_push_pop_p ())
+  if (need_zicfiss_push_pop_p ())
     {
       /* Copy shadow stack pointer to the first slot
 	 and stack pointer to the second slot.  */
@@ -4558,7 +4558,7 @@
 {
   rtx stack_slot;
 
-  if (need_shadow_stack_push_pop_p ())
+  if (need_zicfiss_push_pop_p ())
     {
       rtx t0 = gen_rtx_REG (Pmode, RISCV_PROLOGUE_TEMP_REGNUM);
       /* Restore shadow stack pointer from the first slot
@@ -5212,6 +5212,23 @@
   "csrw\tssp, %0"
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
+
+;; Shadow call stack
+
+(define_expand "@shadow_call_stack_push<mode>"
+  [(set (reg:P GP_REGNUM)
+      (plus:P (reg:P GP_REGNUM)
+	(match_operand:P 0 "const_int_operand")))
+   (set (mem:P (plus:P (reg:P GP_REGNUM)
+      (match_operand:P 1 "const_int_operand")))
+	(reg:P RETURN_ADDR_REGNUM))])
+
+(define_expand "@shadow_call_stack_pop<mode>"
+  [(set (match_operand:P 0 "register_operand")
+      (mem:P (plus:P (reg:P GP_REGNUM)
+	(match_operand:P 1 "const_int_operand"))))
+   (set (reg:P GP_REGNUM)
+      (plus:P (reg:P GP_REGNUM) (match_dup 1)))])
 
 ;; Lading pad.
 
