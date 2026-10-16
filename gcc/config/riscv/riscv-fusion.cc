@@ -2217,10 +2217,6 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
 {
-  /* Do not fuse loads/stores before sched2.  */
-  if (!reload_completed || sched_fusion)
-    return false;
-
   return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_LOAD);
 }
 
@@ -2234,10 +2230,6 @@ riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
 {
-  /* Do not fuse loads/stores before sched2.  */
-  if (!reload_completed || sched_fusion)
-    return false;
-
   return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_STORE);
 }
 
@@ -2251,9 +2243,6 @@ riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 {
-  if (!reload_completed || sched_fusion)
-    return false;
-
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
@@ -2289,9 +2278,6 @@ riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
 static bool
 riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 {
-  if (!reload_completed || sched_fusion)
-    return false;
-
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
@@ -2308,9 +2294,6 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
 {
-  if (!reload_completed || sched_fusion)
-    return false;
-
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
   if (!prev_set || !curr_set || any_condjump_p (curr))
