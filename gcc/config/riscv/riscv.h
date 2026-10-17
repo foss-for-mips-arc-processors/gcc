@@ -1361,8 +1361,14 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 
 #define HARD_REGNO_RENAME_OK(FROM, TO) riscv_hard_regno_rename_ok (FROM, TO)
 
+/* TARGET_MIPS checks if cores are from MIPS.  */
+#define TARGET_MIPS (riscv_microarchitecture == mips_i8500  \
+  || riscv_microarchitecture == mips_p8700  \
+  || riscv_microarchitecture == mips_m8500)
+
 #define ENABLE_LD_ST_PAIRS \
-  (TARGET_XMIPSLSP || TARGET_LOAD_STORE_BONDING)
+  ((TARGET_XMIPSLSP || TARGET_LOAD_STORE_BONDING) && \
+    TARGET_MIPS)
 
 #define CLZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE) \
   ((VALUE) = GET_MODE_UNIT_BITSIZE (MODE), 2)
@@ -1430,9 +1436,6 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 #define TARGET_CLONES_ATTR_SEPARATOR '#'
 
 #define TARGET_HAS_FMV_TARGET_ATTRIBUTE 0
-
-/* mips pref valid offset range.  */
-#define MIPS_RISCV_9BIT_OFFSET_P(OFFSET) (IN_RANGE (OFFSET, 0, 511))
 
 /* mips pref cache hint type.  */
 typedef enum {

@@ -767,6 +767,31 @@ static const struct riscv_tune_param mips_m8500_tune_info = {
   true,						/* prefer-agnostic.  */
 };
 
+/* Costs to use when optimizing for MIPS i8500.  */
+static const struct riscv_tune_param mips_i8500_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},     /* fp_add.  */
+  {COSTS_N_INSNS (5), COSTS_N_INSNS (5)},     /* fp_mul.  */
+  {COSTS_N_INSNS (32), COSTS_N_INSNS (32)},   /* fp_div.  */
+  {COSTS_N_INSNS (5), COSTS_N_INSNS (5)},     /* int_mul.  */
+  {COSTS_N_INSNS (22), COSTS_N_INSNS (22)},   /* int_div.  */
+  2,      /* issue_rate.  */
+  6,      /* branch_cost.  */
+  4,      /* memory_cost.  */
+  8,      /* fmv_cost.  */
+  true,     /* slow_unaligned_access.  */
+  false,    /* vector_unaligned_access.  */
+  false,    /* use_divmod_expansion.  */
+  false,    /* overlap_op_by_pieces.  */
+  true,     /* use_zero_stride_load.  */
+  false,    /* speculative_sched_vsetvl.  */
+  RISCV_FUSE_NOTHING,   /* fusible_ops.  */
+  NULL,     /* vector cost.  */
+  NULL,     /* function_align.  */
+  NULL,     /* jump_align.  */
+  NULL,     /* loop_align.  */
+  true,     /* prefer-agnostic.  */
+};
+
 /* Costs to use when optimizing for Andes 25 series.  */
 static const struct riscv_tune_param andes_25_tune_info = {
   {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
@@ -13185,6 +13210,13 @@ riscv_option_override (void)
 
   riscv_override_options_internal (&global_options);
 
+  /* If users don't set prefer-lrsc, we will enable for p8700.  */
+  if (!OPTION_SET_P (TARGET_PREFER_LRSC)
+      && riscv_microarchitecture == mips_p8700)
+  {
+    TARGET_PREFER_LRSC = 1;
+  }
+
   /* Save these options as the default ones in case we push and pop them later
      while processing functions with potential target attributes.  */
   target_option_default_node = target_option_current_node
@@ -13932,6 +13964,10 @@ riscv_load_store_bonding_p (rtx *operands, machine_mode mode, bool load_p)
       mem2 = operands[2];
     }
 
+  /* Make sure reg1 and reg2 are REG_P.  */
+  if (!REG_P (reg1) || !REG_P (reg2))
+    return false;
+
   if (riscv_address_insns (XEXP (mem1, 0), mode, false) == 0
       || riscv_address_insns (XEXP (mem2, 0), mode, false) == 0)
     return false;
@@ -13964,9 +14000,24 @@ riscv_load_store_bonding_p (rtx *operands, machine_mode mode, bool load_p)
       && !reg_class_subset_p (rc2, rc1))
     return false;
 
-  /* Make sure offset1 is aligned to the mode size.  */
   mode_size = GET_MODE_SIZE (mode).to_constant();
+
+  offset1 = (offset1 < offset2) ? offset1 : offset2;
+
+  /* Make sure offset1 is aligned to the mode size.  */
   if ((offset1 & (mode_size - 1)) != 0)
+    return false;
+
+  /* We do not bond if base register is not SP in case of double align.
+   * We allow bonding for other base reg also when we specify
+   * -mno-double-align flag,  */
+  if (TARGET_DOUBLE_ALIGN && (REGNO (base1) != STACK_POINTER_REGNUM))
+    return false;
+
+  /* If the base reg is SP, offset1 should be aligned to 16-bytes for ld/sd
+   * and 8-byte for lw/sw to form a good bond.  */
+  if (REGNO (base1) == STACK_POINTER_REGNUM
+      && (offset1 & ((mode_size * 2) - 1)) != 0)
     return false;
 
   if (abs (offset1 - offset2) != mode_size)
@@ -14010,6 +14061,12 @@ riscv_output_join2_insns (rtx *operands, machine_mode mode, bool load_p,
       && (offset1 < (1 << 7) || offset2 < (1 << 7))
       && (mode == DImode || mode == SImode)
       && REGNO (base1) == REGNO (base2)
+      && (!TARGET_DOUBLE_ALIGN
+   /* We restrict to sp as base that is aligned to 16 bytes,
+      to guarantee double alignment.  */
+   || (REGNO (base1) == STACK_POINTER_REGNUM
+       && (((offset1 < offset2) ? offset1 : offset2)
+      & ((GET_MODE_SIZE (mode).to_constant () * 2) - 1)) == 0))
       && ((load_p && REGNO (reg1) != REGNO (base1)
 	   && REGNO (reg2) != REGNO (base1)) || !load_p))
   {
