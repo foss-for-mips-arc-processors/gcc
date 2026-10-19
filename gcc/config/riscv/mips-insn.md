@@ -333,9 +333,14 @@
   "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
     && flag_unsafe_math_optimizations"
   {
+    rtx temp1 = gen_reg_rtx (SFmode);
+    rtx temp2 = gen_reg_rtx (SFmode);
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_1_BY_2PI);
     emit_insn (gen_mulsf3 (scalereg, operands[1], scalereg));
-    emit_insn (gen_riscv_mips_ftan_hz (operands[0], scalereg));
+    emit_insn (gen_riscv_mips_fcos_hz (temp1, scalereg));
+    emit_insn (gen_riscv_mips_ffrecip (temp1, temp1));
+    emit_insn (gen_riscv_mips_fsin_hz (temp2, scalereg));
+    emit_insn (gen_mulsf3 (operands[0], temp1, temp2));
     DONE;
   }
 )
@@ -355,8 +360,14 @@
   "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
     && flag_unsafe_math_optimizations"
   {
-    rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
+    rtx temp1 = gen_reg_rtx (SFmode);
+    emit_insn (gen_riscv_mips_ffrecip (temp1, operands[1]));
+    rtx temp2 = riscv_get_trig_const (FLI_CONST_0_25_INDEX);
+    emit_insn (gen_riscv_mips_fatan_hz (temp1, temp1));
+    emit_insn (gen_subsf3 (temp1, temp2, temp1));
     emit_insn (gen_riscv_mips_fatan_hz (operands[0], operands[1]));
+    emit_insn (gen_fminsf3 (operands[0], operands[0], temp1));
+    rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
     emit_insn (gen_mulsf3 (operands[0], operands[0], scalereg));
     DONE;
   }
@@ -538,13 +549,25 @@
   "TARGET_XMIPSTRIG && TARGET_MIPS_EXP_TRIG_MAP
     && flag_unsafe_math_optimizations"
   {
-    rtx temp_reg1 = gen_reg_rtx (SFmode);
+    rtx recip_y_x = gen_reg_rtx (SFmode);
+    rtx recip_x_y = gen_reg_rtx (SFmode);
 
-    emit_insn (gen_divsf3 (temp_reg1, operands[1], operands[2]));
-    emit_insn (gen_riscv_mips_fatan_hz (operands[0], temp_reg1));
+    emit_insn (gen_riscv_mips_ffrecip (recip_y_x, operands[1]));
+    emit_insn (gen_mulsf3 (recip_y_x, operands[2], recip_y_x));  /* y/x.  */
+
+    emit_insn (gen_riscv_mips_ffrecip (recip_x_y, operands[2]));
+    emit_insn (gen_mulsf3 (recip_x_y, operands[1], recip_x_y));  /* x/y.  */
+
+    emit_insn (gen_riscv_mips_fatan_hz (recip_x_y, recip_x_y));
+    emit_insn (gen_riscv_mips_fatan_hz (recip_y_x, recip_y_x));
+
+    rtx const_0_25 = riscv_get_trig_const (FLI_CONST_0_25_INDEX);
+    emit_insn (gen_subsf3 (const_0_25, const_0_25, recip_y_x));
+    emit_insn (gen_fmaxsf3 (operands[0], recip_x_y, const_0_25));
 
     rtx scalereg = riscv_get_trig_scale_value (FLTI_CONST_2PI);
     emit_insn (gen_mulsf3 (operands[0], operands[0], scalereg));
+
     DONE;
   }
 )
