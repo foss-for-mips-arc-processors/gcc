@@ -103,3 +103,63 @@ float test_builtin10(float x) {
 float test_builtin11(float x) {
   return __riscv_mips_fflog2(x);
 }
+
+/*
+**test_builtin12:
+**  fli\.s\s+fa[0-7],1.0
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  fli\.s\s+fa[0-7],0.25
+**  fnmsub\.s\s+fa[0-7],fa[0-7],fa[0-7],fa[0-7]
+**  fsgnj\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.ffsqrt\.s\s+fa[0-7],fa[0-7]
+**  mips\.ffrsqrt\.s\s+fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fatanhz.s\s+fa[0-7],fa[0-7]
+**  mips\.fatanhz.s\s+fa[0-7],fa[0-7]
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmax\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  ret
+*/
+float test_builtin12(float x) {
+  return __riscv_mips_fasin_hz(x);
+}
+
+/*
+**test_builtin13:
+**  fli\.s\s+fa[0-7],1.0
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  fli\.s\s+fa[0-7],0.25
+**  fnmsub\.s\s+fa[0-7],fa[0-7],fa[0-7],fa[0-7]
+**  fsgnj\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.ffsqrt\.s\s+fa[0-7],fa[0-7]
+**  mips\.ffrsqrt\.s\s+fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmax\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  ret
+*/
+float test_builtin13(float x) {
+  return __riscv_mips_facos_hz(x);
+}
+
+/*
+**test_builtin14:
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  fli\.s\s+fa[0-7],0.25
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmax\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  ret
+*/
+float test_builtin14(float x, float y) {
+  return __riscv_mips_fatan2_hz(x, y);
+}
