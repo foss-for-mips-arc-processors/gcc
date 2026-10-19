@@ -2173,9 +2173,6 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
   if (!prev_set || !curr_set)
     return false;
 
-  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
-    return false;
-
   rtx prev_src = SET_SRC (prev_set);
   rtx curr_src = SET_SRC (curr_set);
   rtx word_src;
@@ -2186,6 +2183,9 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 
   if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
       || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
+    return false;
+
+  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
     return false;
 
   return riscv_fuse_same_reg_p (XEXP (curr_src, 0), SET_DEST (prev_set));
