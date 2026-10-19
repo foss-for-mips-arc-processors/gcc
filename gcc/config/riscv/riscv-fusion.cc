@@ -2105,7 +2105,7 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
   if (base_regno != c_rs1)
     return false;
 
-  if (mem.type != SCHED_FUSION_ST)
+  if (mem.type == SCHED_FUSION_LD)
     {
       unsigned int p_rd = riscv_regno (mem.reg);
       unsigned int c_rd = riscv_regno (SET_DEST (curr_set));
