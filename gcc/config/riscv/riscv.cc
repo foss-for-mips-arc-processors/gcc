@@ -17863,25 +17863,6 @@ riscv_prefetch_cookie (rtx hint, rtx locality)
 		   + CacheHint::DCACHE_HINT + INTVAL (locality) * 0));
 }
 
-/* Return true if X is a legitimate address with offset for prefetch.
-   MODE is the mode of the value being accessed.  */
-bool
-riscv_prefetch_offset_address_p (rtx x, machine_mode mode)
-{
-  struct riscv_address_info addr;
-
-  if (riscv_classify_address (&addr, x, mode, false)
-      && addr.type == ADDRESS_REG)
-    {
-      if (TARGET_XMIPSCBOP)
-	return (CONST_INT_P (addr.offset)
-		&& MIPS_RISCV_9BIT_OFFSET_P (INTVAL (addr.offset)));
-    }
-
-  return true;
-}
-
-
 /* Implement TARGET_MEMTAG_CAN_TAG_ADDRESSES.
  * Enables -fsanitize=hwaddress if true.  */
 
