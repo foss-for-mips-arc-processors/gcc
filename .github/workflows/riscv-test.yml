@@ -34,7 +34,7 @@ jobs:
             abi: ilp32d
             tune: arc-v-rhx-100-series
           - label: rv64-rpx
-            arch: rv64gc
+            arch: rv64i_zicsr_zifencei_zihintpause_a_zca_h_m_zcb_zba_zbb_zbc_zbs_zicond_zicbom_zicbop
             abi: lp64d
             tune: arc-v-rpx-100-series
 
