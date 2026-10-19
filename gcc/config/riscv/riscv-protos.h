@@ -898,7 +898,6 @@ riscv_override_options_internal (struct gcc_options *);
 extern void riscv_option_override (void);
 extern void riscv_reset_previous_fndecl (void);
 extern rtx riscv_prefetch_cookie (rtx, rtx);
-extern bool riscv_prefetch_offset_address_p (rtx, machine_mode);
 
 struct riscv_tune_param;
 /* Information about one micro-arch we know about.  */
