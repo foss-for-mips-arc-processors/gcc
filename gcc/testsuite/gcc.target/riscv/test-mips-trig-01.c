@@ -30,10 +30,14 @@ float test_cosf(float x) {
 
 /*
 **test_tanf:
-**	mips\.flti\.s\s+fa[0-7],5
-**	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	mips\.ftanhz\.s\s+fa[0-7],fa[0-7]
+**  mips\.flti.s\s+fa[0-7],5
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fcoshz.s\s+fa[0-7],fa[0-7]
+**  mips\.ffrecip.s\s+fa[0-7],fa[0-7]
+**  mips\.fsinhz.s\s+fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	ret
+
 */
 extern float tanf(float x);
 float test_tanf(float x) {
@@ -42,7 +46,12 @@ float test_tanf(float x) {
 
 /*
 **test_atanf:
-**	mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  fli\.s\s+fa[0-7],0.25
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  fmin\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	mips\.flti\.s\s+fa[0-7],3
 **	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	ret
@@ -180,10 +189,17 @@ float test_acosf(float x) {
 
 /*
 **test_atan2f:
-**	fdiv\.s\s+fa[0-7],fa[0-7],fa[0-7]
-**	mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
-**	mips\.flti\.s\s+fa[0-7],3
-**	fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.ffrecip\.s\s+fa[0-7],fa[0-7]
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  mips\.fatanhz\.s\s+fa[0-7],fa[0-7]
+**  fli\.s\s+fa[0-7],0.25
+**  fsub\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  fmax\.s\s+fa[0-7],fa[0-7],fa[0-7]
+**  mips\.flti\.s fa[0-7],3
+**  fmul\.s\s+fa[0-7],fa[0-7],fa[0-7]
 **	ret
 */
 extern float atan2f(float x, float y);
