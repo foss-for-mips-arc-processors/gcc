@@ -1042,31 +1042,31 @@ static const struct riscv_tune_param andes_45_tune_info = {
 
 /* Costs to use when optimizing for Synopsys RHX-100.  */
 static const struct riscv_tune_param arcv_rhx100_tune_info = {
-  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},      /* fp_add */
-  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},      /* fp_mul */
-  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},    /* fp_div */
-  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},      /* int_mul */
-  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},    /* int_div */
-  4,					       /* issue_rate */
-  9,					       /* branch_cost */
-  2,					       /* memory_cost */
-  8,					       /* fmv_cost */
-  false,				       /* slow_unaligned_access */
-  false,				       /* vector_unaligned_access */
-  true,					       /* use_divmod_expansion */
-  false,				       /* overlap_op_by_pieces */
-  true,					       /* use_zero_stride_load */
-  false,				       /* speculative_sched_vsetvl */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},       /* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},       /* fp_mul */
+  {COSTS_N_INSNS (20), COSTS_N_INSNS (20)},     /* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},       /* int_mul */
+  {COSTS_N_INSNS (27), COSTS_N_INSNS (43)},     /* int_div */
+  4,						/* issue_rate */
+  9,						/* branch_cost */
+  2,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  false,					/* vector_unaligned_access */
+  true,						/* use_divmod_expansion */
+  false,					/* overlap_op_by_pieces */
+  true,						/* use_zero_stride_load */
+  false,					/* speculative_sched_vsetvl */
   (RISCV_FUSE_MULT_ADD | RISCV_FUSE_LI_BRANCH
    | RISCV_FUSE_ADJACENT_LOAD | RISCV_FUSE_ADJACENT_STORE
    | RISCV_FUSE_LS_UPDATE | RISCV_FUSE_LUI_ST
    | RISCV_FUSE_LI_STORE | RISCV_FUSE_BFEXT_SRLI
-   | RISCV_FUSE_LUI_LD_REV),  		       /* fusible_ops */
-  NULL,					       /* vector cost */
-  NULL,					       /* function_align */
-  NULL,					       /* jump_align */
-  NULL,					       /* loop_align */
-  true,					       /* prefer-agnostic.  */
+   | RISCV_FUSE_LUI_LD_REV),			/* fusible_ops */
+  NULL,						/* vector cost */
+  NULL,						/* function_align */
+  NULL,						/* jump_align */
+  NULL,						/* loop_align */
+  true,						/* prefer-agnostic.  */
 };
 
 
