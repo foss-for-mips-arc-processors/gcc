@@ -1866,16 +1866,21 @@ true_regnum (const_rtx x)
 {
   if (REG_P (x))
     {
-      if (REGNO (x) >= FIRST_PSEUDO_REGISTER
-	  && (lra_in_progress || reg_renumber[REGNO (x)] >= 0))
+      /* Before LRA, reg_renumber need not cover pseudos created since it
+	 was last resized (e.g. by ira_emit during regional allocation).  */
+      if (! HARD_REGISTER_P (x)
+	  && reg_renumber
+	  && (lra_in_progress
+	      || (reload_completed && reg_renumber[REGNO (x)] >= 0)))
 	return reg_renumber[REGNO (x)];
       return REGNO (x);
     }
-  if (GET_CODE (x) == SUBREG)
+  if (SUBREG_P (x))
     {
       int base = true_regnum (SUBREG_REG (x));
+
       if (base >= 0
-	  && base < FIRST_PSEUDO_REGISTER)
+	  && HARD_REGISTER_NUM_P (base))
 	{
 	  struct subreg_info info;
 
@@ -1883,7 +1888,6 @@ true_regnum (const_rtx x)
 			   ? (unsigned) base : REGNO (SUBREG_REG (x)),
 			   GET_MODE (SUBREG_REG (x)),
 			   SUBREG_BYTE (x), GET_MODE (x), &info);
-
 	  if (info.representable_p)
 	    return base + info.offset;
 	}

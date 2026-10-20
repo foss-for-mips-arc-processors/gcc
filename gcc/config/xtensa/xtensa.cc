@@ -543,44 +543,6 @@ xtensa_fp_const (const REAL_VALUE_TYPE *rval)
 }
 
 
-/* This is just like the standard true_regnum() function except that it
-   works even when reg_renumber is not initialized.  */
-
-static int
-xt_true_regnum (rtx x)
-{
-  if (REG_P (x))
-    {
-      /* Before LRA, reg_renumber need not cover pseudos created since it
-	 was last resized (e.g. by ira_emit during regional allocation).  */
-      if (! HARD_REGISTER_P (x)
-	  && reg_renumber
-	  && (lra_in_progress
-	      || (reload_completed && reg_renumber[REGNO (x)] >= 0)))
-	return reg_renumber[REGNO (x)];
-      return REGNO (x);
-    }
-  if (SUBREG_P (x))
-    {
-      int base = xt_true_regnum (SUBREG_REG (x));
-
-      if (base >= 0
-	  && HARD_REGISTER_NUM_P (base))
-	{
-	  struct subreg_info info;
-
-	  subreg_get_info (lra_in_progress
-			   ? (unsigned) base : REGNO (SUBREG_REG (x)),
-			   GET_MODE (SUBREG_REG (x)),
-			   SUBREG_BYTE (x), GET_MODE (x), &info);
-	  if (info.representable_p)
-	    return base + info.offset;
-	}
-    }
-  return -1;
-}
-
-
 int
 xtensa_valid_move (machine_mode mode, rtx *operands)
 {
@@ -592,12 +554,12 @@ xtensa_valid_move (machine_mode mode, rtx *operands)
       if (xtensa_tls_referenced_p (operands[1]))
 	return FALSE;
 
-      if (!ACC_REG_P (xt_true_regnum (operands[0])))
+      if (!ACC_REG_P (true_regnum (operands[0])))
 	return TRUE;
     }
 
   if (register_operand (operands[1], mode)
-      && !ACC_REG_P (xt_true_regnum (operands[1])))
+      && !ACC_REG_P (true_regnum (operands[1])))
     return TRUE;
 
   return FALSE;
@@ -3213,7 +3175,7 @@ print_operand (FILE *file, rtx x, int letter)
     {
     case 'D':
       if (REG_P (x) || SUBREG_P (x))
-	fprintf (file, "%s", reg_names[xt_true_regnum (x) + 1]);
+	fprintf (file, "%s", reg_names[true_regnum (x) + 1]);
       else
 	output_operand_lossage ("invalid %%D value");
       break;
@@ -3383,7 +3345,7 @@ print_operand (FILE *file, rtx x, int letter)
 
     default:
       if (REG_P (x) || SUBREG_P (x))
-	fprintf (file, "%s", reg_names[xt_true_regnum (x)]);
+	fprintf (file, "%s", reg_names[true_regnum (x)]);
       else if (MEM_P (x))
 	output_address (GET_MODE (x), XEXP (x, 0));
       else if (CONST_INT_P (x))
@@ -4524,7 +4486,7 @@ xtensa_secondary_reload (bool in_p, rtx x, reg_class_t rclass,
 	sri->icode = CODE_FOR_reloadhi_literal;
     }
 
-  regno = xt_true_regnum (x);
+  regno = true_regnum (x);
   if (ACC_REG_P (regno))
     return ((rclass == GR_REGS || rclass == RL_REGS) ? NO_REGS : RL_REGS);
   if (rclass == ACC_REG)
