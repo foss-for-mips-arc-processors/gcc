@@ -343,6 +343,9 @@ static poly_int64 epilogue_cfa_sp_offset;
 /* Which tuning parameters to use.  */
 static const struct riscv_tune_param *tune_param;
 
+/* Speed tuning parameters, not swapped for -Os.  */
+static const struct riscv_tune_param *riscv_speed_tune_param;
+
 /* Which automaton to use for tuning.  */
 enum riscv_microarchitecture_type riscv_microarchitecture;
 
@@ -12475,9 +12478,10 @@ riscv_override_options_internal (struct gcc_options *opts)
   riscv_microarchitecture = cpu->microarchitecture;
   if (riscv_microarchitecture == spacemit_x60)
     opts->x_TARGET_ADJUST_LMUL_COST = 1;
+  riscv_speed_tune_param = cpu->tune_param;
   tune_param = opts->x_optimize_size
-		 ? &optimize_size_tune_info
-		 : cpu->tune_param;
+	       ? &optimize_size_tune_info
+	       : riscv_speed_tune_param;
 
   /* Enable scheduling fusion for load/store-pair tunes.  */
   if (!OPTION_SET_P (flag_schedule_fusion))
@@ -12592,6 +12596,11 @@ riscv_override_options_after_change (void)
     }
   else if (!OPTION_SET_P (flag_cunroll_grow_size))
     flag_cunroll_grow_size = flag_peel_loops || optimize >= 3;
+
+  if (riscv_speed_tune_param)
+    tune_param = optimize_size
+		 ? &optimize_size_tune_info
+		 : riscv_speed_tune_param;
 
   /* Restore the tune's fusion default after optimization option changes.
      The initial option override sets tune_param later.  */
