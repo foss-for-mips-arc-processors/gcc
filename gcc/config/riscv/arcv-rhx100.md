@@ -53,9 +53,11 @@
   "arcv_rhx100_issueA_fuse0 + arcv_rhx100_DIV")
 
 (define_insn_reservation "arcv_rhx100_mpy32_insn" 4
-  (and (eq_attr "tune" "arcv_rhx100,arcv_rpx100")
-       (eq_attr "type" "imul")
-       (eq_attr "mode" "SI"))
+  (ior (and (eq_attr "tune" "arcv_rhx100")
+	    (eq_attr "type" "imul"))
+       (and (eq_attr "tune" "arcv_rpx100")
+	    (eq_attr "type" "imul")
+	    (eq_attr "mode" "SI")))
   "arcv_rhx100_issueA_fuse0 + arcv_rhx100_MPY")
 
 (define_insn_reservation "arcv_rhx100_mpy64l_insn" 6
