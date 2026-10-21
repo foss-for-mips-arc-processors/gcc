@@ -40,7 +40,8 @@ along with GCC; see the file COPYING3.  If not see
 bool
 riscv_macro_fusion_p (void)
 {
-  return riscv_get_fusible_ops () != RISCV_FUSE_NOTHING;
+  return riscv_get_fusible_ops () != RISCV_FUSE_NOTHING
+	 || riscv_microarchitecture == arcv_rpx100;
 }
 
 /* Return true iff the instruction fusion described by OP is enabled.  */
