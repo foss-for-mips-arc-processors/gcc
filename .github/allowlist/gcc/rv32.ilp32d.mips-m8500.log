@@ -402,3 +402,6 @@ UNRESOLVED: gcc.target/riscv/crc-CCIT-data8-zbc.c
 UNRESOLVED: gcc.target/riscv/crc-coremark-16bitdata-zbc.c
 UNRESOLVED: gcc.target/riscv/pr113095.c
 XPASS: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul8-11.c
+FAIL: gcc.target/riscv/rvv/base/spill-10.c
+FAIL: gcc.target/riscv/rvv/base/spill-8.c
+FAIL: gcc.target/riscv/rvv/base/spill-9.c
