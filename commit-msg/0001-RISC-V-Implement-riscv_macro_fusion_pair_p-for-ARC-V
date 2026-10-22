@@ -8,11 +8,6 @@ Add the RHX-100 macro-op fusion cases to the table in riscv-fusion.cc
 and enable them from the tune's fusible_ops field.  Also split BFEXT into
 SRLI / SRAI.
 
-Pairs that compete with adjacent load/store (ls-update, lui-st,
-li-store) bail out when the next insn is a better adjacent memop
-candidate.  Those, plus adjacent load/store themselves, wait until after
-reload.
-
 Fused_MAC only matches when the product is rs1 of the add:
   mul rd,...; add rd,rd,rs
 
@@ -47,13 +42,7 @@ RISCV_FUSE_BFEXT_SRAI for other tunes.
 gcc/ChangeLog:
 
 	* config/riscv/riscv-fusion.cc (LUI_NONZERO_OPERAND): New macro.
-	(riscv_fusion_enabled_p): Make non-static.
-	(riscv_adjacent_memops_p): New function.
-	(riscv_defer_for_adjacent_memop_p): New function.
 	(riscv_ls_update_pair_p): New function.
-	(riscv_fuse_lui_ld_pair_p): New function.
-	(riscv_fuse_lui_ld): Use riscv_fuse_lui_ld_pair_p.
-	(riscv_fuse_bfext_shift_p): New function.
 	(riscv_fuse_bfext_srli): New function.
 	(riscv_fuse_bfext_srai): New function.
 	(riscv_fuse_mult_add): New function.
@@ -64,6 +53,7 @@ gcc/ChangeLog:
 	(riscv_lui_st_pair_p): New function.
 	(riscv_fuse_lui_st): New function.
 	(riscv_fuse_li_store): New function.
+	(riscv_fuse_lui_ld_independent_p): New function.
 	(riscv_fuse_lui_ld_reversible): New function.
 	* config/riscv/riscv-protos.h (enum riscv_fusion_pairs): Rename
 	RISCV_FUSE_BFEXT to RISCV_FUSE_BFEXT_SRLI; add the RHX-100 fusion
