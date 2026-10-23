@@ -4,6 +4,7 @@ FAIL: g++.target/riscv/rvv/base/pr122448.C
 FAIL: g++.target/riscv/rvv/base/pr123808-2.C
 FAIL: g++.target/riscv/rvv/base/pr123808.C
 FAIL: gcc.dg/tree-ssa/pr125734.c
+FAIL: gcc.dg/vect/pr113371.c
 FAIL: gcc.dg/vect/pr53773.c
 FAIL: gcc.dg/vect/pr65310.c
 FAIL: gcc.dg/vect/pr88598-1.c
