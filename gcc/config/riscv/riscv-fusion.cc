@@ -1003,11 +1003,11 @@ void
 riscv_sched_fusion_priority (rtx_insn *insn, int max_pri,
 			     int *fusion_pri, int *pri)
 {
-  /* RHX-100 groups adjacent scalar pairs itself.  Other tunes use the
-     generic load/store-pair priority below.  */
-  if (TARGET_ARCV_RHX100
-      && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
-    return;
+  // /* RHX-100 groups adjacent scalar pairs itself.  Other tunes use the
+  //    generic load/store-pair priority below.  */
+  // if (TARGET_ARCV_RHX100
+  //     && arcv_sched_fusion_priority (insn, max_pri, fusion_pri, pri))
+  //   return;
 
   struct riscv_fusion_mem_info mem;
   unsigned int base_regno;
