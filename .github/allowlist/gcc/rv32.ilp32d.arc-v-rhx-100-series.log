@@ -3,7 +3,6 @@
 FAIL: g++.target/riscv/abi/empty-struct-11.cc
 FAIL: g++.target/riscv/abi/empty-struct-9.cc
 FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul8-11.c
-FAIL: gcc.dg/vect/costmodel/riscv/rvv/dynamic-lmul8-12.c
 FAIL: gcc.target/riscv/attribute-1.c
 FAIL: gcc.target/riscv/attribute-5.c
 FAIL: gcc.target/riscv/core_bench_list.c
@@ -31,6 +30,16 @@ FAIL: gcc.target/riscv/ext-dce-1.c
 FAIL: gcc.target/riscv/pr112478.c
 FAIL: gcc.target/riscv/pr113095.c
 FAIL: gcc.target/riscv/pr126426.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_vv-f16-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_vv-f32-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_wv-f16-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_wv-f16-m2.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_wv-f32-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwadd_wv-f32-m2.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwmul_vv-f16-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwmul_vv-f32-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwsub_vv-f16-m1.c
+FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vfwsub_vv-f32-m1.c
 FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vwadd_vv-i16-m1.c
 FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vwadd_vv-i32-m1.c
 FAIL: gcc.target/riscv/rvv/autovec/group_overlap/vwadd_vv-i8-m1.c
@@ -413,7 +422,6 @@ FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-14.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-15.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-19.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-20.c
-FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-23.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-3.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-4.c
 FAIL: gcc.target/riscv/rvv/vsetvl/vsetvl-5.c
