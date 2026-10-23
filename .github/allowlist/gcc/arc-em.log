@@ -4,15 +4,10 @@ FAIL: c-c++-common/musttail19.c
 FAIL: c-c++-common/musttail28.c
 FAIL: c-c++-common/musttail30.c
 FAIL: c-c++-common/musttail8.c
-FAIL: c-c++-common/torture/builtin-arith-overflow-12.c
-FAIL: c-c++-common/torture/builtin-arith-overflow-13.c
 FAIL: g++.dg/debug/dwarf2/non-virtual-thunk.C
 FAIL: g++.dg/ext/musttail1.C
 FAIL: g++.dg/ext/musttail2.C
 FAIL: g++.dg/ext/musttail3.C
-FAIL: g++.dg/ext/vector21.C
-FAIL: g++.dg/opt/vectcond-1.C
-FAIL: g++.dg/pr94920-1.C
 FAIL: g++.dg/torture/musttail1.C
 FAIL: gcc.dg/debug/btf/btf-datasec-1.c
 FAIL: gcc.dg/lto/toplevel-extended-asm-1
@@ -22,6 +17,7 @@ FAIL: gcc.dg/lto/toplevel-simple-asm-2
 FAIL: gcc.dg/memcmp-1.c
 FAIL: gcc.dg/plugin/crash-test-nested-ice.c
 FAIL: gcc.dg/plugin/crash-test-nested-write-through-null.c
+FAIL: gcc.dg/pr127965-1.c
 FAIL: gcc.dg/torture/inline-mem-cmp-1.c
 FAIL: gcc.dg/torture/inline-mem-cpy-1.c
 FAIL: gcc.dg/torture/inline-mem-cpy-cmp-1.c
@@ -32,7 +28,6 @@ FAIL: gcc.dg/tree-prof/stringop-1.c
 FAIL: gcc.dg/tree-prof/time-profiler-2.c
 FAIL: gcc.dg/tree-prof/val-prof-8.c
 FAIL: gcc.dg/tree-prof/val-prof-9.c
-FAIL: gcc.dg/tree-ssa/minmax-swar-5.c
 FAIL: gcc.dg/tree-ssa/pr125734.c
 FAIL: gcc.dg/tree-ssa/pr83403-1.c
 FAIL: gcc.dg/tree-ssa/pr83403-2.c
@@ -48,8 +43,9 @@ FAIL: gcc.target/arc/jumptable.c
 FAIL: gcc.target/arc/mult-cmp0.c
 FAIL: gcc.target/arc/overflow-1.c
 FAIL: gcc.target/arc/overflow-2.c
+FAIL: gcc.target/arc/pic-2.c
 FAIL: tmpdir-g++.dg-struct-layout-1/t001
-UNRESOLVED: g++.dg/pr94920-1.C
+UNRESOLVED: gcc.dg/pr127965-1.c
 UNRESOLVED: gcc.dg/torture/pr23821.c
 UNRESOLVED: gcc.dg/tree-prof/indir-call-prof-malloc.c
 UNRESOLVED: gcc.dg/tree-prof/pr79587.c
