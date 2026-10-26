@@ -2637,7 +2637,13 @@ riscv*-*-linux*)
 	xno) ;;
 	xyes)
     case ${target} in
-      *64-gf-*) tmake_file="${tmake_file} riscv/t-arcv-linux" ;;
+      *64-gf-*)
+        tmake_file="${tmake_file} riscv/t-arcv-linux"
+        # Same selector as riscv/elf.h.  linux.h would otherwise
+        # keep the last lp64d library, the i8500 one, as the
+        # rv64gc default.
+        tm_defines="${tm_defines} RISCV_USE_CUSTOMISED_MULTI_LIB=select_by_abi_arch_cmodel"
+        ;;
       *) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
     esac
     ;;
