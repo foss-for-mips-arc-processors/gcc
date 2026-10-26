@@ -67,4 +67,9 @@ along with GCC; see the file COPYING3.  If not see
    "/lib/ "					\
    "/usr/lib/ "
 
+/* Selecting by ABI keeps the last library of that ABI.  A target whose
+   multilib set has more than one library per ABI can override this from
+   config.gcc, before this file is included.  */
+#ifndef RISCV_USE_CUSTOMISED_MULTI_LIB
 #define RISCV_USE_CUSTOMISED_MULTI_LIB select_by_abi
+#endif
