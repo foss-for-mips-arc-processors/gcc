@@ -60,13 +60,14 @@ riscv_fusion_enabled_p (enum riscv_fusion_pairs op)
   return riscv_get_fusible_ops () & op;
 }
 
-/* Extract the single sets from PREV and CURR.  Reject conditional jumps,
-   which cannot form a fusion pair.  */
+/* Extract the single sets from PREV and CURR.  Unless ALLOW_CONDJUMP_P,
+   reject conditional jumps.  */
 
 static bool
 riscv_fuse_sets_p (rtx_insn *prev, rtx_insn *curr,
 		     rtx *prev_set_out = NULL,
-		     rtx *curr_set_out = NULL)
+		     rtx *curr_set_out = NULL,
+		     bool allow_condjump_p = false)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
@@ -74,7 +75,8 @@ riscv_fuse_sets_p (rtx_insn *prev, rtx_insn *curr,
     *prev_set_out = prev_set;
   if (curr_set_out)
     *curr_set_out = curr_set;
-  return prev_set && curr_set && !any_condjump_p (curr);
+  return (prev_set && curr_set
+	  && (allow_condjump_p || !any_condjump_p (curr)));
 }
 
 /* Extract a word-form binary operation with code CODE:
@@ -2152,9 +2154,8 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set)
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
     return false;
 
   rtx prev_src = SET_SRC (prev_set);
@@ -2182,9 +2183,8 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set)
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set, true))
     return false;
 
   if (get_attr_type (prev) != TYPE_MOVE
@@ -2236,9 +2236,7 @@ riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
+  if (!riscv_fuse_sets_p (prev, curr))
     return false;
 
   return (riscv_ls_update_pair_p (prev, curr)
@@ -2271,9 +2269,8 @@ riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
 static bool
 riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
     return false;
 
   return (riscv_lui_st_pair_p (prev, curr, prev_set)
@@ -2287,9 +2284,8 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
 {
-  rtx prev_set = single_set (prev);
-  rtx curr_set = single_set (curr);
-  if (!prev_set || !curr_set || any_condjump_p (curr))
+  rtx prev_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, NULL))
     return false;
 
   struct riscv_fusion_mem_info mem;
@@ -2310,9 +2306,8 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
 static bool
 riscv_fuse_lui_ld_independent_p (rtx_insn *lui, rtx_insn *load)
 {
-  rtx lui_set = single_set (lui);
-  rtx load_set = single_set (load);
-  if (!lui_set || !load_set || any_condjump_p (load))
+  rtx lui_set;
+  if (!riscv_fuse_sets_p (lui, load, &lui_set, NULL))
     return false;
 
   struct riscv_fusion_mem_info mem;
