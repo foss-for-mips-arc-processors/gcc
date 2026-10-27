@@ -606,11 +606,12 @@ riscv_set_is_shift_type_p (rtx set, rtx_code code, bool *word_p,
 
 /* Match a left-shift/right-shift fusion pair.  ALLOW_WORD_P accepts the
    equivalent RV64 word forms and requires both instructions to have the same
-   wordness.  ALLOW_ARITHMETIC_P accepts an arithmetic right shift.  */
+   wordness.  ARITHMETIC_P accepts only an arithmetic right shift,
+   otherwise only a logical right shift is accepted.  */
 
 static bool
 riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
-			   bool allow_word_p, bool allow_arithmetic_p)
+			   bool allow_word_p, bool arithmetic_p)
 {
   rtx prev_set, curr_set;
   if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
@@ -624,13 +625,14 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
     = (allow_word_p
 	? riscv_set_is_shift_type_p (prev_set, ASHIFT, &prev_word_p)
 	: riscv_set_is_slli_p (prev_set));
-  bool curr_match_p
-    = (allow_word_p
-	? riscv_set_is_shift_type_p (curr_set, LSHIFTRT, &curr_word_p)
-	: riscv_set_is_srli_p (curr_set));
+  bool curr_match_p = false;
 
-  if (!curr_match_p && allow_arithmetic_p)
+  if (arithmetic_p)
     curr_match_p = riscv_set_is_srai_p (curr_set);
+  else
+    curr_match_p = (allow_word_p
+		? riscv_set_is_shift_type_p (curr_set, LSHIFTRT, &curr_word_p)
+		: riscv_set_is_srli_p (curr_set));
 
   if (!prev_match_p
       || !curr_match_p
@@ -1742,13 +1744,27 @@ riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
   return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_FLDFST_PAIR_DEC);
 }
 
-/* Check for RISCV_FUSE_BFEXT fusion.
+/* Check for RISCV_FUSE_BFEXT_SRLI fusion.
    prev (slli) == (set (reg rd1)
 		       (ashift (reg rs1) (const_int shamt1)))
-   curr (one of the following):
+   curr:
      (srli) == (set (reg rd2)
 		    (lshiftrt (reg rd1)
 			      (const_int shamt2)))
+
+   Constraints:
+     rd1 == rd2.  */
+
+static bool
+riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_shift_pair_p (prev, curr, false, false);
+}
+
+/* Check for RISCV_FUSE_BFEXT_SRAI fusion.
+   prev (slli) == (set (reg rd1)
+		       (ashift (reg rs1) (const_int shamt1)))
+   curr:
      (srai) == (set (reg rd2)
 		    (ashiftrt (reg rd1)
 			      (const_int shamt2)))
@@ -1757,7 +1773,7 @@ riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
      rd1 == rd2.  */
 
 static bool
-riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
+riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
 {
   return riscv_fuse_shift_pair_p (prev, curr, false, true);
 }
@@ -2124,31 +2140,6 @@ riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
   return riscv_regno (mem.reg) == c_rs2;
 }
 
-
-/* Check for RISCV_FUSE_BFEXT_SRLI fusion.
-   prev (slli) == (set (reg rd) (ashift (reg rs) (const_int)))
-   curr (srli) == (set (reg rd) (lshiftrt (reg rd) (const_int)))
-
-   This is the logical half of RISCV_FUSE_BFEXT.  RHX-100 enables only
-   this half, so slli+srai is not fused for that tune.  */
-
-static bool
-riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
-{
-  return riscv_fuse_shift_pair_p (prev, curr, false, false);
-}
-
-/* Check for RISCV_FUSE_BFEXT_SRAI fusion.
-   prev (slli) == (set (reg rd) (ashift (reg rs) (const_int)))
-   curr (srai) == (set (reg rd) (ashiftrt (reg rd) (const_int)))  */
-
-static bool
-riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
-{
-  return (riscv_fuse_shift_pair_p (prev, curr, false, true)
-	  && riscv_set_is_srai_p (single_set (curr)));
-}
-
 /* Check for RISCV_FUSE_MULT_ADD fusion.
    On RV32:
    prev (mul) == (set (reg rD) (mult:SI (reg:SI rS1) (reg:SI rS2)))
@@ -2407,8 +2398,6 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_fldfst_pair_inc, "RISCV_FUSE_FLDFST_PAIR_INC" },
   { RISCV_FUSE_FLDFST_PAIR_DEC,
     riscv_fuse_fldfst_pair_dec, "RISCV_FUSE_FLDFST_PAIR_DEC" },
-  { RISCV_FUSE_BFEXT,
-    riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_SLLI_SRLI,
     riscv_fuse_slli_srli, "RISCV_FUSE_SLLI_SRLI" },
   { RISCV_FUSE_SRLI_ADD,
