@@ -32,3 +32,9 @@ MULTILIB_REQUIRED   += march=rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa/mabi=lp64d
 # Configurations for RPX-100
 MULTILIB_REQUIRED   += march=rv64imac_zcb_zba_zbb_zbs/mabi=lp64/mtune=arc-v-rpx-100-series/mcmodel=medany
 MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs/mabi=lp64d/mtune=arc-v-rpx-100-series/mcmodel=medany
+
+# Install shared libs where ld.so searches (/lib64/<abi>), not under
+# per-CPU build directories.  t-linux applies this after rewriting
+# MULTILIB_DIRNAMES.
+RISCV_LINUX_ABI_OSDIRS = yes
+riscv_default_abi := $(patsubst TARGET_RISCV_DEFAULT_ABI=%,%,$(filter TARGET_RISCV_DEFAULT_ABI=%,$(tm_defines)))
