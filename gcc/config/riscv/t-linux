@@ -1,20 +1,5 @@
 # Only XLEN and ABI affect Linux multilib dir names, e.g. /lib32/ilp32d/
 MULTILIB_DIRNAMES := $(patsubst rv32%,lib32,$(patsubst rv64%,lib64,$(MULTILIB_DIRNAMES)))
-
-ifeq ($(RISCV_LINUX_ABI_OSDIRS),yes)
-# One runtime directory per ABI, matching ld.so (/lib64/lp64, /lib64/lp64d).
-# GCC build dirs still use the full MULTILIB_DIRNAMES (per-CPU/cmodel).
-# .= must come first: genmultilib stops at the first positional name.
-# Mapping left sides use "." for "=" as required by genmultilib.
-ifneq ($(riscv_default_abi),)
-MULTILIB_OSDIRNAMES := .=../lib$(if $(filter ilp32%,$(riscv_default_abi)),32,64)/$(riscv_default_abi)
-else
-MULTILIB_OSDIRNAMES :=
-endif
-# Each MULTILIB_REQUIRED combo → ../lib{32,64}/<abi>
-MULTILIB_OSDIRNAMES += $(foreach r,$(MULTILIB_REQUIRED),$(subst =,.,$(r))=../lib$(if $(filter ilp32%,$(patsubst mabi=%,%,$(filter mabi=%,$(subst /, ,$(r))))),32,64)/$(patsubst mabi=%,%,$(filter mabi=%,$(subst /, ,$(r)))))
-else
 MULTILIB_OSDIRNAMES := $(patsubst lib%,../lib%,$(MULTILIB_DIRNAMES))
-endif
 
 MULTIARCH_DIRNAME := $(call if_multiarch,$(firstword $(subst -, ,$(target)))-linux-gnu)
