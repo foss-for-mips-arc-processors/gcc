@@ -79,7 +79,14 @@ jobs:
           # via --with-gcc-src, so we don't initialize the gcc submodule.
           git submodule update --init --depth 1 --recursive binutils
           git submodule update --init --depth 1 --recursive newlib
-          git submodule update --init --depth 1 --recursive dejagnu
+
+          # git.savannah.gnu.org is frequently unavailable, so fetch dejagnu
+          # from our GitHub mirror instead. The mirror doesn't carry the
+          # commit pinned by the submodule, so track a branch tip (--remote).
+          git submodule set-url dejagnu https://github.com/foss-for-mips-arc-processors/dejagnu.git
+          git submodule set-branch --branch arc-2026.09 dejagnu
+          git submodule sync dejagnu
+          git submodule update --init --remote --depth 1 --recursive dejagnu
 
       - name: Configure riscv-gnu-toolchain
         working-directory: riscv-gnu-toolchain
