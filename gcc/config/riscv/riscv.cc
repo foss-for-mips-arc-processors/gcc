@@ -11512,6 +11512,9 @@ riscv_sched_init (FILE *, int, int)
     arcv_sched_init ();
 }
 
+/* Remaining issue slots in the current cycle, for TARGET_SCHED_REORDER2.  */
+static int riscv_cached_can_issue_more;
+
 /* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
 static int
 riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
@@ -11519,19 +11522,19 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
 
   if (TARGET_ARCV_FUSION)
     if (!arcv_can_issue_more_p (riscv_issue_rate (), more))
-      return 0;
+      return riscv_cached_can_issue_more = 0;
 
   if (DEBUG_INSN_P (insn))
-    return more;
+    return riscv_cached_can_issue_more = more;
 
   rtx_code code = GET_CODE (PATTERN (insn));
   if (code == USE || code == CLOBBER)
-    return more;
+    return riscv_cached_can_issue_more = more;
 
   /* GHOST insns are used for blockage and similar cases which
      effectively end a cycle.  */
   if (get_attr_type (insn) == TYPE_GHOST)
-    return 0;
+    return riscv_cached_can_issue_more = 0;
 
   /* If we ever encounter an insn with an unknown type, trip
      an assert so we can find and fix this problem.  */
@@ -11567,9 +11570,9 @@ riscv_sched_variable_issue (FILE *, int, rtx_insn *insn, int more)
     }
 
   if (TARGET_ARCV_FUSION)
-    return arcv_sched_variable_issue (insn, more);
+    return riscv_cached_can_issue_more = arcv_sched_variable_issue (insn, more);
 
-  return more - 1;
+  return riscv_cached_can_issue_more = more - 1;
 }
 
 /* Implement TARGET_SCHED_REORDER.  The goal here is to look at the ready
@@ -12492,7 +12495,7 @@ riscv_sched_reorder2 (FILE *file ATTRIBUTE_UNUSED,
   if (TARGET_ARCV_FUSION)
     return arcv_sched_reorder2 (ready, n_readyp);
 
-  return 0;
+  return riscv_cached_can_issue_more;
 }
 
 /* Auxiliary function to emit RISC-V ELF attribute. */
