@@ -83,10 +83,12 @@ jobs:
           # git.savannah.gnu.org is frequently unavailable, so fetch dejagnu
           # from our GitHub mirror instead. The mirror doesn't carry the
           # commit pinned by the submodule, so track a branch tip (--remote).
+          # --no-single-branch: a shallow clone otherwise only fetches the
+          # mirror's default branch and the --remote lookup fails.
           git submodule set-url dejagnu https://github.com/foss-for-mips-arc-processors/dejagnu.git
           git submodule set-branch --branch arc-2026.09 dejagnu
           git submodule sync dejagnu
-          git submodule update --init --remote --depth 1 --recursive dejagnu
+          git submodule update --init --remote --depth 1 --no-single-branch --recursive dejagnu
 
       - name: Configure riscv-gnu-toolchain
         working-directory: riscv-gnu-toolchain
