@@ -1,0 +1,23 @@
+empty =
+space = $(empty) $(empty)
+
+MULTILIB_OPTIONS =
+MULTILIB_DIRNAMES =
+MULTILIB_REQUIRED =
+MULTILIB_REUSE =
+
+# ABI multilib for a single RPX-100 Linux toolchain (tune via --with-tune=).
+arcv_march_variants = rv64imac_zcb_zba_zbb_zbs
+arcv_march_variants += rv64imafdc_zcb_zba_zbb_zbs
+
+MULTILIB_OPTIONS    += $(subst $(space),/,$(patsubst %,march=%,$(arcv_march_variants)))
+MULTILIB_DIRNAMES   += $(arcv_march_variants)
+
+MULTILIB_OPTIONS    += mabi=lp64/mabi=lp64d
+MULTILIB_DIRNAMES   += lp64      lp64d
+
+MULTILIB_OPTIONS    += mcmodel=medany
+MULTILIB_DIRNAMES   += medany
+
+MULTILIB_REQUIRED   += march=rv64imac_zcb_zba_zbb_zbs/mabi=lp64/mcmodel=medany
+MULTILIB_REQUIRED   += march=rv64imafdc_zcb_zba_zbb_zbs/mabi=lp64d/mcmodel=medany

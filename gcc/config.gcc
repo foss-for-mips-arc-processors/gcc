@@ -2638,10 +2638,23 @@ riscv*-*-linux*)
 	xyes)
 		case ${target} in
 		*64-gf-*)
-			echo "Error: --enable-multilib is not supported for ${target}." 1>&2
-			echo "Build separate toolchains per CPU with --disable-multilib" 1>&2
-			echo "and --with-arch=/--with-abi=/--with-tune=." 1>&2
-			exit 1
+			# One CPU per toolchain (--with-tune=); ABI multilib only (lp64/lp64d).
+			case ${with_tune} in
+			arc-v-rpx-100-series)
+				tmake_file="${tmake_file} riscv/t-arcv-linux-rpx100"
+				;;
+			mips-i8500)
+				tmake_file="${tmake_file} riscv/t-arcv-linux-i8500"
+				;;
+			"")
+				echo "Error: --with-tune= is required for multilib ${target}." 1>&2
+				exit 1
+				;;
+			*)
+				echo "Error: unsupported --with-tune=${with_tune} for multilib ${target}." 1>&2
+				exit 1
+				;;
+			esac
 			;;
 		*) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
 		esac
