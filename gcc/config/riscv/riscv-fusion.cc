@@ -365,12 +365,40 @@ riscv_insn_is_add_type_p (rtx_insn *insn, bool *word_p = NULL)
 }
 
 /* Matches an mv or li instruction:
-     (set (reg rd) (reg rs1))
-   or:
      (set (reg rd) (const_int imm12)).  */
 
 static bool
-riscv_insn_is_mv_li_p (rtx_insn *insn)
+riscv_insn_is_li_p (rtx_insn *insn)
+{
+  rtx set = single_set (insn);
+  if (!set)
+    return false;
+
+  rtx dest = SET_DEST (set);
+  rtx src = SET_SRC (set);
+
+  /* Pseudos are valid GPR candidates before register allocation.  */
+  if (get_attr_type (insn) != TYPE_MOVE
+      || get_attr_length (insn) > 4
+      || !REG_P (dest)
+      || (HARD_REGISTER_P (dest) && !GP_REG_P (REGNO (dest))))
+    return false;
+
+  enum attr_move_type move_type = get_attr_move_type (insn);
+  if (move_type == MOVE_TYPE_CONST
+      && CONST_INT_P (src)
+      /* Distinguish an ADDI-based LI from other single-insn constants.  */
+      && SMALL_OPERAND (INTVAL (src)))
+    return true;
+
+  return false;
+}
+
+/* Matches an mv or li instruction:
+     (set (reg rd) (reg rs1)).  */
+
+static bool
+riscv_insn_is_mv_p (rtx_insn *insn)
 {
   rtx set = single_set (insn);
   if (!set)
@@ -393,13 +421,18 @@ riscv_insn_is_mv_li_p (rtx_insn *insn)
 	  || GP_REG_P (REGNO (src))))
     return true;
 
-  if (move_type == MOVE_TYPE_CONST
-      && CONST_INT_P (src)
-      /* Distinguish an ADDI-based LI from other single-insn constants.  */
-      && SMALL_OPERAND (INTVAL (src)))
-    return true;
-
   return false;
+}
+
+/* Matches an mv or li instruction:
+     (set (reg rd) (reg rs1))
+   or:
+     (set (reg rd) (const_int imm12)).  */
+
+static bool
+riscv_insn_is_mv_li_p (rtx_insn *insn)
+{
+  return riscv_insn_is_mv_p (insn) || riscv_insn_is_li_p (insn);
 }
 
 /* Matches an addi-type instruction:
@@ -2177,7 +2210,7 @@ riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
 }
 
 /* Check for RISCV_FUSE_LI_BRANCH fusion.
-   prev (li)     == (set (reg:DI rD) (const_int N))
+   prev (li)     == (set (reg:DI rD) (const_int imm12))
    curr (branch) == conditional branch using rD  */
 
 static bool
@@ -2187,8 +2220,7 @@ riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
   if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set, true))
     return false;
 
-  if (get_attr_type (prev) != TYPE_MOVE
-      || get_attr_move_type (prev) != MOVE_TYPE_CONST)
+  if (!riscv_insn_is_li_p (prev))
     return false;
 
   if (!any_condjump_p (curr))
@@ -2278,7 +2310,7 @@ riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
 }
 
 /* Check for RISCV_FUSE_LI_STORE fusion.
-   prev (li) == (set (reg:DI rT) (const_int IMM))
+   prev (li) == (set (reg:DI rT) (const_int imm12))
    curr (st) == (set (mem:DI (plus:DI (reg:DI rB) (const_int))) (reg:DI rT))  */
 
 static bool
@@ -2289,8 +2321,7 @@ riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
     return false;
 
   struct riscv_fusion_mem_info mem;
-  if (get_attr_type (prev) == TYPE_MOVE
-      && get_attr_move_type (prev) == MOVE_TYPE_CONST
+  if (riscv_insn_is_li_p (prev)
       && riscv_fuse_mem_p (curr, &mem)
       && mem.type == SCHED_FUSION_ST
       && !mem.fp_p
