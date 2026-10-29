@@ -66,11 +66,6 @@ struct arcv_sched_state {
      opportunities by looking ahead at the next instruction to be
      scheduled.  */
   rtx_insn *last_scheduled_insn;
-
-  /* Cached value of how many more instructions can be issued in the
-     current cycle.  Updated as instructions are scheduled and pipes
-     become occupied.  */
-  short cached_can_issue_more;
 };
 
 static struct arcv_sched_state sched_state;
@@ -90,9 +85,9 @@ int
 arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 {
   if (sched_fusion)
-    return sched_state.cached_can_issue_more;
+    return riscv_cached_can_issue_more;
 
-  if (!sched_state.cached_can_issue_more)
+  if (!riscv_cached_can_issue_more)
     return 0;
 
   /* Fuse double load/store instances missed by sched_fusion.  */
@@ -119,7 +114,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
 	     sched_state.pipeB_scheduled_p = 1;
-	     return sched_state.cached_can_issue_more;
+	     return riscv_cached_can_issue_more;
 	  }
        }
       sched_state.pipeB_scheduled_p = 1;
@@ -159,7 +154,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
 	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	     SCHED_GROUP_P (ready[*n_readyp - 1]) = 1;
-	     return sched_state.cached_can_issue_more;
+	     return riscv_cached_can_issue_more;
 	   }
        }
       sched_state.alu_pipe_scheduled_p = 1;
@@ -199,7 +194,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	   {
 	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
 	     sched_state.alu_pipe_scheduled_p = 1;
-	     sched_state.cached_can_issue_more = 1;
+	     riscv_cached_can_issue_more = 1;
 	     return 1;
 	   }
 	}
@@ -214,12 +209,12 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
   {
     rtx_insn *next_insn = next_nonnote_nondebug_insn_bb (ready[*n_readyp - 1]);
 
-    sched_state.cached_can_issue_more
+    riscv_cached_can_issue_more
       = next_insn && NONDEBUG_INSN_P (next_insn) && SCHED_GROUP_P (next_insn)
 	? 2 : 1;
   }
 
-  return sched_state.cached_can_issue_more;
+  return riscv_cached_can_issue_more;
 }
 
 int
@@ -264,11 +259,11 @@ arcv_can_issue_more_p (int issue_rate, int more, rtx_insn *insn)
   if (!(insn && NONDEBUG_INSN_P (insn) && SCHED_GROUP_P (insn))
       && sched_state.alu_pipe_scheduled_p && sched_state.pipeB_scheduled_p)
     {
-      sched_state.cached_can_issue_more = 0;
+      riscv_cached_can_issue_more = 0;
       return false;
     }
 
-  sched_state.cached_can_issue_more = more;
+  riscv_cached_can_issue_more = more;
 
   return true;
 }
@@ -291,7 +286,7 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
     }
 
   sched_state.last_scheduled_insn = insn;
-  sched_state.cached_can_issue_more = more - 1;
+  riscv_cached_can_issue_more = more - 1;
 
-  return sched_state.cached_can_issue_more;
+  return riscv_cached_can_issue_more;
 }

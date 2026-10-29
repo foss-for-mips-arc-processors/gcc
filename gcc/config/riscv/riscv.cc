@@ -11807,7 +11807,7 @@ struct last_vconfig
 
 /* Ready-list macro-fusion state for the current scheduling block.  */
 
-static int riscv_cached_can_issue_more;
+int riscv_cached_can_issue_more;
 static rtx_insn *riscv_last_scheduled_insn;
 static bool riscv_last_fusion_insn_p;
 
