@@ -939,13 +939,13 @@ extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
 extern int riscv_cached_can_issue_more;
+extern rtx_insn *riscv_last_scheduled_insn;
 
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
 
 /* Routines implemented in arcv.cc.  */
-extern void arcv_sched_init (void);
 extern int arcv_sched_reorder2 (rtx_insn **, int *);
 extern int arcv_sched_adjust_priority (rtx_insn *, int);
 extern int arcv_sched_adjust_cost (rtx_insn *, int, int);

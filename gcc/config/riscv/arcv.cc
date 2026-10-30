@@ -61,22 +61,9 @@ struct arcv_sched_state {
      Pipe B is the second execution pipe, typically used for memory
      operations (loads/stores) but can also handle other instructions.  */
   int pipeB_scheduled_p;
-
-  /* The last instruction that was scheduled.  Used to detect fusion
-     opportunities by looking ahead at the next instruction to be
-     scheduled.  */
-  rtx_insn *last_scheduled_insn;
 };
 
 static struct arcv_sched_state sched_state;
-
-/* Initialize ARCV scheduler state at the beginning of scheduling.  */
-
-void
-arcv_sched_init (void)
-{
-  sched_state.last_scheduled_insn = 0;
-}
 
 /* Try to reorder ready queue to promote ARCV fusion opportunities.
    Returns the number of instructions that can be issued this cycle.  */
@@ -91,11 +78,11 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
     return 0;
 
   /* Fuse double load/store instances missed by sched_fusion.  */
-  if (!sched_state.pipeB_scheduled_p && sched_state.last_scheduled_insn
+  if (!sched_state.pipeB_scheduled_p && riscv_last_scheduled_insn
       && ready && *n_readyp > 0
-      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
-      && (get_attr_type (sched_state.last_scheduled_insn) == TYPE_LOAD
-	  || get_attr_type (sched_state.last_scheduled_insn) == TYPE_STORE))
+      && !SCHED_GROUP_P (riscv_last_scheduled_insn)
+      && (get_attr_type (riscv_last_scheduled_insn) == TYPE_LOAD
+	  || get_attr_type (riscv_last_scheduled_insn) == TYPE_STORE))
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
@@ -108,7 +95,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	     && !SCHED_GROUP_P (ready[*n_readyp - i])
 	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
 		 || !SCHED_GROUP_P (next_insn))
-	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+	     && riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	   {
 	     std::swap (ready[*n_readyp - 1], ready[*n_readyp - i]);
@@ -122,10 +109,10 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 
   /* Try to fuse a non-memory last_scheduled_insn.  */
   if ((!sched_state.alu_pipe_scheduled_p || !sched_state.pipeB_scheduled_p)
-      && sched_state.last_scheduled_insn && ready && *n_readyp > 0
-      && !SCHED_GROUP_P (sched_state.last_scheduled_insn)
-      && (get_attr_type (sched_state.last_scheduled_insn) != TYPE_LOAD
-	  && get_attr_type (sched_state.last_scheduled_insn) != TYPE_STORE))
+      && riscv_last_scheduled_insn && ready && *n_readyp > 0
+      && !SCHED_GROUP_P (riscv_last_scheduled_insn)
+      && (get_attr_type (riscv_last_scheduled_insn) != TYPE_LOAD
+	  && get_attr_type (riscv_last_scheduled_insn) != TYPE_STORE))
     {
       for (int i = 1; i <= *n_readyp; i++)
        {
@@ -136,7 +123,7 @@ arcv_sched_reorder2 (rtx_insn **ready, int *n_readyp)
 	     && active_insn_p (ready[*n_readyp - i])
 	     && (!next_insn || !NONDEBUG_INSN_P (next_insn)
 		 || !SCHED_GROUP_P (next_insn))
-	     && riscv_macro_fusion_pair_p (sched_state.last_scheduled_insn,
+	     && riscv_macro_fusion_pair_p (riscv_last_scheduled_insn,
 					   ready[*n_readyp - i]))
 	   {
 	     if (get_attr_type (ready[*n_readyp - i]) == TYPE_LOAD
@@ -285,7 +272,7 @@ arcv_sched_variable_issue (rtx_insn *insn, int more)
 	sched_state.alu_pipe_scheduled_p = 1;
     }
 
-  sched_state.last_scheduled_insn = insn;
+  riscv_last_scheduled_insn = insn;
   riscv_cached_can_issue_more = more - 1;
 
   return riscv_cached_can_issue_more;

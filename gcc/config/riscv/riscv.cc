@@ -11808,7 +11808,7 @@ struct last_vconfig
 /* Ready-list macro-fusion state for the current scheduling block.  */
 
 int riscv_cached_can_issue_more;
-static rtx_insn *riscv_last_scheduled_insn;
+rtx_insn *riscv_last_scheduled_insn;
 static bool riscv_last_fusion_insn_p;
 
 /* Clear LAST_VCONFIG so we have no known state.  */
@@ -11876,9 +11876,6 @@ riscv_sched_init (FILE *, int, int)
   riscv_cached_can_issue_more = riscv_issue_rate ();
   riscv_last_scheduled_insn = NULL;
   riscv_last_fusion_insn_p = false;
-
-  if (TARGET_ARCV_RHX100)
-    arcv_sched_init ();
 }
 
 /* Implement TARGET_SCHED_VARIABLE_ISSUE.  */
