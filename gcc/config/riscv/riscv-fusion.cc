@@ -33,6 +33,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "emit-rtl.h"
 #include "tm_p.h"
+#include "regset.h"
+#include "basic-block.h"
+#include "sched-int.h"
 #include "riscv-protos.h"
 
 /* Implement TARGET_SCHED_MACRO_FUSION_P.  Return true if target supports
@@ -44,21 +47,27 @@ riscv_macro_fusion_p (void)
   return riscv_get_fusible_ops () != RISCV_FUSE_NOTHING;
 }
 
+/* A LUI_OPERAND accepts (const_int 0), but we won't emit that as LUI.
+   Reject that case explicitly.  */
+
+#define LUI_NONZERO_OPERAND(value) ((value) != 0 && LUI_OPERAND (value))
+
 /* Return true iff the instruction fusion described by OP is enabled.  */
 
-static bool
+bool
 riscv_fusion_enabled_p (enum riscv_fusion_pairs op)
 {
   return riscv_get_fusible_ops () & op;
 }
 
-/* Extract the single sets from PREV and CURR.  Reject conditional jumps,
-   which cannot form a fusion pair.  */
+/* Extract the single sets from PREV and CURR.  Unless ALLOW_CONDJUMP_P,
+   reject conditional jumps.  */
 
 static bool
 riscv_fuse_sets_p (rtx_insn *prev, rtx_insn *curr,
 		     rtx *prev_set_out = NULL,
-		     rtx *curr_set_out = NULL)
+		     rtx *curr_set_out = NULL,
+		     bool allow_condjump_p = false)
 {
   rtx prev_set = single_set (prev);
   rtx curr_set = single_set (curr);
@@ -66,7 +75,8 @@ riscv_fuse_sets_p (rtx_insn *prev, rtx_insn *curr,
     *prev_set_out = prev_set;
   if (curr_set_out)
     *curr_set_out = curr_set;
-  return prev_set && curr_set && !any_condjump_p (curr);
+  return (prev_set && curr_set
+	  && (allow_condjump_p || !any_condjump_p (curr)));
 }
 
 /* Extract a word-form binary operation with code CODE:
@@ -355,12 +365,40 @@ riscv_insn_is_add_type_p (rtx_insn *insn, bool *word_p = NULL)
 }
 
 /* Matches an mv or li instruction:
-     (set (reg rd) (reg rs1))
-   or:
      (set (reg rd) (const_int imm12)).  */
 
 static bool
-riscv_insn_is_mv_li_p (rtx_insn *insn)
+riscv_insn_is_li_p (rtx_insn *insn)
+{
+  rtx set = single_set (insn);
+  if (!set)
+    return false;
+
+  rtx dest = SET_DEST (set);
+  rtx src = SET_SRC (set);
+
+  /* Pseudos are valid GPR candidates before register allocation.  */
+  if (get_attr_type (insn) != TYPE_MOVE
+      || get_attr_length (insn) > 4
+      || !REG_P (dest)
+      || (HARD_REGISTER_P (dest) && !GP_REG_P (REGNO (dest))))
+    return false;
+
+  enum attr_move_type move_type = get_attr_move_type (insn);
+  if (move_type == MOVE_TYPE_CONST
+      && CONST_INT_P (src)
+      /* Distinguish an ADDI-based LI from other single-insn constants.  */
+      && SMALL_OPERAND (INTVAL (src)))
+    return true;
+
+  return false;
+}
+
+/* Matches an mv or li instruction:
+     (set (reg rd) (reg rs1)).  */
+
+static bool
+riscv_insn_is_mv_p (rtx_insn *insn)
 {
   rtx set = single_set (insn);
   if (!set)
@@ -383,13 +421,18 @@ riscv_insn_is_mv_li_p (rtx_insn *insn)
 	  || GP_REG_P (REGNO (src))))
     return true;
 
-  if (move_type == MOVE_TYPE_CONST
-      && CONST_INT_P (src)
-      /* Distinguish an ADDI-based LI from other single-insn constants.  */
-      && SMALL_OPERAND (INTVAL (src)))
-    return true;
-
   return false;
+}
+
+/* Matches an mv or li instruction:
+     (set (reg rd) (reg rs1))
+   or:
+     (set (reg rd) (const_int imm12)).  */
+
+static bool
+riscv_insn_is_mv_li_p (rtx_insn *insn)
+{
+  return riscv_insn_is_mv_p (insn) || riscv_insn_is_li_p (insn);
 }
 
 /* Matches an addi-type instruction:
@@ -598,11 +641,12 @@ riscv_set_is_shift_type_p (rtx set, rtx_code code, bool *word_p,
 
 /* Match a left-shift/right-shift fusion pair.  ALLOW_WORD_P accepts the
    equivalent RV64 word forms and requires both instructions to have the same
-   wordness.  ALLOW_ARITHMETIC_P accepts an arithmetic right shift.  */
+   wordness.  ARITHMETIC_P accepts only an arithmetic right shift,
+   otherwise only a logical right shift is accepted.  */
 
 static bool
 riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
-			   bool allow_word_p, bool allow_arithmetic_p)
+			   bool allow_word_p, bool arithmetic_p)
 {
   rtx prev_set, curr_set;
   if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
@@ -616,13 +660,14 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
     = (allow_word_p
 	? riscv_set_is_shift_type_p (prev_set, ASHIFT, &prev_word_p)
 	: riscv_set_is_slli_p (prev_set));
-  bool curr_match_p
-    = (allow_word_p
-	? riscv_set_is_shift_type_p (curr_set, LSHIFTRT, &curr_word_p)
-	: riscv_set_is_srli_p (curr_set));
+  bool curr_match_p = false;
 
-  if (!curr_match_p && allow_arithmetic_p)
+  if (arithmetic_p)
     curr_match_p = riscv_set_is_srai_p (curr_set);
+  else
+    curr_match_p = (allow_word_p
+		? riscv_set_is_shift_type_p (curr_set, LSHIFTRT, &curr_word_p)
+		: riscv_set_is_srli_p (curr_set));
 
   if (!prev_match_p
       || !curr_match_p
@@ -812,7 +857,13 @@ static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
     true, false, RISCV_FUSION_DEC, 1 },
   /* Allow 1-, 2-, 4- and 8-byte stores.  */
   { RISCV_FUSE_ALIGNED_STD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
-    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 }
+    SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 },
+  { RISCV_FUSE_ADJACENT_LOAD, (1U << 1) | (1U << 2) | (1U << 4),
+    SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
+    | SCHED_FUSION_LD_ZERO_EXTEND,
+    false, false, RISCV_FUSION_ANY, 1 },
+  { RISCV_FUSE_ADJACENT_STORE, (1U << 4),
+    SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 }
 };
 
 /* Return true if MEM satisfies RULE's single-instruction constraints.
@@ -1728,13 +1779,27 @@ riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
   return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_FLDFST_PAIR_DEC);
 }
 
-/* Check for RISCV_FUSE_BFEXT fusion.
+/* Check for RISCV_FUSE_BFEXT_SRLI fusion.
    prev (slli) == (set (reg rd1)
 		       (ashift (reg rs1) (const_int shamt1)))
-   curr (one of the following):
+   curr:
      (srli) == (set (reg rd2)
 		    (lshiftrt (reg rd1)
 			      (const_int shamt2)))
+
+   Constraints:
+     rd1 == rd2.  */
+
+static bool
+riscv_fuse_bfext_srli (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_shift_pair_p (prev, curr, false, false);
+}
+
+/* Check for RISCV_FUSE_BFEXT_SRAI fusion.
+   prev (slli) == (set (reg rd1)
+		       (ashift (reg rs1) (const_int shamt1)))
+   curr:
      (srai) == (set (reg rd2)
 		    (ashiftrt (reg rd1)
 			      (const_int shamt2)))
@@ -1743,7 +1808,7 @@ riscv_fuse_fldfst_pair_dec (rtx_insn *prev, rtx_insn *curr)
      rd1 == rd2.  */
 
 static bool
-riscv_fuse_bfext (rtx_insn *prev, rtx_insn *curr)
+riscv_fuse_bfext_srai (rtx_insn *prev, rtx_insn *curr)
 {
   return riscv_fuse_shift_pair_p (prev, curr, false, true);
 }
@@ -2018,6 +2083,286 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+/* Return true if PREV and CURR constitute an ordered load/store + op/opimm
+   pair, for the purposes of macro-op fusion.
+   This is a more general form that combines load+arith and store+arith.  */
+
+static bool
+riscv_ls_update_pair_p (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, NULL, &curr_set))
+    return false;
+
+  enum attr_type c_type = get_attr_type (curr);
+  if (!(c_type == TYPE_ARITH
+	|| c_type == TYPE_LOGICAL
+	|| c_type == TYPE_SHIFT
+	|| c_type == TYPE_SLT
+	|| c_type == TYPE_BITMANIP
+	|| c_type == TYPE_MIN
+	|| c_type == TYPE_MAX
+	|| c_type == TYPE_MINU
+	|| c_type == TYPE_MAXU
+	|| c_type == TYPE_CLZ
+	|| c_type == TYPE_CTZ
+	|| c_type == TYPE_MOVE))
+    return false;
+
+  rtx c_src = SET_SRC (curr_set);
+  if (CONSTANT_P (c_src))
+    return false;
+
+  unsigned int c_rs1 = INVALID_REGNUM;
+  unsigned int c_rs2 = INVALID_REGNUM;
+
+  if (REG_P (c_src) || SUBREG_P (c_src))
+    c_rs1 = riscv_regno (c_src);
+  else
+    {
+      rtx op = c_src;
+      if (GET_CODE (op) == NOT && BINARY_P (XEXP (op, 0)))
+	op = XEXP (op, 0);
+
+      const char *fmt = GET_RTX_FORMAT (GET_CODE (op));
+      for (int i = 0; i < GET_RTX_LENGTH (GET_CODE (op)); i++)
+	{
+	  if (fmt[i] != 'e')
+	    continue;
+
+	  rtx x = XEXP (op, i);
+	  if (GET_CODE (x) == NOT)
+	    x = XEXP (x, 0);
+	  unsigned int regno = riscv_regno (x);
+	  if (regno == INVALID_REGNUM)
+	    continue;
+
+	  if (c_rs1 == INVALID_REGNUM)
+	    c_rs1 = regno;
+	  else
+	    {
+	      c_rs2 = regno;
+	      break;
+	    }
+	}
+    }
+
+  if (c_rs1 == INVALID_REGNUM)
+    return false;
+
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (prev, &mem) || mem.fp_p)
+    return false;
+
+  unsigned int base_regno = riscv_regno (mem.addr.reg);
+  if (base_regno != c_rs1)
+    return false;
+
+  if (mem.type != SCHED_FUSION_ST)
+    {
+      unsigned int p_rd = riscv_regno (mem.reg);
+      unsigned int c_rd = riscv_regno (SET_DEST (curr_set));
+      return (p_rd != INVALID_REGNUM
+	      && c_rd != INVALID_REGNUM
+	      && p_rd != base_regno
+	      && p_rd != c_rd
+	      && !reg_overlap_mentioned_p (mem.reg, c_src));
+    }
+
+  if (c_rs2 == INVALID_REGNUM)
+    return true;
+
+  return riscv_regno (mem.reg) == c_rs2;
+}
+
+/* Check for RISCV_FUSE_MULT_ADD fusion.
+   On RV32:
+   prev (mul) == (set (reg rD) (mult:SI (reg:SI rS1) (reg:SI rS2)))
+   curr (add) == (set (reg rD) (plus:SI (reg:SI rD) (reg:SI rS3)))
+
+   Matches mulw+addw for RV64, not mul+add:
+   prev (mul) == (set (reg:DI rD) (sign_extend:DI (mult:SI ...)))
+   curr (add) == (set (reg:DI rD) (sign_extend:DI (plus:SI ...)))  */
+
+static bool
+riscv_fuse_mult_add (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
+    return false;
+
+  rtx prev_src = SET_SRC (prev_set);
+  rtx curr_src = SET_SRC (curr_set);
+  rtx word_src;
+  if (riscv_set_extract_word_binary_p (prev_set, MULT, &word_src))
+    prev_src = word_src;
+  if (riscv_set_extract_word_binary_p (curr_set, PLUS, &word_src))
+    curr_src = word_src;
+
+  if (GET_CODE (prev_src) != MULT || GET_MODE (prev_src) != SImode
+      || GET_CODE (curr_src) != PLUS || GET_MODE (curr_src) != SImode)
+    return false;
+
+  if (!riscv_fuse_same_dest_p (prev_set, curr_set))
+    return false;
+
+  return riscv_fuse_same_reg_p (XEXP (curr_src, 0), SET_DEST (prev_set));
+}
+
+/* Check for RISCV_FUSE_LI_BRANCH fusion.
+   prev (li)     == (set (reg:DI rD) (const_int imm12))
+   curr (branch) == conditional branch using rD  */
+
+static bool
+riscv_fuse_li_branch (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set, true))
+    return false;
+
+  if (!riscv_insn_is_li_p (prev))
+    return false;
+
+  if (!any_condjump_p (curr))
+    return false;
+
+  /* Check if the loaded register is used in the branch condition.  */
+  rtx cond = XEXP (SET_SRC (curr_set), 0);
+  return (riscv_fuse_same_reg_p (XEXP (cond, 0), SET_DEST (prev_set))
+	  || riscv_fuse_same_reg_p (XEXP (cond, 1), SET_DEST (prev_set)));
+}
+
+/* Check for RISCV_FUSE_ADJACENT_LOAD fusion.
+   prev (ld) == (set (reg:SI rD1)
+		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF1))))
+   curr (ld) == (set (reg:SI rD2)
+		     (mem:SI (plus:DI (reg:DI rB) (const_int OFF2))))
+   where OFF2 == OFF1 + MODE_SIZE or OFF2 == OFF1 - MODE_SIZE  */
+
+static bool
+riscv_fuse_adjacent_load (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_LOAD);
+}
+
+/* Check for RISCV_FUSE_ADJACENT_STORE fusion.
+   prev (st) == (set (mem:SI (plus:DI (reg:DI rB) (const_int OFF1)))
+		     (reg:SI rS1))
+   curr (st) == (set (mem:SI (plus:DI (reg:DI rB) (const_int OFF2)))
+		     (reg:SI rS2))
+   where OFF2 == OFF1 + MODE_SIZE or OFF2 == OFF1 - MODE_SIZE  */
+
+static bool
+riscv_fuse_adjacent_store (rtx_insn *prev, rtx_insn *curr)
+{
+  return riscv_fuse_mem_pair_p (prev, curr, RISCV_FUSE_ADJACENT_STORE);
+}
+
+/* Check for RISCV_FUSE_LS_UPDATE fusion (load/store with address update).
+   prev (ld)   == (set (reg:DI rD) (mem:DI (reg:DI rA)))
+   curr (addi) == (set (reg:DI rA) (plus:DI (reg:DI rA) (const_int)))
+   OR
+   prev (addi) == (set (reg:DI rA) (plus:DI (reg:DI rA) (const_int)))
+   curr (st)   == (set (mem:DI (reg:DI rA)) (reg:DI rS))  */
+
+static bool
+riscv_fuse_ls_update (rtx_insn *prev, rtx_insn *curr)
+{
+  if (!riscv_fuse_sets_p (prev, curr))
+    return false;
+
+  return (riscv_ls_update_pair_p (prev, curr)
+	  || riscv_ls_update_pair_p (curr, prev));
+}
+
+static bool
+riscv_lui_st_pair_p (rtx_insn *lui, rtx_insn *store, rtx lui_set)
+{
+  struct riscv_fusion_mem_info mem;
+  if (riscv_regno (SET_DEST (lui_set)) == INVALID_REGNUM
+      || !riscv_fuse_mem_p (store, &mem)
+      || mem.type != SCHED_FUSION_ST
+      || mem.fp_p)
+    return false;
+
+  rtx src = SET_SRC (lui_set);
+  return ((get_attr_type (lui) == TYPE_MOVE && GET_CODE (src) == HIGH)
+	  || (CONST_INT_P (src)
+	      && LUI_NONZERO_OPERAND (INTVAL (src))));
+}
+
+/* Check for RISCV_FUSE_LUI_ST fusion.
+   prev (lui) == (set (reg:DI rD) (const_int UPPER_IMM_20))
+   curr (st)  == (set (mem:DI (plus:DI (reg:DI rX) (const_int))) (reg:DI rS))
+   OR (reversed)
+   prev (st)  == (set (mem:DI (plus:DI (reg:DI rX) (const_int))) (reg:DI rS))
+   curr (lui) == (set (reg:DI rD) (const_int UPPER_IMM_20))  */
+
+static bool
+riscv_fuse_lui_st (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set))
+    return false;
+
+  return (riscv_lui_st_pair_p (prev, curr, prev_set)
+	  || riscv_lui_st_pair_p (curr, prev, curr_set));
+}
+
+/* Check for RISCV_FUSE_LI_STORE fusion.
+   prev (li) == (set (reg:DI rT) (const_int imm12))
+   curr (st) == (set (mem:DI (plus:DI (reg:DI rB) (const_int))) (reg:DI rT))  */
+
+static bool
+riscv_fuse_li_store (rtx_insn *prev, rtx_insn *curr)
+{
+  rtx prev_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, NULL))
+    return false;
+
+  struct riscv_fusion_mem_info mem;
+  if (riscv_insn_is_li_p (prev)
+      && riscv_fuse_mem_p (curr, &mem)
+      && mem.type == SCHED_FUSION_ST
+      && !mem.fp_p
+      && riscv_fuse_same_reg_p (mem.reg, SET_DEST (prev_set)))
+    return true;
+
+  return false;
+}
+
+/* Independent LUI and load: distinct destinations, either order.
+   The load is not required to use the LUI result as its address.  */
+
+static bool
+riscv_fuse_lui_ld_independent_p (rtx_insn *lui, rtx_insn *load)
+{
+  rtx lui_set;
+  if (!riscv_fuse_sets_p (lui, load, &lui_set, NULL))
+    return false;
+
+  struct riscv_fusion_mem_info mem;
+  if (!riscv_fuse_mem_p (load, &mem)
+      || mem.type == SCHED_FUSION_ST
+      || mem.fp_p
+      || riscv_fuse_same_reg_p (SET_DEST (lui_set), mem.reg))
+    return false;
+
+  rtx src = SET_SRC (lui_set);
+  return (GET_CODE (src) == HIGH
+	  || (CONST_INT_P (src)
+	      && LUI_NONZERO_OPERAND (INTVAL (src))));
+}
+
+/* Check for RISCV_FUSE_LUI_LD_REV fusion (reversible).  */
+
+static bool
+riscv_fuse_lui_ld_reversible (rtx_insn *prev, rtx_insn *curr)
+{
+  return (riscv_fuse_lui_ld_independent_p (prev, curr)
+	  || riscv_fuse_lui_ld_independent_p (curr, prev));
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -2079,8 +2424,6 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_fldfst_pair_inc, "RISCV_FUSE_FLDFST_PAIR_INC" },
   { RISCV_FUSE_FLDFST_PAIR_DEC,
     riscv_fuse_fldfst_pair_dec, "RISCV_FUSE_FLDFST_PAIR_DEC" },
-  { RISCV_FUSE_BFEXT,
-    riscv_fuse_bfext, "RISCV_FUSE_BFEXT" },
   { RISCV_FUSE_SLLI_SRLI,
     riscv_fuse_slli_srli, "RISCV_FUSE_SLLI_SRLI" },
   { RISCV_FUSE_SRLI_ADD,
@@ -2095,6 +2438,26 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_andi_add, "RISCV_FUSE_ANDI_ADD" },
   { RISCV_FUSE_LOGIC_LOGIC,
     riscv_fuse_logic_logic, "RISCV_FUSE_LOGIC_LOGIC" },
+  { RISCV_FUSE_MULT_ADD,
+    riscv_fuse_mult_add, "RISCV_FUSE_MULT_ADD" },
+  { RISCV_FUSE_LI_BRANCH,
+    riscv_fuse_li_branch, "RISCV_FUSE_LI_BRANCH" },
+  { RISCV_FUSE_ADJACENT_LOAD,
+    riscv_fuse_adjacent_load, "RISCV_FUSE_ADJACENT_LOAD" },
+  { RISCV_FUSE_ADJACENT_STORE,
+    riscv_fuse_adjacent_store, "RISCV_FUSE_ADJACENT_STORE" },
+  { RISCV_FUSE_LS_UPDATE,
+    riscv_fuse_ls_update, "RISCV_FUSE_LS_UPDATE" },
+  { RISCV_FUSE_LUI_ST,
+    riscv_fuse_lui_st, "RISCV_FUSE_LUI_ST" },
+  { RISCV_FUSE_LI_STORE,
+    riscv_fuse_li_store, "RISCV_FUSE_LI_STORE" },
+  { RISCV_FUSE_LUI_LD_REV,
+    riscv_fuse_lui_ld_reversible, "RISCV_FUSE_LUI_LD_REV" },
+  { RISCV_FUSE_BFEXT_SRLI,
+    riscv_fuse_bfext_srli, "RISCV_FUSE_BFEXT_SRLI" },
+  { RISCV_FUSE_BFEXT_SRAI,
+    riscv_fuse_bfext_srai, "RISCV_FUSE_BFEXT_SRAI" },
 };
 
 /* Return the name of fusion operation OP.  */
