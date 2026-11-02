@@ -324,7 +324,8 @@ expr_to_aff_combination (aff_tree *comb, tree_code code, tree type,
 
 	/* Look through (OTYPE) (ITYPE) IOP.  ITYPE and IOTYPE have the
 	   same precision and differ at most in signedness.  */
-	if (INTEGRAL_NB_TYPE_P (otype)
+	if (param_affine_range_fold
+	    && INTEGRAL_NB_TYPE_P (otype)
 	    && INTEGRAL_NB_TYPE_P (itype)
 	    && TYPE_PRECISION (otype) > TYPE_PRECISION (itype)
 	    && CONVERT_EXPR_P (inner))
@@ -476,7 +477,8 @@ expr_to_aff_combination (aff_tree *comb, tree_code code, tree type,
 
 		   This also works for the most-negative signed CST: unsigned
 		   negation is modulo 2^precision, so -CST equals CST.  */
-		else if (icode == PLUS_EXPR
+		else if (param_affine_range_fold
+			 && icode == PLUS_EXPR
 			 && wi::neg_p (wi::to_wide (op1), SIGNED))
 		  {
 		    wide_int pos_cst = wi::neg (wi::to_wide (op1));

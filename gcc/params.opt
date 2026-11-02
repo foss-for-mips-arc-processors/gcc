@@ -22,6 +22,10 @@
 
 ; Please try to keep this file in ASCII collating order.
 
+-param=affine-range-fold=
+Common Joined UInteger Var(param_affine_range_fold) Init(1) IntegerRange(0, 1) Param Optimization
+Use value ranges to fold sign-changing conversions in affine combinations, and contextual ranges in IVOPTS.
+
 -param=align-loop-iterations=
 Common Joined UInteger Var(param_align_loop_iterations) Init(4) Param Optimization
 Loops iterating at least selected number of iterations get loop alignment.
