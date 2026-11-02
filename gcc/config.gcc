@@ -2636,11 +2636,32 @@ riscv*-*-linux*)
 	case "x${enable_multilib}" in
 	xno) ;;
 	xyes)
-    case ${target} in
-      *64-gf-*) tmake_file="${tmake_file} riscv/t-arcv-linux" ;;
-      *) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
-    esac
-    ;;
+		case ${target} in
+		*64-gf-*)
+			# One CPU per toolchain (--with-tune=); ABI multilib only (lp64/lp64d).
+			case ${with_tune} in
+			arc-v-rpx-100-series)
+				tmake_file="${tmake_file} riscv/t-arcv-linux-rpx100"
+				;;
+			mips-i8500)
+				tmake_file="${tmake_file} riscv/t-arcv-linux-i8500"
+				;;
+			"")
+				echo "Error: --with-tune= is required for multilib ${target}." 1>&2
+				exit 1
+				;;
+			*)
+				echo "Error: unsupported --with-tune=${with_tune} for multilib ${target}." 1>&2
+				exit 1
+				;;
+			esac
+			# Same selector as riscv/elf.h.  linux.h would otherwise
+			# map the rv64gc default onto the CPU lp64d library.
+			tm_defines="${tm_defines} RISCV_USE_CUSTOMISED_MULTI_LIB=select_by_abi_arch_cmodel"
+			;;
+		*) tmake_file="${tmake_file} riscv/t-linux-multilib" ;;
+		esac
+		;;
 	*) echo "Unknown value for enable_multilib"; exit 1
 	esac
 	tmake_file="${tmake_file} riscv/t-riscv riscv/t-linux"

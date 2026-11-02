@@ -6,7 +6,7 @@ MULTILIB_DIRNAMES =
 MULTILIB_REQUIRED =
 MULTILIB_REUSE =
 
-# -march multilib options for MIPS i8500
+# ABI multilib for a single i8500 Linux toolchain (tune via --with-tune=).
 arcv_march_variants = rv64imacb_zicond_zicbop_zicboz_zcb
 arcv_march_variants += rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa
 
@@ -16,12 +16,5 @@ MULTILIB_DIRNAMES   += $(arcv_march_variants)
 MULTILIB_OPTIONS    += mabi=lp64/mabi=lp64d
 MULTILIB_DIRNAMES   += lp64      lp64d
 
-MULTILIB_OPTIONS    += mtune=mips-i8500
-MULTILIB_DIRNAMES   += i8500
-
-MULTILIB_OPTIONS    += mcmodel=medany
-MULTILIB_DIRNAMES   += medany
-
-# Configurations for MIPS i8500
-MULTILIB_REQUIRED   += march=rv64imacb_zicond_zicbop_zicboz_zcb/mabi=lp64/mtune=mips-i8500
-MULTILIB_REQUIRED   += march=rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa/mabi=lp64d/mtune=mips-i8500
+MULTILIB_REQUIRED   += march=rv64imacb_zicond_zicbop_zicboz_zcb/mabi=lp64
+MULTILIB_REQUIRED   += march=rv64imafdcb_zicond_zicbop_zicboz_zcb_zfa/mabi=lp64d
