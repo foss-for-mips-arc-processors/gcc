@@ -125,18 +125,20 @@ riscv_set_extract_word_binary_p (rtx set, rtx_code code, rtx *binary_src)
 static unsigned int
 riscv_regno (rtx x)
 {
-  int regno = true_regnum (x);
+  /* true_regnum may not be called before reload.  */
+  int regno = reload_completed ? true_regnum (x) : -1;
   if (regno >= 0
       && (can_create_pseudo_p () || regno < FIRST_PSEUDO_REGISTER))
     return regno;
 
-  /* Before allocation, use an unassigned pseudo's identity.  Treat every
-     SUBREG of the pseudo alike so that matching remains deliberately
-     permissive until the final hard register is known.  */
+  /* Before allocation, use an unassigned pseudo's identity, or a hard
+     register's own number.  Treat every SUBREG of either alike so that
+     matching remains deliberately permissive until the final hard register
+     is known.  */
   if (can_create_pseudo_p ())
     {
       rtx reg = SUBREG_P (x) ? SUBREG_REG (x) : x;
-      if (REG_P (reg) && !HARD_REGISTER_P (reg))
+      if (REG_P (reg))
 	return REGNO (reg);
     }
 
