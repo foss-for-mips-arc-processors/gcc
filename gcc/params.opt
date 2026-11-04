@@ -373,6 +373,10 @@ Bound on number of candidates below that all candidates are considered in induct
 Common Joined UInteger Var(param_iv_max_considered_uses) Init(250) Param Optimization
 Bound on number of induction variable uses in loop optimized in IV optimizations.
 
+-param=ivopts-ranger=
+Common Joined UInteger Var(param_ivopts_ranger) Init(1) IntegerRange(0, 1) Param Optimization
+Use the ranger for contextual range queries in IV optimizations.
+
 -param=jump-table-max-growth-ratio-for-size=
 Common Joined UInteger Var(param_jump_table_max_growth_ratio_for_size) Init(300) IntegerRange(0, 10000) Param Optimization
 The maximum code size growth ratio when expanding into a jump table (as a percentage).  The parameter is used when optimizing for size.

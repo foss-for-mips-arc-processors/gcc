@@ -8340,7 +8340,8 @@ tree_ssa_iv_optimize (void)
   tree_ssa_iv_optimize_init (&data);
   mark_ssa_maybe_undefs ();
 
-  enable_ranger (cfun, false);
+  if (param_ivopts_ranger)
+    enable_ranger (cfun, false);
 
   /* Optimize the loops starting with the innermost ones.  */
   for (auto loop : loops_list (cfun, LI_FROM_INNERMOST))
@@ -8354,7 +8355,8 @@ tree_ssa_iv_optimize (void)
       tree_ssa_iv_optimize_loop (&data, loop, toremove);
     }
 
-  disable_ranger (cfun);
+  if (param_ivopts_ranger)
+    disable_ranger (cfun);
 
   /* Remove eliminated IV defs.  */
   release_defs_bitset (toremove);
