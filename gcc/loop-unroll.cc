@@ -877,9 +877,9 @@ compare_and_jump_seq (rtx op0, rtx op1, enum rtx_code comp,
 static void
 unroll_loop_runtime_iterations (class loop *loop)
 {
-  rtx old_niter, niter, tmp;
+  rtx old_niter, niter, tmp, sel = NULL_RTX;
   rtx_insn *init_code, *branch_code;
-  unsigned i;
+  unsigned i, sel_shift = 0;
   profile_probability p;
   basic_block preheader, *body, swtch, ezc_swtch = NULL;
   int may_exit_copy;
@@ -944,6 +944,44 @@ unroll_loop_runtime_iterations (class loop *loop)
 				   niter, const1_rtx,
 				   NULL_RTX, 0, OPTAB_LIB_WIDEN);
       old_niter = niter;
+
+      /* A loop that steps a pointer by 2^K bytes has
+	 niter = (X - 2^K) >> K, where X is the distance in bytes, and
+	 the +1 above cancels the - 2^K.  So the remainder
+	 (niter + 1) & MAX_UNROLL sits in X itself, shifted left by K:
+	 for 2-byte elements unrolled 8 times and X = 42,
+	 ((42 - 2) >> 1) + 1 = 21 and 21 & 7 = 5, while 42 & 14 = 10
+	 = 5 * 2.  Test X & (MAX_UNROLL << K) against case values
+	 shifted left by K instead of emitting the subtract/shift/add
+	 chain.  */
+      rtx e = desc->niter_expr;
+      if (GET_CODE (e) == LSHIFTRT
+	  && CONST_INT_P (XEXP (e, 1))
+	  && GET_CODE (XEXP (e, 0)) == PLUS
+	  && CONST_INT_P (XEXP (XEXP (e, 0), 1)))
+	{
+	  unsigned prec = GET_MODE_PRECISION (desc->mode);
+	  HOST_WIDE_INT k = INTVAL (XEXP (e, 1));
+	  /* MAX_UNROLL must fit in the bits left after the shift, and the
+	     constant must be exactly -2^K so that it cancels the +1.  */
+	  if (k > 0
+	      && k < HOST_BITS_PER_WIDE_INT - 1
+	      && (unsigned HOST_WIDE_INT) k < prec
+	      && (prec - k >= HOST_BITS_PER_WIDE_INT
+		  || max_unroll < (HOST_WIDE_INT_1U << (prec - k)))
+	      && (INTVAL (XEXP (XEXP (e, 0), 1))
+		  == trunc_int_for_mode (-(HOST_WIDE_INT_1 << k), desc->mode)))
+	    {
+	      rtx x = force_operand (copy_rtx (XEXP (XEXP (e, 0), 0)),
+				     NULL_RTX);
+	      sel = expand_simple_binop (desc->mode, AND, x,
+					 gen_int_mode ((HOST_WIDE_INT)
+						       max_unroll << k,
+						       desc->mode),
+					 NULL_RTX, 0, OPTAB_LIB_WIDEN);
+	      sel_shift = k;
+	    }
+	}
     }
 
   /* Count modulo by ANDing it with max_unroll; we use the fact that
@@ -952,6 +990,8 @@ unroll_loop_runtime_iterations (class loop *loop)
   niter = expand_simple_binop (desc->mode, AND,
 			       niter, gen_int_mode (max_unroll, desc->mode),
 			       NULL_RTX, 0, OPTAB_LIB_WIDEN);
+  if (sel == NULL_RTX)
+    sel = niter;
 
   init_code = end_sequence ();
   unshare_all_rtl_in_chain (init_code);
@@ -1007,8 +1047,11 @@ unroll_loop_runtime_iterations (class loop *loop)
       preheader = split_edge (loop_preheader_edge (loop));
       /* Add in count of edge from switch block.  */
       preheader->count += iter_count;
-      branch_code = compare_and_jump_seq (copy_rtx (niter),
-					  gen_int_mode (j, desc->mode), EQ,
+      /* SEL_SHIFT is nonzero if SEL is X & (MAX_UNROLL << K) above.  */
+      branch_code = compare_and_jump_seq (copy_rtx (sel),
+					  gen_int_mode ((HOST_WIDE_INT) j
+							<< sel_shift,
+							desc->mode), EQ,
 					  block_label (preheader), p, NULL);
 
       /* We rely on the fact that the compare and jump cannot be optimized out,
