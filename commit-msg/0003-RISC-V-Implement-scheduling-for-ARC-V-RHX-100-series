@@ -22,35 +22,23 @@ riscv_sched_adjust_priority () slightly bumps the priority of load/store
 pairs.  As a result it becomes easier for riscv_sched_reorder2 () to
 schedule instructions in the memory pipe.
 
-TARGET_SCHED_REORDER2 is defined for all RISC-V tunes, so
-riscv_sched_reorder2 must preserve the remaining issue count for non-RHX
-(via cached_can_issue_more from riscv_sched_variable_issue).
-
 gcc/ChangeLog:
 
-	* config/riscv/arcv.cc (struct arcv_sched_state): New.
-	(arcv_sched_init): New function.
-	(arcv_sched_reorder2): New function.
-	(arcv_sched_adjust_priority): New function.
-	(arcv_sched_adjust_cost): New function.
-	(arcv_can_issue_more_p): New function.
-	(arcv_sched_variable_issue): New function.
+	* config/riscv/arcv.cc: New file.
 	* config/riscv/riscv-protos.h (arcv_sched_init): Declare.
 	(arcv_sched_reorder2): Declare.
 	(arcv_sched_adjust_priority): Declare.
 	(arcv_sched_adjust_cost): Declare.
 	(arcv_can_issue_more_p): Declare.
 	(arcv_sched_variable_issue): Declare.
-	* config/riscv/riscv.cc (cached_can_issue_more): New.
-	(riscv_sched_init): Call arcv_sched_init.
-	(riscv_sched_variable_issue): Handle RHX-100; cache the returned
-	issue count.
+	* config/riscv/riscv.cc (riscv_sched_variable_issue): Handle RHX-100;
+	cache the returned issue count.
 	(riscv_sched_adjust_cost): Handle RHX-100.
 	(riscv_sched_adjust_priority): New function.
 	(riscv_sched_reorder2): New function.  Return cached_can_issue_more
 	for non-RHX.
 	(TARGET_SCHED_ADJUST_PRIORITY): Define.
-	(TARGET_SCHED_REORDER2): Define.
+	* config/riscv/t-riscv: Build arcv.o.
 
 gcc/testsuite/ChangeLog:
 
