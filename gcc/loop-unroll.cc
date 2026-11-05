@@ -946,14 +946,11 @@ unroll_loop_runtime_iterations (class loop *loop)
       old_niter = niter;
 
       /* A loop that steps a pointer by 2^K bytes has
-	 niter = (X - 2^K) >> K, where X is the distance in bytes, and
-	 the +1 above cancels the - 2^K.  So the remainder
-	 (niter + 1) & MAX_UNROLL sits in X itself, shifted left by K:
-	 for 2-byte elements unrolled 8 times and X = 42,
-	 ((42 - 2) >> 1) + 1 = 21 and 21 & 7 = 5, while 42 & 14 = 10
-	 = 5 * 2.  Test X & (MAX_UNROLL << K) against case values
-	 shifted left by K instead of emitting the subtract/shift/add
-	 chain.  */
+	 niter = (X - 2^K) >> K, where X is the distance in bytes.  The +1
+	 above cancels the - 2^K, so (niter + 1) & MAX_UNROLL equals
+	 (X & (MAX_UNROLL << K)) >> K.  Test X & (MAX_UNROLL << K) against
+	 case values shifted left by K instead of emitting the
+	 subtract/shift/add chain.  */
       rtx e = desc->niter_expr;
       if (GET_CODE (e) == LSHIFTRT
 	  && CONST_INT_P (XEXP (e, 1))
@@ -1047,7 +1044,8 @@ unroll_loop_runtime_iterations (class loop *loop)
       preheader = split_edge (loop_preheader_edge (loop));
       /* Add in count of edge from switch block.  */
       preheader->count += iter_count;
-      /* SEL_SHIFT is nonzero if SEL is X & (MAX_UNROLL << K) above.  */
+      /* SEL is NITER with SEL_SHIFT == 0, or X & (MAX_UNROLL << K) with
+	 SEL_SHIFT == K.  */
       branch_code = compare_and_jump_seq (copy_rtx (sel),
 					  gen_int_mode ((HOST_WIDE_INT) j
 							<< sel_shift,
