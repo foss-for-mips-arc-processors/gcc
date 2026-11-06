@@ -837,7 +837,7 @@ static bool
 riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
 {
   /* Check prev is not in a sched group already.  */
-  if (SCHED_GROUP_P (prev))
+  if (!INSN_P(prev) || SCHED_GROUP_P (prev))
     return false;
 
   rtx prev_set = single_set (prev);
