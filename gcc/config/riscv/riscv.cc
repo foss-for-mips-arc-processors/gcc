@@ -11979,6 +11979,19 @@ riscv_get_fusible_ops (void)
   return tune_param->fusible_ops;
 }
 
+/* Implement TARGET_SCHED_ADJUST_PRIORITY. The goal is to get the high part
+   of a multiplication before the low part, to allow RISCV_FUSE_BONDED_MUL.  */
+static int
+riscv_sched_adjust_priority (rtx_insn *insn, int priority)
+{
+  if ((riscv_get_fusible_ops () & RISCV_FUSE_BONDED_MUL)
+      && recog_memoized (insn) >= 0
+      && get_attr_mul_part (insn) == MUL_PART_HIGH)
+    return priority + 10;
+
+  return priority;
+}
+
 /* Adjust the cost/latency of instructions for scheduling.
    For now this is just used to change the latency of vector instructions
    according to their LMUL.  We assume that an insn with LMUL == 8 requires
@@ -17030,6 +17043,9 @@ riscv_memtag_tag_bitsize ()
 
 #undef  TARGET_SCHED_REORDER
 #define TARGET_SCHED_REORDER riscv_sched_reorder
+
+#undef  TARGET_SCHED_ADJUST_PRIORITY
+#define TARGET_SCHED_ADJUST_PRIORITY riscv_sched_adjust_priority
 
 #undef  TARGET_SCHED_ADJUST_COST
 #define TARGET_SCHED_ADJUST_COST riscv_sched_adjust_cost

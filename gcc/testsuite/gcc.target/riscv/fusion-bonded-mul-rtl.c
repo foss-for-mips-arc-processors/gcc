@@ -159,7 +159,7 @@ quux (void)
 ) ;; function "quux"
 }
 
-/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(sxn\\(a0\\)\\*sxn\\(a1\\) 0>>0x40\\).*\n.*4-->.*a5=a0\\*a1.*\n.*9-->.*a0=a5\\+0x1.*" "sched2" } } */
-/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a1\\)\\*sxn\\(a0\\) 0>>0x40\\).*\n.*4-->.*a5=a0\\*a1.*\n.*9-->.*a0=a5\\+0x1.*" "sched2" } } */
-/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a0\\)\\*zxn\\(a1\\) 0>>0x40\\).*\n.*4-->.*a5=a0\\*a1.*\n.*9-->.*a0=a5\\+0x1.*" "sched2" } } */
-/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a0\\)\\*sxn\\(a1\\) 0>>0x40\\).*\n.*4-->.*a5=a1\\*a0.*\n.*9-->.*a0=a5\\+0x1.*" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(sxn\\(a0\\)\\*sxn\\(a1\\) 0>>0x40\\).*\n.*1-->.*a5=a0\\*a1.*\n.*6-->.*a0=a5\\+0x1.*" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a1\\)\\*sxn\\(a0\\) 0>>0x40\\).*\n.*1-->.*a5=a0\\*a1.*\n.*6-->.*a0=a5\\+0x1.*" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a0\\)\\*zxn\\(a1\\) 0>>0x40\\).*\n.*1-->.*a5=a0\\*a1.*\n.*6-->.*a0=a5\\+0x1.*" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?n)0-->.*a4=trn\\(zxn\\(a0\\)\\*sxn\\(a1\\) 0>>0x40\\).*\n.*1-->.*a5=a1\\*a0.*\n.*6-->.*a0=a5\\+0x1.*" "sched2" } } */
