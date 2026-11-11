@@ -774,7 +774,7 @@ static const struct riscv_tune_param mips_i8500_tune_info = {
   {COSTS_N_INSNS (32), COSTS_N_INSNS (32)},   /* fp_div.  */
   {COSTS_N_INSNS (5), COSTS_N_INSNS (5)},     /* int_mul.  */
   {COSTS_N_INSNS (22), COSTS_N_INSNS (22)},   /* int_div.  */
-  2,      /* issue_rate.  */
+  3,      /* issue_rate.  */
   6,      /* branch_cost.  */
   4,      /* memory_cost.  */
   8,      /* fmv_cost.  */

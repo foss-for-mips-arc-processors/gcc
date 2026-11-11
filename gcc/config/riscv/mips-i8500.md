@@ -1,7 +1,5 @@
-;; DFA-based pipeline description for MIPS riscv i8500.
-;; Copyright (C) 2011-2024 Free Software Foundation, Inc.
-;; Contributed by Chao-ying Fu (cfu@wavecomp.com).
-;; Based on MIPS target for GNU compiler.
+;; DFA scheduling description of the MIPS riscv i8500 cpu for GNU C compiler
+;; Copyright (C) 2026 Free Software Foundation, Inc.
 
 ;; This file is part of GCC.
 
@@ -27,13 +25,11 @@
 (define_cpu_unit "mips_i8500_agen,
      mips_i8500_alu1, mips_i8500_lsu" "mips_i8500_int_pipe")
 (define_cpu_unit "mips_i8500_control,
-     mips_i8500_ctu, mips_i8500_alu0" "mips_i8500_int_pipe")
+     mips_i8500_alu0" "mips_i8500_int_pipe")
 
 (define_cpu_unit "mips_i8500_fpu_short" "mips_i8500_fpu_short_pipe")
 (define_cpu_unit "mips_i8500_fpu_long"	"mips_i8500_fpu_long_pipe")
 
-(define_reservation "mips_i8500_control_ctu"
-      "mips_i8500_control, mips_i8500_ctu")
 (define_reservation "mips_i8500_control_alu0"
       "mips_i8500_control, mips_i8500_alu0")
 (define_reservation "mips_i8500_agen_lsu" "mips_i8500_agen, mips_i8500_lsu")
@@ -56,8 +52,9 @@
        (eq_attr "type" "nop"))
   "nothing")
 
-;; mulw takes 3 cycles where as remaining instructions take 4.
-(define_insn_reservation "mips_i8500_imul" 4
+;; Multiply instructions are fully pipelined and
+;; have a fixed latency of 3 cycles.
+(define_insn_reservation "mips_i8500_imul" 3
   (and (eq_attr "tune" "mips_i8500")
        (eq_attr "type" "imul"))
   "mips_i8500_gpmul")
@@ -70,7 +67,7 @@
 (define_insn_reservation "mips_i8500_idiv" 22
   (and (eq_attr "tune" "mips_i8500")
        (eq_attr "type" "idiv"))
-  "mips_i8500_gpdiv*22")
+  "mips_i8500_gpdiv*7")
 
 (define_insn_reservation "mips_i8500_load" 3
   (and (eq_attr "tune" "mips_i8500")
@@ -85,7 +82,7 @@
 (define_insn_reservation "mips_i8500_branch" 1
   (and (eq_attr "tune" "mips_i8500")
        (eq_attr "type" "branch,jump,call,jalr,ret,sfb_alu,trap"))
-  "mips_i8500_control_ctu")
+  "mips_i8500_control_alu0")
 
 (define_insn_reservation "mips_i8500_xfer" 1
   (and (eq_attr "tune" "mips_i8500")
@@ -93,7 +90,7 @@
   "mips_i8500_control_alu0 | mips_i8500_agen_alu1")
 
 ;; fmin/fmax takes 2 cycles where as remaining fmove instructions such as
-;; fabs, fsgnj, fmv.w.x takes 1 cycle. so define the latency for fmove as
+;; fabs, fsgnj, fmv.w.x takes 1 cycle.  so define the latency for fmove as
 ;; 2 (worstcase)
 (define_insn_reservation "mips_i8500_fmove" 2
   (and (eq_attr "tune" "mips_i8500")
@@ -124,42 +121,44 @@
   (and (eq_attr "tune" "mips_i8500")
       (and (eq_attr "type" "fdiv,fsqrt")
       (eq_attr "mode" "SF")))
-  "mips_i8500_fpu_long*24")
+  "mips_i8500_fpu_long*7")
 
 (define_insn_reservation "mips_i8500_fdiv_df" 32
   (and (eq_attr "tune" "mips_i8500")
       (and (eq_attr "type" "fdiv")
       (eq_attr "mode" "DF")))
-  "mips_i8500_fpu_long*32")
+  "mips_i8500_fpu_long*7")
 
 (define_insn_reservation "mips_i8500_fsqrt_df" 36
   (and (eq_attr "tune" "mips_i8500")
       (and (eq_attr "type" "fsqrt")
       (eq_attr "mode" "DF")))
-  "mips_i8500_fpu_long*36")
+  "mips_i8500_fpu_long*7")
 
-;; Even if a specific type attribute is not implemented by a processor
-;; tune variant, the pipeline description must still provide a valid
-;; reservation to prevent scheduling errors.
+(define_insn_reservation "mips_i8500_fdiv_hf" 1
+  (and (eq_attr "tune" "mips_i8500")
+      (and (eq_attr "type" "fdiv,fsqrt")
+      (eq_attr "mode" "HF")))
+  "mips_i8500_fpu_short")
 
 (define_insn_reservation "mips_i8500_unknown" 1
   (and (eq_attr "tune" "mips_i8500")
        (eq_attr "type" "vctz, vssegts, vldm, vldox, rdvl, vmffs, vidiv, vnclip,
-        vandn, vfredu, vsha2cl, vmsfs, vssegtox, vired, vbrev8, vfncvtftoi,
-        vsts, vector, vfcmp, vimuladd, vldr, vfwmuladd, vfmerge, vclmul, vgmul,
-        vimov, vfcvtitof, vslideup, vrev8, vfwredo, vstux, vsmul, viwmuladd,
-        vimovxv, vfsgnj, vsha2ch, vsalu, vmalu, vnshift, vimerge, viminmax,
-        vghsh, sf_vqmacc, vfcvtftoi, vlsegdff, vmpop, vfslide1up, vfalu,
-        vaeskf1, vfslide1down, vsm4k, vsm3c, vfncvtbf16, vfwcvtftoi, vror,
-        ghost, wrvxrm, vlsegdux, rdfrm, vfwalu, vfmuladd, vlsegdox, vfwmaccbf16,
-        wrfrm, vaesem, vfwcvtftof, vste, vfwmul, vaeskf2, vfdiv, vgather,
-        viwalu, vbrev, rdvlenb, vfwcvtbf16, vfclass, vsha2ms, sf_vfnrclip,
-        vwsll, vfrecp, imul_fused, vclz, vfredo, sf_vc, vldff, vlsegde, viwmul,
-        vldux, vicmp, viwred, vlds, vfncvtftof, vstox, vfmov, vfwredu,
-        vislide1down, vmidx, vslidedown, vislide1up, vaesdm, vsm3me, vfmovvf,
-        vstm, vsetvl_pre, vssegtux, sf_vc_se, vrol, vcompress, vext, vstr,
-        vfsqrt, vsshift, vfmovfv, vcpop, vshift, vsm4r, vimovvx, vialu, vmiota,
-        arcv_dsp_vector, flti, vclmulh, vimul, vfmul, vsetvl, vaesdf,
-        vfncvtitof, alu_fused, vfwcvtitof, vmov, ftrig, vssegte, vaesef, vicalu,
-        vaesz, vlsegds, vaalu, vfminmax, vlde"))
+      vandn, vfredu, vsha2cl, vmsfs, vssegtox, vired, vbrev8, vfncvtftoi,
+      vsts, vector, vfcmp, vimuladd, vldr, vfwmuladd, vfmerge, vclmul, vgmul,
+      vimov, vfcvtitof, vslideup, vrev8, vfwredo, vstux, vsmul, viwmuladd,
+      vimovxv, vfsgnj, vsha2ch, vsalu, vmalu, vnshift, vimerge, viminmax,
+      vghsh, sf_vqmacc, vfcvtftoi, vlsegdff, vmpop, vfslide1up, vfalu,
+      vaeskf1, vfslide1down, vsm4k, vsm3c, vfncvtbf16, vfwcvtftoi, vror,
+      ghost, wrvxrm, vlsegdux, rdfrm, vfwalu, vfmuladd, vlsegdox, vfwmaccbf16,
+      wrfrm, vaesem, vfwcvtftof, vste, vfwmul, vaeskf2, vfdiv, vgather,
+      viwalu, vbrev, rdvlenb, vfwcvtbf16, vfclass, vsha2ms, sf_vfnrclip,
+      vwsll, vfrecp, imul_fused, vclz, vfredo, sf_vc, vldff, vlsegde, viwmul,
+      vldux, vicmp, viwred, vlds, vfncvtftof, vstox, vfmov, vfwredu,
+      vislide1down, vmidx, vslidedown, vislide1up, vaesdm, vsm3me, vfmovvf,
+      vstm, vsetvl_pre, vssegtux, sf_vc_se, vrol, vcompress, vext, vstr,
+      vfsqrt, vsshift, vfmovfv, vcpop, vshift, vsm4r, vimovvx, vialu, vmiota,
+      arcv_dsp_vector, flti, vclmulh, vimul, vfmul, vsetvl, vaesdf,
+      vfncvtitof, alu_fused, vfwcvtitof, vmov, ftrig, vssegte, vaesef, vicalu,
+      vaesz, vlsegds, vaalu, vfminmax, vlde"))
   "mips_i8500_control_alu0")
