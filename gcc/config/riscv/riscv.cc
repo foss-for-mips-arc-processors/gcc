@@ -10858,9 +10858,12 @@ riscv_expand_epilogue (int style)
   bool use_multi_pop = ((style == NORMAL_RETURN) || (style == SIBCALL_RETURN))
 		       && riscv_use_multi_push (frame);
 
+  /* Don't emit riscv_restore_N calls in case of shadow stack.  */
   bool use_restore_libcall
     = !use_multi_pop
-      && ((style == NORMAL_RETURN) && riscv_use_save_libcall (frame));
+      && ((style == NORMAL_RETURN) && riscv_use_save_libcall (frame))
+      && !(need_zicfiss_push_pop_p () || need_scs_push_pop_p ());
+
   unsigned libcall_size = use_restore_libcall && !use_multi_pop
 			    ? frame->save_libcall_adjustment
 			    : 0;
@@ -11205,7 +11208,8 @@ riscv_epilogue_uses (unsigned int regno)
   if (regno == RETURN_ADDR_REGNUM)
     return true;
 
-  if (regno == GP_REGNUM && sanitize_flags_p (SANITIZE_SHADOW_CALL_STACK))
+  if (regno == GP_REGNUM && epilogue_completed && 
+      sanitize_flags_p (SANITIZE_SHADOW_CALL_STACK))
     return true;
 
   if (epilogue_completed && cfun->machine->interrupt_handler_p)
@@ -12889,6 +12893,9 @@ riscv_conditional_register_usage (void)
       fixed_regs[VXRM_REGNUM] = call_used_regs[VXRM_REGNUM] = 1;
       fixed_regs[FRM_REGNUM] = call_used_regs[FRM_REGNUM] = 1;
     }
+
+  if (sanitize_flags_p (SANITIZE_SHADOW_CALL_STACK))
+    call_used_regs[GP_REGNUM] = 0;
 }
 
 /* Return a register priority for hard reg REGNO.  */
