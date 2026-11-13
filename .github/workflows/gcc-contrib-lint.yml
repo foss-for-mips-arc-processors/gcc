@@ -106,7 +106,7 @@ jobs:
                 echo "Files to check: $TEST_FILES"
                 # Capture exit code
                 set +e
-                python3 contrib/dg-lint/dg-lint $TEST_FILES > dg-lint.log 2>&1
+                python3 contrib/dg-lint/dg-lint -fdiagnostics-add-output=text $TEST_FILES > dg-lint.log 2>&1
                 DG_LINT_EXIT=$?
                 set -e
                 cat dg-lint.log
