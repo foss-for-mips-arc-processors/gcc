@@ -62,6 +62,7 @@ RISCV_TUNE("size", generic, optimize_size_tune_info)
 RISCV_TUNE("mips-p8700", mips_p8700, mips_p8700_tune_info)
 RISCV_TUNE("mips-m8500", mips_m8500, mips_m8500_tune_info)
 RISCV_TUNE("mips-i8500", mips_i8500, mips_i8500_tune_info)
+RISCV_TUNE("mips-s8200", mips_i8500, mips_i8500_tune_info)
 RISCV_TUNE("andes-25-series", andes_25_series, andes_25_tune_info)
 RISCV_TUNE("andes-23-series", andes_23_series, andes_23_tune_info)
 RISCV_TUNE("andes-45-series", andes_45_series, andes_45_tune_info)
@@ -193,6 +194,13 @@ RISCV_CORE("mips-m8500",      "rv32imafdb_zce_zbc_zicbop_zimop_zcmop_"
                               "ziccamoa_ziccif_zicclsm_"
                               "xmipscmov_xmipsexectl_xmipslsp_xmipstrig",
                               "mips-m8500")
+
+RISCV_CORE("mips-s8200",      "rv64imafdcbv_zicbom_zicbop_zicboz_zicntr_zicsr_"
+            "zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_"
+            "zaamo_zalrsc_zawrs_zfa_zfhmin_"
+            "zca_zcb_zcd_zcmop_zkt_zvbb_zve32f_zve32x_"
+            "zve64d_zve64f_zvkt_zvl1024b_zicond_zvfhmin",
+            "mips-s8200")
 
 RISCV_CORE("andes-n22",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
 RISCV_CORE("andes-n25",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
