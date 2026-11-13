@@ -72,6 +72,8 @@ by particular CPU name. Permissible values for this option are:
 
 @samp{mips-m8500},
 
+@samp{mips-s8200},
+
 @samp{andes-n22},
 
 @samp{andes-n25},
