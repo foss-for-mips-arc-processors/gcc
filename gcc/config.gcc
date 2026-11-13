@@ -2649,6 +2649,9 @@ riscv*-*-linux*)
 			mips-p8700)
 				tmake_file="${tmake_file} riscv/t-arcv-linux-p8700"
 				;;
+			mips-s8200)
+				tmake_file="${tmake_file} riscv/t-arcv-linux-s8200"
+				;;
 			"")
 				echo "Error: --with-tune= is required for multilib ${target}." 1>&2
 				exit 1
