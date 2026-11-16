@@ -4812,7 +4812,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
-  )
+  [(set_attr "type" "store")])
 
 (define_insn_and_split "*lddidi_split"
   [(set (match_operand:DI 0 "register_operand" "=r")
@@ -4831,6 +4831,7 @@ archs4x, archs4xd"
    operands[4] = gen_highpart (SImode, operands[0]);
   }
   "
+  [(set_attr "type" "load")]
   )
 
 (define_insn "trap_s"
