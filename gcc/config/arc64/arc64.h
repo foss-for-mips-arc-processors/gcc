@@ -408,11 +408,11 @@ enum reg_class
 
 /* Defines if the CLZ result is undefined or has a useful value.  */
 #define CLZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE)			\
-  ((VALUE) = GET_MODE_SIZE((MODE)) * BITS_PER_UNIT - 1, 2)
+  ((VALUE) = GET_MODE_UNIT_BITSIZE (MODE) - 1, 2)
 
 /* Defines if the CTZ result is undefined or has a useful value.  */
 #define CTZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE)			\
-  ((VALUE) = GET_MODE_SIZE((MODE)) * BITS_PER_UNIT - 1, 2)
+  ((VALUE) = GET_MODE_UNIT_BITSIZE (MODE) - 1, 2)
 
 /* Function argument passing.  */
 
