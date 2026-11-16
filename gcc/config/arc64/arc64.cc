@@ -602,9 +602,9 @@ frame_stack_add (HOST_WIDE_INT offset)
 
   tmp = gen_rtx_SET (stack_pointer_rtx,
 		     plus_constant (Pmode, stack_pointer_rtx, lo));
-  tmp = emit_insn (tmp);
-  RTX_FRAME_RELATED_P (tmp) = 1;
-  add_reg_note (tmp, REG_FRAME_RELATED_EXPR,
+  rtx_insn *insn = emit_insn (tmp);
+  RTX_FRAME_RELATED_P (insn) = 1;
+  add_reg_note (insn, REG_FRAME_RELATED_EXPR,
 		gen_rtx_SET (stack_pointer_rtx,
 			     plus_constant (Pmode, stack_pointer_rtx,
 					    offset)));
@@ -730,7 +730,8 @@ arc64_save_callee_saves (void)
 static HOST_WIDE_INT
 frame_restore_reg (rtx reg, HOST_WIDE_INT displacement)
 {
-  rtx addr, insn, tmp;
+  rtx addr, tmp;
+  rtx_insn *insn;
 
   if (displacement)
     {
