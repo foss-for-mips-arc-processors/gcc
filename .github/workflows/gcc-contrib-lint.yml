@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   gcc-contrib-lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # The merge base is exactly github.event.pull_request.commits commits
       # behind the PR head, so fetch just enough history to reach it (+1 to
