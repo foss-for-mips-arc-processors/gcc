@@ -78,7 +78,7 @@ jobs:
 
           git submodule set-url binutils \
             https://github.com/foss-for-synopsys-dwc-arc-processors/binutils-gdb.git
-          git submodule set-branch --branch arc-2026.09 binutils
+          git submodule set-branch --branch arc-2027.03 binutils
 
           git submodule sync binutils newlib
 
