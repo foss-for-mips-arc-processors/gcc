@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build-and-test:
     name: ${{ matrix.target }}-${{ matrix.cpu }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
 
     strategy:
