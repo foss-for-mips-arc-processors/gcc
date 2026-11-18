@@ -1557,6 +1557,7 @@ static const riscv_extra_ext_flag_table_t riscv_extra_ext_flag_table[] =
   RISCV_EXT_FLAG_ENTRY ("xmipsispram", x_riscv_xmips_subext, MASK_XMIPSISPRAM),
   RISCV_EXT_FLAG_ENTRY ("xmipserl", x_riscv_xmips_subext, MASK_XMIPSERL),
   RISCV_EXT_FLAG_ENTRY ("xmipspma", x_riscv_xmips_subext, MASK_XMIPSPMA),
+  RISCV_EXT_FLAG_ENTRY ("xmipsvme", x_riscv_xmips_subext, MASK_XMIPSVME),
 
   {NULL, NULL, NULL, 0}
 };

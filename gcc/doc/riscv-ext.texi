@@ -814,6 +814,10 @@
 @tab 1.0
 @tab Configurable PMAs that buddy up with PMP registers
 
+@item @samp{xmipsvme}
+@tab 1.0
+@tab Vector and Matrix Engine
+
 @item @samp{xandesperf}
 @tab 5.0
 @tab Andes performace extension
