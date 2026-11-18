@@ -80,7 +80,13 @@ jobs:
             https://github.com/foss-for-synopsys-dwc-arc-processors/binutils-gdb.git
           git submodule set-branch --branch arc-2027.03 binutils
 
-          git submodule sync binutils newlib
+          # git.savannah.gnu.org frequently answers GitHub Actions runners
+          # with HTTP 502, so take DejaGnu from our fork instead.
+          git submodule set-url dejagnu \
+            https://github.com/foss-for-mips-arc-processors/dejagnu.git
+          git submodule set-branch --branch arc-2027.03 dejagnu
+
+          git submodule sync binutils newlib dejagnu
 
           # Only fetch submodules required for a newlib (--disable-linux) build:
           # binutils, newlib, dejagnu. GCC sources come from the PR checkout
@@ -90,7 +96,7 @@ jobs:
           # submodule is missing, so this checkout survives it.
           git submodule update --init --remote --depth 1 --recursive binutils
           git submodule update --init --depth 1 --recursive newlib
-          git submodule update --init --depth 1 --recursive dejagnu
+          git submodule update --init --remote --depth 1 --recursive dejagnu
 
       - name: Teach the QEMU wrapper about the mips-m8500 extensions
         working-directory: riscv-gnu-toolchain
