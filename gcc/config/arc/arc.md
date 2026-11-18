@@ -1711,6 +1711,27 @@ archs4x, archs4xd"
   [(set_attr "type" "cmove,cmove")
    (set_attr "length" "4,8")])
 
+(define_insn "*movsicc_insn_2"
+  [(set (match_operand:SI 0 "dest_reg_operand" "=w,w")
+	(if_then_else:SI (match_operator 3 "proper_comparison_operator"
+		       [(match_operand 4 "cc_register" "") (const_int 0)])
+			(match_operand:SI 1 "register_operand" "0,0")
+			(match_operand:SI 2 "immediate_operand" "L,Cal")))]
+  ""
+{
+  if (rtx_equal_p (operands[2], const0_rtx) && GET_CODE (operands[3]) == EQ
+      && IN_RANGE (REGNO (operands[0]) ^ 4, 4, 11))
+    return "sub%?.ne\\t%0,%0,%0";
+  /* ??? might be good for speed on ARC600 too, *if* properly scheduled.  */
+  if ((optimize_size && (!TARGET_ARC600_FAMILY))
+      && rtx_equal_p (operands[2], constm1_rtx)
+      && GET_CODE (operands[3]) == GEU)
+    return "sbc.cs\\t%0,%0,%0";
+  return "mov.%D3\\t%0,%2";
+}
+  [(set_attr "type" "cmove,cmove")
+   (set_attr "length" "4,8")])
+
 ;; When there's a mask of a single bit, and then a compare to 0 or 1,
 ;; if the single bit is the sign bit, then GCC likes to convert this
 ;; into a sign extend and a compare less than, or greater to zero.
