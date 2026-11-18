@@ -507,6 +507,8 @@ Mask(XMIPSERL) Var(riscv_xmips_subext)
 
 Mask(XMIPSPMA) Var(riscv_xmips_subext)
 
+Mask(XMIPSVME) Var(riscv_xmips_subext)
+
 Mask(XANDESPERF) Var(riscv_xandes_subext)
 
 Mask(XANDESBFHCVT) Var(riscv_xandes_subext)
