@@ -1,10 +1,9 @@
 /* { dg-do compile } */
 /* { dg-options "-O1" } */
 
-/* mpy.f   r1,r0,r1
-   mov_s   r0,5    ;3
+/* mpy.f   r0,r0,r1
    j_s.d   [blink]
-   mov.ne  r0,r1 */
+   mov.eq  r0,5 */
 unsigned int
 ubar (unsigned int a, unsigned int b)
 {
@@ -16,10 +15,9 @@ ubar (unsigned int a, unsigned int b)
 	return c;
 }
 
-/*  mpy.f   r1,r0,r1
-    mov_s   r0,5    ;3
+/*  mpy.f   r0,r0,r1
     j_s.d   [blink]
-    mov.ne  r0,r1 */
+    mov.eq  r0,5 */
 signed int
 bar (signed int a, signed int b)
 {
@@ -60,7 +58,5 @@ foo (signed int a, signed int b)
 }
 
 /* { dg-final { scan-assembler-times "mpy\\.f\\s+0" 2 } } */
-/* { dg-final { scan-assembler-times "mov\\.ne\\s+" 2 } } */
 /* { dg-final { scan-assembler-times "mpy\\.f\\s+r" 2 } } */
-/* { dg-final { scan-assembler-times "mov\\.eq\\s+" 2 } } */
-
+/* { dg-final { scan-assembler-times "mov\\.eq\\s+" 4 } } */
