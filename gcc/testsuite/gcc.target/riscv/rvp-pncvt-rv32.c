@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" } } */
 
 typedef signed char int8x4_t  __attribute__((vector_size(4)));

@@ -49,9 +49,10 @@
   "tt_ascalon_d8_decode,tt_ascalon_d8_ls")
 
 ;; Generic integer instructions.
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "tt_ascalon_d8_alu" 1
   (and (eq_attr "tune" "tt_ascalon_d8")
-       (eq_attr "type" "unknown,const,arith,shift,slt,multi,auipc,nop,logical,\
+       (eq_attr "type" "simd,unknown,const,arith,shift,slt,multi,auipc,nop,logical,\
 			move,bitmanip,rotate,min,max,minu,maxu,clz,ctz,atomic,\
 			condmove,mvpair,zicond"))
   "tt_ascalon_d8_decode,tt_ascalon_d8_alu")

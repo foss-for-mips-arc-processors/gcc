@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcbp0p21 -mabi=lp64" } */
+/* { dg-options "-march=rv64gcbp0p6 -mabi=lp64" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" } } */
 
 /* Test PLI.B/PLI.H with CONST_VECTOR on RV64.

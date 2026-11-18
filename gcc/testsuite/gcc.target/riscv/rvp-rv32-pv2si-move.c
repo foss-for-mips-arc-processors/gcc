@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -O2" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-g" "-flto" } } */
 
 /* Test RV32 PV2SI (2×32-bit packed vector) move patterns.

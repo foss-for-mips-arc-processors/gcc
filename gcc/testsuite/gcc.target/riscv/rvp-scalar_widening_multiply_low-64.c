@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" "-O0" "-O1" "-Os" "-Oz" "-Og" } } */
 
 #include <stdint-gcc.h>

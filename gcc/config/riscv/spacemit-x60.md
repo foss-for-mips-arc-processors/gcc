@@ -113,9 +113,10 @@
        (eq_attr "type" "fcvt_f2i"))
   "spacemit_x60_alu")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "spacemit_x60_alu" 1
   (and (eq_attr "tune" "spacemit_x60")
-       (eq_attr "type" "unknown,const,arith,shift,slt,multi,auipc,nop,logical,\
+       (eq_attr "type" "simd,unknown,const,arith,shift,slt,multi,auipc,nop,logical,\
 			move,bitmanip,min,max,minu,maxu,clz,ctz,rotate,\
 			condmove,crypto,mvpair,zicond,cpop"))
   "spacemit_x60_alu")

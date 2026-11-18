@@ -28,16 +28,45 @@
 ;; Used for instructions whose 4-byte halfword form exists on both RV32 and RV64.
 (define_mode_iterator PVHIW [PV2HI])
 
+;; Halfword vectors with selected modular products on RV32.
+(define_mode_iterator RVP_EXTRACT_H [PV2HI PV4HI])
+
+;; Cross add/subtract within each complex pair.  RV32 has a register-pair
+;; halfword instruction, but no cross-word instruction.
+(define_mode_iterator RVP_CADD [PV2HI PV4HI (PV2SI "TARGET_64BIT")])
+(define_int_iterator RVP_CADD_OP [UNSPEC_PAS UNSPEC_PSA])
+(define_int_attr rvp_cadd_rot [(UNSPEC_PAS "90") (UNSPEC_PSA "270")])
+
+;; Signed halfword and word vectors with saturating scaled products.
+(define_mode_iterator RVP_QMUL [PV2HI PV4HI PV2SI])
+(define_int_iterator RVP_QMUL_OP [UNSPEC_PMULQ UNSPEC_PMULQR])
+(define_int_attr rvp_qmul_optab
+  [(UNSPEC_PMULQ "ssmulhs") (UNSPEC_PMULQR "ssmulhrs")])
+(define_int_attr rvp_qmul_half
+  [(UNSPEC_PMULQ "pmulq") (UNSPEC_PMULQR "pmulqr")])
+
 ;; PVHW: 8-byte packed halfword and word modes (PV4HI + PV2SI).
 ;; Single register on RV64; register pair on RV32.
 ;; Used for instructions that have distinct DB/DH/DW (RV32) and B/H/W (RV64) forms.
 (define_mode_iterator PVHW [PV4HI PV2SI])
+
+;; Packed modes with an immediate arithmetic right shift with rounding.
+(define_mode_iterator RVP_ROUND [PV2HI PV4HI PV2SI])
+(define_mode_attr rvp_round_insn
+  [(PV2HI "riscv_psshar_s_i16x2")
+   (PV4HI "riscv_psshar_s_i16x4")
+   (PV2SI "riscv_psshar_s_i32x2")])
 
 ;; Element mode for PLI/PLUI vec_duplicate
 (define_mode_attr PVALL_ELT [
   (PV4QI "QI") (PV8QI "QI")
   (PV2HI "HI") (PV4HI "HI")
   (PV2SI "SI")])
+
+(define_mode_attr rvp_inner_mode [
+  (PV4QI "qi") (PV8QI "qi")
+  (PV2HI "hi") (PV4HI "hi")
+  (PV2SI "si")])
 
 ;; Constraint for PLI vec_duplicate
 (define_mode_attr dpli [
@@ -54,6 +83,11 @@
 (define_mode_attr plui_shift [
   (PV2HI "6") (PV4HI "6")
   (PV2SI "22")])
+
+;; QIH_PABD: Scalar and packed byte/halfword modes with a PABD form, used
+;; by abs<mode>2 (pabd rd, rs, x0 for the scalars, pabd.db/dh over the
+;; RV32 register pairs).
+(define_mode_iterator QIH_PABD [QI HI PV4QI PV2HI PV8QI PV4HI])
 
 ;; PVQIHI: Packed vector modes for byte and halfword elements only
 ;; On RV64, we support both 4-byte (PV4QI, PV2HI) and 8-byte (PV8QI, PV4HI) vectors
@@ -76,6 +110,11 @@
 ;; Includes PV2SI which is now supported on both RV32 and RV64
 (define_mode_iterator PVMOVE [PV4QI PV2HI PV8QI PV4HI PV2SI])
 
+;; Scalar words and packed vectors for bitwise masked moves.  Eight-byte
+;; vectors on RV32 are split into one masked move per register.
+(define_mode_iterator PVMVM [(SI "!TARGET_64BIT") (DI "TARGET_64BIT")
+			    PV4QI PV2HI PV8QI PV4HI PV2SI])
+
 ;; QIHI: Scalar and packed modes for byte and halfword elements
 ;; Used for instructions like PSABS that work on both scalar and packed modes
 (define_mode_iterator QIHI [QI HI PV4QI PV2HI
@@ -96,6 +135,22 @@
 
 ;; Packed extension mode for RV32 register-pair instructions
 (define_mode_iterator RVP_DWIDTH_EXT [PV4HI PV2SI])
+
+;; Full-register inputs for unpacking consecutive elements.
+(define_mode_iterator RVP_UNPACK [PV8QI PV4HI])
+(define_mode_attr rvp_unpack_mode [(PV8QI "PV4HI") (PV4HI "PV2SI")])
+(define_mode_attr rvp_pack_mode [(PV4HI "PV8QI") (PV2SI "PV4HI")])
+
+;; Byte and halfword dot products accumulating into packed words.
+(define_mode_iterator RVP_DOT [PV8QI PV4HI])
+;; Word and doubleword accumulators for byte and halfword SAD reductions.
+(define_mode_iterator RVP_SAD_ACC [PV2SI PV1DI])
+(define_mode_attr rvp_dot_signed
+  [(PV8QI "pm4adda_i8x8") (PV4HI "pm2adda_i16x4")])
+(define_mode_attr rvp_dot_unsigned
+  [(PV8QI "pm4addau_u8x8") (PV4HI "pm2addau_u16x4")])
+(define_mode_attr rvp_dot_mixed
+  [(PV8QI "pm4addasu_i8x8") (PV4HI "pm2addasu_i16x4")])
 
 ;; Mode Attributes
 
@@ -142,10 +197,18 @@
 (define_code_iterator rvp_binop
   [plus ss_plus us_plus
    minus ss_minus us_minus
-   smax umax smin umin eq lt ltu])
+   smax umax smin umin eq lt ltu gt gtu])
 
 (define_code_iterator rvp_widen_op
   [plus minus])
+
+;; Scalar word saturation uses the same arithmetic codes as packed lanes.
+(define_code_iterator rvp_sat_op [ss_plus us_plus ss_minus us_minus])
+
+;; Modular arithmetic around a selected halfword product.
+(define_code_iterator rvp_lane_arith [plus minus])
+(define_code_attr rvp_lane_length [(plus "8") (minus "12")])
+(define_code_attr rvp_lane_high_length [(plus "12") (minus "16")])
 
 ;; Operations for averaging instructions
 (define_code_iterator avg_op [plus minus])
@@ -165,13 +228,13 @@
   [(plus "add") (ss_plus "ssadd") (us_plus "usadd")
    (minus "sub") (ss_minus "sssub") (us_minus "ussub")
    (smax "smax") (umax "umax") (smin "smin") (umin "umin")
-   (eq "eq") (lt "lt") (ltu "ltu")])
+   (eq "eq") (lt "lt") (ltu "ltu") (gt "gt") (gtu "gtu")])
 
 (define_code_attr rvp_insn
   [(plus "padd") (ss_plus "psadd") (us_plus "psaddu")
    (minus "psub") (ss_minus "pssub") (us_minus "pssubu")
    (smax "pmax") (umax "pmaxu") (smin "pmin") (umin "pminu")
-   (eq "pmseq") (lt "pmslt") (ltu "pmsltu")])
+   (eq "pmseq") (lt "pmslt") (ltu "pmsltu") (gt "pmsgt") (gtu "pmsgtu")])
 
 ;; Standard optab name prefix for packed multiply-high (smul.../umul...).
 (define_code_attr mulh_prefix [(smul_highpart "s") (umul_highpart "u")])
@@ -190,17 +253,11 @@
   [(plus "paadd")
    (minus "pasub")])
 
-;; Optab name prefixes for averaging instructions.
-;; avg<mode>3_floor and uavg<mode>3_floor are standard GCC optabs.
-;; avg_sub<mode>3_floor and uavg_sub<mode>3_floor are P-extension specific
-;; patterns for averaging subtract (not standard GCC optabs).
+;; Optab name prefixes for averaging instructions.  Prefix with "u" for
+;; unsigned inputs; the local optabs include averaging subtraction.
 (define_code_attr savg_optab
   [(plus "avg")
    (minus "avg_sub")])
-
-(define_code_attr uavg_optab
-  [(plus "uavg")
-   (minus "uavg_sub")])
 
 (define_code_attr rvp_shift_optab
   [(ashift   "ashl")
@@ -211,17 +268,6 @@
   [(ashift   "psll")
    (lshiftrt "psrl")
    (ashiftrt "psra")])
-
-;; PAS/PSA: alternating add-subtract operations
-;; pas: even lanes add, odd lanes subtract
-;; psa: even lanes subtract, odd lanes add
-(define_code_iterator pas_even_op [plus minus])
-
-(define_code_attr pas_odd_op
-  [(plus "minus") (minus "plus")])
-
-(define_code_attr pas_insn
-  [(plus "pas") (minus "psa")])
 
 ;; Absolute difference operations
 (define_code_iterator abd_maxop [smax umax])

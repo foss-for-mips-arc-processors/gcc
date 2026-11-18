@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64d" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64d" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 /* pnclipup.b/.h clamp a zero-extended (unsigned) lane to [0, 255]/[0, 65535].

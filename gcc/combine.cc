@@ -415,6 +415,7 @@ static void init_reg_last (void);
 static void setup_incoming_promotions (rtx_insn *);
 static void set_nonzero_bits_and_sign_copies (rtx, const_rtx, void *);
 static bool cant_combine_insn_p (rtx_insn *);
+static bool combine_equal_expression_p (rtx);
 static bool can_combine_p (rtx_insn *, rtx_insn *, rtx_insn *, rtx_insn *,
 			   rtx_insn *, rtx_insn *, rtx *, rtx *);
 static bool combinable_i3pat (rtx_insn *, rtx *, rtx, rtx, rtx,
@@ -821,11 +822,12 @@ do_SUBST_LINK (struct insn_link **into, struct insn_link *newval)
    that I0, I1 and/or NEWI2PAT may be NULL_RTX.  Similarly, NEWOTHERPAT and
    undobuf.other_insn may also both be NULL_RTX.  Return false if the cost
    of all the instructions can be estimated and the replacements are more
-   expensive than the original sequence.  */
+   expensive than the original sequence.  If STRICT_P, require known costs
+   and a strictly cheaper replacement.  */
 
 static bool
 combine_validate_cost (rtx_insn *i0, rtx_insn *i1, rtx_insn *i2, rtx_insn *i3,
-		       rtx newpat, rtx newi2pat, rtx newotherpat)
+		       rtx newpat, rtx newi2pat, rtx newotherpat, bool strict_p)
 {
   int i0_cost, i1_cost, i2_cost, i3_cost;
   int new_i2_cost, new_i3_cost;
@@ -914,6 +916,8 @@ combine_validate_cost (rtx_insn *i0, rtx_insn *i1, rtx_insn *i2, rtx_insn *i3,
   /* Disallow this combination if both new_cost and old_cost are greater than
      zero, and new_cost is greater than old cost.  */
   bool reject = old_cost > 0 && new_cost > old_cost;
+  if (strict_p)
+    reject |= old_cost <= 0 || new_cost <= 0 || new_cost >= old_cost;
 
   if (dump_file)
     {
@@ -1416,6 +1420,48 @@ combine_instructions (rtx_insn *f, unsigned int nregs)
 		  next = try_combine (insn, i2mod, NULL, NULL,
 				      &new_direct_jump_p,
 				      last_combined_insn);
+		  /* Also try one predecessor of the note-bearing insn.
+		     Keep I2MOD after the predecessor, and do not reintroduce
+		     inputs removed by the note: distribute_notes moves their
+		     deaths back from I2MOD, not from the final insn.  */
+		  if (!next && max_combine >= 3
+		      && GET_CODE (PATTERN (temp)) == SET
+		      && REG_P (orig_dest)
+		      && combine_equal_expression_p (orig_src)
+		      && combine_equal_expression_p (note))
+		    FOR_EACH_LOG_LINK (nextlinks, temp)
+		      {
+			rtx_insn *pred = nextlinks->insn;
+			if (!NONDEBUG_INSN_P (pred)
+			    || BLOCK_FOR_INSN (pred) != this_basic_block
+			    || DF_INSN_LUID (pred) >= DF_INSN_LUID (temp))
+			  continue;
+			rtx pred_set = PATTERN (pred);
+			if (GET_CODE (pred_set) != SET
+			    || !REG_P (SET_DEST (pred_set))
+			    || !reg_overlap_mentioned_p (SET_DEST (pred_set), note)
+			    || !combine_equal_expression_p (SET_SRC (pred_set)))
+			  continue;
+
+			bool inputs_safe = true;
+			subrtx_iterator::array_type array;
+			FOR_EACH_SUBRTX (iter, array, orig_src, ALL)
+			  if (REG_P (*iter)
+			      && !reg_overlap_mentioned_p (*iter, note)
+			      && reg_overlap_mentioned_p (*iter, SET_SRC (pred_set)))
+			    {
+			      inputs_safe = false;
+			      break;
+			    }
+			if (!inputs_safe)
+			  continue;
+
+			next = try_combine (insn, temp, pred, NULL,
+					    &new_direct_jump_p,
+					    last_combined_insn);
+			if (next)
+			  break;
+		      }
 		  i2mod = NULL;
 		  if (next)
 		    {
@@ -2504,6 +2550,31 @@ count_auto_inc (rtx, rtx, rtx, rtx, rtx, void *arg)
   return 0;
 }
 
+/* Return whether X is an integer expression that can be copied into a
+   reconstructed equivalence note.  Do not introduce memory references,
+   target-specific semantics or unspecified high bits into the note.  */
+
+static bool
+combine_equal_expression_p (rtx x)
+{
+  if (side_effects_p (x) || contains_mem_rtx_p (x))
+    return false;
+
+  subrtx_iterator::array_type array;
+  FOR_EACH_SUBRTX (iter, array, x, ALL)
+    {
+      const_rtx value = *iter;
+      machine_mode mode = GET_MODE (value);
+      if ((mode != VOIDmode && !SCALAR_INT_MODE_P (mode))
+	  || GET_CODE (value) == UNSPEC
+	  || GET_CODE (value) == ASM_OPERANDS
+	  || GET_CODE (value) == ASM_INPUT
+	  || (SUBREG_P (value) && paradoxical_subreg_p (value)))
+	return false;
+    }
+  return true;
+}
+
 /* Try to combine the insns I0, I1 and I2 into I3.
    Here I0, I1 and I2 appear earlier than I3.
    I0 and I1 can be zero; then we combine just I2 into I3, or I1 and I2 into
@@ -2568,6 +2639,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
   bool have_mult = false;
   bool swap_i2i3 = false;
   bool split_i2i3 = false;
+  bool split_pair = false;
   bool changed_i3_dest = false;
   bool i2_was_move = false, i3_was_move = false;
   int n_auto_inc = 0;
@@ -3404,6 +3476,23 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
 	}
     }
 
+  /* Substituting one input can make another input unused before its
+     side effects have been substituted.  Do not delete such an input
+     unless its set is retained.  */
+  if ((!i2_is_used && !added_sets_2 && side_effects_p (i2src))
+      || (i1 && !i1_is_used && !added_sets_1
+	  && !(added_sets_2 && i1_feeds_i2_n)
+	  && side_effects_p (i1src))
+      || (i0 && !n_occurrences && !added_sets_0
+	  && !(added_sets_1 && i0_feeds_i1_n)
+	  && !(added_sets_2
+	       && (i0_feeds_i2_n || (i0_feeds_i1_n && i1_feeds_i2_n)))
+	  && side_effects_p (i0src)))
+    {
+      undo_all ();
+      return 0;
+    }
+
   /* Fail if an autoincrement side-effect has been duplicated.  Be careful
      to count all the ways that I2SRC and I1SRC can be used.  */
   if ((FIND_REG_INC_NOTE (i2, NULL_RTX) != 0
@@ -3569,14 +3658,17 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
      with no ASM_OPERANDS that wasn't recognized, try to split it into two
      insns.  There are two ways to do this.  It can be split using a
      machine-specific method (like when you have an addition of a large
-     constant) or by combine in the function find_split_point.  */
+     constant) or by combine in the function find_split_point.  Also allow
+     the machine-specific split for two insns.  That split must strictly
+     reduce the estimated cost.  */
 
-  if (i1 && insn_code_number < 0 && GET_CODE (newpat) == SET
+  if (insn_code_number < 0 && GET_CODE (newpat) == SET
       && asm_noperands (newpat) < 0)
     {
       rtx parallel, *split;
       rtx_insn *m_split_insn;
       unsigned int old_nregs, new_nregs;
+      split_pair = !i1;
 
       /* See if the MD file can split NEWPAT.  If it can't, see if letting it
 	 use I2DEST as a scratch register will help.  In the latter case,
@@ -3591,7 +3683,8 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
 	 possible to try that as a scratch reg.  This would require adding
 	 more code to make it work though.  */
 
-      if (m_split_insn == 0 && ! reg_overlap_mentioned_p (i2dest, newpat))
+      if (i1 && m_split_insn == 0
+	  && !reg_overlap_mentioned_p (i2dest, newpat))
 	{
 	  machine_mode new_mode = GET_MODE (SET_DEST (newpat));
 
@@ -3724,7 +3817,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
       /* If we can split it and use I2DEST, go ahead and see if that
 	 helps things be recognized.  Verify that none of the registers
 	 are set between I2 and I3.  */
-      if (insn_code_number < 0
+      if (i1 && insn_code_number < 0
           && (split = find_split_point (&newpat, i3, false)) != 0
 	  /* We need I2DEST in the proper mode.  If it is a hard register
 	     or the only use of a pseudo, we can change its mode.
@@ -4134,10 +4227,49 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
 
   /* Reject this combination if insn_cost reports that the replacement
      instructions are more expensive than the originals.  */
-  if (!combine_validate_cost (i0, i1, i2, i3, newpat, newi2pat, other_pat))
+  if (!combine_validate_cost (i0, i1, i2, i3, newpat, newi2pat, other_pat,
+			      split_pair))
     {
       undo_all ();
       return 0;
+    }
+
+  /* A two-to-one combination can preserve an I3 equivalence by applying
+     the eliminated I2 substitution to it.  Splits can invalidate I2SRC,
+     so exclude them, other changed insns and destination changes.  Every
+     input in the new note must still occur in the final source and have
+     the same value as at I2.  */
+  rtx new_equal = NULL_RTX;
+  rtx equal_note = !i1 ? find_reg_note (i3, REG_EQUAL, NULL_RTX) : NULL_RTX;
+  if (equal_note && XEXP (equal_note, 0)
+      && !CONSTANT_P (XEXP (equal_note, 0))
+      && !newi2pat && !undobuf.other_insn
+      && !split_pair && !split_i2i3
+      && substed_i2 && !added_sets_2 && !i2dest_in_i2src
+      && !i3_subst_into_i2 && !changed_i3_dest && !swap_i2i3
+      && !i3dest_killed && REG_P (i2dest)
+      && reg_overlap_mentioned_p (i2dest, XEXP (equal_note, 0))
+      && GET_CODE (newpat) == SET && REG_P (SET_DEST (newpat))
+      && SCALAR_INT_MODE_P (GET_MODE (SET_DEST (newpat)))
+      && GET_MODE (XEXP (equal_note, 0)) == GET_MODE (SET_DEST (newpat))
+      && i2src && combine_equal_expression_p (i2src)
+      && combine_equal_expression_p (SET_SRC (newpat))
+      && combine_equal_expression_p (XEXP (equal_note, 0)))
+    {
+      bool mode_changed = false;
+      for (struct undo *u = undobuf.undos; u; u = u->next)
+	mode_changed |= u->kind == UNDO_MODE;
+      if (!mode_changed)
+	{
+	  rtx value = simplify_replace_rtx (copy_rtx (XEXP (equal_note, 0)),
+					    i2dest, copy_rtx (i2src));
+	  if (!reg_overlap_mentioned_p (i2dest, value)
+	      && !reg_overlap_mentioned_p (SET_DEST (newpat), value)
+	      && !unmentioned_reg_p (value, SET_SRC (newpat))
+	      && !modified_between_p (value, i2, i3)
+	      && combine_equal_expression_p (value))
+	    new_equal = value;
+	}
     }
 
   if (MAY_HAVE_DEBUG_BIND_INSNS)
@@ -4546,6 +4678,9 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
     if (new_i3_notes)
       distribute_notes (new_i3_notes, i3, i3, NULL, NULL_RTX, NULL_RTX,
 			NULL_RTX);
+
+    if (new_equal && !find_reg_equal_equiv_note (i3))
+      add_reg_note (i3, REG_EQUAL, new_equal);
 
     /* If I3DEST was used in I3SRC, it really died in I3.  We may need to
        put a REG_DEAD note for it somewhere.  If NEWI2PAT exists and sets
@@ -12605,6 +12740,22 @@ simplify_comparison (enum rtx_code code, rtx *pop0, rtx *pop1)
 	  break;
 
 	case SUBREG:
+	  /* A mask that preserves the sign bit of a truncated value does
+	     not affect a sign comparison.  force_to_mode can leave such a
+	     mask when simplifying an extension in the wider mode.  */
+	  if (sign_bit_comparison_p
+	      && mode_width <= HOST_BITS_PER_WIDE_INT
+	      && subreg_lowpart_p (op0)
+	      && partial_subreg_p (op0)
+	      && GET_CODE (SUBREG_REG (op0)) == AND
+	      && CONST_INT_P (XEXP (SUBREG_REG (op0), 1))
+	      && (UINTVAL (XEXP (SUBREG_REG (op0), 1))
+		  & (HOST_WIDE_INT_1U << (mode_width - 1))))
+	    {
+	      op0 = gen_lowpart (mode, XEXP (SUBREG_REG (op0), 0));
+	      continue;
+	    }
+
 	  /* Check for the case where we are comparing A - C1 with C2, that is
 
 	       (subreg:MODE (plus (A) (-C1))) op (C2)
@@ -14734,10 +14885,10 @@ distribute_notes (rtx notes, rtx_insn *from_insn, rtx_insn *i3, rtx_insn *i2,
 	  /* If we replaced the right hand side of FROM_INSN with a
 	     REG_EQUAL note, the original use of the dying register
 	     will not have been combined into I3 and I2.  In such cases,
-	     FROM_INSN is guaranteed to be the first of the combined
-	     instructions, so we simply need to search back before
-	     FROM_INSN for the previous use or set of this register,
-	     then alter the notes there appropriately.
+	     a predecessor combined with FROM_INSN must not reintroduce
+	     an input removed by the note.  Thus we can search back before
+	     FROM_INSN for the previous use or set of this register, then
+	     alter the notes there appropriately.
 
 	     If the register is used as an input in I3, it dies there.
 	     Similarly for I2, if it is nonzero and adjacent to I3.

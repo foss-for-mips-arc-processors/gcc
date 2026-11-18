@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64d" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64d" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" "-O0" } } */
 
 typedef unsigned char v4qi __attribute__ ((vector_size (4)));
@@ -29,5 +29,5 @@ unzip_hi (v4qi a, v4qi b)
 }
 
 /* { dg-final { scan-assembler-times {\mzip8p\M} 2 } } */
-/* { dg-final { scan-assembler-times {\mpncvt\.b\M} 1 } } */
-/* { dg-final { scan-assembler-times {\mpncvth\.b\M} 1 } } */
+/* { dg-final { scan-assembler-times {\munzip8p\M} 1 } } */
+/* { dg-final { scan-assembler-times {\munzip8hp\M} 1 } } */

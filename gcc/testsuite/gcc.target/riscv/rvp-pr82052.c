@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -O1" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -O1" } */
 
 /* Regression test for pr82052.c which previously caused an ICE
    with MVM/MVMN XOR pattern constraints.

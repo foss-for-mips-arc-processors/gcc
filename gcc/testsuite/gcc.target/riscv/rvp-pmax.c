@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -O2" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -O2" } */
 /* { dg-skip-if "" { *-*-* } { "-g" "-flto" } } */
 
 typedef signed char pv8qi __attribute__((vector_size (8)));

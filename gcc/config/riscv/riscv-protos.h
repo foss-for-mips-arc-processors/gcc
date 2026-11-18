@@ -141,7 +141,30 @@ extern void riscv_expand_usmul (rtx, rtx, rtx);
 extern void riscv_expand_ustrunc (rtx, rtx);
 extern void riscv_expand_sstrunc (rtx, rtx);
 extern void riscv_p_expand_vec_cmp (rtx *);
+extern void riscv_p_expand_vec_init (rtx, rtx);
+extern bool riscv_p_bitwise_imm_p (rtx);
 extern void riscv_p_expand_vcond_mask (rtx *);
+extern void riscv_p_expand_extend (rtx, rtx, bool);
+extern void riscv_p_expand_unpack (rtx, rtx, bool, bool);
+extern void riscv_p_expand_widen_mult (rtx, rtx, rtx, bool, bool);
+extern void riscv_p_split_widen_mult (rtx, rtx, rtx, rtx, bool, bool);
+extern void riscv_p_expand_pack (rtx, rtx, rtx);
+extern bool riscv_p_small_pack_mems_p (rtx, rtx);
+extern rtx riscv_p_small_pack_mem (rtx, rtx);
+extern bool riscv_p_round_mulhi_p (rtx, rtx);
+extern void riscv_p_expand_round_mulhi (rtx, rtx, rtx, bool, int = -1);
+extern void riscv_p_expand_mulhi (rtx, rtx, rtx, bool);
+extern bool riscv_p_mulhi_p (rtx, rtx, bool);
+extern void riscv_p_expand_mulhi_acc (rtx, rtx, rtx, rtx, bool, int = -1);
+extern rtx riscv_p_low_word_packed_operand (rtx);
+extern void riscv_p_expand_reduc_plus (rtx, rtx);
+extern void riscv_p_expand_dot_product_64 (rtx, rtx, rtx, rtx, bool, bool);
+extern void riscv_p_expand_sad (rtx, rtx, rtx, rtx, bool);
+extern bool riscv_p_zero_accumulator_p (rtx, rtx_insn *);
+extern bool riscv_p_sad_word_result_p (rtx, rtx_insn *);
+extern void riscv_p_expand_scalar_uabd (rtx, rtx, rtx);
+extern bool riscv_p_expand_zero_extend (rtx, rtx);
+extern void riscv_p_expand_mul_acc_lane (rtx, rtx, unsigned int, bool, bool);
 #ifdef GCC_TARGET_H
 extern bool riscv_expand_pext_vec_perm_const (machine_mode, machine_mode, rtx,
                                               rtx, rtx,
@@ -190,6 +213,7 @@ extern poly_uint64 riscv_regmode_natural_size (machine_mode);
 extern bool riscv_vla_mode_p (machine_mode);
 extern bool riscv_tuple_mode_p (machine_mode);
 extern bool riscv_vls_mode_p (machine_mode);
+extern bool riscv_vector_mode_p (machine_mode);
 extern int riscv_get_v_regno_alignment (machine_mode);
 extern bool riscv_shamt_matches_mask_p (int, HOST_WIDE_INT);
 extern void riscv_subword_address (rtx, rtx *, rtx *, rtx *, rtx *);

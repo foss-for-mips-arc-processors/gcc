@@ -1,6 +1,6 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64" } */
-/* { dg-additional-options "-ftree-vectorize -fno-vect-cost-model" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64" } */
+/* { dg-additional-options "-ftree-vectorize -fno-vect-cost-model -fdump-rtl-expand" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Og" "-Oz" "-funroll-loops" } } */
 
 /* Test saturating subtract auto-vectorization (both signed and unsigned) */
@@ -187,10 +187,13 @@ void vec_sat_u_sub_u32_fmt_1(uint32_t *out, uint32_t *op_1, uint32_t *op_2, unsi
 /* Signed saturating subtract */
 /* { dg-final { scan-assembler-times {\mpssub\.b\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mpssub\.h\M} 2 } } */
-/* { dg-final { scan-assembler-times {\mpssub\.w\M} 1 } } */
+/* Scalar word tails also use PSSUB.W.  Check the vector mode separately.  */
+/* { dg-final { scan-rtl-dump-times {ss_minus:PV2SI} 1 "expand" } } */
+/* { dg-final { scan-assembler {\mpssub\.w\M} } } */
 
 /* Unsigned saturating subtract */
 /* { dg-final { scan-assembler-times {\mpssubu\.b\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mpssubu\.h\M} 2 } } */
-/* { dg-final { scan-assembler-times {\mpssubu\.w\M} 1 } } */
+/* { dg-final { scan-rtl-dump-times {us_minus:PV2SI} 1 "expand" } } */
+/* { dg-final { scan-assembler {\mpssubu\.w\M} } } */
 

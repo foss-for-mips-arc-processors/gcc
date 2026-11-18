@@ -42,9 +42,10 @@
 (define_reservation "andes_23_pipe_unify"
  "andes_23_alu0 + andes_23_alu1")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "andes_23_alu_insn" 1
   (and (eq_attr "tune" "andes_23_series")
-       (eq_attr "type" "unknown,const,arith,slt,multi,nop,move,
+       (eq_attr "type" "simd,unknown,const,arith,slt,multi,nop,move,
                         shift,logical,mvpair,auipc"))
   "andes_23_alu")
 

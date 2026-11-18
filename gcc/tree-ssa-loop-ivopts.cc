@@ -5113,7 +5113,23 @@ cand_value_at (class loop *loop, struct iv_cand *cand, gimple *at,
   if (after_adjust)
     aff_combination_add (&delta, &step);
 
-  tree_to_aff_combination (iv->base, type, val);
+  /* An original pointer IV already computes its initial value.  Keep that
+     value in the bound rather than expanding its base and displacement,
+     which can duplicate address arithmetic outside the loop.  */
+  tree base = iv->base;
+  if (cand->pos == IP_ORIGINAL
+      && POINTER_TYPE_P (type)
+      && !cand->involves_undefs)
+    if (gphi *phi = dyn_cast<gphi *> (SSA_NAME_DEF_STMT (cand->var_before)))
+      if (gimple_bb (phi) == loop->header)
+	{
+	  tree initial = PHI_ARG_DEF_FROM_EDGE (phi, loop_preheader_edge (loop));
+	  if (TREE_CODE (initial) == SSA_NAME
+	      && !ssa_name_maybe_undef_p (initial)
+	      && useless_type_conversion_p (type, TREE_TYPE (initial)))
+	    base = initial;
+	}
+  tree_to_aff_combination (base, type, val);
   if (!POINTER_TYPE_P (type))
     aff_combination_convert (val, steptype);
   aff_combination_add (val, &delta);

@@ -451,35 +451,55 @@ prepare_shrink_wrap (basic_block entry_block)
       copyprop_hardreg_forward_bb_without_debug_insn (entry_block);
     }
 
-  dead_debug_local_init (&debug, NULL, NULL);
-  CLEAR_HARD_REG_SET (uses);
-  CLEAR_HARD_REG_SET (defs);
+  for (;;)
+    {
+      bool moved = false;
+      dead_debug_local_init (&debug, NULL, NULL);
+      CLEAR_HARD_REG_SET (uses);
+      CLEAR_HARD_REG_SET (defs);
 
-  FOR_BB_INSNS_REVERSE_SAFE (entry_block, insn, curr)
-    if (NONDEBUG_INSN_P (insn)
-	&& !move_insn_for_shrink_wrap (entry_block, insn, uses, defs,
-				       &split_p, &debug))
-      {
-	/* Add all defined registers to DEFs.  */
-	FOR_EACH_INSN_DEF (def, insn)
+      FOR_BB_INSNS_REVERSE_SAFE (entry_block, insn, curr)
+	if (NONDEBUG_INSN_P (insn))
 	  {
-	    x = DF_REF_REG (def);
-	    if (REG_P (x) && HARD_REGISTER_P (x))
-	      for (i = REGNO (x); i < END_REGNO (x); i++)
-		SET_HARD_REG_BIT (defs, i);
+	    if (move_insn_for_shrink_wrap (entry_block, insn, uses, defs,
+					 &split_p, &debug))
+	      {
+		moved = true;
+		continue;
+	      }
+
+	    /* Add all defined registers to DEFs.  */
+	    FOR_EACH_INSN_DEF (def, insn)
+	      {
+		x = DF_REF_REG (def);
+		if (REG_P (x) && HARD_REGISTER_P (x))
+		  for (i = REGNO (x); i < END_REGNO (x); i++)
+		    SET_HARD_REG_BIT (defs, i);
+	      }
+
+	    /* Add all used registers to USESs.  */
+	    FOR_EACH_INSN_USE (use, insn)
+	      {
+		x = DF_REF_REG (use);
+		if (REG_P (x) && HARD_REGISTER_P (x))
+		  for (i = REGNO (x); i < END_REGNO (x); i++)
+		    SET_HARD_REG_BIT (uses, i);
+	      }
 	  }
 
-	/* Add all used registers to USESs.  */
-	FOR_EACH_INSN_USE (use, insn)
-	  {
-	    x = DF_REF_REG (use);
-	    if (REG_P (x) && HARD_REGISTER_P (x))
-	      for (i = REGNO (x); i < END_REGNO (x); i++)
-		SET_HARD_REG_BIT (uses, i);
-	  }
-      }
+      dead_debug_local_finish (&debug, NULL);
 
-  dead_debug_local_finish (&debug, NULL);
+      /* Sinking a definition can expose another copy for propagation into
+	 the branch.  Retry only after moving an instruction out of the entry
+	 block and making a new propagation, so each iteration makes progress.
+	 Leave edge splitting to the existing single traversal.  */
+      if (!moved || split_p || !JUMP_P (BB_END (entry_block))
+	  || !copyprop_hardreg_forward_bb_without_debug_insn (entry_block))
+	break;
+
+      /* Refresh the block summaries before another sinking traversal.  */
+      df_analyze ();
+    }
 }
 
 /* Return whether basic block PRO can get the prologue.  It cannot if it

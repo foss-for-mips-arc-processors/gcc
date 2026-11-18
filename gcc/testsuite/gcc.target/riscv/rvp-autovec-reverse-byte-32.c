@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcb_p0p21 -mabi=ilp32" } */
+/* { dg-options "-march=rv32gcb_p0p6 -mabi=ilp32" } */
  /* { dg-skip-if "" { *-*-* } { "-flto" "-O0" "-O1" "-Og" "-Os" "-Oz" } } */
 
 typedef unsigned char uint8x4_t __attribute__((vector_size(4)));

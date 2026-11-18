@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcb_p0p21 -mabi=lp64" } */
+/* { dg-options "-march=rv64gcb_p0p6 -mabi=lp64" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" "-O0" "-O1" "-Og" "-Os" "-Oz" } } */
 
 /* PV4QI (4-byte) reverse on RV64.  rev8 reverses all 8 bytes of a 64-bit

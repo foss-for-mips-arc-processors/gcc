@@ -34,9 +34,9 @@ test_pm2wsub_x_i64 (int16x2_t rs1, int16x2_t rs2)
 }
 
 uint64_t
-test_pm2waddsu_u64 (int16x2_t rs1, uint16x2_t rs2)
+test_pm2waddsu_i64 (int16x2_t rs1, uint16x2_t rs2)
 {
-  return __riscv_pm2waddsu_u64 (rs1, rs2);
+  return __riscv_pm2waddsu_i64 (rs1, rs2);
 }
 
 int64_t
@@ -70,9 +70,9 @@ test_pm2wsuba_x_i64 (int64_t rd, int16x2_t rs1, int16x2_t rs2)
 }
 
 int64_t
-test_pm2waddasu_u64 (int64_t rd, int16x2_t rs1, uint16x2_t rs2)
+test_pm2waddasu_i64 (int64_t rd, int16x2_t rs1, uint16x2_t rs2)
 {
-  return __riscv_pm2waddasu_u64 (rd, rs1, rs2);
+  return __riscv_pm2waddasu_i64 (rd, rs1, rs2);
 }
 
 /* { dg-final { scan-assembler-times {\mzext\.w\M} 10 } } */

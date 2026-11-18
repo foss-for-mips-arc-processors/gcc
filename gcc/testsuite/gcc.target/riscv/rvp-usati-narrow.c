@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -ffreestanding" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -ffreestanding" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 typedef signed char int8_t;

@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -O2 -Wno-riscv-implicit-extension-version" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -O2 -Wno-riscv-implicit-extension-version" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 #include <stdint-gcc.h>

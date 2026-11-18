@@ -148,9 +148,10 @@
        (eq_attr "type" "crypto"))
   "sifive_7_A")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "sifive_7_unknown" 10
   (and (eq_attr "tune" "sifive_7")
-       (eq_attr "type" "ghost"))
+       (eq_attr "type" "simd,ghost"))
   "sifive_7_A")
 
 (define_bypass 1 "sifive_7_load,sifive_7_alu,sifive_7_mul,sifive_7_f2i,sifive_7_sfb_alu"

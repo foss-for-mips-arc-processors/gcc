@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -ffreestanding" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -ffreestanding" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 /* Test USATI codegen for narrowing clamp patterns on RV32.

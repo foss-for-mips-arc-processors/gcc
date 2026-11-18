@@ -304,15 +304,18 @@ is_factor_profitable (gimple *def_stmt, basic_block merge, tree arg)
 /* PR66726: Factor operations out of COND_EXPR.  If the arguments of the PHI
    stmt are Unary operator, factor out the operation and perform the operation
    to the result of PHI stmt.  COND_STMT is the controlling predicate.
+   If REUSE_PHI is nonnull, reuse that narrow PHI in MERGE after checking
+   that its arguments match the operands of an unsigned widening conversion.
    Return true if the operation was factored out; false otherwise.  */
 
 static bool
 factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
-				  gphi *phi, gimple *cond_stmt)
+				  gphi *phi, gimple *cond_stmt,
+				  gphi *reuse_phi = NULL)
 {
   gimple *arg0_def_stmt = NULL, *arg1_def_stmt = NULL;
   tree temp, result;
-  gphi *newphi;
+  gphi *newphi = NULL;
   gimple_stmt_iterator gsi, gsi_for_def;
   location_t locus = gimple_location (phi);
   gimple_match_op arg0_op, arg1_op;
@@ -350,6 +353,9 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
   if (TREE_CODE (arg0) != SSA_NAME
       || (TREE_CODE (arg1) != SSA_NAME
 	  && TREE_CODE (arg1) != INTEGER_CST))
+    return false;
+
+  if (reuse_phi && TREE_CODE (arg1) != INTEGER_CST)
     return false;
 
   /* Check if arg0 is an SSA_NAME and the stmt which defines arg0 is
@@ -415,12 +421,55 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
     }
   else
     {
-      /* For constants only handle if the phi was the only one. */
-      if (single_non_singleton_phi_for_edges (phi_nodes (merge), e0, e1) == NULL)
+      /* For constants, require a single PHI unless an existing narrow
+	 PHI can supply the result of the factored operation.  */
+      if (!reuse_phi
+	  && !single_non_singleton_phi_for_edges (phi_nodes (merge), e0, e1))
 	return false;
       /* TODO: handle more than just casts here. */
       if (!gimple_assign_cast_p (arg0_def_stmt))
 	return false;
+
+      if (reuse_phi)
+	{
+	  tree itype = TREE_TYPE (new_arg0);
+	  tree otype = TREE_TYPE (gimple_phi_result (phi));
+	  tree peer_result = gimple_phi_result (reuse_phi);
+	  if (!CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (arg0_def_stmt))
+	      || !INTEGRAL_TYPE_P (itype) || !TYPE_UNSIGNED (itype)
+	      || !INTEGRAL_TYPE_P (otype) || !TYPE_UNSIGNED (otype)
+	      || TREE_CODE (itype) == BOOLEAN_TYPE
+	      || TREE_CODE (otype) == BOOLEAN_TYPE
+	      || TYPE_PRECISION (itype) >= TYPE_PRECISION (otype)
+	      || !types_compatible_p (itype, TREE_TYPE (peer_result))
+	      || TREE_CODE (new_arg0) != SSA_NAME
+	      || ssa_name_maybe_undef_p (new_arg0)
+	      || has_zero_uses (peer_result))
+	    return false;
+
+	  /* Keep the exception local to the shared result.  Other uses of
+	     the unconverted value can keep its arithmetic live when a later
+	     conditional replacement introduces another operation.  A complex
+	     projection can likewise have a separately live sibling result.
+	     Defer SSA copies until propagation exposes their producer.  */
+	  gimple *source_def = SSA_NAME_DEF_STMT (new_arg0);
+	  if (is_gimple_assign (source_def)
+	      && (gimple_assign_rhs_code (source_def) == SSA_NAME
+		  || gimple_assign_rhs_code (source_def) == REALPART_EXPR
+		  || gimple_assign_rhs_code (source_def) == IMAGPART_EXPR))
+	    return false;
+
+	  use_operand_p use_p;
+	  imm_use_iterator iter;
+	  FOR_EACH_IMM_USE_FAST (use_p, iter, new_arg0)
+	    {
+	      gimple *use_stmt = USE_STMT (use_p);
+	      if (use_stmt && !is_gimple_debug (use_stmt)
+		  && use_stmt != arg0_def_stmt && use_stmt != reuse_phi
+		  && use_stmt != cond_stmt)
+		return false;
+	    }
+	}
 
       /* arg0_def_stmt should be conditional.  */
       if (dominated_by_p (CDI_DOMINATORS, gimple_bb (phi), gimple_bb (arg0_def_stmt)))
@@ -506,9 +555,17 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
   if (!types_compatible_p (TREE_TYPE (new_arg0), TREE_TYPE (new_arg1)))
     return false;
 
-  /* Create a new PHI stmt.  */
+  if (reuse_phi
+      && (!operand_equal_for_phi_arg_p
+	    (gimple_phi_arg_def (reuse_phi, e0->dest_idx), new_arg0)
+	  || !operand_equal_for_phi_arg_p
+	    (gimple_phi_arg_def (reuse_phi, e1->dest_idx), new_arg1)))
+    return false;
+
+  /* Reuse the existing PHI result or create a new one.  */
   result = gimple_phi_result (phi);
-  temp = make_ssa_name (TREE_TYPE (new_arg0), NULL);
+  temp = reuse_phi ? gimple_phi_result (reuse_phi)
+		   : make_ssa_name (TREE_TYPE (new_arg0), NULL);
 
   gimple_match_op new_op = arg0_op;
 
@@ -517,11 +574,12 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
   gimple_seq seq = NULL;
   result = maybe_push_res_to_seq (&new_op, &seq, result);
 
-  /* If we can't create the new statement, release the temp name
-     and return back.  */
+  /* If we can't create the new statement, release a newly created temp
+     name, but not the result of REUSE_PHI.  */
   if (!result)
     {
-      release_ssa_name (temp);
+      if (!reuse_phi)
+	release_ssa_name (temp);
       return false;
     }
 
@@ -530,7 +588,8 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
   gsi = gsi_after_labels (gimple_bb (phi));
   gsi_insert_seq_before (&gsi, seq, GSI_CONTINUE_LINKING);
 
-  newphi = create_phi_node (temp, gimple_bb (phi));
+  if (!reuse_phi)
+    newphi = create_phi_node (temp, gimple_bb (phi));
 
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
@@ -541,6 +600,12 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
       fprintf (dump_file, "New stmt with OPERATION that defines ");
       print_generic_expr (dump_file, result);
       fprintf (dump_file, ".\n");
+      if (reuse_phi)
+	{
+	  fprintf (dump_file, "Reusing existing narrow PHI ");
+	  print_generic_expr (dump_file, temp);
+	  fprintf (dump_file, ".\n");
+	}
     }
 
   /* Remove the old operation(s) that has single use.  */
@@ -555,8 +620,11 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
       release_defs (arg1_def_stmt);
     }
 
-  add_phi_arg (newphi, new_arg0, e0, narg0_loc);
-  add_phi_arg (newphi, new_arg1, e1, narg1_loc);
+  if (!reuse_phi)
+    {
+      add_phi_arg (newphi, new_arg0, e0, narg0_loc);
+      add_phi_arg (newphi, new_arg1, e1, narg1_loc);
+    }
 
   /* Remove the original PHI stmt.  */
   gsi = gsi_for_stmt (phi);
@@ -565,6 +633,56 @@ factor_out_conditional_operation (edge e0, edge e1, basic_block merge,
   statistics_counter_event (cfun, "factored out operation", 1);
 
   return true;
+}
+
+/* Try factoring a widening conversion by reusing its existing narrow PHI.
+   Limit this to two nontrivial data PHIs and scan them only once per merge,
+   rather than searching all peers for every PHI in the factoring loop.  */
+
+static void
+factor_out_widening_phi (edge e0, edge e1, basic_block merge,
+			gimple *cond_stmt)
+{
+  if (((e0->flags | e1->flags) & (EDGE_ABNORMAL | EDGE_EH))
+      || dominated_by_p (CDI_DOMINATORS, e0->src, merge)
+      || dominated_by_p (CDI_DOMINATORS, e1->src, merge)
+      || (merge->loop_father && merge->loop_father->header == merge))
+    return;
+
+  gphi *pair[2];
+  unsigned count = 0;
+  for (gphi_iterator gsi = gsi_start_phis (merge); !gsi_end_p (gsi);
+       gsi_next (&gsi))
+    {
+      gphi *phi = gsi.phi ();
+      tree arg0 = gimple_phi_arg_def (phi, e0->dest_idx);
+      tree arg1 = gimple_phi_arg_def (phi, e1->dest_idx);
+      if (operand_equal_for_phi_arg_p (arg0, arg1))
+	continue;
+
+      tree result = gimple_phi_result (phi);
+      tree type = TREE_TYPE (result);
+      if (count == 2 || virtual_operand_p (result)
+	  || !INTEGRAL_TYPE_P (type) || !TYPE_UNSIGNED (type)
+	  || TREE_CODE (type) == BOOLEAN_TYPE
+	  || SSA_NAME_OCCURS_IN_ABNORMAL_PHI (result)
+	  || ssa_name_maybe_undef_p (result))
+	return;
+      pair[count++] = phi;
+    }
+
+  if (count != 2)
+    return;
+
+  tree type0 = TREE_TYPE (gimple_phi_result (pair[0]));
+  tree type1 = TREE_TYPE (gimple_phi_result (pair[1]));
+  if (TYPE_PRECISION (type0) == TYPE_PRECISION (type1))
+    return;
+  if (TYPE_PRECISION (type0) < TYPE_PRECISION (type1))
+    std::swap (pair[0], pair[1]);
+
+  factor_out_conditional_operation (e0, e1, merge, pair[0], cond_stmt,
+				    pair[1]);
 }
 
 
@@ -4070,6 +4188,8 @@ pass_phiopt::execute (function *)
 	  && EDGE_COUNT (merge->preds) == 2
 	  && !optimize_debug)
 	{
+	  factor_out_widening_phi (e1, e2, merge, cond_stmt);
+	  phis = phi_nodes (merge);
 	  for (gsi = gsi_start (phis); !gsi_end_p (gsi); )
 	    {
 	      gphi *phi = as_a <gphi *> (gsi_stmt (gsi));

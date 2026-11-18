@@ -2758,6 +2758,22 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (with { tree stype = signed_type_for (TREE_TYPE (@0)); }
      (icmp (convert:stype @0) { build_int_cst (stype, 0); })))))
 
+#if GIMPLE
+/* A nonzero unsigned X cannot wrap when subtracting one.  Fold
+   X - 1 CMP C to X CMP C + 1 when the new bound does not wrap either.
+   This removes redundant latch-count adjustments from loop guards.  */
+(for cmp (lt le gt ge)
+ (simplify
+  (cmp (plus:s@2 @0 integer_minus_onep) INTEGER_CST@1)
+  (if (INTEGRAL_TYPE_P (TREE_TYPE (@0))
+       && TYPE_UNSIGNED (TREE_TYPE (@0))
+       && !integer_all_onesp (@1))
+   (with { int_range_max r; }
+    (if (gimple_match_range_of_expr (r, @0, @2)
+	 && !r.contains_p (wi::zero (TYPE_PRECISION (TREE_TYPE (@0)))))
+     (cmp @0 { wide_int_to_tree (TREE_TYPE (@1), wi::to_wide (@1) + 1); }))))))
+#endif
+
 /* X / 4 < Y / 4 iff X < Y when the division is known to be exact.  */
 (for cmp (simple_comparison)
  (simplify
@@ -3403,9 +3419,45 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (if (types_match (type, @0, @1))))
  (match (unsigned_integer_sat_sub @0 @1)
   /* SAT_U_SUB = X >= Y ? X - Y : 0  */
-  (cond^ (ge @0 @1) (convert? (minus (convert1? @0) (convert1? @1)))
+  (cond^ (ge @0 @1) (convert? (minus@2 (convert1? @0) (convert1? @1)))
 		    integer_zerop)
-  (if (TYPE_UNSIGNED (TREE_TYPE (@0)) && types_match (@0, @1))))
+  (with
+   {
+    tree itype = TREE_TYPE (@0);
+    tree sub_type = TREE_TYPE (@2);
+    unsigned precision = TYPE_PRECISION (itype);
+   }
+   /* Conversions must preserve the unsigned input values.  Otherwise
+      saturating in ITYPE would discard the subtraction's domain.  */
+   (if (TYPE_UNSIGNED (itype) && types_match (@0, @1)
+	&& (TYPE_PRECISION (sub_type) > precision
+	    || (TYPE_UNSIGNED (sub_type)
+		&& TYPE_PRECISION (sub_type) == precision))))))
+ /* Keep this truncating form separate for vector pattern recognition.
+    Scalar saturation expansion can lose efficient narrow arithmetic and
+    reuse of a shared subtraction.  */
+ (match (unsigned_integer_sat_sub_trunc @0 @1)
+  (cond^ (ge @0 @1) (convert?@3 (minus@2 (convert1? @0) (convert1? @1)))
+		    integer_zerop)
+  (with
+   {
+    tree itype = TREE_TYPE (@0);
+    tree sub_type = TREE_TYPE (@2);
+    unsigned sub_precision = TYPE_PRECISION (sub_type);
+   }
+   /* All observable low bits must survive the unsigned subtraction.
+      Boolean conversion is not truncation to its precision.  Require one
+      real use of both the subtraction and its optional result conversion,
+      since retaining either shared result can duplicate work.  */
+   (if (INTEGRAL_TYPE_P (itype) && TYPE_UNSIGNED (itype)
+	&& TREE_CODE (itype) != BOOLEAN_TYPE && types_match (@0, @1)
+	&& INTEGRAL_TYPE_P (sub_type) && TYPE_UNSIGNED (sub_type)
+	&& TREE_CODE (sub_type) != BOOLEAN_TYPE
+	&& TREE_CODE (type) != BOOLEAN_TYPE
+	&& sub_precision < TYPE_PRECISION (itype)
+	&& TYPE_PRECISION (type) <= sub_precision
+	&& TREE_CODE (@2) == SSA_NAME && has_single_use (@2)
+	&& TREE_CODE (@3) == SSA_NAME && has_single_use (@3)))))
  (match (unsigned_integer_sat_sub @0 @1)
   /* SAT_U_SUB = (X - Y) * (X > Y)  */
   (mult:c (minus @0 @1) (convert (gt @0 @1)))
@@ -6272,11 +6324,13 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    (minus (max @0 @1) (min @0 @1)))))
 
 /* Recognize abs(a - b) pattern and convert to smax(a, b) - smin(a, b).
+   This requires undefined overflow: the magnitude of a wrapped difference
+   need not equal the difference between the maximum and minimum operands.
    This enables better code generation using sabd instructions
    on targets that support them (e.g., RISC-V P-extension pabd).  */
 (simplify
  (abs (minus @0 @1))
- (if (VECTOR_INTEGER_TYPE_P (type))
+ (if (VECTOR_INTEGER_TYPE_P (type) && TYPE_OVERFLOW_UNDEFINED (type))
   (minus (max @0 @1) (min @0 @1))))
 
 /* Sink unary operations to branches, but only if we do fold both.  */
@@ -10470,6 +10524,81 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (if (ok && wi::to_wide (@1) == (TYPE_PRECISION (type0) - 1))
      (op @0 { build_one_cst (type0); }))))))
 
+#if GIMPLE
+/* CLZ (X ^ sign_mask (X), precision) - 1 counts redundant sign bits.
+   Keep this scalar fold after vectorization, since vector CLZ may be
+   supported even when vector CLRSB is not.  */
+(simplify
+ (plus
+  (IFN_CLZ@6
+   (bit_xor:c@5 @0
+    (convert@4
+     (rshift@3 (convert@1 @0) INTEGER_CST@2)))
+   INTEGER_CST@7)
+  integer_minus_onep)
+ (if (cfun
+      && canonicalize_math_after_vectorization_p ()
+      && type == integer_type_node
+      && TREE_CODE (TREE_TYPE (@0)) == INTEGER_TYPE
+      && TYPE_UNSIGNED (TREE_TYPE (@0)))
+  (with { unsigned int prec = TYPE_PRECISION (TREE_TYPE (@0));
+	  bool valid = prec == 32 || prec == 64;
+	  tree same_width[] = { @1, @3, @4, @5 };
+	  for (tree value : same_width)
+	    valid &= (TREE_CODE (TREE_TYPE (value)) == INTEGER_TYPE
+		      && TYPE_PRECISION (TREE_TYPE (value)) == prec);
+	  /* Do not duplicate still-live intermediate calculations.  */
+	  tree removed[] = { @3, @4, @5, @6 };
+	  for (tree value : removed)
+	    valid &= TREE_CODE (value) == SSA_NAME && has_single_use (value);
+	}
+   (if (valid
+	&& !TYPE_UNSIGNED (TREE_TYPE (@1))
+	&& !TYPE_UNSIGNED (TREE_TYPE (@3))
+	&& TYPE_UNSIGNED (TREE_TYPE (@4))
+	&& TYPE_UNSIGNED (TREE_TYPE (@5))
+	&& wi::to_widest (@2) == prec - 1
+	&& wi::to_widest (@7) == prec
+	&& types_match (type, @6)
+	&& direct_internal_fn_supported_p (IFN_CLRSB, TREE_TYPE (@1),
+					   OPTIMIZE_FOR_BOTH))
+    (IFN_CLRSB @1)))))
+
+/* The equivalent signed XOR has one unsigned conversion of its result.  */
+(simplify
+ (plus
+  (IFN_CLZ@5
+   (convert@4
+    (bit_xor:c@3 @0 (rshift@1 @0 INTEGER_CST@2)))
+   INTEGER_CST@6)
+  integer_minus_onep)
+ (if (cfun
+      && canonicalize_math_after_vectorization_p ()
+      && type == integer_type_node
+      && TREE_CODE (TREE_TYPE (@0)) == INTEGER_TYPE
+      && !TYPE_UNSIGNED (TREE_TYPE (@0)))
+  (with { unsigned int prec = TYPE_PRECISION (TREE_TYPE (@0));
+	  bool valid = prec == 32 || prec == 64;
+	  tree same_width[] = { @1, @3, @4 };
+	  for (tree value : same_width)
+	    valid &= (TREE_CODE (TREE_TYPE (value)) == INTEGER_TYPE
+		      && TYPE_PRECISION (TREE_TYPE (value)) == prec);
+	  tree removed[] = { @1, @3, @4, @5 };
+	  for (tree value : removed)
+	    valid &= TREE_CODE (value) == SSA_NAME && has_single_use (value);
+	}
+   (if (valid
+	&& !TYPE_UNSIGNED (TREE_TYPE (@1))
+	&& !TYPE_UNSIGNED (TREE_TYPE (@3))
+	&& TYPE_UNSIGNED (TREE_TYPE (@4))
+	&& wi::to_widest (@2) == prec - 1
+	&& wi::to_widest (@6) == prec
+	&& types_match (type, @5)
+	&& direct_internal_fn_supported_p (IFN_CLRSB, TREE_TYPE (@0),
+					   OPTIMIZE_FOR_BOTH))
+    (IFN_CLRSB @0)))))
+#endif
+
 /* CTZ simplifications.  */
 (for ctz (CTZ)
  /* ctz (-X) => ctz (X).  ctz (abs (X)) => ctz (X).  */
@@ -12246,6 +12375,137 @@ and,
     (view_convert (vec_perm @0 @1 @2)))))
 
 #if GIMPLE
+/* Add the rounding bit without overflowing a biased full-width sum.
+   For K >= 2, shifting by K - 1 leaves room to add one.  The low bit of
+   that shifted value is independent of the rounding-bit shift's sign.
+   Look through only conversions that preserve precision and lane shape.
+   Avoid introducing multiword scalar additions and shifts.  Require the
+   quotient and rounding bit to have single uses, including conversions,
+   so that sharing cannot make the replacement more expensive.  */
+(simplify
+ (plus:c (nop_convert1?@3 (rshift@4 @0 INTEGER_CST@1))
+         (nop_convert2?@5 (bit_and@6
+           (rshift (nop_convert3? @0) INTEGER_CST@2) integer_onep)))
+ (with { tree shift_type = TREE_TYPE (@0); }
+  (if (ANY_INTEGRAL_TYPE_P (shift_type)
+       && (VECTOR_TYPE_P (shift_type)
+	   || TYPE_PRECISION (shift_type) <= BITS_PER_WORD)
+       && single_use (@3) && single_use (@4)
+       && single_use (@5) && single_use (@6)
+       && tree_fits_uhwi_p (@1) && tree_fits_uhwi_p (@2)
+       && IN_RANGE (tree_to_uhwi (@1), 2, element_precision (shift_type) - 1)
+       && tree_to_uhwi (@2) == tree_to_uhwi (@1) - 1)
+   (view_convert
+    (rshift:shift_type
+     (plus:shift_type (rshift:shift_type @0 @2)
+                      { build_one_cst (shift_type); })
+     { build_int_cst (TREE_TYPE (@1), 1); })))))
+
+/* One-bit rounding is a full-precision average with zero (ceil) or one
+   (floor).  Prefer ceil where supported, avoiding a nonzero constant.
+   Keep shared intermediates and trapping reverse conversions intact.  */
+(simplify
+ (plus:c (nop_convert1?@1 (rshift@2 @0 integer_onep))
+	 (nop_convert2?@3 (bit_and@4 (nop_convert3? @0) integer_onep)))
+ (with { tree avg_type = TREE_TYPE (@0); }
+  (if (VECTOR_TYPE_P (avg_type)
+       && single_use (@1) && single_use (@2)
+       && single_use (@3) && single_use (@4)
+       && (types_match (type, avg_type)
+	   || (!TYPE_OVERFLOW_SANITIZED (type) && !TYPE_OVERFLOW_TRAPS (type))))
+   (if (direct_internal_fn_supported_p (IFN_AVG_CEIL, avg_type,
+				       OPTIMIZE_FOR_BOTH))
+    (view_convert (IFN_AVG_CEIL:avg_type @0 { build_zero_cst (avg_type); }))
+    (if (direct_internal_fn_supported_p (IFN_AVG_FLOOR, avg_type,
+					OPTIMIZE_FOR_BOTH))
+     (view_convert (IFN_AVG_FLOOR:avg_type @0 { build_one_cst (avg_type); })))))))
+
+/* Preserve folding when an average's inputs become equal or constant
+   after inlining.  Use overflow-free identities for constant lanes.  */
+(for avg (IFN_AVG_FLOOR IFN_AVG_CEIL)
+ (simplify
+  (avg @0 @0)
+  @0))
+
+(simplify
+ (IFN_AVG_FLOOR VECTOR_CST@0 VECTOR_CST@1)
+ (with {
+   tree both = const_binop (BIT_AND_EXPR, type, @0, @1);
+   tree different = const_binop (BIT_XOR_EXPR, type, @0, @1);
+   tree shifted = different
+     ? const_binop (RSHIFT_EXPR, type, different, integer_one_node) : NULL_TREE;
+   tree average = both && shifted
+     ? const_binop (PLUS_EXPR, type, both, shifted) : NULL_TREE;
+  }
+  (if (average)
+   { average; })))
+
+(simplify
+ (IFN_AVG_CEIL VECTOR_CST@0 VECTOR_CST@1)
+ (with {
+   tree either = const_binop (BIT_IOR_EXPR, type, @0, @1);
+   tree different = const_binop (BIT_XOR_EXPR, type, @0, @1);
+   tree shifted = different
+     ? const_binop (RSHIFT_EXPR, type, different, integer_one_node) : NULL_TREE;
+   tree average = either && shifted
+     ? const_binop (MINUS_EXPR, type, either, shifted) : NULL_TREE;
+  }
+  (if (average)
+   { average; })))
+
+/* These identities compute floor ((a + b) / 2) without overflowing an
+   element.  The signed forms use arithmetic right shifts, so negative
+   odd sums round toward negative infinity too.  Look through lane-preserving
+   conversions introduced when narrowing promoted scalar arithmetic.  Select
+   the average's signedness from the shift inputs, not the addition type.  */
+(simplify
+ (plus:c (nop_convert1? (bit_and @0 @1))
+         (nop_convert2? (rshift (bit_xor:c @0 @1) integer_onep)))
+ (with { tree avg_type = TREE_TYPE (@0); }
+  (if (VECTOR_TYPE_P (avg_type)
+       && (types_match (type, avg_type)
+	   || (!TYPE_OVERFLOW_SANITIZED (type) && !TYPE_OVERFLOW_TRAPS (type)))
+       && direct_internal_fn_supported_p (IFN_AVG_FLOOR, avg_type,
+					  OPTIMIZE_FOR_BOTH))
+   (view_convert (IFN_AVG_FLOOR:avg_type @0 @1)))))
+
+/* Reassociation can move the mask onto either input, and can group the
+   carry with either shifted input.  Match both associations.  */
+(match (avg_floor_carry @0 @1)
+ (bit_and (bit_and @0 @1) integer_onep))
+(match (avg_floor_carry @0 @1)
+ (bit_and:c (bit_and @0 integer_onep) @1))
+
+(simplify
+ (plus:c (plus:c (nop_convert1? (rshift @0 integer_onep@1))
+		 (nop_convert2? (rshift @2 @1)))
+         (nop_convert3? (avg_floor_carry @3 @4)))
+ (with { tree avg_type = TREE_TYPE (@0); }
+  (if (VECTOR_TYPE_P (avg_type)
+       && types_match (@0, @2)
+       && (types_match (type, avg_type)
+	   || (!TYPE_OVERFLOW_SANITIZED (type) && !TYPE_OVERFLOW_TRAPS (type)))
+       && direct_internal_fn_supported_p (IFN_AVG_FLOOR, avg_type,
+					  OPTIMIZE_FOR_BOTH)
+       && ((operand_equal_p (@0, @3, 0) && operand_equal_p (@2, @4, 0))
+           || (operand_equal_p (@0, @4, 0) && operand_equal_p (@2, @3, 0))))
+   (view_convert (IFN_AVG_FLOOR:avg_type @0 @2)))))
+
+(simplify
+ (plus:c (plus:c (nop_convert1? (rshift @0 integer_onep@1))
+		 (nop_convert2? (avg_floor_carry @3 @4)))
+         (nop_convert3? (rshift @2 @1)))
+ (with { tree avg_type = TREE_TYPE (@0); }
+  (if (VECTOR_TYPE_P (avg_type)
+       && types_match (@0, @2)
+       && (types_match (type, avg_type)
+	   || (!TYPE_OVERFLOW_SANITIZED (type) && !TYPE_OVERFLOW_TRAPS (type)))
+       && direct_internal_fn_supported_p (IFN_AVG_FLOOR, avg_type,
+					  OPTIMIZE_FOR_BOTH)
+       && ((operand_equal_p (@0, @3, 0) && operand_equal_p (@2, @4, 0))
+           || (operand_equal_p (@0, @4, 0) && operand_equal_p (@2, @3, 0))))
+   (view_convert (IFN_AVG_FLOOR:avg_type @0 @2)))))
+
 /* Simplify (a >> 1) + (b >> 1) + ((a | b) & 1) to .AVG_CEIL (a, b).
    Similar for (a | b) - ((a ^ b) >> 1).  */
 

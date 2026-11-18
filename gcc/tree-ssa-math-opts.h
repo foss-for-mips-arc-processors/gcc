@@ -23,4 +23,6 @@ along with GCC; see the file COPYING3.  If not see
 extern tree powi_as_mults (gimple_stmt_iterator *, location_t,
 			   tree, HOST_WIDE_INT);
 
+extern internal_fn gimple_match_saturation_mulhs (gassign *, tree *, tree *);
+
 #endif  /* GCC_TREE_SSA_MATH_OPTS_H  */

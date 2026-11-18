@@ -2588,7 +2588,9 @@ get_misalign_in_elems (gimple **seq, loop_vec_info loop_vinfo)
    Else, compute address misalignment in bytes:
      addr_mis = addr & (target_align - 1)
 
-   prolog_niters = ((VF - addr_mis/elem_size)&(VF-1))/step
+   align_in_elems = target_align / elem_size
+   prolog_niters = (align_in_elems - addr_mis / elem_size)
+		  & (align_in_elems - 1)
 
    (elem_size = element type size; an element is the scalar element whose type
    is the inner type of the vectype)
@@ -2596,15 +2598,13 @@ get_misalign_in_elems (gimple **seq, loop_vec_info loop_vinfo)
    The computations will be emitted at the end of BB.  We also compute and
    store upper bound (included) of the result in BOUND.
 
-   When the step of the data-ref in the loop is not 1 (as in interleaved data
-   and SLP), the number of iterations of the prolog must be divided by the step
-   (which is equal to the size of interleaved group).
+   For a negative step, reverse the subtraction before applying the mask.
+   Unknown-alignment peeling does not support grouped accesses.  For known
+   alignment, use the precomputed peel count, which accounts for the size
+   of an interleaved group.
 
-   The above formulas assume that VF == number of elements in the vector. This
-   may not hold when there are multiple-types in the loop.
-   In this case, for some data-references in the loop the VF does not represent
-   the number of elements that fit in the vector.  Therefore, instead of VF we
-   use TYPE_VECTOR_SUBPARTS.  */
+   The alignment period need not equal the vectorization factor or the
+   number of elements in VECTYPE.  */
 
 static tree
 vect_gen_prolog_loop_niters (loop_vec_info loop_vinfo,
@@ -2659,7 +2659,7 @@ vect_gen_prolog_loop_niters (loop_vec_info loop_vinfo,
 			     misalign_in_elems);
       iters = fold_build2 (BIT_AND_EXPR, type, iters, align_in_elems_minus_1);
       iters = fold_convert (niters_type, iters);
-      *bound = align_in_elems;
+      *bound = align_in_elems - 1;
     }
 
   if (dump_enabled_p ())
@@ -3536,13 +3536,20 @@ vect_do_peeling (loop_vec_info loop_vinfo, tree niters, tree nitersm1,
 	}
       bool new_var_p = false;
       niters = vect_build_loop_niters (loop_vinfo, &new_var_p);
-      /* It's guaranteed that vector loop bound before vectorization is at
-	 least VF, so set range information for newly generated var.  */
+      /* The remaining iteration count is at least VF, but its representation
+	 can wrap to zero if the original count overflows and a variable-length
+	 alignment prologue executes zero iterations.  */
       if (new_var_p)
 	{
-	  int_range<1> vr (type,
+	  int_range<2> vr (type,
 			   wi::to_wide (build_int_cst (type, lowest_vf)),
 			   wi::to_wide (TYPE_MAX_VALUE (type)));
+	  if (!niters_no_overflow && prolog_peeling <= 0)
+	    {
+	      int_range<1> zero (type, wi::zero (TYPE_PRECISION (type)),
+				wi::zero (TYPE_PRECISION (type)));
+	      vr.union_ (zero);
+	    }
 	  set_range_info (niters, vr);
 	}
 
@@ -3612,6 +3619,21 @@ vect_do_peeling (loop_vec_info loop_vinfo, tree niters, tree nitersm1,
 						bound_prolog, bound_epilog,
 						th, &bound_scalar,
 						check_profitability);
+	  /* The outer versioning guard can make this skip edge unreachable.
+	     In that case the scalar tail is bounded by the vector remainder,
+	     not by the combined prologue and remainder.  Do not use an
+	     epilogue's threshold here: it refers to the original trip count,
+	     not to the iterations remaining after the main loop.  */
+	  if (!LOOP_VINFO_EPILOGUE_P (loop_vinfo)
+	      && LOOP_REQUIRES_VERSIONING (loop_vinfo)
+	      && known_gt (LOOP_VINFO_VERSIONING_THRESHOLD (loop_vinfo),
+			   bound_prolog + bound_epilog))
+	    {
+	      bound_scalar = bound_epilog;
+	      if (dump_enabled_p ())
+		dump_printf_loc (MSG_NOTE, vect_location,
+				 "versioning bounds the scalar epilogue\n");
+	    }
 	  /* Build guard against NITERSM1 since NITERS may overflow.  */
 	  guard_cond = fold_build2 (LT_EXPR, boolean_type_node, nitersm1, t);
 	  guard_bb = anchor;
@@ -4293,12 +4315,12 @@ vect_create_cond_for_alias_checks (loop_vec_info loop_vinfo, tree * cond_expr)
    is modified to also check for profitability as indicated by the
    cost model threshold TH.
 
-   The versioning precondition(s) are placed in *COND_EXPR and
-   *COND_EXPR_STMT_LIST.  */
+   NITERS_NO_OVERFLOW says whether the iteration count is representable
+   without wrapping.  */
 
 class loop *
 vect_loop_versioning (loop_vec_info loop_vinfo,
-		      gimple *loop_vectorized_call)
+		      gimple *loop_vectorized_call, bool niters_no_overflow)
 {
   class loop *loop = LOOP_VINFO_LOOP (loop_vinfo), *nloop;
   class loop *scalar_loop = LOOP_VINFO_SCALAR_LOOP (loop_vinfo);
@@ -4325,17 +4347,41 @@ vect_loop_versioning (loop_vec_info loop_vinfo,
     = LOOP_REQUIRES_VERSIONING_FOR_SIMD_IF_COND (loop_vinfo);
   unsigned th = LOOP_VINFO_COST_MODEL_THRESHOLD (loop_vinfo);
   bool uncounted_p = LOOP_VINFO_NITERS_UNCOUNTED_P (loop_vinfo);
+  unsigned threshold_bias = 1;
+
+  /* Normally compare against NITERSM1, since NITERS can wrap to zero.
+     When the loop bound proves otherwise, avoid the subtraction in the
+     versioning guard.  Also require representable constant thresholds:
+     replacing NITERSM1 >= MAX with NITERS >= MAX + 1 would wrap the RHS.  */
+  unsigned HOST_WIDE_INT constant_threshold;
+  if (niters_no_overflow
+      && versioning_threshold.is_constant (&constant_threshold))
+    {
+      tree niters_type = TREE_TYPE (scalar_loop_iters);
+      unsigned precision
+	= TYPE_PRECISION (niters_type) - !TYPE_UNSIGNED (niters_type);
+      if (precision >= HOST_BITS_PER_WIDE_INT
+	  || MAX (constant_threshold, th) < (HOST_WIDE_INT_1U << precision))
+	{
+	  scalar_loop_iters = LOOP_VINFO_NITERS (loop_vinfo);
+	  threshold_bias = 0;
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_NOTE, vect_location,
+			     "versioning compares nonwrapping iteration count\n");
+	}
+    }
 
   if (!uncounted_p && vect_apply_runtime_profitability_check_p (loop_vinfo)
       && !ordered_p (th, versioning_threshold))
     cond_expr = fold_build2 (GE_EXPR, boolean_type_node, scalar_loop_iters,
 			     build_int_cst (TREE_TYPE (scalar_loop_iters),
-					    th - 1));
+					    th - threshold_bias));
   if (!uncounted_p && maybe_ne (versioning_threshold, 0U))
     {
       tree expr = fold_build2 (GE_EXPR, boolean_type_node, scalar_loop_iters,
 			       build_int_cst (TREE_TYPE (scalar_loop_iters),
-					      versioning_threshold - 1));
+					      versioning_threshold
+					      - threshold_bias));
       if (cond_expr)
 	cond_expr = fold_build2 (BIT_AND_EXPR, boolean_type_node,
 				 expr, cond_expr);

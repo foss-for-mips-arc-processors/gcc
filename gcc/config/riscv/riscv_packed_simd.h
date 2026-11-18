@@ -189,6 +189,75 @@ RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
     return (__rs1 << 1) + __rs2;                                           \
   }
 
+#define RVP_ABS_OP(name, ty, rty, shift)                                   \
+RVP_OP_ATTRS rty __riscv_##name (ty __rs1)                                 \
+  {                                                                        \
+    return (rty)((__rs1 + (__rs1 >> shift)) ^ (__rs1 >> shift));           \
+  }
+
+#define RVP_ABD_OP(name, ty, rty)                                          \
+RVP_OP_ATTRS rty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                        \
+    ty __c = __rs1 > __rs2;                                                \
+    ty __max = (__c & __rs1) | (~__c & __rs2);                             \
+    ty __min = (__c & __rs2) | (~__c & __rs1);                             \
+    return (rty) (__max - __min);                                          \
+  }
+
+#define RVP_PAIR_OP(name, ty, i, j)                                        \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                        \
+  {                                                                        \
+    return (ty) { __rs1[i], __rs2[j], __rs1[(i) + 2], __rs2[(j) + 2] };    \
+  }
+
+#define RVP_MULH_OP(name, ty, wty, op)                                    \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return (ty) { ((wty) __rs1[0] op (wty) __rs2[0]) >> 16,               \
+                  ((wty) __rs1[1] op (wty) __rs2[1]) >> 16 };             \
+  }
+
+#define RVP_PAIR8_EE(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 0, 8, 2, 10, 4, 12, 6, 14); \
+  }
+#define RVP_PAIR8_EO(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 0, 9, 2, 11, 4, 13, 6, 15); \
+  }
+#define RVP_PAIR8_OE(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 1, 8, 3, 10, 5, 12, 7, 14); \
+  }
+#define RVP_PAIR8_OO(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 1, 9, 3, 11, 5, 13, 7, 15); \
+  }
+#define RVP_PAIR4_EE(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 0, 4, 2, 6);            \
+  }
+#define RVP_PAIR4_EO(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 0, 5, 2, 7);            \
+  }
+#define RVP_PAIR4_OE(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 1, 4, 3, 6);            \
+  }
+#define RVP_PAIR4_OO(name, ty)                                            \
+RVP_OP_ATTRS ty __riscv_##name (ty __rs1, ty __rs2)                       \
+  {                                                                       \
+    return __builtin_shufflevector (__rs1, __rs2, 1, 5, 3, 7);            \
+  }
+
 #define RVP_LOAD(name, vector_type, element_type, memory_type)              \
 RVP_OP_ATTRS vector_type __riscv_##name (element_type *__p)                 \
   {                                                                        \
@@ -405,9 +474,9 @@ CREATE_RVP_INTRINSIC (uint32_t, asubu_u32, uint32_t, uint32_t)
 CREATE_RVP_INTRINSIC (int32_t, ssh1sadd_i32, int32_t, int32_t)
 
 /* Scalar Absolute Value.  */
-CREATE_RVP_INTRINSIC (uint32_t, abs_u32, int32_t)
+RVP_ABS_OP (abs_u32, int32_t, uint32_t, 31)
 #if __riscv_xlen == 64
-CREATE_RVP_INTRINSIC (uint64_t, abs_u64, int64_t)
+RVP_ABS_OP (abs_u64, int64_t, uint64_t, 63)
 #endif
 
 /* Scalar Comparison.  */
@@ -608,18 +677,18 @@ CREATE_RVP_INTRINSIC (int32x2_t, paas_x_i32x2, int32x2_t, int32x2_t)
 CREATE_RVP_INTRINSIC (int32x2_t, pasa_x_i32x2, int32x2_t, int32x2_t)
 
 /* Packed Absolute Value and Absolute Difference.  */
-CREATE_RVP_INTRINSIC (uint8x4_t, pabs_i8x4, int8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pabs_i16x2, int16x2_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pabd_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pabd_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, pabdu_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pabdu_u16x2, uint16x2_t, uint16x2_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pabs_i8x8, int8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pabs_i16x4, int16x4_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pabd_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pabd_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, pabdu_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, pabdu_u16x4, uint16x4_t, uint16x4_t)
+RVP_ABS_OP (pabs_i8x4, int8x4_t, uint8x4_t, 7)
+RVP_ABS_OP (pabs_i16x2, int16x2_t, uint16x2_t, 15)
+RVP_ABD_OP (pabd_i8x4,   int8x4_t,   uint8x4_t)
+RVP_ABD_OP (pabd_i16x2,  int16x2_t,  uint16x2_t)
+RVP_ABD_OP (pabdu_u8x4,  uint8x4_t,  uint8x4_t)
+RVP_ABD_OP (pabdu_u16x2, uint16x2_t, uint16x2_t)
+RVP_ABS_OP (pabs_i8x8, int8x8_t, uint8x8_t, 7)
+RVP_ABS_OP (pabs_i16x4, int16x4_t, uint16x4_t, 15)
+RVP_ABD_OP (pabd_i8x8,   int8x8_t,   uint8x8_t)
+RVP_ABD_OP (pabd_i16x4,  int16x4_t,  uint16x4_t)
+RVP_ABD_OP (pabdu_u8x8,  uint8x8_t,  uint8x8_t)
+RVP_ABD_OP (pabdu_u16x4, uint16x4_t, uint16x4_t)
 
 /* Packed Absolute Difference Sum.  */
 CREATE_RVP_INTRINSIC (uint32_t, pabdsumu_u8x4_u32, uint8x4_t, uint8x4_t)
@@ -812,14 +881,14 @@ CREATE_RVP_INTRINSIC (uint16x4_t, psshlr_s_u16x4, uint16x4_t, int)
 CREATE_RVP_INTRINSIC (uint32x2_t, psshlr_s_u32x2, uint32x2_t, int)
 
 /* Packed Pair.  */
-CREATE_RVP_INTRINSIC (uint8x4_t, ppaire_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (int8x4_t, ppaire_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, ppaireo_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (int8x4_t, ppaireo_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, ppairoe_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (int8x4_t, ppairoe_i8x4, int8x4_t, int8x4_t)
-CREATE_RVP_INTRINSIC (uint8x4_t, ppairo_u8x4, uint8x4_t, uint8x4_t)
-CREATE_RVP_INTRINSIC (int8x4_t, ppairo_i8x4, int8x4_t, int8x4_t)
+RVP_PAIR_OP (ppaire_i8x4, int8x4_t, 0, 0)
+RVP_PAIR_OP (ppaire_u8x4, uint8x4_t, 0, 0)
+RVP_PAIR_OP (ppairo_i8x4, int8x4_t, 1, 1)
+RVP_PAIR_OP (ppairo_u8x4, uint8x4_t, 1, 1)
+RVP_PAIR_OP (ppaireo_i8x4, int8x4_t, 0, 1)
+RVP_PAIR_OP (ppaireo_u8x4, uint8x4_t, 0, 1)
+RVP_PAIR_OP (ppairoe_i8x4, int8x4_t, 1, 0)
+RVP_PAIR_OP (ppairoe_u8x4, uint8x4_t, 1, 0)
 CREATE_RVP_INTRINSIC (uint16x2_t, ppaire_u16x2, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, ppaire_i16x2, int16x2_t, int16x2_t)
 CREATE_RVP_INTRINSIC (uint16x2_t, ppaireo_u16x2, uint16x2_t, uint16x2_t)
@@ -828,22 +897,22 @@ CREATE_RVP_INTRINSIC (uint16x2_t, ppairoe_u16x2, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, ppairoe_i16x2, int16x2_t, int16x2_t)
 CREATE_RVP_INTRINSIC (uint16x2_t, ppairo_u16x2, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, ppairo_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, ppaire_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (int8x8_t, ppaire_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, ppaireo_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (int8x8_t, ppaireo_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, ppairoe_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (int8x8_t, ppairoe_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint8x8_t, ppairo_u8x8, uint8x8_t, uint8x8_t)
-CREATE_RVP_INTRINSIC (int8x8_t, ppairo_i8x8, int8x8_t, int8x8_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, ppaire_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int16x4_t, ppaire_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, ppaireo_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int16x4_t, ppaireo_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, ppairoe_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int16x4_t, ppairoe_i16x4, int16x4_t, int16x4_t)
-CREATE_RVP_INTRINSIC (uint16x4_t, ppairo_u16x4, uint16x4_t, uint16x4_t)
-CREATE_RVP_INTRINSIC (int16x4_t, ppairo_i16x4, int16x4_t, int16x4_t)
+RVP_PAIR8_EE (ppaire_i8x8, int8x8_t)
+RVP_PAIR8_EE (ppaire_u8x8, uint8x8_t)
+RVP_PAIR8_OO (ppairo_i8x8, int8x8_t)
+RVP_PAIR8_OO (ppairo_u8x8, uint8x8_t)
+RVP_PAIR8_EO (ppaireo_i8x8, int8x8_t)
+RVP_PAIR8_EO (ppaireo_u8x8, uint8x8_t)
+RVP_PAIR8_OE (ppairoe_i8x8, int8x8_t)
+RVP_PAIR8_OE (ppairoe_u8x8, uint8x8_t)
+RVP_PAIR4_EE (ppaire_i16x4, int16x4_t)
+RVP_PAIR4_EE (ppaire_u16x4, uint16x4_t)
+RVP_PAIR4_OO (ppairo_i16x4, int16x4_t)
+RVP_PAIR4_OO (ppairo_u16x4, uint16x4_t)
+RVP_PAIR4_EO (ppaireo_i16x4, int16x4_t)
+RVP_PAIR4_EO (ppaireo_u16x4, uint16x4_t)
+RVP_PAIR4_OE (ppairoe_i16x4, int16x4_t)
+RVP_PAIR4_OE (ppairoe_u16x4, uint16x4_t)
 
 CREATE_RVP_INTRINSIC (uint32x2_t, ppaire_u32x2, uint32x2_t, uint32x2_t)
 CREATE_RVP_INTRINSIC (int32x2_t, ppaire_i32x2, int32x2_t, int32x2_t)
@@ -1312,9 +1381,9 @@ CREATE_RVP_INTRINSIC (int32x2_t, prev_i32x2, int32x2_t)
 CREATE_RVP_INTRINSIC (uint32x2_t, prev_u32x2, uint32x2_t)
 
 /* Packed Multiply High.  */
-CREATE_RVP_INTRINSIC (int16x2_t, pmulh_i16x2, int16x2_t, int16x2_t)
+RVP_MULH_OP (pmulh_i16x2, int16x2_t, int32_t, *)
+RVP_MULH_OP (pmulhu_u16x2, uint16x2_t, uint32_t, *)
 CREATE_RVP_INTRINSIC (int16x2_t, pmulhr_i16x2, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (uint16x2_t, pmulhu_u16x2, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (uint16x2_t, pmulhru_u16x2, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, pmulhsu_i16x2, int16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int16x2_t, pmulhrsu_i16x2, int16x2_t, uint16x2_t)
@@ -1981,8 +2050,8 @@ __riscv_pm4addsu_i16x4 (int16x4_t __rs1, uint16x4_t __rs2)
     = RVP_SUBVECTOR_GET (int16x4_t, int16x2_t, __rs1, 1);
   uint16x2_t __rs2_hi
     = RVP_SUBVECTOR_GET (uint16x4_t, uint16x2_t, __rs2, 1);
-  int64_t __result = __builtin_riscv_pm2waddsu_u64 (__rs1_lo, __rs2_lo);
-  return __builtin_riscv_pm2waddasu_u64 (__result, __rs1_hi, __rs2_hi);
+  int64_t __result = __builtin_riscv_pm2waddsu_i64 (__rs1_lo, __rs2_lo);
+  return __builtin_riscv_pm2waddasu_i64 (__result, __rs1_hi, __rs2_hi);
 }
 #else
 CREATE_RVP_INTRINSIC(int64_t, pm2add_i32x2, int32x2_t, int32x2_t)
@@ -2139,8 +2208,8 @@ __riscv_pm4addasu_i16x4 (int64_t __rd, int16x4_t __rs1,
   uint16x2_t __rs2_hi
     = RVP_SUBVECTOR_GET (uint16x4_t, uint16x2_t, __rs2, 1);
   int64_t __result
-    = __builtin_riscv_pm2waddasu_u64 (__rd, __rs1_lo, __rs2_lo);
-  return __builtin_riscv_pm2waddasu_u64 (__result, __rs1_hi, __rs2_hi);
+    = __builtin_riscv_pm2waddasu_i64 (__rd, __rs1_lo, __rs2_lo);
+  return __builtin_riscv_pm2waddasu_i64 (__result, __rs1_hi, __rs2_hi);
 }
 #else
 CREATE_RVP_INTRINSIC(int64_t, pm2adda_i32x2, int64_t, int32x2_t, int32x2_t)
@@ -2358,7 +2427,7 @@ CREATE_RVP_INTRINSIC (int64_t, pm2wadd_x_i64, int16x2_t, int16x2_t)
 CREATE_RVP_INTRINSIC (uint64_t, pm2waddu_u64, uint16x2_t, uint16x2_t)
 CREATE_RVP_INTRINSIC (int64_t, pm2wsub_i64, int16x2_t, int16x2_t)
 CREATE_RVP_INTRINSIC (int64_t, pm2wsub_x_i64, int16x2_t, int16x2_t)
-CREATE_RVP_INTRINSIC (int64_t, pm2waddsu_u64, int16x2_t, uint16x2_t)
+CREATE_RVP_INTRINSIC (int64_t, pm2waddsu_i64, int16x2_t, uint16x2_t)
 
 /* Packed Multiplication with Widening Horizontal Addition and Accumulate.  */
 CREATE_RVP_INTRINSIC (int64_t, pm2wadda_i64, int64_t, int16x2_t,
@@ -2371,7 +2440,7 @@ CREATE_RVP_INTRINSIC (int64_t, pm2wsuba_i64, int64_t, int16x2_t,
 		      int16x2_t)
 CREATE_RVP_INTRINSIC (int64_t, pm2wsuba_x_i64, int64_t, int16x2_t,
 		      int16x2_t)
-CREATE_RVP_INTRINSIC (int64_t, pm2waddasu_u64, int64_t, int16x2_t,
+CREATE_RVP_INTRINSIC (int64_t, pm2waddasu_i64, int64_t, int16x2_t,
 		      uint16x2_t)
 
 /* Packed Logical Operations.  */

@@ -5383,7 +5383,8 @@ vectorizable_conversion (vec_info *vinfo,
   if (!widen_arith
       && !CONVERT_EXPR_CODE_P (code)
       && code != FIX_TRUNC_EXPR
-      && code != FLOAT_EXPR)
+      && code != FLOAT_EXPR
+      && code != IFN_SAT_TRUNC)
     return false;
 
   /* Check types of lhs and rhs.  */
@@ -5483,6 +5484,11 @@ vectorizable_conversion (vec_info *vinfo,
       gcc_checking_assert (multiple_p (nunits_in, nunits_out));
       modifier = WIDEN;
     }
+
+  /* True saturating truncation needs a result-typed operation.  Only the
+     single-step binary pack below is handled by this conversion path.  */
+  if (code == IFN_SAT_TRUNC && modifier != NARROW_DST)
+    return false;
 
   bool found_mode = false;
   scalar_mode lhs_mode = SCALAR_TYPE_MODE (lhs_type);
@@ -14092,9 +14098,8 @@ supportable_widening_operation (code_helper code,
       break;
 
     case SAD_EXPR:
-      c1 = SAD_EXPR;
-      c2 = SAD_EXPR;
-      break;
+      *code1 = *code2 = SAD_EXPR;
+      return directly_supported_p (code, vectype_out, vectype_in);
 
     case VEC_WIDEN_MULT_EVEN_EXPR:
       /* Support the recursion induced just above.  */
@@ -14315,9 +14320,9 @@ supportable_widening_operation (code_helper code,
    vector form (i.e., when operating on arguments of type VECTYPE_IN
    and producing a result of type VECTYPE_OUT).
 
-   Narrowing operations we currently support are NOP (CONVERT), FIX_TRUNC
-   and FLOAT.  This function checks if these operations are supported by
-   the target platform directly via vector tree-codes.
+   Narrowing operations we currently support are NOP (CONVERT), FIX_TRUNC,
+   FLOAT and a single-step signed SAT_TRUNC.  This function checks if these
+   operations are supported by the target platform via vector tree-codes.
 
    Output:
    - CODE1 is the code of a vector operation to be used when
@@ -14345,6 +14350,35 @@ supportable_narrowing_operation (code_helper code,
   int i;
   unsigned HOST_WIDE_INT n_elts;
   bool uns;
+
+  if (code == IFN_SAT_TRUNC)
+    {
+      tree itype = TREE_TYPE (vectype_in);
+      tree otype = TREE_TYPE (vectype_out);
+      *multi_step_cvt = 0;
+      if (!INTEGRAL_TYPE_P (itype) || TYPE_UNSIGNED (itype)
+	  || !INTEGRAL_TYPE_P (otype) || TYPE_UNSIGNED (otype)
+	  || !type_has_mode_precision_p (itype)
+	  || !type_has_mode_precision_p (otype)
+	  || TYPE_PRECISION (itype) != 2 * TYPE_PRECISION (otype)
+	  || !known_eq (TYPE_VECTOR_SUBPARTS (vectype_out),
+			TYPE_VECTOR_SUBPARTS (vectype_in) * 2))
+	return false;
+
+      machine_mode imode = TYPE_MODE (vectype_in);
+      machine_mode omode = TYPE_MODE (vectype_out);
+      insn_code icode = optab_handler (vec_pack_ssat_optab, imode);
+      if (icode == CODE_FOR_nothing
+	  || insn_data[icode].operand[0].mode != omode
+	  || insn_data[icode].operand[1].mode != imode
+	  || insn_data[icode].operand[2].mode != imode)
+	return false;
+
+      /* Later demotion stages use ordinary truncation.  Do not allow
+	 saturating packs to fall through to that multi-step search.  */
+      *code1 = VEC_PACK_SAT_EXPR;
+      return true;
+    }
 
   if (!code.is_tree_code ())
     return false;

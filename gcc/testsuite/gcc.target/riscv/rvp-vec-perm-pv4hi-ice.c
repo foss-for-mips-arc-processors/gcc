@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64d" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64d" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" } } */
 
 /* This selector used to be matched as the byte-granularity rev16, which has no

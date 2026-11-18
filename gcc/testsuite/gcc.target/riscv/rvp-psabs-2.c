@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv64 } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -O2 -ftree-vectorize" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -O2 -ftree-vectorize" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-O3" "-Os" "-Oz" "-Og" "-flto" "-funroll-loops" "-fpeel-loops" } } */
 
 typedef signed char int8_t;

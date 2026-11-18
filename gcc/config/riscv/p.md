@@ -65,8 +65,6 @@
   UNSPEC_PSSHLR
   UNSPEC_PUSATI
   UNSPEC_PSABS
-  UNSPEC_PABD
-  UNSPEC_PABDU
   UNSPEC_PSATI
   UNSPEC_SATI
   UNSPEC_USATI
@@ -1147,129 +1145,6 @@
   "<rvp_exchange_insn>.wx\t%0,%1,%2"
   [(set_attr "type" "simd")])
 
-;Packed Absolute Value and Absolute Difference
-;
-; pabs is a pseudo-operation: pabs(rs1) = pabd(rs1, x0), so it is emitted as
-; "pabd.<suffix> %0,%1,x0" per the P-ext proposal.
-(define_insn "riscv_pabs_<SAT_NAME>"
-  [(set (match_operand:ABD32 0 "register_operand" "=r")
-        (unspec:ABD32 [(match_operand:ABD32 1 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP"
-  "pabd.<SAT_SUFFIX>\t%0,%1,x0"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_pabd_<SAT_NAME>"
-  [(set (match_operand:ABD32 0 "register_operand" "=r")
-        (unspec:ABD32 [(match_operand:ABD32 1 "register_operand" "r")
-                       (match_operand:ABD32 2 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP"
-  "pabd.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_pabdu_<USAT_NAME>"
-  [(set (match_operand:ABD32 0 "register_operand" "=r")
-        (unspec:ABD32 [(match_operand:ABD32 1 "register_operand" "r")
-                       (match_operand:ABD32 2 "register_operand" "r")]
-         UNSPEC_PABDU))]
-  "TARGET_RVP"
-  "pabdu.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_expand "riscv_pabs_<SAT_NAME>"
-  [(set (match_operand:ABD64 0 "register_operand")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand")]
-         UNSPEC_PABD))]
-  "TARGET_RVP"
-{
-  if (TARGET_64BIT)
-    emit_insn (gen_riscv_pabs_<SAT_NAME>_rv64 (operands[0], operands[1]));
-  else
-    emit_insn (gen_riscv_pabs_<SAT_NAME>_rv32 (operands[0], operands[1]));
-  DONE;
-})
-
-(define_insn "riscv_pabs_<SAT_NAME>_rv32"
-  [(set (match_operand:ABD64 0 "register_operand" "=R")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "pabd.<DSAT_SUFFIX>\t%0,%1,x0"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_pabs_<SAT_NAME>_rv64"
-  [(set (match_operand:ABD64 0 "register_operand" "=r")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP && TARGET_64BIT"
-  "pabd.<SAT_SUFFIX>\t%0,%1,x0"
-  [(set_attr "type" "simd")])
-
-(define_expand "riscv_pabd_<SAT_NAME>"
-  [(set (match_operand:ABD64 0 "register_operand")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand")
-                       (match_operand:ABD64 2 "register_operand")]
-         UNSPEC_PABD))]
-  "TARGET_RVP"
-{
-  if (TARGET_64BIT)
-    emit_insn (gen_riscv_pabd_<SAT_NAME>_rv64 (operands[0], operands[1], operands[2]));
-  else
-    emit_insn (gen_riscv_pabd_<SAT_NAME>_rv32 (operands[0], operands[1], operands[2]));
-  DONE;
-})
-
-(define_insn "riscv_pabd_<SAT_NAME>_rv32"
-  [(set (match_operand:ABD64 0 "register_operand" "=R")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")
-                       (match_operand:ABD64 2 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "pabd.<DSAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_pabd_<SAT_NAME>_rv64"
-  [(set (match_operand:ABD64 0 "register_operand" "=r")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")
-                       (match_operand:ABD64 2 "register_operand" "r")]
-         UNSPEC_PABD))]
-  "TARGET_RVP && TARGET_64BIT"
-  "pabd.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_expand "riscv_pabdu_<USAT_NAME>"
-  [(set (match_operand:ABD64 0 "register_operand")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand")
-                       (match_operand:ABD64 2 "register_operand")]
-         UNSPEC_PABDU))]
-  "TARGET_RVP"
-{
-  if (TARGET_64BIT)
-    emit_insn (gen_riscv_pabdu_<USAT_NAME>_rv64 (operands[0], operands[1], operands[2]));
-  else
-    emit_insn (gen_riscv_pabdu_<USAT_NAME>_rv32 (operands[0], operands[1], operands[2]));
-  DONE;
-})
-
-(define_insn "riscv_pabdu_<USAT_NAME>_rv32"
-  [(set (match_operand:ABD64 0 "register_operand" "=R")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")
-                       (match_operand:ABD64 2 "register_operand" "r")]
-         UNSPEC_PABDU))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "pabdu.<DSAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_pabdu_<USAT_NAME>_rv64"
-  [(set (match_operand:ABD64 0 "register_operand" "=r")
-        (unspec:ABD64 [(match_operand:ABD64 1 "register_operand" "r")
-                       (match_operand:ABD64 2 "register_operand" "r")]
-         UNSPEC_PABDU))]
-  "TARGET_RVP && TARGET_64BIT"
-  "pabdu.<SAT_SUFFIX>\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
 ;Packed Absolute Difference Sum
 ;
 ;The hardware reduction covers all byte lanes in an XLEN-wide GPR.  The
@@ -1314,6 +1189,85 @@
   "TARGET_RVP && TARGET_64BIT"
   "pabdsumau.b\t%0,%1,%2"
   [(set_attr "type" "simd")])
+
+;; Fold zero accumulators after register allocation, without changing the
+;; allocation of live packed inputs.  The clear must not also supply an input.
+;; A following copy can be removed when the temporary result is dead.
+(define_peephole2
+  [(set (match_operand:X 0 "register_operand")
+	(const_int 0))
+   (set (match_dup 0)
+	(unspec:X [(match_dup 0)
+		   (match_operand:X 1 "register_operand")
+		   (match_operand:X 2 "register_operand")]
+		  UNSPEC_PABDSUMAU))
+   (set (match_operand:X 3 "register_operand") (match_dup 0))]
+  "TARGET_RVP && GP_REG_P (REGNO (operands[3]))
+   && !reg_overlap_mentioned_p (operands[0], operands[1])
+   && !reg_overlap_mentioned_p (operands[0], operands[2])
+   && peep2_reg_dead_p (3, operands[0])"
+  [(set (match_dup 3)
+	(unspec:X [(match_dup 1) (match_dup 2)] UNSPEC_PABDSUMU))])
+
+(define_peephole2
+  [(set (match_operand:X 0 "register_operand")
+	(const_int 0))
+   (set (match_dup 0)
+	(unspec:X [(match_dup 0)
+		   (match_operand:X 1 "register_operand")
+		   (match_operand:X 2 "register_operand")]
+		  UNSPEC_PABDSUMAU))]
+  "TARGET_RVP
+   && !reg_overlap_mentioned_p (operands[0], operands[1])
+   && !reg_overlap_mentioned_p (operands[0], operands[2])"
+  [(set (match_dup 0)
+	(unspec:X [(match_dup 1) (match_dup 2)] UNSPEC_PABDSUMU))])
+
+;; Nonadjacent clears can be separated by loads or operand extensions.
+;; Replace only the arithmetic operation; liveness decides whether the
+;; earlier zero definition is still needed by another use or an EH edge.
+(define_peephole2
+  [(set (match_operand:X 0 "register_operand")
+	(unspec:X [(match_dup 0)
+		   (match_operand:X 1 "register_operand")
+		   (match_operand:X 2 "register_operand")]
+		  UNSPEC_PABDSUMAU))]
+  "TARGET_RVP
+   && riscv_p_zero_accumulator_p (operands[0], peep2_next_insn (0))"
+  [(set (match_dup 0)
+	(unspec:X [(match_dup 1) (match_dup 2)] UNSPEC_PABDSUMU))])
+
+;; A native RV64 byte SAD is at most 8 * 255, so extending its low word
+;; leaves the result unchanged.  Keep a separately live original result.
+(define_peephole2
+  [(set (match_operand:DI 0 "register_operand")
+	(unspec:DI [(match_operand:DI 1 "register_operand")
+		    (match_operand:DI 2 "register_operand")]
+		   UNSPEC_PABDSUMU))
+   (set (match_operand:DI 3 "register_operand")
+	(any_extend:DI (match_operand:SI 4 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT
+   && GP_REG_P (REGNO (operands[3]))
+   && REGNO (operands[0]) == REGNO (operands[4])
+   && (rtx_equal_p (operands[0], operands[3])
+       || peep2_reg_dead_p (2, operands[0]))"
+  [(set (match_dup 3)
+	(unspec:DI [(match_dup 1) (match_dup 2)] UNSPEC_PABDSUMU))])
+
+;; A shared native SAD result may be separated from its word extension by
+;; stores or other independent instructions.  Preserve its definition and
+;; replace only the extension, leaving any dead copy to normal cleanup.
+(define_peephole2
+  [(set (match_operand:DI 0 "register_operand")
+	(any_extend:DI (match_operand:SI 1 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT
+   && GP_REG_P (REGNO (operands[0]))
+   && GP_REG_P (REGNO (operands[1]))
+   && riscv_p_sad_word_result_p (operands[1], peep2_next_insn (0))"
+  [(set (match_dup 0) (match_dup 2))]
+{
+  operands[2] = gen_rtx_REG (DImode, REGNO (operands[1]));
+})
 
 (define_expand "riscv_pabdsumu_u8x4_u32"
   [(set (match_operand:SI 0 "register_operand")
@@ -1598,10 +1552,10 @@
 (define_insn "riscv_predsum_i8x4_i32_rv32"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:PV4QI 1 "register_operand" "r")
-                            (match_operand:SI 2 "nonmemory_operand" "r")]
+                            (match_operand:SI 2 "nonmemory_operand" "rJ")]
          UNSPEC_PREDSUM))]
   "TARGET_RVP && !TARGET_64BIT"
-  "predsum.bs\t%0,%1,%2"
+  "predsum.bs\t%0,%1,%z2"
   [(set_attr "type" "simd")])
 
 (define_expand "riscv_predsumu_u8x4_u32"
@@ -1660,10 +1614,10 @@
 (define_insn "riscv_predsum_i16x2_i32_rv32"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:PV2HI 1 "register_operand" "r")
-                            (match_operand:SI 2 "nonmemory_operand" "r")]
+                            (match_operand:SI 2 "nonmemory_operand" "rJ")]
          UNSPEC_PREDSUM))]
   "TARGET_RVP && !TARGET_64BIT"
-  "predsum.hs\t%0,%1,%2"
+  "predsum.hs\t%0,%1,%z2"
   [(set_attr "type" "simd")])
 
 (define_expand "riscv_predsumu_u16x2_u32"
@@ -1863,10 +1817,10 @@
 (define_insn "riscv_predsum_i8x8_i64_rv64"
   [(set (match_operand:DI 0 "register_operand" "=r")
         (unspec:DI [(match_operand:PV8QI 1 "register_operand" "r")
-                            (match_operand:DI 2 "nonmemory_operand" "r")]
+                            (match_operand:DI 2 "nonmemory_operand" "rJ")]
          UNSPEC_PREDSUM))]
   "TARGET_RVP && TARGET_64BIT"
-  "predsum.bs\t%0,%1,%2"
+  "predsum.bs\t%0,%1,%z2"
   [(set_attr "type" "simd")])
 
 (define_expand "riscv_predsumu_u8x8_u64"
@@ -1929,10 +1883,10 @@
 (define_insn "riscv_predsum_i16x4_i64_rv64"
   [(set (match_operand:DI 0 "register_operand" "=r")
         (unspec:DI [(match_operand:PV4HI 1 "register_operand" "r")
-                            (match_operand:DI 2 "nonmemory_operand" "r")]
+                            (match_operand:DI 2 "nonmemory_operand" "rJ")]
          UNSPEC_PREDSUM))]
   "TARGET_RVP && TARGET_64BIT"
-  "predsum.hs\t%0,%1,%2"
+  "predsum.hs\t%0,%1,%z2"
   [(set_attr "type" "simd")])
 
 (define_expand "riscv_predsumu_u16x4_u64"

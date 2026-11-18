@@ -55,7 +55,7 @@
 @tab Vector extension
 
 @item @samp{p}
-@tab 0.21
+@tab 0.6
 @tab Packed SIMD extension
 
 @item @samp{h}

@@ -673,6 +673,24 @@
 	  (eq_attr "move_type" "shift_shift")
 		(const_int 8)
 
+	  ;; Native RV32 P register-pair copies use one ADDD instruction.
+	  (and (eq_attr "move_type" "move")
+	       (and (eq_attr "dword_mode" "yes")
+		    (match_test "!TARGET_64BIT && TARGET_RVP
+				 && !riscv_split_64bit_move_p (operands[0],
+							     operands[1])")))
+	  (const_int 4)
+
+	  ;; An integer zero can clear a complete RV32 P register pair.
+	  (and (eq_attr "move_type" "const")
+	       (and (eq_attr "mode" "DI")
+		    (match_test "!TARGET_64BIT && TARGET_RVP
+				 && !TARGET_BIG_ENDIAN
+				 && operands[1] == const0_rtx
+				 && !riscv_split_64bit_move_p (operands[0],
+							     operands[1])")))
+	  (const_int 4)
+
 	  ;; Check for doubleword moves that are decomposed into two
 	  ;; instructions.
 	  (and (eq_attr "move_type" "mtc,mfc,move")
@@ -791,12 +809,18 @@
   [(set (match_operand:DI          0 "register_operand")
 	(plus:DI (match_operand:DI 1 "register_operand")
 		 (match_operand:DI 2 "reg_or_const_int_operand")))]
-  "TARGET_64BIT || TARGET_RVP"
+  "TARGET_64BIT || (TARGET_RVP && !TARGET_BIG_ENDIAN)"
 {
-  /* On RV32 with RVP, keep the DI add as a single RTX operation so that the
-     widening add patterns can match it in the combine pass.  */
+  /* On little-endian RV32 with RVP, keep the DI add as a single RTX
+     operation so widening add patterns can match it in combine.  P register
+     pairs put the low word first, unlike big-endian scalar DI values.  */
   if (!TARGET_64BIT && TARGET_RVP)
     {
+      /* Scalar views of RVV registers need an explicit extraction before
+	 reload.  Packed P subregs already reside in general registers.  */
+      if (SUBREG_P (operands[1])
+	  && riscv_vector_mode_p (GET_MODE (SUBREG_REG (operands[1]))))
+	operands[1] = force_reg (DImode, operands[1]);
       if (!REG_P (operands[2]))
 	operands[2] = force_reg (DImode, operands[2]);
     }
@@ -810,7 +834,7 @@
   [(set (match_operand:DI          0 "register_operand" "=r,r")
 	(plus:DI (match_operand:DI 1 "register_operand" " r,r")
 		 (match_operand:DI 2 "arith_operand"    " r,I")))]
-  "TARGET_64BIT || TARGET_RVP"
+  "TARGET_64BIT"
   "add%i2\t%0,%1,%2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -1011,9 +1035,16 @@
   [(set (match_operand:DI 0           "register_operand")
         (minus:DI (match_operand:DI 1 "reg_or_0_operand")
                   (match_operand:DI 2 "register_operand")))]
-  "TARGET_64BIT || TARGET_RVP"
-  ""
-)
+  "TARGET_64BIT || (TARGET_RVP && !TARGET_BIG_ENDIAN)"
+{
+  /* RV32 P pairs cannot consume an RVV scalar view without an explicit
+     extraction.  Lower it while temporary pseudos are still available.  */
+  if (!TARGET_64BIT && TARGET_RVP)
+    for (unsigned int i = 1; i <= 2; ++i)
+      if (SUBREG_P (operands[i])
+	  && riscv_vector_mode_p (GET_MODE (SUBREG_REG (operands[i]))))
+	operands[i] = force_reg (DImode, operands[i]);
+})
 
 (define_insn "*subdi3"
   [(set (match_operand:DI 0            "register_operand" "= r")
@@ -1512,7 +1543,7 @@
 		   (match_operand:SI 2 "register_operand" " r"))))]
   "((TARGET_ZMMUL || TARGET_MUL) && !TARGET_64BIT) || TARGET_RVP"
 {
-  if (!TARGET_RVP)
+  if (!TARGET_RVP || (!TARGET_64BIT && TARGET_BIG_ENDIAN))
     {
       rtx temp = gen_reg_rtx (SImode);
       riscv_emit_binary (MULT, temp, operands[1], operands[2]);
@@ -1547,7 +1578,7 @@
 		   (match_operand:SI 2 "register_operand" " r"))))]
   "(TARGET_ZMMUL || TARGET_MUL || TARGET_RVP) && !TARGET_64BIT"
 {
-  if (!TARGET_RVP)
+  if (!TARGET_RVP || TARGET_BIG_ENDIAN)
     {
       rtx temp = gen_reg_rtx (SImode);
       riscv_emit_binary (MULT, temp, operands[1], operands[2]);
@@ -2030,7 +2061,7 @@
 (define_expand "zero_extendsidi2"
   [(set (match_operand:DI 0 "register_operand")
 	(zero_extend:DI (match_operand:SI 1 "nonimmediate_operand")))]
-  "TARGET_64BIT || TARGET_RVP"
+  "TARGET_64BIT || (TARGET_RVP && !TARGET_BIG_ENDIAN)"
 {
   if (TARGET_64BIT)
     {
@@ -2077,7 +2108,11 @@
   [(set (match_operand:GPR    0 "register_operand")
 	(zero_extend:GPR
 	    (match_operand:HI 1 "nonimmediate_operand")))]
-  "")
+  ""
+{
+  if (riscv_p_expand_zero_extend (operands[0], operands[1]))
+    DONE;
+})
 
 (define_insn_and_split "*zero_extendhi<GPR:mode>2"
   [(set (match_operand:GPR    0 "register_operand"     "=r,r")
@@ -2107,7 +2142,11 @@
   [(set (match_operand:SUPERQI    0 "register_operand")
 	(zero_extend:SUPERQI
 	    (match_operand:QI 1 "nonimmediate_operand")))]
-  "")
+  ""
+{
+  if (riscv_p_expand_zero_extend (operands[0], operands[1]))
+    DONE;
+})
 
 (define_insn "*zero_extendqi<SUPERQI:mode>2_internal"
   [(set (match_operand:SUPERQI 0 "register_operand"    "=r,r")
@@ -2132,7 +2171,7 @@
   [(set (match_operand:DI     0 "register_operand"     "=r,r")
 	(sign_extend:DI
 	    (match_operand:SI 1 "nonimmediate_operand" " r,m")))]
-  "TARGET_64BIT || TARGET_RVP"
+  "TARGET_64BIT || (TARGET_RVP && !TARGET_BIG_ENDIAN)"
 {
   if (TARGET_64BIT)
     {
@@ -2740,6 +2779,28 @@
    (set_attr "mode" "DI")
    (set_attr "type" "move,move,load,store,mtc,fpload,mfc,fmove,fpstore,move")
    (set_attr "ext" "base,base,base,base,d,d,d,d,d,vector")])
+
+;; A partial overwrite makes half of a preceding pair clear redundant.
+;; Keep a word clear so that it can still use the compressed encoding.
+(define_peephole2
+  [(set (match_operand:DI 0 "register_operand")
+	(const_int 0))
+   (set (match_operand:SI 1 "register_operand")
+	(match_operand:SI 2 "nonmemory_operand"))]
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN
+   && GP_REG_P (REGNO (operands[0])) && REGNO (operands[0]) != 0
+   && (REGNO (operands[0]) % 2) == 0
+   && (REGNO (operands[1]) == REGNO (operands[0])
+       || REGNO (operands[1]) == REGNO (operands[0]) + 1)
+   && !reg_overlap_mentioned_p (operands[0], operands[2])"
+  [(set (match_dup 3) (const_int 0))
+   (set (match_dup 1) (match_dup 2))]
+{
+  unsigned int regno = REGNO (operands[0]);
+  if (REGNO (operands[1]) == regno)
+    ++regno;
+  operands[3] = gen_rtx_REG (SImode, regno);
+})
 
 ;; 32-bit Integer moves
 

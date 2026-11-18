@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gc_zbb_p0p21 -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32gc_zbb_p0p6 -mabi=ilp32 -O2" } */
 
 /* Test USATI pattern recognition via RTL combine for RV32.
    When Zbb is enabled, min(max(x, 0), (1 << N) - 1) is recognized

@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv32 } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -O2" } */
 
 /* Test PLI optimization for various constant patterns (RV32).  */
 

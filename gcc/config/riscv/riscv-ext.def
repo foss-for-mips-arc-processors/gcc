@@ -214,7 +214,7 @@ DEFINE_RISCV_EXT(
   /* DESC */ "",
   /* URL */ ,
   /* DEP_EXTS */ ({"zba", "zbb", "zmmul"}),
-  /* SUPPORTED_VERSIONS */ ({{0, 21}}),
+  /* SUPPORTED_VERSIONS */ ({{0, 6}}),
   /* FLAG_GROUP */ base,
   /* BITMASK_GROUP_ID */ 0,
   /* BITMASK_BIT_POSITION*/ 15,

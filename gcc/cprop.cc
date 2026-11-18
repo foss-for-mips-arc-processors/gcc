@@ -41,6 +41,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "dbgcnt.h"
 #include "cfgloop.h"
 #include "gcse.h"
+#include "valtrack.h"
 
 
 /* An obstack for our working variables.  */
@@ -1933,6 +1934,195 @@ one_cprop_pass (void)
   return changed;
 }
 
+/* Sink simple copies that are needed on only one side of a branch.  Copy
+   propagation can remove their uses in an alias check without removing the
+   initial values of scalar loop induction variables.  Keep these copies off
+   the vector path when an existing single-predecessor block is available.
+
+   Collect moves before changing RTL.  The original suffix references and
+   live-in sets remain conservative; EXTRA_LIVE records source registers
+   newly needed at a destination's entry.  In particular, moving D = S must
+   not allow an earlier definition of S to move to the opposite successor.  */
+
+static void
+cprop_sink_copies (void)
+{
+  df_analyze ();
+
+  auto_bitmap excluded;
+  auto_bitmap uses;
+  auto_bitmap defs;
+  auto_bitmap local_defs;
+  auto_bitmap moved_regs;
+  auto_vec<bitmap> extra_live;
+  auto_vec<std::pair<rtx_insn *, basic_block>> moves;
+  basic_block bb;
+  rtx_insn *insn;
+  df_ref ref;
+
+  extra_live.safe_grow_cleared (last_basic_block_for_fn (cfun));
+
+  /* Equality notes are not part of ordinary liveness.  Do not move a
+     definition that might supply one, or cross an artificial reference.  */
+  FOR_ALL_BB_FN (bb, cfun)
+    {
+      FOR_EACH_ARTIFICIAL_USE (ref, bb->index)
+	bitmap_set_bit (excluded, DF_REF_REGNO (ref));
+      FOR_EACH_ARTIFICIAL_DEF (ref, bb->index)
+	bitmap_set_bit (excluded, DF_REF_REGNO (ref));
+    }
+  FOR_EACH_BB_FN (bb, cfun)
+    FOR_BB_INSNS (bb, insn)
+      if (NONDEBUG_INSN_P (insn))
+	FOR_EACH_INSN_EQ_USE (ref, insn)
+	  bitmap_set_bit (excluded, DF_REF_REGNO (ref));
+
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      if (EDGE_COUNT (bb->succs) != 2
+	  || !any_condjump_p (BB_END (bb))
+	  || !onlyjump_p (BB_END (bb)))
+	continue;
+
+      edge e0 = EDGE_SUCC (bb, 0);
+      edge e1 = EDGE_SUCC (bb, 1);
+      if ((e0->flags | e1->flags) & (EDGE_COMPLEX | EDGE_CROSSING)
+	  || e0->dest == EXIT_BLOCK_PTR_FOR_FN (cfun)
+	  || e1->dest == EXIT_BLOCK_PTR_FOR_FN (cfun))
+	continue;
+
+      bitmap_clear (uses);
+      bitmap_clear (defs);
+      bitmap_clear (local_defs);
+      FOR_BB_INSNS (bb, insn)
+	if (NONDEBUG_INSN_P (insn))
+	  FOR_EACH_INSN_DEF (ref, insn)
+	    bitmap_set_bit (local_defs, DF_REF_REGNO (ref));
+      FOR_BB_INSNS_REVERSE (bb, insn)
+	{
+	  if (!NONDEBUG_INSN_P (insn))
+	    continue;
+	  if (CALL_P (insn)
+	      || volatile_insn_p (PATTERN (insn))
+	      || may_trap_p (PATTERN (insn))
+	      || can_throw_internal (insn))
+	    break;
+
+	  rtx set = PATTERN (insn);
+	  if (GET_CODE (set) == SET
+	      && REG_P (SET_DEST (set))
+	      && REG_P (SET_SRC (set))
+	      && SCALAR_INT_MODE_P (GET_MODE (SET_DEST (set)))
+	      && GET_MODE (SET_DEST (set)) == GET_MODE (SET_SRC (set))
+	      && !RTX_FRAME_RELATED_P (insn)
+	      && !find_reg_note (insn, REG_EQUAL, NULL_RTX)
+	      && !find_reg_note (insn, REG_EQUIV, NULL_RTX))
+	    {
+	      unsigned int dreg = REGNO (SET_DEST (set));
+	      unsigned int sreg = REGNO (SET_SRC (set));
+	      if (dreg >= FIRST_PSEUDO_REGISTER
+		  && sreg >= FIRST_PSEUDO_REGISTER
+		  && dreg != sreg
+		  && !bitmap_bit_p (excluded, dreg)
+		  && !bitmap_bit_p (excluded, sreg)
+		  && !bitmap_bit_p (local_defs, sreg)
+		  && !bitmap_bit_p (uses, dreg)
+		  && !bitmap_bit_p (defs, dreg)
+		  && !bitmap_bit_p (defs, sreg))
+		{
+		  basic_block target = NULL;
+		  edge e;
+		  edge_iterator ei;
+		  FOR_EACH_EDGE (e, ei, bb->succs)
+		    if (bitmap_bit_p (DF_LR_IN (e->dest), dreg)
+			|| (extra_live[e->dest->index]
+			    && bitmap_bit_p (extra_live[e->dest->index],
+					     dreg)))
+		      {
+			if (target)
+			  {
+			    target = NULL;
+			    break;
+			  }
+			target = e->dest;
+		      }
+		  if (target && target != bb && single_pred_p (target))
+		    {
+		      /* Keep locally produced values close to their copies
+			 for coalescing.  For incoming values, require disjoint
+			 live successors: extending an otherwise dead source or
+			 retaining both values in the target can increase register
+			 pressure without saving a copy.  */
+		      basic_block other
+			= target == e0->dest ? e1->dest : e0->dest;
+		      if (!bitmap_bit_p (DF_LR_IN (other), sreg)
+			  || bitmap_bit_p (DF_LR_IN (target), sreg))
+			goto record_refs;
+
+		      moves.safe_push ({insn, target});
+		      bitmap_set_bit (moved_regs, dreg);
+		      if (!extra_live[target->index])
+			extra_live[target->index] = BITMAP_ALLOC (NULL);
+		      bitmap_set_bit (extra_live[target->index], sreg);
+		    }
+		}
+	    }
+
+	  /* Retain references even for selected moves.  This deliberately
+	     leaves dependent copies in place rather than weakening the proof
+	     with stale information from another proposed move.  */
+	record_refs:
+	  FOR_EACH_INSN_USE (ref, insn)
+	    bitmap_set_bit (uses, DF_REF_REGNO (ref));
+	  FOR_EACH_INSN_DEF (ref, insn)
+	    bitmap_set_bit (defs, DF_REF_REGNO (ref));
+	}
+    }
+
+  for (bitmap live : extra_live)
+    BITMAP_FREE (live);
+  if (moves.is_empty ())
+    return;
+
+  /* Debug-only uses can lie on the other successor or after a merge.
+     Preserve their values at the original definitions, including loop
+     updates, before moving any real instruction.  Seed the dead-debug
+     machinery with uses that would otherwise lose their definition when
+     the copy is sunk.  This does not affect candidate selection or the
+     generated code.  */
+  if (MAY_HAVE_DEBUG_BIND_INSNS)
+    {
+      dead_debug_global global;
+      dead_debug_local local;
+      dead_debug_global_init (&global, NULL);
+      dead_debug_local_init (&local, NULL, &global);
+      unsigned int regno;
+      bitmap_iterator bi;
+      EXECUTE_IF_SET_IN_BITMAP (moved_regs, 0, regno, bi)
+	for (ref = DF_REG_USE_CHAIN (regno); ref; ref = DF_REF_NEXT_REG (ref))
+	  if (DEBUG_BIND_INSN_P (DF_REF_INSN (ref)))
+	    {
+	      dead_debug_add (&local, ref, regno);
+	      break;
+	    }
+      dead_debug_local_finish (&local, NULL);
+      dead_debug_global_finish (&global, NULL);
+    }
+
+  for (auto move : moves)
+    {
+      insn = move.first;
+      if (dump_file)
+	fprintf (dump_file, "Sinking copy insn %d from bb %d to bb %d\n",
+		 INSN_UID (insn), BLOCK_FOR_INSN (insn)->index,
+		 move.second->index);
+      reorder_insns (insn, insn, bb_note (move.second));
+    }
+
+  df_note_add_problem ();
+  df_analyze ();
+}
+
 /* All the passes implemented in this file.  Each pass has its
    own gate and execute function, and at the end of the file a
    pass definition for passes.cc.
@@ -1952,7 +2142,11 @@ execute_rtl_cprop (void)
   changed = one_cprop_pass ();
   flag_rerun_cse_after_global_opts |= changed;
   if (changed)
-    cleanup_cfg (CLEANUP_CFG_CHANGED);
+    {
+      cleanup_cfg (CLEANUP_CFG_CHANGED);
+      if (optimize >= 2)
+	cprop_sink_copies ();
+    }
   return 0;
 }
 

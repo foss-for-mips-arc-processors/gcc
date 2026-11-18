@@ -113,9 +113,10 @@
        (eq_attr "type" "store"))
   "mips_p8700_agq_lsu")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "mips_p8700_int_arith_1" 1
   (and (eq_attr "tune" "mips_p8700")
-       (eq_attr "type" "unknown,const,arith,shift,slt,multi,auipc,logical,move,bitmanip,min,max,minu,maxu,clz,ctz,rotate,atomic,condmove,crypto,mvpair,zicond"))
+       (eq_attr "type" "simd,unknown,const,arith,shift,slt,multi,auipc,logical,move,bitmanip,min,max,minu,maxu,clz,ctz,rotate,atomic,condmove,crypto,mvpair,zicond"))
   "mips_p8700_alq_alu | mips_p8700_agq_al2")
 
 (define_insn_reservation "mips_p8700_int_nop" 0

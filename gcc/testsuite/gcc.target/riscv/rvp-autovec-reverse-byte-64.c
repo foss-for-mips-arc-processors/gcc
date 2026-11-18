@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcb_p0p21 -mabi=lp64" } */
+/* { dg-options "-march=rv64gcb_p0p6 -mabi=lp64" } */
  /* { dg-skip-if "" { *-*-* } { "-flto" "-O0" "-O1" "-Og" "-Os" "-Oz" } } */
 
 typedef unsigned char uint8x8_t __attribute__((vector_size(8)));

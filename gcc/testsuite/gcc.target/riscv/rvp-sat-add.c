@@ -1,6 +1,6 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64" } */
-/* { dg-additional-options "-ftree-vectorize -fno-vect-cost-model" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64" } */
+/* { dg-additional-options "-ftree-vectorize -fno-vect-cost-model -fdump-rtl-expand" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Og" "-Oz" "-funroll-loops" } } */
 
 /* Test saturating add auto-vectorization (both signed and unsigned) */
@@ -189,10 +189,13 @@ void vec_sat_u_add_u32_fmt_1(uint32_t *out, uint32_t *op_1, uint32_t *op_2, unsi
 /* Signed saturating add */
 /* { dg-final { scan-assembler-times {\mpsadd\.b\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mpsadd\.h\M} 2 } } */
-/* { dg-final { scan-assembler-times {\mpsadd\.w\M} 1 } } */
+/* Scalar word tails also use PSADD.W.  Check the vector mode separately.  */
+/* { dg-final { scan-rtl-dump-times {ss_plus:PV2SI} 1 "expand" } } */
+/* { dg-final { scan-assembler {\mpsadd\.w\M} } } */
 
 /* Unsigned saturating add */
 /* { dg-final { scan-assembler-times {\mpsaddu\.b\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mpsaddu\.h\M} 2 } } */
-/* { dg-final { scan-assembler-times {\mpsaddu\.w\M} 1 } } */
+/* { dg-final { scan-rtl-dump-times {us_plus:PV2SI} 1 "expand" } } */
+/* { dg-final { scan-assembler {\mpsaddu\.w\M} } } */
 

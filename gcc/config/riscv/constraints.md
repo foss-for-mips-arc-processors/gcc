@@ -508,6 +508,11 @@
 ;; =================================================================
 ;; RISC-V P-Extension Immediate Constraints
 ;; =================================================================
+(define_constraint "Wpl"
+  "A packed constant whose scalar words are signed 12-bit immediates."
+  (and (match_code "const_vector")
+       (match_test "riscv_p_bitwise_imm_p (op)")))
+
 (define_constraint "Wpb"
   "An 8-bit immediate for pli.b / pli.db (-128 to 255)."
   (and (match_code "const_int")

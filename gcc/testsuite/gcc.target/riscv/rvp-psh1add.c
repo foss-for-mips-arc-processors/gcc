@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcbp0p21 -mabi=lp64d -O2" } */
+/* { dg-options "-march=rv64gcbp0p6 -mabi=lp64d -O2" } */
 
 /* Test PSH1ADD.H and PSH1ADD.W instruction generation.
    psh1add.h: rd[i] = (rs1[i] << 1) + rs2[i]  (16-bit elements)

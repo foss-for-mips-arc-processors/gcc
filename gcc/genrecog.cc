@@ -5037,7 +5037,17 @@ print_decision (FILE *f, output_state *os, decision *d, unsigned int indent,
     {
       /* Output the decision as a switch statement.  */
       printf_indent (f, indent, "switch (");
-      print_nonbool_test (f, os, d->test);
+      if (d->test.kind == rtx_test::SUBREG_FIELD)
+	{
+	  /* All offset labels are nonnegative constants.  A nonconstant
+	     polynomial offset cannot match any of them.  */
+	  print_nonbool_test (f, os, d->test);
+	  fprintf (f, ".is_constant () ? ");
+	  print_nonbool_test (f, os, d->test);
+	  fprintf (f, ".to_constant () : -1");
+	}
+      else
+	print_nonbool_test (f, os, d->test);
       fprintf (f, ")\n");
 
       /* Each case statement starts with the same set of valid variables.

@@ -3107,6 +3107,28 @@ negated_ops_p (rtx nop, rtx op)
   return false;
 }
 
+/* Return the scalar integer expression tested for zero by OP, or null.
+   An XOR with one is also a zero test when its operand is known to be
+   zero or one and the target represents a true comparison as one.  */
+
+static rtx
+zero_test_operand (rtx op)
+{
+  if (GET_CODE (op) == EQ
+      && XEXP (op, 1) == const0_rtx
+      && SCALAR_INT_MODE_P (GET_MODE (XEXP (op, 0))))
+    return XEXP (op, 0);
+
+  if (STORE_FLAG_VALUE == 1
+      && GET_CODE (op) == XOR
+      && XEXP (op, 1) == const1_rtx
+      && HWI_COMPUTABLE_MODE_P (GET_MODE (op))
+      && nonzero_bits (XEXP (op, 0), GET_MODE (op)) == 1)
+    return XEXP (op, 0);
+
+  return NULL_RTX;
+}
+
 /* Subroutine of simplify_binary_operation.  Simplify a binary operation
    CODE with result mode MODE, operating on OP0 and OP1.  If OP0 and/or
    OP1 are constant pool references, TRUEOP0 and TRUEOP1 represent the
@@ -4196,6 +4218,21 @@ simplify_context::simplify_binary_operation_1 (rtx_code code,
       break;
 
     case AND:
+      /* (X == 0) & (Y == 0) is (X | Y) == 0.  Include the equivalent
+	 XOR forms of known one-bit flags, which combine can introduce.  */
+      if (SCALAR_INT_MODE_P (mode))
+	{
+	  rtx x = zero_test_operand (op0);
+	  rtx y = zero_test_operand (op1);
+	  if (x && y && GET_MODE (x) == GET_MODE (y))
+	    {
+	      machine_mode cmp_mode = GET_MODE (x);
+	      tem = simplify_gen_binary (IOR, cmp_mode, x, y);
+	      return simplify_gen_relational (EQ, mode, cmp_mode, tem,
+					      const0_rtx);
+	    }
+	}
+
       if (trueop1 == CONST0_RTX (mode) && ! side_effects_p (op0))
 	return trueop1;
       if (INTEGRAL_MODE_P (mode) && trueop1 == CONSTM1_RTX (mode))
@@ -8859,8 +8896,59 @@ make_test_reg (machine_mode mode)
 }
 
 static void
+test_scalar_int_zero_tests (machine_mode mode)
+{
+  rtx x = make_test_reg (mode);
+  rtx y = make_test_reg (mode);
+  rtx xy = simplify_gen_binary (IOR, mode, x, y);
+  machine_mode result_modes[] = { mode, word_mode };
+  for (machine_mode result_mode : result_modes)
+    {
+      rtx eqx = gen_rtx_EQ (result_mode, x, const0_rtx);
+      rtx eqy = gen_rtx_EQ (result_mode, y, const0_rtx);
+      ASSERT_RTX_EQ (gen_rtx_EQ (result_mode, xy, const0_rtx),
+		     simplify_gen_binary (AND, result_mode, eqx, eqy));
+    }
+
+  /* An arbitrary integer XOR one is not a boolean negation.  */
+  ASSERT_EQ (NULL_RTX,
+	     zero_test_operand (gen_rtx_XOR (mode, x, const1_rtx)));
+  rtx three_bits = gen_rtx_AND (mode, x, GEN_INT (3));
+  ASSERT_EQ (NULL_RTX,
+	     zero_test_operand (gen_rtx_XOR (mode, three_bits, const1_rtx)));
+
+  if (HWI_COMPUTABLE_MODE_P (mode))
+    {
+      rtx flag0 = gen_rtx_AND (mode, x, const1_rtx);
+      rtx flag1 = gen_rtx_AND (mode, y, const1_rtx);
+      rtx inv0 = gen_rtx_XOR (mode, flag0, const1_rtx);
+      rtx inv1 = gen_rtx_XOR (mode, flag1, const1_rtx);
+      ASSERT_EQ (NULL_RTX,
+		 zero_test_operand (gen_rtx_XOR (mode, flag0, GEN_INT (2))));
+      if (STORE_FLAG_VALUE == 1)
+	{
+	  ASSERT_RTX_EQ (flag0, zero_test_operand (inv0));
+	  rtx flags = simplify_gen_binary (IOR, mode, flag0, flag1);
+	  rtx expected = simplify_gen_relational (EQ, mode, mode, flags,
+						 const0_rtx);
+	  ASSERT_RTX_EQ (expected,
+			 simplify_gen_binary (AND, mode, inv0, inv1));
+	  rtx eqy = gen_rtx_EQ (mode, y, const0_rtx);
+	  rtx bits = simplify_gen_binary (IOR, mode, flag0, y);
+	  expected = simplify_gen_relational (EQ, mode, mode, bits, const0_rtx);
+	  ASSERT_RTX_EQ (expected, simplify_gen_binary (AND, mode, inv0, eqy));
+	  ASSERT_RTX_EQ (expected, simplify_gen_binary (AND, mode, eqy, inv0));
+	}
+      else
+	ASSERT_EQ (NULL_RTX, zero_test_operand (inv0));
+    }
+}
+
+static void
 test_scalar_int_ops (machine_mode mode)
 {
+  test_scalar_int_zero_tests (mode);
+
   rtx op0 = make_test_reg (mode);
   rtx op1 = make_test_reg (mode);
   rtx six = GEN_INT (6);
@@ -9728,6 +9816,9 @@ simplify_const_poly_int_tests<N>::run ()
 void
 simplify_rtx_cc_tests ()
 {
+  rtx f = make_test_reg (SFmode);
+  ASSERT_EQ (NULL_RTX,
+	     zero_test_operand (gen_rtx_EQ (word_mode, f, CONST0_RTX (SFmode))));
   test_scalar_ops ();
   test_vector_ops ();
   simplify_const_poly_int_tests<NUM_POLY_INT_COEFFS>::run ();

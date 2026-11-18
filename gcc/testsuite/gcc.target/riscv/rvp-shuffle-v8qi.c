@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcb_p0p21 -mabi=lp64d -O2 -Wno-riscv-implicit-extension-version" } */
+/* { dg-options "-march=rv64gcb_p0p6 -mabi=lp64d -O2 -Wno-riscv-implicit-extension-version" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 typedef unsigned char V __attribute__((vector_size(8)));

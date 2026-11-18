@@ -1881,6 +1881,28 @@ vector_alignment_reachable_p (dr_vec_info *dr_info, poly_uint64 vf)
 }
 
 
+/* Estimate the number of scalar iterations needed to align DR_INFO when
+   its initial misalignment is unknown.  Use the same alignment period as
+   vect_gen_prolog_loop_niters, rather than the vectorization factor: the
+   target alignment can be smaller than the vector size, and a loop can
+   contain vector types with different numbers of elements.  Unknown
+   alignment peeling does not support grouped accesses.  */
+
+int
+vect_estimate_alignment_peeling (loop_vec_info loop_vinfo, dr_vec_info *dr_info)
+{
+  tree vectype = STMT_VINFO_VECTYPE (dr_info->stmt);
+  unsigned HOST_WIDE_INT elem_size
+    = tree_to_uhwi (TYPE_SIZE_UNIT (TREE_TYPE (vectype)));
+  poly_uint64 alignment_in_elems
+    = exact_div (DR_TARGET_ALIGNMENT (dr_info), elem_size);
+  unsigned HOST_WIDE_INT period;
+  if (alignment_in_elems.is_constant (&period) && period <= INT_MAX)
+    return period / 2;
+
+  return vect_vf_for_cost (loop_vinfo) / 2;
+}
+
 /* Calculate the cost of the memory access represented by DR_INFO.  */
 
 static void
@@ -2650,7 +2672,9 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
       unsigned int load_outside_cost = 0;
       unsigned int store_inside_cost = 0;
       unsigned int store_outside_cost = 0;
-      unsigned int estimated_npeels = vect_vf_for_cost (loop_vinfo) / 2;
+      unsigned int estimated_npeels
+	= vect_estimate_alignment_peeling (loop_vinfo, dr0_info);
+      unsigned int store_npeels = 0;
 
       stmt_vector_for_cost dummy;
       dummy.create (2);
@@ -2662,12 +2686,14 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
 
       if (first_store)
 	{
+	  store_npeels
+	    = vect_estimate_alignment_peeling (loop_vinfo, first_store);
 	  dummy.create (2);
 	  vect_get_peeling_costs_all_drs (loop_vinfo, first_store,
 					  &store_inside_cost,
 					  &store_outside_cost,
 					  &dummy, &dummy,
-					  estimated_npeels);
+					  store_npeels);
 	  dummy.release ();
 	}
       else
@@ -2682,6 +2708,7 @@ vect_enhance_data_refs_alignment (loop_vec_info loop_vinfo)
 	{
 	  dr0_info = first_store;
 	  dr0_same_align_drs = first_store_same_align_drs;
+	  estimated_npeels = store_npeels;
 	  peel_for_unknown_alignment.inside_cost = store_inside_cost;
 	  peel_for_unknown_alignment.outside_cost = store_outside_cost;
 	}

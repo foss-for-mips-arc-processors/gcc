@@ -1,6 +1,6 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target rv64 } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -O2 -Wno-riscv-implicit-extension-version" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -O2 -Wno-riscv-implicit-extension-version" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Os" "-Oz" "-Og" "-flto" } } */
 
 /* Test that 4-byte packed vectors (PV4QI, PV2HI) are supported on RV64.

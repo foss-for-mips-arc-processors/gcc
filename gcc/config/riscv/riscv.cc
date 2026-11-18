@@ -53,6 +53,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "basic-block.h"
 #include "expr.h"
 #include "optabs.h"
+#include "expmed.h"
 #include "bitmap.h"
 #include "df.h"
 #include "function-abi.h"
@@ -64,6 +65,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tm-constrs.h"
 #include "rtl-iter.h"
 #include "gimple.h"
+#include "ssa.h"
 #include "cfghooks.h"
 #include "cfgloop.h"
 #include "cfgrtl.h"
@@ -74,6 +76,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-iterator.h"
 #include "gimple-expr.h"
 #include "tree-vectorizer.h"
+#include "tree-ssa-math-opts.h"
+#include "optabs-tree.h"
 #include "gcse.h"
 #include "tree-dfa.h"
 #include "target-globals.h"
@@ -2510,7 +2514,7 @@ riscv_vls_mode_p (machine_mode mode)
    2. RVV tuple mode.
    3. RVV vls mode.  */
 
-static bool
+bool
 riscv_vector_mode_p (machine_mode mode)
 {
   return riscv_vla_mode_p (mode) || riscv_tuple_mode_p (mode)
@@ -4068,6 +4072,32 @@ riscv_legitimize_subreg_const_poly_move (machine_mode mode, rtx dest, rtx src)
 bool
 riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
 {
+  /* Packed vectors live in GPRs and obey scalar alignment requirements.
+     In particular, a memcpy can produce a byte-aligned vector MEM.  Do
+     not leave such a MEM for lower-subreg to split into unaligned words.  */
+  if (TARGET_RVP && riscv_pext_mode_supported_p (mode)
+      && STRICT_ALIGNMENT && can_create_pseudo_p ()
+      && ((MEM_P (src)
+	   && known_lt (MEM_ALIGN (src), GET_MODE_BITSIZE (mode)))
+	  || (MEM_P (dest)
+	      && known_lt (MEM_ALIGN (dest), GET_MODE_BITSIZE (mode)))))
+    {
+      scalar_int_mode imode = int_mode_for_mode (mode).require ();
+      if (MEM_P (src))
+	{
+	  rtx value = extract_bit_field (src, GET_MODE_BITSIZE (mode), 0, 1,
+					NULL_RTX, imode, imode, false, NULL);
+	  src = gen_lowpart (mode, force_reg (imode, value));
+	}
+      if (MEM_P (dest))
+	store_bit_field (dest, GET_MODE_BITSIZE (mode), 0, 0, 0, imode,
+			 gen_lowpart (imode, force_reg (mode, src)), false,
+			 false);
+      else
+	emit_move_insn (dest, src);
+      return true;
+    }
+
   if (CONST_POLY_INT_P (src))
     {
       /*
@@ -4486,6 +4516,34 @@ riscv_is_extend_p (rtx x)
   return GET_CODE (x) == SIGN_EXTEND || GET_CODE (x) == ZERO_EXTEND;
 }
 
+/* Return true if X is an RV32 widening add or accumulate.  Match only
+   register operands accepted by WADD[AU], including the one-source
+   accumulator form.  Do not hide loads or mixed-sign extensions.  */
+
+static bool
+riscv_p_widening_add_p (rtx x)
+{
+  if (GET_MODE (x) != DImode || GET_CODE (x) != PLUS)
+    return false;
+
+  rtx op0 = XEXP (x, 0);
+  rtx op1 = XEXP (x, 1);
+  if (register_operand (op1, DImode))
+    {
+      if (riscv_is_extend_p (op0))
+	return register_operand (XEXP (op0, 0), SImode);
+      if (GET_CODE (op0) != PLUS)
+	return false;
+      op1 = XEXP (op0, 1);
+      op0 = XEXP (op0, 0);
+    }
+
+  return riscv_is_extend_p (op0)
+	 && GET_CODE (op1) == GET_CODE (op0)
+	 && register_operand (XEXP (op0, 0), SImode)
+	 && reg_or_0_operand (XEXP (op1, 0), SImode);
+}
+
 /* Get the expected shift amount for MACC patterns based on MODE.
    Returns 16 for SImode, 32 for DImode, and 0 for other modes.  */
 
@@ -4520,6 +4578,191 @@ riscv_is_macc_shift_extend_pattern_p (rtx op0, rtx op1, int shamt)
 	  || (op0_is_shift && op1_is_shift));
 }
 
+/* Return the cost of a widened halfword reduction, or zero if X does not
+   match *rvp_reduc_widen_pv2hi in rvp.md.  The two lane extractions share
+   one conversion, and PREDSUM folds the entire expression.  */
+
+static int
+riscv_p_reduc_widen_cost (rtx x)
+{
+  if (TARGET_64BIT || TARGET_BIG_ENDIAN
+      || GET_CODE (x) != PLUS || GET_MODE (x) != SImode)
+    return 0;
+
+  rtx lo = XEXP (x, 0);
+  rtx hi = XEXP (x, 1);
+  if (!SUBREG_P (lo) || !SUBREG_P (hi)
+      || GET_MODE (lo) != SImode || GET_MODE (hi) != SImode
+      || !known_eq (SUBREG_BYTE (lo), 0)
+      || !known_eq (SUBREG_BYTE (hi), 4))
+    return 0;
+
+  lo = SUBREG_REG (lo);
+  hi = SUBREG_REG (hi);
+  if ((GET_CODE (lo) == SIGN_EXTEND || GET_CODE (lo) == ZERO_EXTEND)
+      && GET_MODE (lo) == PV2SImode
+      && register_operand (XEXP (lo, 0), PV2HImode)
+      && rtx_equal_p (lo, hi))
+    return COSTS_N_INSNS (1);
+
+  return 0;
+}
+
+/* Return the cost of an unsigned packed clip, or a pair packed on RV64,
+   or zero if X does not match a narrowing pattern in rvp.md.
+   The constant bound is encoded by the clip itself, not loaded separately.  */
+
+static int
+riscv_p_unsigned_clip_cost (rtx x, machine_mode mode)
+{
+  if (GET_CODE (x) == VEC_CONCAT && mode == PV2SImode
+      && TARGET_64BIT && !TARGET_BIG_ENDIAN)
+    {
+      rtx lo = XEXP (x, 0);
+      rtx hi = XEXP (x, 1);
+      if (!SUBREG_P (lo) || !SUBREG_P (hi)
+	  || GET_MODE (lo) != SImode || GET_MODE (hi) != SImode
+	  || !known_eq (SUBREG_BYTE (lo), 0)
+	  || !known_eq (SUBREG_BYTE (hi), 0))
+	return 0;
+
+      lo = SUBREG_REG (lo);
+      hi = SUBREG_REG (hi);
+      machine_mode narrow_mode = GET_MODE (lo);
+      if (narrow_mode == GET_MODE (hi)
+	  && (narrow_mode == PV4QImode || narrow_mode == PV2HImode)
+	  && riscv_p_unsigned_clip_cost (lo, narrow_mode) == COSTS_N_INSNS (1)
+	  && riscv_p_unsigned_clip_cost (hi, narrow_mode) == COSTS_N_INSNS (1))
+	return COSTS_N_INSNS (1);
+      return 0;
+    }
+
+  if (GET_CODE (x) != TRUNCATE
+      || (mode != PV4QImode && mode != PV2HImode))
+    return 0;
+
+  /* The small pack drops both clamps and their bounds.  Keep the two RV32
+     pair moves in the estimate even if they eventually coalesce.  */
+  if (!TARGET_BIG_ENDIAN && !TARGET_VECTOR && mode == PV4QImode
+      && GET_MODE (XEXP (x, 0)) == PV4HImode
+      && GET_CODE (XEXP (x, 0)) == VEC_CONCAT)
+    {
+      rtx lo = XEXP (XEXP (x, 0), 0);
+      rtx hi = XEXP (XEXP (x, 0), 1);
+      if (GET_MODE (lo) == PV2HImode && GET_CODE (lo) == UMIN
+	  && GET_MODE (hi) == PV2HImode && GET_CODE (hi) == UMIN
+	  && register_operand (XEXP (lo, 0), PV2HImode)
+	  && register_operand (XEXP (hi, 0), PV2HImode)
+	  && riscv_const_vector_broadcast_val_p (XEXP (lo, 1), 255)
+	  && riscv_const_vector_broadcast_val_p (XEXP (hi, 1), 255))
+	return COSTS_N_INSNS (TARGET_64BIT ? 2 : 3);
+      return 0;
+    }
+
+  machine_mode wide_mode = mode == PV4QImode ? PV4HImode : PV2SImode;
+  unsigned int bits = mode == PV4QImode ? 8 : 16;
+  rtx min = XEXP (x, 0);
+  if (GET_CODE (min) != UMIN || GET_MODE (min) != wide_mode
+      || !riscv_const_vector_broadcast_val_p (XEXP (min, 1),
+					     (1 << bits) - 1))
+    return 0;
+
+  rtx value = XEXP (min, 0);
+  if (register_operand (value, wide_mode))
+    return COSTS_N_INSNS (1);
+
+  /* RV32 folds the logical shift into PNCLIPIU.  RV64 needs a separate
+     packed shift followed by PNCLIPUP.  Arithmetic shifts are not unsigned
+     clips, and shifts outside the element width must not match.  */
+  if (GET_CODE (value) == LSHIFTRT
+      && register_operand (XEXP (value, 0), wide_mode)
+      && CONST_INT_P (XEXP (value, 1))
+      && IN_RANGE (INTVAL (XEXP (value, 1)), 1, 2 * bits - 1))
+    return COSTS_N_INSNS (TARGET_64BIT ? 2 : 1);
+
+  return 0;
+}
+
+/* Return true if X selects the high or low halfword in each 32-bit word
+   using one of the scalar PPAIRE.H-family patterns.  */
+
+static bool
+riscv_p_halfword_field_p (rtx x, bool high_p)
+{
+  if (GET_CODE (x) != AND || GET_MODE (x) != DImode
+      || !CONST_INT_P (XEXP (x, 1)))
+    return false;
+
+  unsigned HOST_WIDE_INT mask = high_p ? HOST_WIDE_INT_UC (0xffff0000ffff0000)
+				     : HOST_WIDE_INT_UC (0x0000ffff0000ffff);
+  if (UINTVAL (XEXP (x, 1)) != mask)
+    return false;
+
+  rtx value = XEXP (x, 0);
+  if (register_operand (value, DImode))
+    return true;
+
+  return GET_CODE (value) == (high_p ? ASHIFT : LSHIFTRT)
+	 && GET_MODE (value) == DImode
+	 && register_operand (XEXP (value, 0), DImode)
+	 && CONST_INT_P (XEXP (value, 1))
+	 && INTVAL (XEXP (value, 1)) == 16;
+}
+
+/* Return true for the scalar SI forms implemented by PACK/PPAIRE.H,
+   PPAIREO.H, PPAIROE.H and PPAIRO.H.  Match only the operand orders
+   described by the instruction patterns.  */
+
+static bool
+riscv_p_halfword_pair_si_p (rtx x)
+{
+  if ((GET_CODE (x) != IOR && GET_CODE (x) != AND)
+      || GET_MODE (x) != SImode)
+    return false;
+
+  auto mask_p = [] (rtx op, HOST_WIDE_INT mask)
+    {
+      return GET_CODE (op) == AND && GET_MODE (op) == SImode
+	     && register_operand (XEXP (op, 0), SImode)
+	     && CONST_INT_P (XEXP (op, 1))
+	     && INTVAL (XEXP (op, 1)) == mask;
+    };
+  auto shift_p = [] (rtx op, rtx_code code)
+    {
+      return GET_CODE (op) == code && GET_MODE (op) == SImode
+	     && register_operand (XEXP (op, 0), SImode)
+	     && CONST_INT_P (XEXP (op, 1))
+	     && INTVAL (XEXP (op, 1)) == 16;
+    };
+  auto extend_p = [] (rtx op)
+    {
+      return GET_CODE (op) == ZERO_EXTEND && GET_MODE (op) == SImode
+	     && register_operand (XEXP (op, 0), HImode);
+    };
+
+  rtx left = XEXP (x, 0);
+  rtx right = XEXP (x, 1);
+  /* The narrowed odd pair can retain a redundant mask until split1.
+     Its upper factor duplicates the selected high field, and its lower
+     factor is all ones.  This is still a single PPAIRO.H operation.  */
+  if (GET_CODE (x) == AND)
+    return GET_CODE (left) == IOR && GET_MODE (left) == SImode
+	   && mask_p (XEXP (left, 0), -65536)
+	   && shift_p (XEXP (left, 1), LSHIFTRT)
+	   && GET_CODE (right) == IOR && GET_MODE (right) == SImode
+	   && rtx_equal_p (XEXP (XEXP (left, 0), 0), XEXP (right, 0))
+	   && CONST_INT_P (XEXP (right, 1))
+	   && INTVAL (XEXP (right, 1)) == 65535;
+
+  return (mask_p (left, -65536)
+	  && (extend_p (right) || mask_p (right, 65535)
+	      || shift_p (right, LSHIFTRT)))
+	 || (extend_p (left) && mask_p (right, -65536))
+	 || (shift_p (left, ASHIFT)
+	     && (extend_p (right) || shift_p (right, LSHIFTRT)))
+	 || (shift_p (left, LSHIFTRT) && shift_p (right, ASHIFT));
+}
+
 /* Implement TARGET_RTX_COSTS.  */
 
 #define SINGLE_SHIFT_COST 1
@@ -4528,6 +4771,36 @@ static bool
 riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UNUSED,
 		 int *total, bool speed)
 {
+  if (TARGET_RVP && (outer_code == AND || outer_code == IOR || outer_code == XOR)
+      && riscv_p_bitwise_imm_p (x))
+    {
+      *total = 0;
+      return true;
+    }
+
+  if (TARGET_RVP && TARGET_64BIT && mode == SImode
+      && riscv_p_halfword_pair_si_p (x))
+    {
+      *total = COSTS_N_INSNS (1);
+      return true;
+    }
+
+  /* The scalar halfword pair patterns do not materialize their masks or
+     shifts.  Only charge one operation for the exact supported forms.  */
+  if (TARGET_RVP && TARGET_64BIT && mode == DImode
+      && ((GET_CODE (x) == AND
+	   && (riscv_p_halfword_field_p (x, false)
+	       || riscv_p_halfword_field_p (x, true)))
+	  || (GET_CODE (x) == IOR
+	      && ((riscv_p_halfword_field_p (XEXP (x, 0), false)
+		   && riscv_p_halfword_field_p (XEXP (x, 1), true))
+		  || (riscv_p_halfword_field_p (XEXP (x, 0), true)
+		      && riscv_p_halfword_field_p (XEXP (x, 1), false))))))
+    {
+      *total = COSTS_N_INSNS (1);
+      return true;
+    }
+
   /* TODO: We set RVV instruction cost as 1 by default.
      Cost Model need to be well analyzed and supported in the future. */
   if (riscv_vector_mode_p (mode))
@@ -4919,6 +5192,12 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
       return false;
 
     case PLUS:
+      if (TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN
+	  && riscv_p_widening_add_p (x))
+	{
+	  *total = COSTS_N_INSNS (1);
+	  return true;
+	}
       /* RVP MULH.H0 idiom.  Combine builds
 	   (plus:SI (lshiftrt:SI (mult:SI ...) (const_int 16))
 		    (ashift:SI (subreg:SI (mult:DI ...) 4) (const_int 16)))
@@ -5086,6 +5365,31 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	  rtx op1 = XEXP (x, 1);
 	  int shamt = riscv_macc_shift_amount (mode);
 
+	  /* Packed widening products consume the narrow registers directly.
+	     Do not charge for standalone extensions that the matching pattern
+	     does not emit.  RV64 needs one ZIP for equal signedness, or two
+	     zero-widening ZIPs for mixed signedness; RV32 needs neither.  */
+	  if ((mode == PV4HImode || mode == PV2SImode)
+	      && (GET_CODE (op0) == SIGN_EXTEND
+		  || GET_CODE (op0) == ZERO_EXTEND)
+	      && (GET_CODE (op1) == SIGN_EXTEND
+		  || GET_CODE (op1) == ZERO_EXTEND))
+	    {
+	      machine_mode narrow_mode
+		= mode == PV4HImode ? PV4QImode : PV2HImode;
+	      if (register_operand (XEXP (op0, 0), narrow_mode)
+		  && register_operand (XEXP (op1, 0), narrow_mode))
+		{
+		  unsigned int zips
+		    = TARGET_64BIT ? (GET_CODE (op0) == GET_CODE (op1) ? 1 : 2)
+				   : 0;
+		  *total = COSTS_N_INSNS (zips)
+			   + (speed ? tune_param->int_mul[0]
+				    : COSTS_N_INSNS (1));
+		  return true;
+		}
+	    }
+
 	  /* Example MACC patterns:
 	     - MACC.H01: (mult (sign_extend a[0]) (ashiftrt b 16)) + acc
 	     - MACC.H01: (mult (ashiftrt a 16) (sign_extend b[0])) + acc
@@ -5168,6 +5472,13 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
       return false;
 
     case ZERO_EXTEND:
+      if (TARGET_RVP && mode == word_mode
+	  && GET_CODE (XEXP (x, 0)) == UNSPEC
+	  && XINT (XEXP (x, 0), 1) == UNSPEC_RVP_SCALAR_UABDHI)
+	{
+	  *total = COSTS_N_INSNS (1);
+	  return true;
+	}
       /* This is an SImode shift.  */
       if (GET_CODE (XEXP (x, 0)) == LSHIFTRT)
 	{
@@ -5234,6 +5545,35 @@ riscv_address_cost (rtx addr, machine_mode mode,
   return riscv_address_insns (addr, mode, false);
 }
 
+/* Return the cost of an adjacent-load pack, or zero if X does not match.
+   The full-width load replaces both source loads and pair construction.  */
+
+static int
+riscv_p_small_load_pack_cost (rtx x, bool speed)
+{
+  if (TARGET_BIG_ENDIAN || TARGET_VECTOR
+      || GET_CODE (x) != TRUNCATE || GET_MODE (x) != PV4QImode
+      || GET_CODE (XEXP (x, 0)) != VEC_CONCAT
+      || GET_MODE (XEXP (x, 0)) != PV4HImode)
+    return 0;
+
+  rtx lo = XEXP (XEXP (x, 0), 0);
+  rtx hi = XEXP (XEXP (x, 0), 1);
+  if (GET_CODE (lo) == UMIN && GET_CODE (hi) == UMIN
+      && GET_MODE (lo) == PV2HImode && GET_MODE (hi) == PV2HImode
+      && riscv_const_vector_broadcast_val_p (XEXP (lo, 1), 255)
+      && riscv_const_vector_broadcast_val_p (XEXP (hi, 1), 255))
+    {
+      lo = XEXP (lo, 0);
+      hi = XEXP (hi, 0);
+    }
+  if (!riscv_p_small_pack_mems_p (lo, hi))
+    return 0;
+
+  rtx mem = adjust_address_nv (lo, PV4HImode, 0);
+  return rtx_cost (mem, PV4HImode, SET, 1, speed) + COSTS_N_INSNS (1);
+}
+
 /* Implement TARGET_INSN_COST.  We factor in the branch cost in the cost
    calculation for conditional branches: one unit is considered the cost
    of microarchitecture-dependent actual branch execution and therefore
@@ -5246,6 +5586,60 @@ static int
 riscv_insn_cost (rtx_insn *insn, bool speed)
 {
   rtx x = PATTERN (insn);
+  if (TARGET_RVP && GET_CODE (x) == SET
+      && register_operand (SET_DEST (x), GET_MODE (SET_DEST (x))))
+    {
+      int load_pack_cost = riscv_p_small_load_pack_cost (SET_SRC (x), speed);
+      if (load_pack_cost)
+	return load_pack_cost;
+
+      /* Generic RTX costing skips TRUNCATE when its modes are tieable.
+	 Account for a packed narrowing clip before recursing into its clamp
+	 and charging for constants that the instruction does not materialize.  */
+      int clip_cost = riscv_p_unsigned_clip_cost (SET_SRC (x),
+						GET_MODE (SET_DEST (x)));
+      if (clip_cost)
+	return clip_cost;
+
+      int reduction_cost = riscv_p_reduc_widen_cost (SET_SRC (x));
+      if (reduction_cost)
+	return reduction_cost;
+
+      /* These complete RV32 operations are single multiply-accumulates.
+	 Do not charge separately for the widened product, high extraction
+	 or implicit rounding bias.  Recognition, not the shape filter alone,
+	 must confirm that the instruction can implement the whole expression.  */
+      if (!TARGET_64BIT && !TARGET_BIG_ENDIAN
+	  && GET_MODE (SET_DEST (x)) == SImode
+	  && GET_CODE (SET_SRC (x)) == PLUS
+	  && SUBREG_P (XEXP (SET_SRC (x), 0))
+	  && recog_memoized (insn) >= 0
+	  && get_attr_rvp_mulhi_acc (insn) == RVP_MULHI_ACC_YES)
+	return speed ? tune_param->int_mul[0] : COSTS_N_INSNS (1);
+
+      /* The unsigned RV64 word sum splits into a packed multiply-add
+	 and a scalar sign extension.  Use the same costs as that sequence,
+	 rather than recursing into the unexecuted scalar product and shift.
+	 Include any full-register input normalizations emitted by the
+	 splitter; a low word of a DI register needs none.  */
+      if (TARGET_64BIT && !TARGET_BIG_ENDIAN
+	  && GET_MODE (SET_DEST (x)) == DImode
+	  && GET_CODE (SET_SRC (x)) == SIGN_EXTEND
+	  && recog_memoized (insn) >= 0
+	  && get_attr_rvp_mulhi_acc (insn) == RVP_MULHI_ACC_WORD)
+	{
+	  rtx sum = XEXP (SET_SRC (x), 0);
+	  rtx product = XEXP (SUBREG_REG (XEXP (sum, 0)), 0);
+	  rtx inputs[] = { XEXP (XEXP (product, 0), 0),
+			   XEXP (XEXP (product, 1), 0), XEXP (sum, 1) };
+	  int cost = COSTS_N_INSNS (2);
+	  for (rtx input : inputs)
+	    if (!SUBREG_P (input) || !subreg_lowpart_p (input)
+		|| GET_MODE (SUBREG_REG (input)) != DImode)
+	      cost += COSTS_N_INSNS (1);
+	  return cost;
+	}
+    }
   int cost = pattern_cost (x, speed);
 
   if (JUMP_P (insn))
@@ -5398,12 +5792,28 @@ riscv_subword (rtx op, bool high_p)
   return simplify_gen_subreg (word_mode, op, mode, byte);
 }
 
+/* Return true if an integer zero can clear a complete RV32 GPR pair.
+   Do not select ADDD for pseudos or odd hard-register ABI destinations.  */
+
+static bool
+riscv_p_zero_64bit_move_p (rtx dest, rtx src)
+{
+  return !TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN
+    && GET_MODE (dest) == DImode && src == const0_rtx
+    && REG_P (dest) && GP_REG_P (REGNO (dest))
+    && REGNO (dest) < FIRST_PSEUDO_REGISTER && REGNO (dest) != 0
+    && (REGNO (dest) % 2) == 0;
+}
+
 /* Return true if a 64-bit move from SRC to DEST should be split into two.  */
 
 bool
 riscv_split_64bit_move_p (rtx dest, rtx src)
 {
   if (TARGET_64BIT)
+    return false;
+
+  if (riscv_p_zero_64bit_move_p (dest, src))
     return false;
 
   /* Zilsd provides load/store with even-odd register pair. */
@@ -5582,6 +5992,9 @@ riscv_output_move (rtx dest, rtx src)
 
   if (dbl_p && riscv_split_64bit_move_p (dest, src))
     return "#";
+
+  if (riscv_p_zero_64bit_move_p (dest, src))
+    return "addd\t%0,x0,x0";
 
   if (dest_code == REG && GP_REG_P (REGNO (dest)))
     {
@@ -14400,6 +14813,12 @@ bool
 riscv_support_vector_misalignment (machine_mode mode, int misalignment,
 				   bool is_packed, bool is_gather_scatter)
 {
+  /* Packed vectors use scalar GPR loads and stores.  Software expansion
+     of an unaligned move does not make it a native vector access.  Let
+     the vectorizer use alignment peeling or versioning instead.  */
+  if (TARGET_RVP && riscv_pext_mode_supported_p (mode))
+    return !STRICT_ALIGNMENT;
+
   /* IS_PACKED is true if the corresponding scalar element is not naturally
      aligned.  If the misalignment is unknown and the access is packed
      we defer to the default hook which will check if movmisalign is present.
@@ -14630,6 +15049,10 @@ rvp_vectorize_preferred_simd_mode (scalar_mode mode)
     case E_SImode:
       if (TARGET_64BIT)
         return PV2SImode;
+      return word_mode;
+    case E_DImode:
+      if (!TARGET_BIG_ENDIAN)
+	return PV1DImode;
       /* Fall through.  */
     default:
       return word_mode;
@@ -14655,6 +15078,8 @@ riscv_vectorize_preferred_vector_alignment (const_tree type)
 {
   if (riscv_vector_mode_p (TYPE_MODE (type)))
     return TYPE_ALIGN (TREE_TYPE (type));
+  if (TARGET_RVP && riscv_pext_mode_supported_p (TYPE_MODE (type)))
+    return MIN (TYPE_ALIGN (type), BITS_PER_WORD);
   return TYPE_ALIGN (type);
 }
 
@@ -15149,10 +15574,43 @@ get_vr2fr_cost ()
 
 static int
 riscv_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
-				  tree vectype, int misalign ATTRIBUTE_UNUSED)
+				  tree vectype, int misalign)
 {
   const cpu_vector_cost *costs = get_vector_costs ();
   bool fp = false;
+
+  if (TARGET_RVP && vectype
+      && riscv_pext_mode_supported_p (TYPE_MODE (vectype)))
+    {
+      unsigned int bytes = GET_MODE_SIZE (TYPE_MODE (vectype)).to_constant ();
+      unsigned int words = CEIL (bytes, UNITS_PER_WORD);
+      switch (type_of_cost)
+	{
+	case vector_load:
+	  return words * costs->scalar_load_cost;
+	case vector_store:
+	  return words * costs->scalar_store_cost;
+	case unaligned_load:
+	case unaligned_store:
+	  if (STRICT_ALIGNMENT)
+	    {
+	      /* Each partial word needs a load or store.  Combining loaded
+		 pieces takes a shift and an OR; splitting stores needs shifts.
+		 Unknown alignment can only rely on the scalar element type.  */
+	      unsigned int align = TYPE_ALIGN (TREE_TYPE (vectype)) / BITS_PER_UNIT;
+	      if (misalign > 0)
+		align = least_bit_hwi (misalign);
+	      align = MIN (align, MIN (bytes, UNITS_PER_WORD));
+	      unsigned int pieces = bytes / align;
+	      if (type_of_cost == unaligned_load)
+		return pieces * costs->scalar_load_cost + 2 * (pieces - words);
+	      return pieces * costs->scalar_store_cost + pieces - words;
+	    }
+	  break;
+	default:
+	  break;
+	}
+    }
 
   if (vectype != NULL)
     fp = FLOAT_TYPE_P (vectype);
@@ -15222,6 +15680,409 @@ riscv_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
   return default_builtin_vectorization_cost (type_of_cost, vectype, misalign);
 }
 
+/* Account for packed operations that need more than one instruction.
+   These adjustments need statement information rather than a blanket
+   cost for every operation of the same vector type.  */
+class riscv_p_vector_costs : public vector_costs
+{
+public:
+  riscv_p_vector_costs (vec_info *vinfo, bool costing_for_scalar)
+    : vector_costs (vinfo, costing_for_scalar)
+  {
+    record_scalar_qmul_costs ();
+  }
+
+  unsigned int add_stmt_cost (int count, vect_cost_for_stmt kind,
+			      stmt_vec_info stmt_info, slp_tree node,
+			      tree vectype, int misalign,
+			      vect_cost_model_location where) override;
+
+  void finish_cost (const vector_costs *) override;
+
+private:
+  void record_scalar_qmul_costs ();
+  void record_scalar_qmul_input (tree, gimple *, tree, tree);
+  bool record_qmul_addresses ();
+
+  /* Original statements eliminated by a later scalar Q-format fusion.  */
+  hash_set<gimple *> m_scalar_qmul_fused;
+  unsigned int m_address_updates = 0;
+  unsigned int m_peel_iters[3] = {};
+  unsigned int m_q31_operations = 0;
+};
+
+/* The generic model omits loop-control branches on both sides.  Once a
+   scalar Q-format chain has fused, loop control is a larger part of the
+   scalar iteration.  Charge a branch per scalar or vector iteration
+   rather than inflating the fused arithmetic cost.  Keep the original
+   accounting for loops without a proven scalar fusion.  */
+
+void
+riscv_p_vector_costs::finish_cost (const vector_costs *scalar_costs)
+{
+  if (!m_scalar_qmul_fused.is_empty ())
+    if (loop_vec_info loop_vinfo = dyn_cast <loop_vec_info> (m_vinfo))
+      if (!LOOP_VINFO_LOOP (loop_vinfo)->inner
+	  && (!LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo)
+	      || (m_costing_for_scalar
+		  ? known_gt (LOOP_VINFO_INT_NITERS (loop_vinfo), 1U)
+		  : known_gt (LOOP_VINFO_INT_NITERS (loop_vinfo),
+			      LOOP_VINFO_VECT_FACTOR (loop_vinfo)))))
+	{
+	  vect_cost_model_location where
+	    = m_costing_for_scalar ? vect_prologue : vect_body;
+	  unsigned int cost = vector_costs::add_stmt_cost
+	    (1, cond_branch_taken, NULL, NULL, NULL_TREE, 0, where);
+	  if (!TARGET_64BIT && m_address_updates)
+	    {
+	      vector_costs::add_stmt_cost (m_address_updates, scalar_stmt,
+					 NULL, NULL, NULL_TREE, 0, where);
+	      if (dump_enabled_p ())
+		dump_printf_loc (MSG_NOTE, vect_location,
+				 "RVP Q-format loop has %u pointer updates\n",
+				 m_address_updates);
+	    }
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_NOTE, vect_location,
+			     "RVP Q-format loop branch costs %u in %s loop\n",
+			     cost, m_costing_for_scalar ? "scalar" : "vector");
+	}
+  if (!TARGET_64BIT && !m_costing_for_scalar
+      && !m_scalar_qmul_fused.is_empty () && m_address_updates)
+    {
+      loop_vec_info loop_vinfo = as_a<loop_vec_info> (m_vinfo);
+      if (!LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo))
+	{
+	  /* Form the vector trip count and end address, and initialize
+	     each independent pointer.  Recover a scalar index for tails.  */
+	  vector_costs::add_stmt_cost (m_address_updates + 2, scalar_stmt,
+				     NULL, NULL, NULL_TREE, 0, vect_prologue);
+	  if (m_peel_iters[vect_epilogue])
+	    vector_costs::add_stmt_cost (1, scalar_stmt, NULL, NULL,
+				       NULL_TREE, 0, vect_epilogue);
+	}
+      for (vect_cost_model_location where : { vect_prologue, vect_epilogue })
+	if (unsigned int n = m_peel_iters[where])
+	  {
+	    vector_costs::add_stmt_cost (n * m_address_updates, scalar_stmt,
+				       NULL, NULL, NULL_TREE, 0, where);
+	    /* The generic model already includes the peeled-loop guard.
+	       Additional scalar iterations still need loop control.  */
+	    if (n > 1)
+	      vector_costs::add_stmt_cost (n - 1, cond_branch_taken,
+					 NULL, NULL, NULL_TREE, 0, where);
+	  }
+
+      /* A Q31 pair still uses scalar arithmetic on RV32.  A second
+	 pair amortizes its pointer updates and branch without requiring
+	 a wider vector mode.  Reanalyze the unrolled loop normally.  */
+      if (m_q31_operations == 1 && m_address_updates <= 3
+	  && loop_vinfo->suggested_unroll_factor == 1
+	  && LOOP_VINFO_LOOP (loop_vinfo)->unroll != 1
+	  && !LOOP_VINFO_EPILOGUE_P (loop_vinfo))
+	m_suggested_unroll_factor = 2;
+    }
+  vector_costs::finish_cost (scalar_costs);
+}
+
+/* Count independent unit-stride address streams.  Offsets encodable in
+   the same base register do not need separate induction updates.  Keep
+   the old model for more complicated access patterns or large groups.  */
+
+bool
+riscv_p_vector_costs::record_qmul_addresses ()
+{
+  loop_vec_info loop_vinfo = dyn_cast<loop_vec_info> (m_vinfo);
+  if (!loop_vinfo || LOOP_VINFO_LOOP (loop_vinfo)->inner
+      || LOOP_VINFO_DATAREFS (loop_vinfo).length () > 32)
+    return false;
+
+  auto_vec<data_reference *> streams;
+  for (data_reference *dr : LOOP_VINFO_DATAREFS (loop_vinfo))
+    {
+      stmt_vec_info stmt_info = m_vinfo->lookup_stmt (DR_STMT (dr));
+      if (!stmt_info
+	  || !STMT_VINFO_RELEVANT_P (vect_stmt_to_vectorize (stmt_info)))
+	continue;
+      if (!DR_STEP (dr) || !tree_fits_shwi_p (DR_STEP (dr)))
+	return false;
+      HOST_WIDE_INT step = tree_to_shwi (DR_STEP (dr));
+      if (step == 0)
+	continue;
+      tree size = TYPE_SIZE_UNIT (TREE_TYPE (DR_REF (dr)));
+      if (!size || !tree_fits_shwi_p (size)
+	  || step != tree_to_shwi (size) || step <= 0
+	  || !DR_BASE_ADDRESS (dr) || !DR_OFFSET (dr)
+	  || !DR_INIT (dr) || !tree_fits_shwi_p (DR_INIT (dr)))
+	return false;
+
+      bool shared = false;
+      for (data_reference *other : streams)
+	if (operand_equal_p (DR_BASE_ADDRESS (dr), DR_BASE_ADDRESS (other), 0)
+	    && operand_equal_p (DR_OFFSET (dr), DR_OFFSET (other), 0)
+	    && operand_equal_p (DR_STEP (dr), DR_STEP (other), 0)
+	    && wi::fits_shwi_p (wi::to_wide (DR_INIT (dr))
+			       - wi::to_wide (DR_INIT (other)))
+	    && SMALL_OPERAND ((wi::to_wide (DR_INIT (dr))
+			       - wi::to_wide (DR_INIT (other))).to_shwi ()))
+	  {
+	    shared = true;
+	    break;
+	  }
+      if (!shared)
+	streams.safe_push (dr);
+    }
+  m_address_updates = streams.length ();
+  return m_address_updates != 0;
+}
+
+/* Record OP's definition only if the scalar fusion removes all its uses.
+   Stop at the narrow operands, shared values and block boundaries.  Pattern
+   statements belong to the vector loop and are not scalar uses.  */
+
+void
+riscv_p_vector_costs::record_scalar_qmul_input (tree op, gimple *parent,
+					     tree op0, tree op1)
+{
+  if (TREE_CODE (op) != SSA_NAME || op == op0 || op == op1)
+    return;
+  stmt_vec_info def_info = m_vinfo->lookup_def (op);
+  gassign *def = def_info ? dyn_cast <gassign *> (def_info->stmt) : NULL;
+  if (!def || gimple_bb (def) != gimple_bb (parent))
+    return;
+
+  imm_use_iterator iter;
+  use_operand_p use;
+  FOR_EACH_IMM_USE_FAST (use, iter, op)
+    {
+      gimple *user = USE_STMT (use);
+      if (is_gimple_debug (user) || user == parent)
+	continue;
+      stmt_vec_info user_info = m_vinfo->lookup_stmt (user);
+      if (!user_info || !is_pattern_stmt_p (user_info))
+	return;
+    }
+
+  if (m_scalar_qmul_fused.add (def))
+    return;
+  for (unsigned int i = 1; i < gimple_num_ops (def); ++i)
+    record_scalar_qmul_input (gimple_op (def, i), def, op0, op1);
+}
+
+/* Use exactly the scalar pass's matching rules, rather than assuming every
+   vector pattern can also be fused in the scalar loop.  The final narrowing
+   must consume the whole clamp result, so that no wide sign extension is
+   needed.  Keep the clamp's cost for the multiply instruction itself.  */
+
+void
+riscv_p_vector_costs::record_scalar_qmul_costs ()
+{
+  if (!optimize || !flag_expensive_optimizations || TARGET_BIG_ENDIAN
+      || (!TARGET_64BIT && !record_qmul_addresses ()))
+    return;
+
+  for (unsigned int i = 0; i < m_vinfo->nbbs; ++i)
+    for (gimple_stmt_iterator si = gsi_start_bb (m_vinfo->bbs[i]);
+	 !gsi_end_p (si); gsi_next (&si))
+      {
+	gassign *stmt = dyn_cast <gassign *> (gsi_stmt (si));
+	if (!stmt || gimple_assign_rhs_code (stmt) != MIN_EXPR)
+	  continue;
+	tree op0, op1;
+	internal_fn ifn = gimple_match_saturation_mulhs (stmt, &op0, &op1);
+	if (ifn == IFN_LAST
+	    || !direct_internal_fn_supported_p (ifn, TREE_TYPE (op0),
+					       OPTIMIZE_FOR_BOTH))
+	  continue;
+
+	use_operand_p use;
+	gimple *user;
+	if (!single_imm_use (gimple_assign_lhs (stmt), &use, &user)
+	    || gimple_bb (user) != gimple_bb (stmt))
+	  continue;
+	gassign *cast = dyn_cast <gassign *> (user);
+	if (!cast || !gimple_assign_cast_p (cast))
+	  continue;
+	tree type = TREE_TYPE (gimple_assign_lhs (cast));
+	if (TREE_CODE (type) != INTEGER_TYPE
+	    || !type_has_mode_precision_p (type)
+	    || TYPE_PRECISION (type) != TYPE_PRECISION (TREE_TYPE (op0)))
+	  continue;
+
+	m_scalar_qmul_fused.add (cast);
+	record_scalar_qmul_input (gimple_assign_rhs1 (stmt), stmt, op0, op1);
+      }
+}
+
+/* Match the scalar widening product implemented by MUL.H00/MULSU.H00.  */
+
+static bool
+riscv_p_scalar_halfword_product_p (vec_info *vinfo, gimple *stmt)
+{
+  if (!is_gimple_assign (stmt)
+      || gimple_assign_rhs_code (stmt) != MULT_EXPR)
+    return false;
+  tree lhs = gimple_assign_lhs (stmt);
+  tree type = TREE_TYPE (lhs);
+  if (!INTEGRAL_TYPE_P (type) || TYPE_PRECISION (type) != 32
+      || TYPE_OVERFLOW_TRAPS (type) || TYPE_OVERFLOW_SANITIZED (type))
+    return false;
+  for (unsigned int i = 1; i < 3; ++i)
+    {
+      tree op = gimple_op (stmt, i);
+      stmt_vec_info def_info = vinfo->lookup_def (op);
+      if (!def_info)
+	return false;
+      gassign *cast = dyn_cast <gassign *> (def_info->stmt);
+      if (!cast || !CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (cast)))
+	return false;
+      tree input_type = TREE_TYPE (gimple_assign_rhs1 (cast));
+      if (!INTEGRAL_TYPE_P (input_type) || TYPE_PRECISION (input_type) != 16)
+	return false;
+    }
+  return true;
+}
+
+/* Return true when an RV32 scalar operation is absorbed into MUL.H00 or
+   MACC.H00, including their unsigned and mixed-sign forms.  Require the
+   actual widths and single-use operations in the same block.  Do not
+   change the generic cost treatment of standalone load extensions.  */
+
+static bool
+riscv_p_scalar_fused_p (vec_info *vinfo, stmt_vec_info stmt_info)
+{
+  gassign *stmt = dyn_cast <gassign *> (stmt_info->stmt);
+  if (!stmt)
+    return false;
+  tree lhs = gimple_assign_lhs (stmt);
+  if (TREE_CODE (lhs) != SSA_NAME)
+    return false;
+  use_operand_p use;
+  gimple *user;
+  if (!single_imm_use (lhs, &use, &user)
+      || gimple_bb (user) != gimple_bb (stmt))
+    return false;
+
+  if (CONVERT_EXPR_CODE_P (gimple_assign_rhs_code (stmt)))
+    return riscv_p_scalar_halfword_product_p (vinfo, user);
+
+  if (!riscv_p_scalar_halfword_product_p (vinfo, stmt)
+      || !is_gimple_assign (user)
+      || gimple_assign_rhs_code (user) != PLUS_EXPR)
+    return false;
+  tree result_type = TREE_TYPE (gimple_assign_lhs (user));
+  return INTEGRAL_TYPE_P (result_type) && TYPE_PRECISION (result_type) == 32
+    && !TYPE_OVERFLOW_TRAPS (result_type)
+    && !TYPE_OVERFLOW_SANITIZED (result_type);
+}
+
+unsigned int
+riscv_p_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
+				   stmt_vec_info stmt_info, slp_tree node,
+				   tree vectype, int misalign,
+				   vect_cost_model_location where)
+{
+  if (!TARGET_64BIT && !m_costing_for_scalar && stmt_info
+      && m_address_updates && where != vect_body
+      && (kind == scalar_load || kind == scalar_store))
+    m_peel_iters[where] = MAX (m_peel_iters[where], (unsigned int) count);
+
+  if (kind == scalar_stmt && stmt_info
+      && m_scalar_qmul_fused.contains (stmt_info->stmt))
+    count = 0;
+
+  if (!TARGET_64BIT && kind == scalar_stmt && stmt_info
+      && riscv_p_scalar_fused_p (m_vinfo, stmt_info))
+    count = 0;
+
+  /* A one-element sum needs neither a horizontal reduction nor an
+     extraction instruction.  Both are views of the scalar doubleword
+     accumulator.  Keep the costs of initialization and loop arithmetic.  */
+  if (!m_costing_for_scalar && !TARGET_BIG_ENDIAN && node && vectype
+      && TYPE_MODE (vectype) == PV1DImode && where == vect_epilogue
+      && (kind == vector_stmt || kind == vec_to_scalar))
+    if (loop_vec_info loop_vinfo = dyn_cast <loop_vec_info> (m_vinfo))
+      if (vect_reduc_info reduc_info = info_for_reduction (loop_vinfo, node))
+	if (VECT_REDUC_INFO_TYPE (reduc_info) == TREE_CODE_REDUCTION
+	    && VECT_REDUC_INFO_FN (reduc_info) == IFN_REDUC_PLUS)
+	  count = 0;
+
+  /* Byte reversal within two packed words needs a byte-pair swap and
+     a halfword-pair swap, on both XLENs.  Other permutations retain
+     their existing costs.  */
+  if (!m_costing_for_scalar && kind == vec_perm && stmt_info && vectype
+      && TYPE_MODE (vectype) == PV2SImode
+      && gimple_call_builtin_p (stmt_info->stmt, BUILT_IN_BSWAP32))
+    count *= 2;
+
+  /* An eight-byte signed saturating pack needs two clips on RV32.
+     The four-byte byte pack uses one clip of a source register pair.  */
+  if (!m_costing_for_scalar && !TARGET_64BIT
+      && kind == vec_promote_demote && stmt_info && vectype
+      && (TYPE_MODE (vectype) == PV8QImode
+	  || TYPE_MODE (vectype) == PV4HImode)
+      && gimple_call_internal_p (stmt_info->stmt, IFN_SAT_TRUNC))
+    count *= 2;
+
+  /* Four Q15 or two Q31 products need two multiplications on RV32.
+     Two Q15 lanes and all RV64 forms use one instruction.  */
+  if (!m_costing_for_scalar && !TARGET_64BIT && kind == vector_stmt
+      && stmt_info && vectype
+      && (TYPE_MODE (vectype) == PV4HImode
+	  || TYPE_MODE (vectype) == PV2SImode)
+      && (gimple_call_internal_p (stmt_info->stmt, IFN_SAT_MULHS)
+	  || gimple_call_internal_p (stmt_info->stmt, IFN_SAT_MULHRS)))
+    {
+      if (TYPE_MODE (vectype) == PV2SImode && where == vect_body)
+	m_q31_operations += count;
+      count *= 2;
+    }
+
+  if (!m_costing_for_scalar && kind == vector_stmt && stmt_info && vectype
+      && where == vect_body
+      && riscv_pext_mode_supported_p (TYPE_MODE (vectype))
+      && is_gimple_assign (stmt_info->stmt)
+      && gimple_assign_rhs_code (stmt_info->stmt) == SAD_EXPR)
+    {
+      tree input_type = TREE_TYPE (gimple_assign_rhs1 (stmt_info->stmt));
+      bool bytes_p = TYPE_PRECISION (input_type) == 8;
+      bool wide_p = TYPE_MODE (vectype) == PV1DImode;
+      if (bytes_p && TYPE_UNSIGNED (input_type))
+	/* Native unsigned byte reductions need two partial sums and a
+	   widening accumulation for a doubleword result on RV32.  */
+	count *= wide_p ? (TARGET_64BIT ? 1 : 3) : 2;
+      else
+	/* An absolute difference followed by a reduction or dot product.
+	   RV32 needs a further instruction for a widening accumulation
+	   or for the second word dot product.  */
+	count *= TARGET_64BIT ? 2 : 3;
+    }
+
+  if (!m_costing_for_scalar && kind == vector_stmt && stmt_info && vectype
+      && riscv_pext_mode_supported_p (TYPE_MODE (vectype))
+      && known_gt (GET_MODE_SIZE (TYPE_MODE (vectype)), UNITS_PER_WORD)
+      && is_gimple_assign (stmt_info->stmt))
+    switch (gimple_assign_rhs_code (stmt_info->stmt))
+      {
+      case BIT_AND_EXPR:
+      case BIT_IOR_EXPR:
+      case BIT_XOR_EXPR:
+      case BIT_NOT_EXPR:
+	count *= 2;
+	break;
+      case DOT_PROD_EXPR:
+	/* Four halfword products need two wide accumulations on RV32.  */
+	if (TYPE_MODE (vectype) == PV1DImode)
+	  count *= 2;
+	break;
+      default:
+	break;
+      }
+
+  return vector_costs::add_stmt_cost (count, kind, stmt_info, node, vectype,
+				    misalign, where);
+}
+
 /* Implement targetm.vectorize.create_costs.  */
 
 static vector_costs *
@@ -15229,6 +16090,8 @@ riscv_vectorize_create_costs (vec_info *vinfo, bool costing_for_scalar)
 {
   if (TARGET_VECTOR)
     return new riscv_vector::costs (vinfo, costing_for_scalar);
+  if (TARGET_RVP)
+    return new riscv_p_vector_costs (vinfo, costing_for_scalar);
   /* Default vector costs.  */
   return new vector_costs (vinfo, costing_for_scalar);
 }
@@ -15355,6 +16218,13 @@ void
 riscv_expand_usadd (rtx dest, rtx x, rtx y)
 {
   machine_mode mode = GET_MODE (dest);
+  if (TARGET_RVP && mode == SImode)
+    {
+      emit_insn (gen_rvp_usaddsi3 (dest, force_reg (SImode, x),
+				 force_reg (SImode, y)));
+      return;
+    }
+
   rtx xmode_sum = gen_reg_rtx (Xmode);
   rtx xmode_lt = gen_reg_rtx (Xmode);
   rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, ZERO_EXTEND);
@@ -15434,6 +16304,13 @@ void
 riscv_expand_ssadd (rtx dest, rtx x, rtx y)
 {
   machine_mode mode = GET_MODE (dest);
+  if (TARGET_RVP && mode == SImode)
+    {
+      emit_insn (gen_rvp_ssaddsi3 (dest, force_reg (SImode, x),
+				 force_reg (SImode, y)));
+      return;
+    }
+
   unsigned bitsize = GET_MODE_BITSIZE (mode).to_constant ();
   rtx shift_bits = GEN_INT (bitsize - 1);
   rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, SIGN_EXTEND);
@@ -15492,6 +16369,13 @@ void
 riscv_expand_ussub (rtx dest, rtx x, rtx y)
 {
   machine_mode mode = GET_MODE (dest);
+  if (TARGET_RVP && mode == SImode)
+    {
+      emit_insn (gen_rvp_ussubsi3 (dest, force_reg (SImode, x),
+				 force_reg (SImode, y)));
+      return;
+    }
+
   rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, ZERO_EXTEND);
   rtx xmode_y = riscv_extend_to_xmode_reg (y, mode, ZERO_EXTEND);
   rtx xmode_lt = gen_reg_rtx (Xmode);
@@ -15538,6 +16422,13 @@ void
 riscv_expand_sssub (rtx dest, rtx x, rtx y)
 {
   machine_mode mode = GET_MODE (dest);
+  if (TARGET_RVP && mode == SImode)
+    {
+      emit_insn (gen_rvp_sssubsi3 (dest, force_reg (SImode, x),
+				 force_reg (SImode, y)));
+      return;
+    }
+
   unsigned bitsize = GET_MODE_BITSIZE (mode).to_constant ();
   rtx shift_bits = GEN_INT (bitsize - 1);
   rtx xmode_x = riscv_extend_to_xmode_reg (x, mode, SIGN_EXTEND);
@@ -17468,6 +18359,10 @@ bool riscv_pext_mode_supported_p (machine_mode mode)
     case PV2SImode:
       return true;
 
+    /* A single doubleword accumulator for a packed dot product.  */
+    case PV1DImode:
+      return !TARGET_BIG_ENDIAN;
+
     default:
       return false;
     }
@@ -17684,8 +18579,9 @@ riscv_const_vector_broadcast_val_p (rtx op, HOST_WIDE_INT val)
   return CONST_INT_P (elt) && INTVAL (elt) == val;
 }
 
-/* For a PSATI/PSATI.DH/PSATI.DW bound const_vector of the form {2^N-1, ...},
-   return N (the instruction immediate).  Returns 0 if not a valid bound.  */
+/* For a saturation bound CONST_VECTOR of the form {2^N-1, ...}, return N.
+   Signed PSATI uses textual width N+1; unsigned PUSATI uses N.
+   Return 0 if the bound is invalid or N is zero.  */
 int
 riscv_psati_imm (rtx max_op)
 {

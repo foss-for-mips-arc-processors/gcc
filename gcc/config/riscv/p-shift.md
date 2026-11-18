@@ -1034,6 +1034,8 @@
 ;; optabs.  On RV32 this feeds the register-pair PNCLIPI instruction.  RV64
 ;; needs PACK followed by PNCLIPP with a zero second source because each input
 ;; contains only half of the lanes consumed by PNCLIPP.
+;; On RV64, keep the first source in the physical low half.  VEC_CONCAT must
+;; express that placement using the target's logical element order.
 
 (define_expand "riscv_pnclipp_i8x4"
   [(set (match_operand:PV4QI 0 "register_operand")
@@ -1046,10 +1048,12 @@
   if (TARGET_64BIT)
     {
       rtx combined_v = gen_reg_rtx (PV2SImode);
+      rtx low = gen_lowpart (SImode, operands[1]);
+      rtx high = gen_lowpart (SImode, operands[2]);
       emit_insn (gen_rtx_SET
 	(combined_v,
-	 gen_rtx_VEC_CONCAT (PV2SImode, gen_lowpart (SImode, operands[1]),
-				       gen_lowpart (SImode, operands[2]))));
+	 gen_rtx_VEC_CONCAT (PV2SImode, TARGET_BIG_ENDIAN ? high : low,
+				       TARGET_BIG_ENDIAN ? low : high)));
       combined = gen_lowpart (PV4HImode, combined_v);
     }
   else
@@ -1073,10 +1077,12 @@
   if (TARGET_64BIT)
     {
       rtx combined_v = gen_reg_rtx (PV2SImode);
+      rtx low = gen_lowpart (SImode, operands[1]);
+      rtx high = gen_lowpart (SImode, operands[2]);
       emit_insn (gen_rtx_SET
 	(combined_v,
-	 gen_rtx_VEC_CONCAT (PV2SImode, gen_lowpart (SImode, operands[1]),
-				       gen_lowpart (SImode, operands[2]))));
+	 gen_rtx_VEC_CONCAT (PV2SImode, TARGET_BIG_ENDIAN ? high : low,
+				       TARGET_BIG_ENDIAN ? low : high)));
       combined = gen_lowpart (PV4HImode, combined_v);
     }
   else
@@ -1099,7 +1105,9 @@
   rtx combined = gen_reg_rtx (PV2SImode);
   if (TARGET_64BIT)
     emit_insn (gen_rtx_SET
-	(combined, gen_rtx_VEC_CONCAT (PV2SImode, operands[1], operands[2])));
+	(combined, gen_rtx_VEC_CONCAT (PV2SImode,
+				      operands[TARGET_BIG_ENDIAN ? 2 : 1],
+				      operands[TARGET_BIG_ENDIAN ? 1 : 2])));
   else
     {
       emit_move_insn (gen_lowpart (SImode, combined), operands[1]);
@@ -1119,7 +1127,9 @@
   rtx combined = gen_reg_rtx (PV2SImode);
   if (TARGET_64BIT)
     emit_insn (gen_rtx_SET
-	(combined, gen_rtx_VEC_CONCAT (PV2SImode, operands[1], operands[2])));
+	(combined, gen_rtx_VEC_CONCAT (PV2SImode,
+				      operands[TARGET_BIG_ENDIAN ? 2 : 1],
+				      operands[TARGET_BIG_ENDIAN ? 1 : 2])));
   else
     {
       emit_move_insn (gen_lowpart (SImode, combined), operands[1]);

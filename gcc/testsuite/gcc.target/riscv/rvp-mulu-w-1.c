@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv64gcp0p21 -mabi=lp64 -O2" } */
+/* { dg-options "-march=rv64gcp0p6 -mabi=lp64 -O2" } */
 /* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-flto" } } */
 
 typedef int int32_t;

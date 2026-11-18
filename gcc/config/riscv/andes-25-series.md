@@ -51,9 +51,10 @@
 (define_reservation "andes_25_fpu_pipe"
   "andes_25_pipe + andes_25_fpu")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "andes_25_alu_insn" 1
   (and (eq_attr "tune" "andes_25_series")
-       (eq_attr "type" "unknown,const,arith,shift,slt,multi,nop,logical,move,
+       (eq_attr "type" "simd,unknown,const,arith,shift,slt,multi,nop,logical,move,
 			auipc,atomic"))
   "andes_25_pipe")
 

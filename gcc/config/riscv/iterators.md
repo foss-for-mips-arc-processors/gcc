@@ -286,6 +286,15 @@
 
 (define_code_iterator bitmanip_minmax_cmp_op [lt ltu le leu ge geu gt gtu])
 
+;; Reduce two comparisons against a common bound before testing it once.
+(define_code_attr bitmanip_and_cmp_minmax
+  [(lt "smax") (ltu "umax") (le "smax") (leu "umax")
+   (ge "smin") (geu "umin") (gt "smin") (gtu "umin")])
+
+(define_code_attr bitmanip_ior_cmp_minmax
+  [(lt "smin") (ltu "umin") (le "smin") (leu "umin")
+   (ge "smax") (geu "umax") (gt "smax") (gtu "umax")])
+
 ; Map a comparison operator to a min or max.
 (define_code_attr bitmanip_minmax_cmp_insn [(lt "min") (ltu "minu")
 					    (le "min") (leu "minu")

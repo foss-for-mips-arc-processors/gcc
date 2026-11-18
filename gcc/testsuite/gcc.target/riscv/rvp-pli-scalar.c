@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -O2" } */
 
 /* Test PLI/PLUI for scalar SI mode constants (RV32).
    These constants would previously be loaded via lui+addi or from

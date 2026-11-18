@@ -1270,11 +1270,12 @@ debug_value_data (struct value_data *vd)
 /* Do copyprop_hardreg_forward_1 for a single basic block BB.
    DEBUG_INSN is skipped since we do not want to involve DF related
    staff as how it is handled in function pass_cprop_hardreg::execute.
+   Return true if an instruction was changed.
 
    NOTE: Currently it is only used for shrink-wrap.  Maybe extend it
    to handle DEBUG_INSN for other uses.  */
 
-void
+bool
 copyprop_hardreg_forward_bb_without_debug_insn (basic_block bb)
 {
   struct value_data *vd;
@@ -1282,9 +1283,10 @@ copyprop_hardreg_forward_bb_without_debug_insn (basic_block bb)
   init_value_data (vd);
 
   skip_debug_insn_p = true;
-  copyprop_hardreg_forward_1 (bb, vd);
+  bool changed = copyprop_hardreg_forward_1 (bb, vd);
   free (vd);
   skip_debug_insn_p = false;
+  return changed;
 }
 
 static void

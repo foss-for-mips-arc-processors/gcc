@@ -8430,6 +8430,7 @@ vect_make_slp_decision (loop_vec_info loop_vinfo)
   FOR_EACH_VEC_ELT (slp_instances, i, instance)
     {
       slp_tree root = SLP_INSTANCE_TREE (instance);
+      stmt_vec_info stmt_info = SLP_TREE_REPRESENTATIVE (root);
 
       /* All unroll factors have the form:
 
@@ -8444,6 +8445,20 @@ vect_make_slp_decision (loop_vec_info loop_vinfo)
       if (SLP_TREE_VECTYPE (root)
 	  && known_gt (TYPE_VECTOR_SUBPARTS (SLP_TREE_VECTYPE (root)), 1U))
 	decided_to_slp++;
+
+      else if (stmt_info && is_gimple_assign (stmt_info->stmt)
+	       && (gimple_assign_rhs_code (stmt_info->stmt) == DOT_PROD_EXPR
+		   || gimple_assign_rhs_code (stmt_info->stmt) == SAD_EXPR))
+	{
+	  /* A widening dot product or sum of absolute differences can
+	     consume multiple input elements even when the accumulator
+	     has just one element.  */
+	  slp_tree input = SLP_TREE_CHILDREN (root)[0];
+	  if (SLP_TREE_VECTYPE (input)
+	      && known_gt (TYPE_VECTOR_SUBPARTS (SLP_TREE_VECTYPE (input)),
+			   1U))
+	    decided_to_slp++;
+	}
     }
 
   LOOP_VINFO_VECT_FACTOR (loop_vinfo) = unrolling_factor;

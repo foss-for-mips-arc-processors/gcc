@@ -2,7 +2,7 @@
    RVP vec_perm_const expanders, which build the result in the operand
    mode.  */
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcp0p21 -mabi=ilp32 -O3" } */
+/* { dg-options "-march=rv32gcp0p6 -mabi=ilp32 -O3" } */
 /* { dg-skip-if "" { *-*-* } { "-flto" } } */
 
 #include <stdint-gcc.h>

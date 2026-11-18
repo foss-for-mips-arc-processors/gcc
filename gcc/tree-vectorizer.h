@@ -2479,7 +2479,7 @@ class loop *slpeel_tree_duplicate_loop_to_edge_cfg (class loop *, edge,
 						    edge, edge *, bool = true,
 						    vec<basic_block> * = NULL,
 						    bool = false, bool = false);
-class loop *vect_loop_versioning (loop_vec_info, gimple *);
+class loop *vect_loop_versioning (loop_vec_info, gimple *, bool);
 extern class loop *vect_do_peeling (loop_vec_info, tree, tree,
 				    tree *, tree *, tree *, int, bool, bool,
 				    tree *);
@@ -2734,6 +2734,7 @@ extern int vect_get_known_peeling_cost (loop_vec_info, int, int *,
 					stmt_vector_for_cost *,
 					stmt_vector_for_cost *,
 					stmt_vector_for_cost *);
+extern int vect_estimate_alignment_peeling (loop_vec_info, dr_vec_info *);
 extern tree cse_and_gimplify_to_preheader (loop_vec_info, tree);
 
 /* Nonlinear induction.  */

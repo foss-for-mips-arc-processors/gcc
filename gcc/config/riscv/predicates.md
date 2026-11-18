@@ -27,6 +27,11 @@
   (ior (match_operand 0 "const_arith_operand")
        (match_operand 0 "register_operand")))
 
+(define_predicate "riscv_p_bitwise_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_code "const_vector")
+	    (match_test "riscv_p_bitwise_imm_p (op)"))))
+
 (define_predicate "prefetch_const_operand"
   (and (match_code "const_int")
        (match_test "(IN_RANGE (INTVAL (op),  0, 511))")))
@@ -413,6 +418,9 @@
   (ior (match_code "truncate")
        (and (match_code "subreg")
             (match_test "subreg_lowpart_p (op)"))))
+
+(define_predicate "rvp_subreg_operator"
+  (match_code "subreg"))
 
 (define_predicate "fp_native_comparison"
   (match_code "eq,lt,le,gt,ge"))
@@ -805,6 +813,34 @@
 	   (match_test "IN_RANGE (INTVAL (op), 1, 64)")))
 
 ;; P-extension predicates
+
+;; A full register or an explicit extension of its low word.  The splitter
+;; separately proves the signedness before choosing a packed operation.
+(define_predicate "rvp_word_product_operand"
+  (match_code "reg,subreg,sign_extend,zero_extend,and")
+{
+  if (register_operand (op, mode))
+    return true;
+  if (GET_CODE (op) == SIGN_EXTEND || GET_CODE (op) == ZERO_EXTEND)
+    return register_operand (XEXP (op, 0), SImode);
+  return GET_CODE (op) == AND
+    && register_operand (XEXP (op, 0), DImode)
+    && CONST_INT_P (XEXP (op, 1))
+    && UINTVAL (XEXP (op, 1)) == GET_MODE_MASK (SImode);
+})
+
+;; A packed register or a view of an explicitly extended scalar word.
+;; Only a splitter that discards the upper result lane may remove the
+;; extension; a full packed operation still observes both input lanes.
+(define_predicate "rvp_low_word_packed_operand"
+  (match_code "reg,subreg")
+{
+  if (register_operand (op, mode))
+    return true;
+  return SUBREG_P (op) && subreg_lowpart_p (op)
+    && GET_MODE (SUBREG_REG (op)) == DImode
+    && rvp_word_product_operand (SUBREG_REG (op), DImode);
+})
 
 (define_predicate "const_int4_operand"
   (and (match_code "const_int")

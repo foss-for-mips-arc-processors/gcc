@@ -1,0 +1,27 @@
+/* { dg-do compile } */
+/* { dg-options "-O2 -march=rv64gcp -mabi=lp64d -mlittle-endian" } */
+/* { dg-skip-if "assembly only" { *-*-* } { "-flto" } { "" } } */
+/* { dg-final { check-function-bodies "**" "" } } */
+
+#include "bswap16-scalar-extend.h"
+
+/*
+** swap_unsigned:
+**  rev8\s+a0,a0
+**  srli\s+a0,a0,48
+**  ret
+*/
+/*
+** swap_signed:
+**  rev8\s+a0,a0
+**  srai\s+a0,a0,48
+**  ret
+*/
+/*
+** swap_shared:
+**  rev8\s+([a-z][0-9]+),a1
+**  srli\s+\1,\1,48
+**  sh\s+\1,0\(a0\)
+**  addw\s+a0,\1,a1
+**  ret
+*/

@@ -363,9 +363,10 @@
    andes_45_fpu_load, andes_45_fpu_store, andes_45_alu_insn_s,
    andes_45_alu_insn_l, andes_45_xfer")
 
+;; Use integer resources as a fallback for P instructions.
 (define_insn_reservation "andes_45_unknown" 1
   (and (eq_attr "tune" "andes_45_series")
-       (eq_attr "type" "ghost,cpop,clz,ctz,zicond,mvpair,sfb_alu,minu,maxu,
+       (eq_attr "type" "simd,ghost,cpop,clz,ctz,zicond,mvpair,sfb_alu,minu,maxu,
 			min,max,clmul,rotate,crypto,condmove,rdfrm"))
   "andes_45_dummies")
 

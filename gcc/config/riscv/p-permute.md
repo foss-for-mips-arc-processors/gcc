@@ -59,77 +59,9 @@
    (UNSPEC_PPAIRO "ppairo.w")])
 
 ; ---- 8x4 (PV4QI), 32-bit, single form ----
-(define_insn "riscv_ppaire_u8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIRE))]
-  "TARGET_RVP"
-  "ppaire.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppaire_i8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIRE))]
-  "TARGET_RVP"
-  "ppaire.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppaireo_u8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIREO))]
-  "TARGET_RVP"
-  "ppaireo.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppaireo_i8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIREO))]
-  "TARGET_RVP"
-  "ppaireo.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppairoe_u8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIROE))]
-  "TARGET_RVP"
-  "ppairoe.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppairoe_i8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIROE))]
-  "TARGET_RVP"
-  "ppairoe.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppairo_u8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIRO))]
-  "TARGET_RVP"
-  "ppairo.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
-
-(define_insn "riscv_ppairo_i8x4"
-  [(set (match_operand:PV4QI 0 "register_operand" "=r")
-        (unspec:PV4QI [(match_operand:PV4QI 1 "register_operand" "r")
-                      (match_operand:PV4QI 2 "register_operand" "r")]
-         UNSPEC_PPAIRO))]
-  "TARGET_RVP"
-  "ppairo.b\t%0,%1,%2"
-  [(set_attr "type" "simd")])
+; The 8x4 pair intrinsics are pure header implementations (element picks
+; combine into the single ppaire.b/ppairo.b/ppaireo.b/ppairoe.b), so no
+; builtin patterns are needed here.
 
 ; ---- 16x2 (PV2HI), 32-bit ----
 ; ppaire: RV32 -> "pack" (alias), RV64 -> ppaire.h
@@ -778,8 +710,8 @@
 ;    pwcvth.h  rd, rs1 -> zip16p rd, x0, rs1
 ;Hence the templates emit the underlying pwadd.b/wzip8p/zip8p/... forms rather
 ;than a (non-existent) pwcvt mnemonic.  The signed RV64 forms need two insns
-;(zip for zero-extend widen, then psext for sign-extend), emitted via
-;define_expand reusing the existing riscv_psext_*_rv64 patterns.
+;(zip for zero-extend widen, then psext for sign-extend).  Keep the complete
+;extension visible until after reload so arithmetic can combine with it.
 
 ; pwcvt_i16x4 (signed b -> h, RV32 pwadd.b / RV64 zip8p + psext.h.b)
 (define_expand "riscv_pwcvt_i16x4"
@@ -789,10 +721,7 @@
   "TARGET_RVP"
 {
   if (TARGET_64BIT)
-    {
-        emit_insn (gen_riscv_pwcvt_i16x4_zip_rv64 (operands[0], operands[1]));
-        emit_insn (gen_riscv_psext_b_i16x4_rv64 (operands[0], operands[0]));
-    }
+    emit_insn (gen_riscv_pwcvt_i16x4_rv64 (operands[0], operands[1]));
   else
     emit_insn (gen_riscv_pwcvt_i16x4_rv32 (operands[0], operands[1]));
   DONE;
@@ -800,19 +729,27 @@
 
 (define_insn "riscv_pwcvt_i16x4_rv32"
   [(set (match_operand:PV4HI 0 "register_operand" "=R")
-        (unspec:PV4HI [(match_operand:PV4QI 1 "register_operand" "r")]
-         UNSPEC_PWCVT_B))]
+	(sign_extend:PV4HI
+	  (match_operand:PV4QI 1 "register_operand" "r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "pwadd.b\t%0,%1,x0"
   [(set_attr "type" "simd")])
 
-(define_insn "riscv_pwcvt_i16x4_zip_rv64"
+(define_insn_and_split "riscv_pwcvt_i16x4_rv64"
   [(set (match_operand:PV4HI 0 "register_operand" "=r")
-        (unspec:PV4HI [(match_operand:PV4QI 1 "register_operand" "r")]
-         UNSPEC_PWCVT_B))]
+	(sign_extend:PV4HI
+	  (match_operand:PV4QI 1 "register_operand" "r")))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip8p\t%0,%1,x0"
-  [(set_attr "type" "simd")])
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_pwcvtu_u16x4_rv64 (operands[0], operands[1]));
+  emit_insn (gen_riscv_psext_b_i16x4_rv64 (operands[0], operands[0]));
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "8")])
 
 ; pwcvt_i32x2 (signed h -> w, RV32 pwadd.h / RV64 zip16p + psext.w.h)
 (define_expand "riscv_pwcvt_i32x2"
@@ -822,10 +759,7 @@
   "TARGET_RVP"
 {
   if (TARGET_64BIT)
-    {
-        emit_insn (gen_riscv_pwcvt_i32x2_zip_rv64 (operands[0], operands[1]));
-        emit_insn (gen_riscv_psext_h_i32x2_rv64 (operands[0], operands[0]));
-    }
+    emit_insn (gen_riscv_pwcvt_i32x2_rv64 (operands[0], operands[1]));
   else
     emit_insn (gen_riscv_pwcvt_i32x2_rv32 (operands[0], operands[1]));
   DONE;
@@ -833,19 +767,27 @@
 
 (define_insn "riscv_pwcvt_i32x2_rv32"
   [(set (match_operand:PV2SI 0 "register_operand" "=R")
-        (unspec:PV2SI [(match_operand:PV2HI 1 "register_operand" "r")]
-         UNSPEC_PWCVT_H))]
+	(sign_extend:PV2SI
+	  (match_operand:PV2HI 1 "register_operand" "r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "pwadd.h\t%0,%1,x0"
   [(set_attr "type" "simd")])
 
-(define_insn "riscv_pwcvt_i32x2_zip_rv64"
+(define_insn_and_split "riscv_pwcvt_i32x2_rv64"
   [(set (match_operand:PV2SI 0 "register_operand" "=r")
-        (unspec:PV2SI [(match_operand:PV2HI 1 "register_operand" "r")]
-         UNSPEC_PWCVT_H))]
+	(sign_extend:PV2SI
+	  (match_operand:PV2HI 1 "register_operand" "r")))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip16p\t%0,%1,x0"
-  [(set_attr "type" "simd")])
+  "#"
+  "&& reload_completed"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_pwcvtu_u32x2_rv64 (operands[0], operands[1]));
+  emit_insn (gen_riscv_psext_h_i32x2_rv64 (operands[0], operands[0]));
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "8")])
 
 ; pwcvtu_u16x4 (unsigned b -> h, RV32 wzip8p / RV64 zip8p)
 (define_expand "riscv_pwcvtu_u16x4"
@@ -863,16 +805,16 @@
 
 (define_insn "riscv_pwcvtu_u16x4_rv32"
   [(set (match_operand:PV4HI 0 "register_operand" "=R")
-        (unspec:PV4HI [(match_operand:PV4QI 1 "register_operand" "r")]
-         UNSPEC_PWCVTU_B))]
+	(zero_extend:PV4HI
+	  (match_operand:PV4QI 1 "register_operand" "r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "wzip8p\t%0,%1,x0"
   [(set_attr "type" "simd")])
 
 (define_insn "riscv_pwcvtu_u16x4_rv64"
   [(set (match_operand:PV4HI 0 "register_operand" "=r")
-        (unspec:PV4HI [(match_operand:PV4QI 1 "register_operand" "r")]
-         UNSPEC_PWCVTU_B))]
+	(zero_extend:PV4HI
+	  (match_operand:PV4QI 1 "register_operand" "r")))]
   "TARGET_RVP && TARGET_64BIT"
   "zip8p\t%0,%1,x0"
   [(set_attr "type" "simd")])
@@ -893,16 +835,16 @@
 
 (define_insn "riscv_pwcvtu_u32x2_rv32"
   [(set (match_operand:PV2SI 0 "register_operand" "=R")
-        (unspec:PV2SI [(match_operand:PV2HI 1 "register_operand" "r")]
-         UNSPEC_PWCVTU_H))]
+	(zero_extend:PV2SI
+	  (match_operand:PV2HI 1 "register_operand" "r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "wzip16p\t%0,%1,x0"
   [(set_attr "type" "simd")])
 
 (define_insn "riscv_pwcvtu_u32x2_rv64"
   [(set (match_operand:PV2SI 0 "register_operand" "=r")
-        (unspec:PV2SI [(match_operand:PV2HI 1 "register_operand" "r")]
-         UNSPEC_PWCVTU_H))]
+	(zero_extend:PV2SI
+	  (match_operand:PV2HI 1 "register_operand" "r")))]
   "TARGET_RVP && TARGET_64BIT"
   "zip16p\t%0,%1,x0"
   [(set_attr "type" "simd")])

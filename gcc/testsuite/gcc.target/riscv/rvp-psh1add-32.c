@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32gcbp0p21 -mabi=ilp32 -O2" } */
+/* { dg-options "-march=rv32gcbp0p6 -mabi=ilp32 -O2" } */
 /* { dg-require-effective-target rv32 } */
 
 /* Test PSH1ADD.H, PSH1ADD.DH, and PSH1ADD.DW instruction generation on RV32.

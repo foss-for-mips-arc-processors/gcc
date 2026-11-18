@@ -19,6 +19,85 @@
 
 (include "rvp-iterators.md")
 
+(define_c_enum "unspec" [
+  UNSPEC_RVP_SCALAR_UABDHI
+  UNSPEC_RVP_SCALAR_UABDAQI
+])
+
+;; A one-element vector is a scalar doubleword in a GPR (or a GPR pair).
+;; Keep it separate from the packed-lane arithmetic iterators.
+(define_expand "movpv1di"
+  [(set (match_operand:PV1DI 0 "")
+	(match_operand:PV1DI 1 ""))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  if (riscv_legitimize_move (PV1DImode, operands[0], operands[1]))
+    DONE;
+  /* Do not let emit_move_insn canonicalize these equal-sized subregs
+     back into a PV1DI move.  */
+  emit_insn (gen_movdi (gen_lowpart (DImode, operands[0]),
+			gen_lowpart (DImode, operands[1])));
+  DONE;
+})
+
+(define_expand "movmisalignpv1di"
+  [(set (match_operand:PV1DI 0 "nonimmediate_operand")
+	(match_operand:PV1DI 1 "general_operand"))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_move_insn (operands[0], operands[1]);
+  DONE;
+})
+
+(define_expand "vec_initpv1didi"
+  [(match_operand:PV1DI 0 "register_operand")
+   (match_operand 1 "")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_move_insn (gen_lowpart (DImode, operands[0]), XVECEXP (operands[1], 0, 0));
+  DONE;
+})
+
+(define_expand "vec_duplicatepv1di"
+  [(set (match_operand:PV1DI 0 "register_operand")
+	(vec_duplicate:PV1DI (match_operand:DI 1 "register_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_move_insn (gen_lowpart (DImode, operands[0]), operands[1]);
+  DONE;
+})
+
+(define_expand "vec_extractpv1didi"
+  [(match_operand:DI 0 "register_operand")
+   (match_operand:PV1DI 1 "register_operand")
+   (match_operand 2 "const_0_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_move_insn (operands[0], gen_lowpart (DImode, operands[1]));
+  DONE;
+})
+
+(define_expand "reduc_plus_scal_pv1di"
+  [(match_operand:DI 0 "register_operand")
+   (match_operand:PV1DI 1 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_move_insn (operands[0], gen_lowpart (DImode, operands[1]));
+  DONE;
+})
+
+(define_expand "addpv1di3"
+  [(set (match_operand:PV1DI 0 "register_operand")
+	(plus:PV1DI (match_operand:PV1DI 1 "register_operand")
+		   (match_operand:PV1DI 2 "register_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_insn (gen_adddi3 (gen_lowpart (DImode, operands[0]),
+			gen_lowpart (DImode, operands[1]),
+			gen_lowpart (DImode, operands[2])));
+  DONE;
+})
+
 ;; Move patterns for all packed vector modes
 ;; 4-byte vectors (PV4QI/PV2HI): supported on both RV32 and RV64
 ;; 8-byte vectors (PV8QI/PV4HI/PV2SI): RV64 uses single register, RV32 uses register pairs
@@ -29,6 +108,18 @@
 {
   if (riscv_legitimize_move (<MODE>mode, operands[0], operands[1]))
     DONE;
+})
+
+;; Reuse the scalar-aligned expansion for packed memory references.  This
+;; also avoids stack temporaries when a view conversion requires a move
+;; whose alignment is smaller than the packed mode's alignment.
+(define_expand "movmisalign<mode>"
+  [(set (match_operand:PVMOVE 0 "nonimmediate_operand")
+	(match_operand:PVMOVE 1 "general_operand"))]
+  "TARGET_RVP"
+{
+  emit_move_insn (operands[0], operands[1]);
+  DONE;
 })
 
 ;; Single-register move for packed vectors
@@ -68,7 +159,214 @@
    (set_attr "type" "move,move,move,load,store,mtc,fpload,mfc,fmove,fpstore")
    (set_attr "mode" "<MODE>")])
 
+;; A selected modular halfword product does not need the other products
+;; or a packed result.  Signed and unsigned multiplication have identical
+;; low 16 bits.  Match the existing subreg extraction so that ordinary
+;; extracts remain available to other multiply and reduction patterns.
+(define_insn_and_split "*rvp_extract_mul_<mode><u>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_extend:SI
+	  (match_operator:HI 3 "rvp_subreg_operator"
+	    [(mult:RVP_EXTRACT_H
+	       (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+	       (match_operand:RVP_EXTRACT_H 2 "register_operand" "r"))])))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[3]).is_constant ()
+   && SUBREG_BYTE (operands[3]).to_constant () % 2 == 0
+   && SUBREG_BYTE (operands[3]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[3]).to_constant ();
+  rtx a = simplify_gen_subreg (SImode, operands[1], <MODE>mode,
+			      byte & ~3U);
+  rtx b = simplify_gen_subreg (SImode, operands[2], <MODE>mode,
+			      byte & ~3U);
+  rtx product = gen_reg_rtx (SImode);
+  if (((byte & 2) != 0) != TARGET_BIG_ENDIAN)
+    emit_insn (gen_mul_h11 (product, a, b));
+  else
+    emit_insn (gen_mulhisi3 (product, gen_lowpart (HImode, a),
+			   gen_lowpart (HImode, b)));
+  emit_insn (gen_<optab>hisi2 (operands[0], gen_lowpart (HImode, product)));
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set_attr "length" "8")])
+
+;; A right shift by 16 selects the high physical half of a word in either
+;; byte order.  Preserve the extension of the truncated halfword product.
+(define_insn_and_split "*rvp_extract_mul_high_<mode>_<optab>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_shiftrt:SI
+	  (match_operator:SI 3 "rvp_subreg_operator"
+	    [(mult:RVP_EXTRACT_H
+	       (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+	       (match_operand:RVP_EXTRACT_H 2 "register_operand" "r"))])
+	  (const_int 16)))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[3]).is_constant ()
+   && SUBREG_BYTE (operands[3]).to_constant () % 4 == 0
+   && SUBREG_BYTE (operands[3]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[3]).to_constant ();
+  rtx a = simplify_gen_subreg (SImode, operands[1], <MODE>mode, byte);
+  rtx b = simplify_gen_subreg (SImode, operands[2], <MODE>mode, byte);
+  rtx product = gen_reg_rtx (SImode);
+  emit_insn (gen_mul_h11 (product, a, b));
+  if (<CODE> == ASHIFTRT)
+    emit_insn (gen_extendhisi2 (operands[0], gen_lowpart (HImode, product)));
+  else
+    emit_insn (gen_zero_extendhisi2 (operands[0],
+				   gen_lowpart (HImode, product)));
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set_attr "length" "8")])
+
+;; Extract only the observable lane of a modular multiply-add/subtract.
+;; Leave shared full-vector results available to their other consumers.
+(define_insn_and_split "*rvp_extract_<rvp_lane_arith:optab>_mul_<mode><u>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_extend:SI
+	  (match_operator:HI 4 "rvp_subreg_operator"
+	    [(rvp_lane_arith:RVP_EXTRACT_H
+	       (mult:RVP_EXTRACT_H
+		 (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+		 (match_operand:RVP_EXTRACT_H 2 "register_operand" "r"))
+	       (match_operand:RVP_EXTRACT_H 3 "register_operand" "r"))])))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[4]).is_constant ()
+   && SUBREG_BYTE (operands[4]).to_constant () % 2 == 0
+   && SUBREG_BYTE (operands[4]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[4]).to_constant ();
+  bool high_p = ((byte & 2) != 0) != TARGET_BIG_ENDIAN;
+  riscv_p_expand_mul_acc_lane (operands[0], SUBREG_REG (operands[4]),
+			      byte & ~3U, high_p,
+			      <any_extend:CODE> == ZERO_EXTEND);
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set (attr "length")
+	(if_then_else
+	  (match_test "(((SUBREG_BYTE (operands[4]).to_constant () & 2) != 0)
+		       != TARGET_BIG_ENDIAN)")
+	  (const_int <rvp_lane_high_length>)
+	  (const_int <rvp_lane_length>)))])
+
+(define_insn_and_split "*rvp_extract_<rvp_lane_arith:optab>_mul_high_<mode>_<any_shiftrt:optab>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_shiftrt:SI
+	  (match_operator:SI 4 "rvp_subreg_operator"
+	    [(rvp_lane_arith:RVP_EXTRACT_H
+	       (mult:RVP_EXTRACT_H
+		 (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+		 (match_operand:RVP_EXTRACT_H 2 "register_operand" "r"))
+	       (match_operand:RVP_EXTRACT_H 3 "register_operand" "r"))])
+	  (const_int 16)))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[4]).is_constant ()
+   && SUBREG_BYTE (operands[4]).to_constant () % 4 == 0
+   && SUBREG_BYTE (operands[4]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[4]).to_constant ();
+  riscv_p_expand_mul_acc_lane (operands[0], SUBREG_REG (operands[4]),
+			      byte, true, <any_shiftrt:CODE> == LSHIFTRT);
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set_attr "length" "<rvp_lane_high_length>")])
+
+;; Subtraction is not commutative: also match accumulator minus product.
+(define_insn_and_split "*rvp_extract_acc_sub_mul_<mode><u>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_extend:SI
+	  (match_operator:HI 4 "rvp_subreg_operator"
+	    [(minus:RVP_EXTRACT_H
+	       (match_operand:RVP_EXTRACT_H 3 "register_operand" "r")
+	       (mult:RVP_EXTRACT_H
+		 (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+		 (match_operand:RVP_EXTRACT_H 2 "register_operand" "r")))])))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[4]).is_constant ()
+   && SUBREG_BYTE (operands[4]).to_constant () % 2 == 0
+   && SUBREG_BYTE (operands[4]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[4]).to_constant ();
+  bool high_p = ((byte & 2) != 0) != TARGET_BIG_ENDIAN;
+  riscv_p_expand_mul_acc_lane (operands[0], SUBREG_REG (operands[4]),
+			      byte & ~3U, high_p, <CODE> == ZERO_EXTEND);
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set (attr "length")
+	(if_then_else
+	  (match_test "(((SUBREG_BYTE (operands[4]).to_constant () & 2) != 0)
+		       != TARGET_BIG_ENDIAN)")
+	  (const_int 16) (const_int 12)))])
+
+(define_insn_and_split "*rvp_extract_acc_sub_mul_high_<mode>_<optab>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(any_shiftrt:SI
+	  (match_operator:SI 4 "rvp_subreg_operator"
+	    [(minus:RVP_EXTRACT_H
+	       (match_operand:RVP_EXTRACT_H 3 "register_operand" "r")
+	       (mult:RVP_EXTRACT_H
+		 (match_operand:RVP_EXTRACT_H 1 "register_operand" "r")
+		 (match_operand:RVP_EXTRACT_H 2 "register_operand" "r")))])
+	  (const_int 16)))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && SUBREG_BYTE (operands[4]).is_constant ()
+   && SUBREG_BYTE (operands[4]).to_constant () % 4 == 0
+   && SUBREG_BYTE (operands[4]).to_constant ()
+      < GET_MODE_SIZE (<MODE>mode).to_constant ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int byte = SUBREG_BYTE (operands[4]).to_constant ();
+  riscv_p_expand_mul_acc_lane (operands[0], SUBREG_REG (operands[4]),
+			      byte, true, <CODE> == LSHIFTRT);
+  DONE;
+}
+  [(set_attr "type" "multi")
+   (set_attr "length" "16")])
+
 ;; Binary Arithmetic Operations
+
+;; The RV64 instructions operate independently on each word.  Describe only
+;; the low word; an ABI return or a wider use must extend it normally.
+(define_insn "rvp_<optab>si3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(rvp_sat_op:SI (match_operand:SI 1 "register_operand" "r")
+		       (match_operand:SI 2 "register_operand" "r")))]
+  "TARGET_RVP"
+{
+  if (TARGET_64BIT)
+    return "p<insn>.w\t%0, %1, %2";
+  return "<insn>\t%0, %1, %2";
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "SI")])
 
 ;; Unified pattern for all binary arithmetic operations
 ;;   - Basic: padd.b/h/w, psub.b/h/w
@@ -114,10 +412,98 @@
   [(set (match_operand:PVHW 0 "register_operand" "=r")
         (mult:PVHW (match_operand:PVHW 1 "register_operand" "r")
                    (match_operand:PVHW 2 "register_operand" "r")))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && (!TARGET_64BIT || can_create_pseudo_p ())"
   "#"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
+
+;; Preserve full-width multiplication through combine on RV64 too.  If it
+;; does not fold into a widening product, compute the low bits of each lane.
+;; Signed and unsigned products have the same low half.
+(define_split
+  [(set (match_operand:PV4HI 0 "register_operand")
+	(mult:PV4HI (match_operand:PV4HI 1 "register_operand")
+		   (match_operand:PV4HI 2 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  rtx even = gen_reg_rtx (PV2SImode);
+  rtx odd = gen_reg_rtx (PV2SImode);
+  emit_insn (gen_riscv_pmul_h00_i32x2 (even, operands[1], operands[2]));
+  emit_insn (gen_riscv_pmul_h11_i32x2 (odd, operands[1], operands[2]));
+  emit_insn (gen_riscv_ppaire_i16x4_rv64 (operands[0],
+					gen_lowpart (PV4HImode, even),
+					gen_lowpart (PV4HImode, odd)));
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:PV2SI 0 "register_operand")
+	(mult:PV2SI (match_operand:PV2SI 1 "register_operand")
+		   (match_operand:PV2SI 2 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  rtx low = gen_reg_rtx (SImode);
+  rtx high = gen_reg_rtx (SImode);
+  /* Consume the low words first, allowing the shifts to overwrite their
+     inputs and use compressed instructions when optimizing for size.  */
+  emit_insn (gen_mulsi3 (low, gen_lowpart (SImode, operands[1]),
+		       gen_lowpart (SImode, operands[2])));
+  rtx lhs_high = gen_reg_rtx (DImode);
+  rtx rhs_high = gen_reg_rtx (DImode);
+  emit_insn (gen_lshrdi3 (lhs_high, gen_lowpart (DImode, operands[1]),
+			GEN_INT (32)));
+  emit_insn (gen_lshrdi3 (rhs_high, gen_lowpart (DImode, operands[2]),
+			GEN_INT (32)));
+  emit_insn (gen_mulsi3 (high, gen_lowpart (SImode, lhs_high),
+		       gen_lowpart (SImode, rhs_high)));
+  /* LOW and HIGH name physical words, but VEC_CONCAT describes logical
+     element order.  The first element occupies the high word on BE.  */
+  emit_insn (gen_rtx_SET (operands[0],
+			gen_rtx_VEC_CONCAT (PV2SImode,
+					    TARGET_BIG_ENDIAN ? high : low,
+					    TARGET_BIG_ENDIAN ? low : high)));
+  DONE;
+})
+
+;; Masks used only by a word product need not occupy complete register
+;; pairs.  Keep the expression together until its scalar expansion.
+(define_insn_and_split "*rvp_masked_mulpv2si3"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(mult:PV2SI
+	  (and:PV2SI
+	    (match_operand:PV2SI 1 "register_operand" "r")
+	    (match_operand:PV2SI 2 "riscv_p_bitwise_operand" "Wpl"))
+	  (and:PV2SI
+	    (match_operand:PV2SI 3 "register_operand" "r")
+	    (match_operand:PV2SI 4 "riscv_p_bitwise_operand" "Wpl"))))]
+  "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()
+   && riscv_p_bitwise_imm_p (operands[2])
+   && riscv_p_bitwise_imm_p (operands[4])"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  rtx product[2];
+  for (unsigned int i = 0; i < 2; ++i)
+    {
+      rtx lhs = gen_reg_rtx (SImode);
+      rtx rhs = gen_reg_rtx (SImode);
+      emit_insn (gen_andsi3 (lhs, riscv_subword (operands[1], i != 0),
+			    riscv_subword (operands[2], i != 0)));
+      emit_insn (gen_andsi3 (rhs, riscv_subword (operands[3], i != 0),
+			    riscv_subword (operands[4], i != 0)));
+      product[i] = gen_reg_rtx (SImode);
+      emit_insn (gen_mulsi3 (product[i], lhs, rhs));
+    }
+  /* Consume both inputs before writing any overlapping destination.  */
+  for (unsigned int i = 0; i < 2; ++i)
+    emit_move_insn (riscv_subword (operands[0], i != 0), product[i]);
+  DONE;
+}
+  [(set_attr "type" "imul")
+   (set_attr "length" "32")])
 
 ;; Split PV2SI multiplication into element-wise scalar multiplications
 ;; when the pattern cannot be combined into more efficient forms (like PWMUL).
@@ -144,11 +530,11 @@
   DONE;
 })
 
-;; Split PV4HI multiplication into element-wise multiplications using mul.h00/mul.h11
-;; when the pattern cannot be combined into more efficient forms (like PWMUL).
-;; On RV32, PV4HI uses register pairs where each 32-bit word contains TWO packed
-;; 16-bit elements. We use mul.h00 and mul.h11 to multiply individual elements,
-;; then pack the results using shift and OR.
+;; Lower an unfused RV32 PV4HI product with MUL.H00/MUL.H11 and PACK
+;; (PPAIRE.H) to retain the low half of each product.  Use scalar bitwise
+;; RTL for PACK so its meaning is independent of vector element order.
+;; Read both source words before writing either result word, allowing
+;; complete source-pair reuse.
 (define_split
   [(set (match_operand:PV4HI 0 "register_operand")
         (mult:PV4HI (match_operand:PV4HI 1 "register_operand")
@@ -156,49 +542,25 @@
   "TARGET_RVP && !TARGET_64BIT && can_create_pseudo_p ()"
   [(const_int 0)]
 {
-  rtx dest_lo = riscv_subword (operands[0], false);
-  rtx dest_hi = riscv_subword (operands[0], true);
-  rtx src1_lo = riscv_subword (operands[1], false);
-  rtx src1_hi = riscv_subword (operands[1], true);
-  rtx src2_lo = riscv_subword (operands[2], false);
-  rtx src2_hi = riscv_subword (operands[2], true);
+  rtx products[4];
+  for (unsigned int i = 0; i < 2; ++i)
+    {
+      rtx op1 = riscv_subword (operands[1], i != 0);
+      rtx op2 = riscv_subword (operands[2], i != 0);
+      products[2 * i] = gen_reg_rtx (SImode);
+      products[2 * i + 1] = gen_reg_rtx (SImode);
+      emit_insn (gen_mulhisi3 (products[2 * i], gen_lowpart (HImode, op1),
+			     gen_lowpart (HImode, op2)));
+      emit_insn (gen_mul_h11 (products[2 * i + 1], op1, op2));
+    }
 
-  /* Each 32-bit word contains two 16-bit elements [e0, e1] or [e2, e3].
-     mul.h00 multiplies lower 16-bit elements: result in lower 16 bits
-     mul.h11 multiplies upper 16-bit elements: result in lower 16 bits
-     We pack them: (mul.h11 << 16) | (mul.h00 & 0xFFFF) */
-
-  /* Process lower word: elements [0] and [1] */
-  rtx temp_e0 = gen_reg_rtx (SImode);  /* element 0 result */
-  rtx temp_e1 = gen_reg_rtx (SImode);  /* element 1 result */
-  rtx temp_e1_shifted = gen_reg_rtx (SImode);
-  rtx temp_e0_masked = gen_reg_rtx (SImode);
-
-  /* mul_h00 expects HImode operands: extract lower 16 bits as HImode */
-  rtx src1_lo_hi = gen_lowpart (HImode, src1_lo);
-  rtx src2_lo_hi = gen_lowpart (HImode, src2_lo);
-
-  emit_insn (gen_mulhisi3 (temp_e0, src1_lo_hi, src2_lo_hi));
-  emit_insn (gen_mul_h11 (temp_e1, src1_lo, src2_lo));
-  emit_insn (gen_ashlsi3 (temp_e1_shifted, temp_e1, GEN_INT (16)));
-  emit_insn (gen_andsi3 (temp_e0_masked, temp_e0, GEN_INT (0xFFFF)));
-  emit_insn (gen_iorsi3 (dest_lo, temp_e1_shifted, temp_e0_masked));
-
-  /* Process upper word: elements [2] and [3] */
-  rtx temp_e2 = gen_reg_rtx (SImode);  /* element 2 result */
-  rtx temp_e3 = gen_reg_rtx (SImode);  /* element 3 result */
-  rtx temp_e3_shifted = gen_reg_rtx (SImode);
-  rtx temp_e2_masked = gen_reg_rtx (SImode);
-
-  /* mul_h00 expects HImode operands: extract lower 16 bits as HImode */
-  rtx src1_hi_hi = gen_lowpart (HImode, src1_hi);
-  rtx src2_hi_hi = gen_lowpart (HImode, src2_hi);
-
-  emit_insn (gen_mulhisi3 (temp_e2, src1_hi_hi, src2_hi_hi));
-  emit_insn (gen_mul_h11 (temp_e3, src1_hi, src2_hi));
-  emit_insn (gen_ashlsi3 (temp_e3_shifted, temp_e3, GEN_INT (16)));
-  emit_insn (gen_andsi3 (temp_e2_masked, temp_e2, GEN_INT (0xFFFF)));
-  emit_insn (gen_iorsi3 (dest_hi, temp_e3_shifted, temp_e2_masked));
+  for (unsigned int i = 0; i < 2; ++i)
+    {
+      rtx dest = riscv_subword (operands[0], i != 0);
+      emit_insn (gen_riscv_xpack_si_hi_2
+		 (dest, products[2 * i + 1], GEN_INT (16),
+		  gen_lowpart (HImode, products[2 * i])));
+    }
 
   DONE;
 })
@@ -212,12 +574,21 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
-(define_insn "*pwmulsu<rvp_narrow>3"
+(define_code_attr rvp_other_extend
+  [(sign_extend "zero_extend") (zero_extend "sign_extend")])
+
+(define_code_attr rvp_mixed_operands
+  [(sign_extend "%1, %2") (zero_extend "%2, %1")])
+
+(define_insn "*pwmul<su>mixed<rvp_narrow>3"
   [(set (match_operand:PVHW 0 "register_operand" "=r")
-        (mult:PVHW (zero_extend:PVHW (match_operand:<HALFMODE> 1 "register_operand" "r"))
-                   (sign_extend:PVHW (match_operand:<HALFMODE> 2 "register_operand" "r"))))]
+	(mult:PVHW
+	  (any_extend:PVHW
+	    (match_operand:<HALFMODE> 1 "register_operand" "r"))
+	  (<rvp_other_extend>:PVHW
+	    (match_operand:<HALFMODE> 2 "register_operand" "r"))))]
   "TARGET_RVP && !TARGET_64BIT"
-  "pwmulsu.<rvp_extend_width>\t%0, %2, %1"
+  "pwmulsu.<rvp_extend_width>\t%0, <rvp_mixed_operands>"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -231,15 +602,255 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
-(define_insn "*pwmaccsupv2hi3"
+(define_insn "*pwmacc<su>mixedpv2hi3"
   [(set (match_operand:PV2SI 0 "register_operand" "=r")
-        (plus:PV2SI (mult:PV2SI (zero_extend:PV2SI (match_operand:PV2HI 1 "register_operand" "r"))
-                                (sign_extend:PV2SI (match_operand:PV2HI 2 "register_operand" "r")))
-                    (match_operand:PV2SI 3 "register_operand" "0")))]
+	(plus:PV2SI
+	  (mult:PV2SI
+	    (any_extend:PV2SI (match_operand:PV2HI 1 "register_operand" "r"))
+	    (<rvp_other_extend>:PV2SI
+	      (match_operand:PV2HI 2 "register_operand" "r")))
+	  (match_operand:PV2SI 3 "register_operand" "0")))]
   "TARGET_RVP && !TARGET_64BIT"
-  "pwmaccsu.h\t%0, %2, %1"
+  "pwmaccsu.h\t%0, <rvp_mixed_operands>"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
+
+;; Scalar Q15 multiplication.  Extend each input to the full register so
+;; every unused halfword is zero or minus one and cannot saturate.
+(define_expand "<rvp_qmul_optab>hi3"
+  [(set (match_operand:HI 0 "register_operand")
+	(unspec:HI [(match_operand:HI 1 "register_operand")
+		    (match_operand:HI 2 "register_operand")]
+	 RVP_QMUL_OP))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+{
+  rtx op1 = convert_to_mode (word_mode, operands[1], false);
+  rtx op2 = convert_to_mode (word_mode, operands[2], false);
+  machine_mode mode = TARGET_64BIT ? PV4HImode : PV2HImode;
+  rtx dest = gen_reg_rtx (mode);
+  op1 = gen_lowpart (mode, op1);
+  op2 = gen_lowpart (mode, op2);
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_<rvp_qmul_half>_i16x4_rv64 (dest, op1, op2));
+  else
+    emit_insn (gen_riscv_<rvp_qmul_half>_i16x2 (dest, op1, op2));
+  emit_move_insn (operands[0], gen_lowpart (HImode, dest));
+  DONE;
+})
+
+;; Scalar Q31 multiplication.  Sign-extend both inputs on RV64 so the unused
+;; high lanes cannot saturate, and model the complete packed result write.
+(define_expand "<rvp_qmul_optab>si3"
+  [(set (match_operand:SI 0 "register_operand")
+	(unspec:SI [(match_operand:SI 1 "register_operand")
+		    (match_operand:SI 2 "register_operand")]
+	 RVP_QMUL_OP))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+{
+  if (TARGET_64BIT)
+    {
+      rtx op1 = convert_to_mode (DImode, operands[1], false);
+      rtx op2 = convert_to_mode (DImode, operands[2], false);
+      rtx dest = gen_reg_rtx (PV2SImode);
+      emit_insn (gen_riscv_<rvp_scalar_mul_packed>
+		 (dest, gen_lowpart (PV2SImode, op1),
+		  gen_lowpart (PV2SImode, op2)));
+      emit_move_insn (operands[0], gen_lowpart (SImode, dest));
+    }
+  else
+    emit_insn (gen_riscv_<rvp_scalar_mul_builtin>_rv32
+	       (operands[0], operands[1], operands[2]));
+  DONE;
+})
+
+;; Saturating scaled multiplication used by vectorized fixed-point code.
+(define_expand "<rvp_qmul_optab><mode>3"
+  [(set (match_operand:RVP_QMUL 0 "register_operand")
+	(unspec:RVP_QMUL [(match_operand:RVP_QMUL 1 "register_operand")
+			 (match_operand:RVP_QMUL 2 "register_operand")]
+	 RVP_QMUL_OP))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+{
+  if (<MODE>mode == PV2HImode)
+    emit_insn (gen_riscv_<rvp_qmul_half>_i16x2
+	       (operands[0], operands[1], operands[2]));
+  else if (<MODE>mode == PV4HImode)
+    emit_insn (gen_riscv_<rvp_qmul_half>_i16x4
+	       (operands[0], operands[1], operands[2]));
+  else if (TARGET_64BIT)
+    emit_insn (gen_riscv_<rvp_scalar_mul_packed>
+	       (operands[0], operands[1], operands[2]));
+  else
+    {
+      /* RV32 has scalar Q31 products.  Use a fresh pair so overlapping
+	 inputs remain intact until both lane results have been computed.  */
+      rtx dest = gen_reg_rtx (PV2SImode);
+      rtx op1 = force_reg (PV2SImode, operands[1]);
+      rtx op2 = force_reg (PV2SImode, operands[2]);
+      for (unsigned int byte = 0; byte < 8; byte += 4)
+	{
+	  rtx lane = simplify_gen_subreg (SImode, dest, PV2SImode, byte);
+	  rtx a = simplify_gen_subreg (SImode, op1, PV2SImode, byte);
+	  rtx b = simplify_gen_subreg (SImode, op2, PV2SImode, byte);
+	  emit_insn (gen_riscv_<rvp_scalar_mul_builtin>_rv32 (lane, a, b));
+	}
+      emit_move_insn (operands[0], dest);
+    }
+  DONE;
+})
+
+;; The shifted product of two signed halfwords is in [-32767, 32768].
+;; Clamping its upper end therefore gives the signed Q15 product.  Keep
+;; the extension separate so a subsequent narrowing can discard it.
+(define_split
+  [(set (match_operand:PV2SI 0 "register_operand")
+	(smin:PV2SI
+	  (ashiftrt:PV2SI
+	    (mult:PV2SI
+	      (sign_extend:PV2SI
+		(match_operand:PV2HI 1 "register_operand"))
+	      (sign_extend:PV2SI
+		(match_operand:PV2HI 2 "register_operand")))
+	    (const_int 15))
+	  (match_operand:PV2SI 3 "immediate_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && riscv_const_vector_broadcast_val_p (operands[3], 32767)"
+  [(set (match_dup 4)
+	(unspec:PV2HI [(match_dup 1) (match_dup 2)] UNSPEC_PMULQ))
+   (set (match_dup 0) (sign_extend:PV2SI (match_dup 4)))]
+  "{ operands[4] = gen_reg_rtx (PV2HImode); }")
+
+(define_split
+  [(set (match_operand:PV2SI 0 "register_operand")
+	(smin:PV2SI
+	  (ashiftrt:PV2SI
+	    (plus:PV2SI
+	      (mult:PV2SI
+		(sign_extend:PV2SI
+		  (match_operand:PV2HI 1 "register_operand"))
+		(sign_extend:PV2SI
+		  (match_operand:PV2HI 2 "register_operand")))
+	      (match_operand:PV2SI 3 "immediate_operand"))
+	    (const_int 15))
+	  (match_operand:PV2SI 4 "immediate_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && riscv_const_vector_broadcast_val_p (operands[3], 16384)
+   && riscv_const_vector_broadcast_val_p (operands[4], 32767)"
+  [(set (match_dup 5)
+	(unspec:PV2HI [(match_dup 1) (match_dup 2)] UNSPEC_PMULQR))
+   (set (match_dup 0) (sign_extend:PV2SI (match_dup 5)))]
+  "{ operands[5] = gen_reg_rtx (PV2HImode); }")
+
+;; Keep the rounding constant inside the product so combine can also see
+;; the shift and upper clamp.  An unfused product still uses the ordinary
+;; widening multiply-accumulate sequence.
+(define_insn_and_split "*rvp_q15_round_product"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(plus:PV2SI
+	  (mult:PV2SI
+	    (sign_extend:PV2SI
+	      (match_operand:PV2HI 1 "register_operand" "r"))
+	    (sign_extend:PV2SI
+	      (match_operand:PV2HI 2 "register_operand" "r")))
+	  (match_operand:PV2SI 3 "immediate_operand" "i")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && riscv_const_vector_broadcast_val_p (operands[3], 16384)"
+  "#"
+  "&& 1"
+  [(set (match_dup 4) (match_dup 3))
+   (set (match_dup 0)
+	(plus:PV2SI
+	  (mult:PV2SI (sign_extend:PV2SI (match_dup 1))
+		     (sign_extend:PV2SI (match_dup 2)))
+	  (match_dup 4)))]
+  "{ operands[4] = gen_reg_rtx (PV2SImode); }"
+  [(set_attr "type" "simd")
+   (set (attr "length") (if_then_else (match_test "TARGET_64BIT")
+				     (const_int 16) (const_int 12)))])
+
+;; Keep widening multiplication visible through combine, including the
+;; accumulation when available.  RV64 uses ZIP followed by a packed product;
+;; split before register allocation because these sequences need temporaries.
+(define_insn_and_split "*pwmul<su><rvp_narrow>3_rv64"
+  [(set (match_operand:PVHW 0 "register_operand" "=r")
+	(mult:PVHW
+	  (any_extend:PVHW
+	    (match_operand:<HALFMODE> 1 "register_operand" "r"))
+	  (any_extend:PVHW
+	    (match_operand:<HALFMODE> 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  riscv_p_split_widen_mult (operands[0], operands[1], operands[2], NULL_RTX,
+			    <CODE> == ZERO_EXTEND, false);
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "8")])
+
+(define_insn_and_split "*pwmul<su>mixed<rvp_narrow>3_rv64"
+  [(set (match_operand:PVHW 0 "register_operand" "=r")
+	(mult:PVHW
+	  (any_extend:PVHW
+	    (match_operand:<HALFMODE> 1 "register_operand" "r"))
+	  (<rvp_other_extend>:PVHW
+	    (match_operand:<HALFMODE> 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  if (<CODE> == ZERO_EXTEND)
+    std::swap (operands[1], operands[2]);
+  riscv_p_split_widen_mult (operands[0], operands[1], operands[2], NULL_RTX,
+			    false, true);
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "12")])
+
+(define_insn_and_split "*pwmacc<su>pv2hi3_rv64"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(plus:PV2SI
+	  (mult:PV2SI
+	    (any_extend:PV2SI (match_operand:PV2HI 1 "register_operand" "r"))
+	    (any_extend:PV2SI (match_operand:PV2HI 2 "register_operand" "r")))
+	  (match_operand:PV2SI 3 "register_operand" "r")))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  riscv_p_split_widen_mult (operands[0], operands[1], operands[2], operands[3],
+			    <CODE> == ZERO_EXTEND, false);
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "12")])
+
+(define_insn_and_split "*pwmacc<su>mixedpv2hi3_rv64"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(plus:PV2SI
+	  (mult:PV2SI
+	    (any_extend:PV2SI (match_operand:PV2HI 1 "register_operand" "r"))
+	    (<rvp_other_extend>:PV2SI
+	      (match_operand:PV2HI 2 "register_operand" "r")))
+	  (match_operand:PV2SI 3 "register_operand" "r")))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  if (<CODE> == ZERO_EXTEND)
+    std::swap (operands[1], operands[2]);
+  riscv_p_split_widen_mult (operands[0], operands[1], operands[2], operands[3],
+			    false, true);
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "length" "16")])
 
 (define_insn_and_split "mulpv2hi3"
   [(set (match_operand:PV2HI 0 "register_operand" "=r")
@@ -271,8 +882,15 @@
 
   rtx result_lo = gen_lowpart (HImode, temp_e0);
   rtx result_hi = gen_lowpart (HImode, temp_e1);
-
-  emit_insn (gen_ppaire_concatpv2hi (operands[0], result_lo, result_hi)); 
+  /* The low product occupies the low bits on either endian target.
+     VEC_CONCAT describes element order, so use bitwise RTL instead when
+     that order differs.  Retain little-endian lane folding otherwise.  */
+  if (TARGET_BIG_ENDIAN)
+    emit_insn (gen_riscv_xpack_si_hi_2
+	       (gen_lowpart (SImode, operands[0]), temp_e1, GEN_INT (16),
+		result_lo));
+  else
+    emit_insn (gen_ppaire_concatpv2hi (operands[0], result_lo, result_hi));
 
   DONE;
 }
@@ -658,7 +1276,7 @@
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(mult:DI (sign_extend:DI (match_operand:HI 1 "register_operand" "r"))
 		 (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& can_create_pseudo_p ()"
   [(const_int 0)]
@@ -692,7 +1310,7 @@
 	      (mult:DI (sign_extend:DI (match_dup 1))
 		       (sign_extend:DI (match_dup 2))) 4)
 	    (const_int 16))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "mulh.h0\t%0,%2,%1"
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")])
@@ -714,7 +1332,7 @@
 	      (mult:DI (sign_extend:DI (match_dup 1))
 		       (sign_extend:DI (match_dup 2))) 4)
 	    (const_int 16))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& can_create_pseudo_p ()"
   [(const_int 0)]
@@ -748,7 +1366,7 @@
                        (sign_extend:DI
                          (match_dup 2))) 4)
             (const_int 16))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "mulh.h1\t%0,%2,%1"
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")])       
@@ -768,7 +1386,7 @@
                    (ashiftrt:SI
 		     (match_operand:SI 2 "register_operand" "r")
 		     (const_int 16)))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& reload_completed"
   [(set (match_dup 3)
@@ -790,7 +1408,7 @@
 		   (match_operand:HI 1 "register_operand" "r"))
 		 (sign_extend:DI
 		   (match_operand:HI 2 "register_operand" "r"))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& reload_completed"
   [(set (match_dup 3)
@@ -819,7 +1437,7 @@
                                                        (const_int 16)))
                           (sign_extend:DI (ashiftrt:SI (subreg:SI (match_operand:PV2HI 4 "register_operand" "r") 0)
                                                        (const_int 16))))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& reload_completed"
   [(set (match_dup 0)
@@ -840,7 +1458,7 @@
                                                        (const_int 16)))
                           (sign_extend:DI (ashiftrt:SI (subreg:SI (match_dup 2) 0)
                                                        (const_int 16))))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "pm2wadd.h\t%0, %1, %2"
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")])
@@ -863,7 +1481,7 @@
                           (sign_extend:DI (match_operand:SI 4 "register_operand" "r")))))
    (clobber (match_scratch:SI 5 "=&r"))
    (clobber (match_scratch:SI 6 "=&r"))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "#"
   "&& reload_completed"
   [(set (match_dup 5) (ashiftrt:SI (subreg:SI (match_dup 2) 0) (const_int 16)))
@@ -886,7 +1504,7 @@
                  (mult:DI (sign_extend:DI (ashiftrt:SI (subreg:SI (match_dup 1) 0)
                                                        (const_int 16)))
                           (sign_extend:DI (subreg:HI (match_dup 2) 0)))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "pm2wadd.hx\t%0, %1, %2"
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")])
@@ -925,7 +1543,7 @@
                                                         (const_int 16)))
                            (sign_extend:DI (ashiftrt:SI (subreg:SI (match_dup 2) 0)
                                                         (const_int 16))))))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "pm2wsub.h\t%0, %1, %2"
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")])
@@ -1126,47 +1744,81 @@
   [(set_attr "type" "imul")
    (set_attr "mode" "DI")])
 
-;; Averaging arithmetic operations with standard optab names.
-;;
-;; GCC's tree-vect-patterns.cc recognizes widening average patterns like:
-;;   (int8_t)(((int16_t)a + (int16_t)b) >> 1)
-;; and lowers them to IFN_AVG_FLOOR/IFN_AVG_SUB_FLOOR, which map to
-;; avg<mode>3_floor/avg_sub<mode>3_floor optabs.
-;;
-;; P-extension averaging instructions:
-;;   paadd/paaddu: signed/unsigned averaging add: (a + b) >> 1
-;;   pasub/pasubu: signed/unsigned averaging subtract: (a - b) >> 1
-;;
-;; These instructions perform overflow-free averaging in hardware by
-;; widening operands internally before the add/subtract.
-;;
-;; Note: The RTL pattern uses (plus:PVALL ...) which has wraparound
-;; semantics at element boundaries. However, this correctly models the
-;; hardware behavior because paadd/paaddu internally widen operands
-;; before addition, avoiding overflow.
+;; Average the full-precision sum or difference, rounding toward -Inf.
+;; Extend before arithmetic: a wrapping narrow PLUS or MINUS followed by
+;; a shift is not equivalent.  This also preserves the borrow bit in an
+;; unsigned subtraction before truncating the shifted result.
+(define_expand "<u><savg_optab><mode>3_floor"
+  [(set (match_operand:PVMOVE 0 "register_operand")
+	(truncate:PVMOVE
+	  (ashiftrt:<PVALL_EXT>
+	    (avg_op:<PVALL_EXT>
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PVMOVE 1 "register_operand"))
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PVMOVE 2 "register_operand")))
+	    (const_int 1))))]
+  "TARGET_RVP")
 
-;; Signed averaging: avg<mode>3_floor -> paadd, avg_sub<mode>3_floor -> pasub
-(define_insn "<savg_optab><mode>3_floor"
+(define_insn "*rvp_<avg_insn><u><mode>"
   [(set (match_operand:PVALL 0 "register_operand" "=r")
-	(ashiftrt:PVALL
-	  (avg_op:PVALL (match_operand:PVALL 1 "register_operand" "r")
-			(match_operand:PVALL 2 "register_operand" "r"))
-	  (const_int 1)))]
+	(truncate:PVALL
+	  (ashiftrt:<PVALL_EXT>
+	    (avg_op:<PVALL_EXT>
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PVALL 1 "register_operand" "r"))
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PVALL 2 "register_operand" "r")))
+	    (const_int 1))))]
   "TARGET_RVP"
-  "<avg_insn>.<rvp_width>\t%0,%1,%2"
+  "<avg_insn><u>.<rvp_width>\t%0,%1,%2"
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
-;; Unsigned averaging: uavg<mode>3_floor -> paaddu, uavg_sub<mode>3_floor -> pasubu
-(define_insn "<uavg_optab><mode>3_floor"
-  [(set (match_operand:PVALL 0 "register_operand" "=r")
-	(lshiftrt:PVALL
-	  (avg_op:PVALL (match_operand:PVALL 1 "register_operand" "r")
-			(match_operand:PVALL 2 "register_operand" "r"))
-	  (const_int 1)))]
-  "TARGET_RVP"
-  "<avg_insn>u.<rvp_width>\t%0,%1,%2"
+(define_insn "*rvp_<avg_insn><u><mode>_pair"
+  [(set (match_operand:PV64 0 "register_operand" "=R")
+	(truncate:PV64
+	  (ashiftrt:<PVALL_EXT>
+	    (avg_op:<PVALL_EXT>
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PV64 1 "register_operand" "r"))
+	      (any_extend:<PVALL_EXT>
+		(match_operand:PV64 2 "register_operand" "r")))
+	    (const_int 1))))]
+  "TARGET_RVP && !TARGET_64BIT"
+  "<avg_insn><u>.<rvp_dwidth>\t%0,%1,%2"
   [(set_attr "type" "arith")
+   (set_attr "mode" "<MODE>")])
+
+;; Averaging a signed value with one is a rounded one-bit shift.  Match
+;; the widened addition so that the largest input cannot wrap.  These
+;; insns also preserve the single-instruction form after GIMPLE folding.
+(define_insn "*rvp_round_avg_one_<mode>"
+  [(set (match_operand:RVP_ROUND 0 "register_operand" "=r")
+	(truncate:RVP_ROUND
+	  (ashiftrt:<PVALL_EXT>
+	    (plus:<PVALL_EXT>
+	      (sign_extend:<PVALL_EXT>
+		(match_operand:RVP_ROUND 1 "register_operand" "r"))
+	      (match_operand:<PVALL_EXT> 2 "const_1_operand" ""))
+	    (const_int 1))))]
+  "TARGET_RVP && (TARGET_64BIT || <MODE>mode == PV2HImode)"
+  "psrari.<rvp_width>\t%0,%1,1"
+  [(set_attr "type" "simd")
+   (set_attr "mode" "<MODE>")])
+
+(define_insn "*rvp_round_avg_one_<mode>_pair"
+  [(set (match_operand:PVHW 0 "register_operand" "=R")
+	(truncate:PVHW
+	  (ashiftrt:<PVALL_EXT>
+	    (plus:<PVALL_EXT>
+	      (sign_extend:<PVALL_EXT>
+		(match_operand:PVHW 1 "register_operand" "r"))
+	      (match_operand:<PVALL_EXT> 2 "const_1_operand" ""))
+	    (const_int 1))))]
+  "TARGET_RVP && !TARGET_64BIT"
+  "psrari.<rvp_dwidth>\t%0,%1,1"
+  [(set_attr "type" "simd")
    (set_attr "mode" "<MODE>")])
 
 ;; Vector comparison expander for signed comparisons
@@ -1208,8 +1860,15 @@
   DONE;
 })
 
-;; Bitwise operations for 4-byte vector modes (always single register)
-(define_insn "<optab><mode>3"
+;; Keep encodable masks visible until the packed operations are split.
+(define_expand "<optab><mode>3"
+  [(set (match_operand:PVMOVE 0 "register_operand")
+	(any_bitwise:PVMOVE (match_operand:PVMOVE 1 "register_operand")
+			   (match_operand:PVMOVE 2 "riscv_p_bitwise_operand")))]
+  "TARGET_RVP")
+
+;; Bitwise operations for 4-byte vector modes (always single register).
+(define_insn "*rvp_<optab><mode>3"
   [(set (match_operand:PV32 0 "register_operand" "=r")
 	(any_bitwise:PV32 (match_operand:PV32 1 "register_operand" "r")
 			  (match_operand:PV32 2 "register_operand" "r")))]
@@ -1219,7 +1878,7 @@
    (set_attr "mode" "<MODE>")])
 
 ;; Bitwise operations for 8-byte vectors on RV64 (single register instruction).
-(define_insn "<optab><mode>3"
+(define_insn "*rvp_<optab><mode>3_rv64"
   [(set (match_operand:PV64 0 "register_operand" "=r")
 	(any_bitwise:PV64 (match_operand:PV64 1 "register_operand" "r")
 			  (match_operand:PV64 2 "register_operand" "r")))]
@@ -1229,13 +1888,13 @@
    (set_attr "mode" "<MODE>")])
 
 ;; Bitwise operations for 8-byte vectors on RV32 (register pair).
-;; Use early-clobber (=&r) to prevent the RA from assigning the destination
-;; pair to overlap with either source pair in a crossed fashion, which would
-;; cause wrong-code when the split fires after reload.
+;; Early-clobber prevents crossed overlap with a source pair.  The tied
+;; alternatives allow exact overlap with one source without extra moves;
+;; the other source still cannot overlap that destination pair.
 (define_insn_and_split "<optab><mode>3_rv32"
-  [(set (match_operand:PV64 0 "register_operand" "=&r")
-	(any_bitwise:PV64 (match_operand:PV64 1 "register_operand" "r")
-			  (match_operand:PV64 2 "register_operand" "r")))]
+  [(set (match_operand:PV64 0 "register_operand" "=&r,&r,&r")
+	(any_bitwise:PV64 (match_operand:PV64 1 "register_operand" "0,r,r")
+			  (match_operand:PV64 2 "register_operand" "r,0,r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "#"
   "&& reload_completed"
@@ -1251,6 +1910,121 @@
   }
   [(set_attr "type" "logical")
    (set_attr "mode" "<MODE>")])
+
+;; Each scalar word uses an ordinary logical immediate.  With just one
+;; register input, order the writes to preserve any overlapping source.
+;; Expose RV32 scalar-pair inputs before allocation so their independent
+;; words need not remain a single live range.  Keep packed inputs intact.
+(define_insn_and_split "*rvp_<optab><mode>3_imm"
+  [(set (match_operand:PVMOVE 0 "register_operand" "=r")
+	(any_bitwise:PVMOVE
+	  (match_operand:PVMOVE 1 "register_operand" "r")
+	  (match_operand:PVMOVE 2 "riscv_p_bitwise_operand" "Wpl")))]
+  "TARGET_RVP && riscv_p_bitwise_imm_p (operands[2])"
+  "#"
+  "&& (reload_completed
+       || (!TARGET_64BIT && can_create_pseudo_p ()
+	   && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+	   && SUBREG_P (operands[1])
+	   && GET_MODE (SUBREG_REG (operands[1])) == DImode))"
+  [(const_int 0)]
+{
+  unsigned int bytes = GET_MODE_SIZE (<MODE>mode).to_constant ();
+  scalar_int_mode part_mode = bytes == 4 || !TARGET_64BIT ? SImode : DImode;
+  unsigned int part_bytes = GET_MODE_SIZE (part_mode);
+  unsigned int count = bytes / part_bytes;
+  rtx dest[2], src[2], mask[2];
+  for (unsigned int i = 0; i < count; ++i)
+    {
+      unsigned int offset = i * part_bytes;
+      dest[i] = simplify_gen_subreg (part_mode, operands[0], <MODE>mode,
+				    offset);
+      src[i] = simplify_gen_subreg (part_mode, operands[1], <MODE>mode,
+				   offset);
+      mask[i] = simplify_gen_subreg (part_mode, operands[2], <MODE>mode,
+				    offset);
+    }
+  if (count == 2 && reg_overlap_mentioned_p (dest[0], src[1]))
+    {
+      std::swap (dest[0], dest[1]);
+      std::swap (src[0], src[1]);
+      std::swap (mask[0], mask[1]);
+    }
+  for (unsigned int i = 0; i < count; ++i)
+    emit_insn (gen_rtx_SET (dest[i],
+			   gen_rtx_<CODE> (part_mode, src[i], mask[i])));
+  DONE;
+}
+  [(set_attr "type" "logical")
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
+
+;; Packed forms of the Zbb inverted logical operations.  Keep the complete
+;; expression until after reload so combine can also build masked moves.
+;; On RV32, packed pairs start at even registers: complete source pairs can
+;; overlap the destination, but their low and high halves cannot cross.
+(define_insn_and_split "*rvp_<optab>_not<mode>"
+  [(set (match_operand:PVMOVE 0 "register_operand" "=r")
+	(bitmanip_bitwise:PVMOVE
+	  (not:PVMOVE (match_operand:PVMOVE 1 "register_operand" "r"))
+	  (match_operand:PVMOVE 2 "register_operand" "r")))]
+  "TARGET_RVP && (TARGET_ZBB || TARGET_ZBKB)"
+{
+  if (!TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8))
+    return "#";
+  return "<insn>n\t%0,%2,%1";
+}
+  "&& !TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+   && reload_completed"
+  [(set (match_dup 3)
+	(bitmanip_bitwise:SI (not:SI (match_dup 4)) (match_dup 5)))
+   (set (match_dup 6)
+	(bitmanip_bitwise:SI (not:SI (match_dup 7)) (match_dup 8)))]
+{
+  for (unsigned int i = 0; i < 3; ++i)
+    {
+      operands[i + 3] = gen_lowpart (SImode, operands[i]);
+      operands[i + 6] = gen_highpart (SImode, operands[i]);
+    }
+}
+  [(set_attr "type" "bitmanip")
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
+
+(define_insn_and_split "*rvp_xor_not<mode>"
+  [(set (match_operand:PVMOVE 0 "register_operand" "=r")
+	(not:PVMOVE
+	  (xor:PVMOVE (match_operand:PVMOVE 1 "register_operand" "r")
+		      (match_operand:PVMOVE 2 "register_operand" "r"))))]
+  "TARGET_RVP && (TARGET_ZBB || TARGET_ZBKB)"
+{
+  if (!TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8))
+    return "#";
+  return "xnor\t%0,%1,%2";
+}
+  "&& !TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+   && reload_completed"
+  [(set (match_dup 3) (not:SI (xor:SI (match_dup 4) (match_dup 5))))
+   (set (match_dup 6) (not:SI (xor:SI (match_dup 7) (match_dup 8))))]
+{
+  for (unsigned int i = 0; i < 3; ++i)
+    {
+      operands[i + 3] = gen_lowpart (SImode, operands[i]);
+      operands[i + 6] = gen_highpart (SImode, operands[i]);
+    }
+}
+  [(set_attr "type" "bitmanip")
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
 
 ;; Bitwise NOT for 4-byte vector modes (always single register)
 (define_insn "one_cmpl<mode>2"
@@ -1296,6 +2070,16 @@
 ;; PLUI.W rd, imm10 - Broadcast (imm10 << 22) to all words (RV64)
 ;;
 ;; These patterns are handled by riscv_output_move via riscv_output_pli.
+
+;; Initialize packed vectors from scalar elements, including repeated groups.
+(define_expand "vec_init<mode><rvp_inner_mode>"
+  [(match_operand:PVMOVE 0 "register_operand")
+   (match_operand 1 "")]
+  "TARGET_RVP"
+{
+  riscv_p_expand_vec_init (operands[0], operands[1]);
+  DONE;
+})
 
 ;; vec_duplicate patterns for PLI.B/PLI.H/PLI.W
 (define_insn "*riscv_pli_vec"
@@ -1422,7 +2206,121 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
+;; A full-width extension of a halfword swap can retain the compact
+;; rev8/shift sequence without restricting native narrow consumers.
+(define_insn_and_split "*bswaphi_<su>_<mode>_rvp"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(any_extend:X
+	  (bswap:HI (match_operand:HI 1 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_ZBB"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0) (bswap:X (match_dup 2)))
+   (set (match_dup 0) (match_dup 3))]
+{
+  operands[2] = gen_lowpart (<MODE>mode, operands[1]);
+  operands[3] = gen_rtx_fmt_ee (<CODE> == ZERO_EXTEND ? LSHIFTRT : ASHIFTRT,
+			       <MODE>mode, operands[0],
+			       GEN_INT (GET_MODE_BITSIZE (<MODE>mode) - 16));
+}
+  [(set_attr "type" "bitmanip")
+   (set_attr "mode" "<MODE>")
+   (set_attr "length" "8")])
+
+;; Only the low halfword is defined for a scalar HImode byte swap.  Do not
+;; imply that the other bits are zero; callers may require an extension.
+(define_insn "riscv_bswaphi2"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+	(bswap:HI (match_operand:HI 1 "register_operand" "r")))]
+  "TARGET_RVP"
+  "ppairoe.b\t%0,%1,%1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "HI")])
+
+;; Byte reversal within each halfword, without reversing halfword order.
+(define_insn "riscv_bswap16_pv4qi"
+  [(set (match_operand:PV4QI 0 "register_operand" "=r")
+	(vec_select:PV4QI
+	  (match_operand:PV4QI 1 "register_operand" "r")
+	  (parallel [(const_int 1) (const_int 0)
+		     (const_int 3) (const_int 2)])))]
+  "TARGET_RVP"
+  "ppairoe.b\t%0,%1,%1"
+  [(set_attr "type" "simd")
+   (set_attr "mode" "PV4QI")])
+
+(define_insn "riscv_bswap16_pv8qi"
+  [(set (match_operand:PV8QI 0 "register_operand" "=r")
+	(vec_select:PV8QI
+	  (match_operand:PV8QI 1 "register_operand" "r")
+	  (parallel [(const_int 1) (const_int 0)
+		     (const_int 3) (const_int 2)
+		     (const_int 5) (const_int 4)
+		     (const_int 7) (const_int 6)])))]
+  "TARGET_RVP"
+  "ppairoe.%d0\t%0,%1,%1"
+  [(set_attr "type" "simd")
+   (set_attr "mode" "PV8QI")])
+
+;; Reverse bytes within each word.  After allocation, reuse the result
+;; for the intermediate byte swap.  PV8QI pairs cannot partially overlap.
+(define_insn_and_split "riscv_bswap32_pv8qi"
+  [(set (match_operand:PV8QI 0 "register_operand" "=r")
+	(vec_select:PV8QI
+	  (match_operand:PV8QI 1 "register_operand" "r")
+	  (parallel [(const_int 3) (const_int 2)
+		     (const_int 1) (const_int 0)
+		     (const_int 7) (const_int 6)
+		     (const_int 5) (const_int 4)])))]
+  "TARGET_RVP"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0)
+	(vec_select:PV8QI (match_dup 1)
+	  (parallel [(const_int 1) (const_int 0)
+		     (const_int 3) (const_int 2)
+		     (const_int 5) (const_int 4)
+		     (const_int 7) (const_int 6)])))
+   (set (match_dup 0)
+	(vec_select:PV8QI (match_dup 0)
+	  (parallel [(const_int 2) (const_int 3)
+		     (const_int 0) (const_int 1)
+		     (const_int 6) (const_int 7)
+		     (const_int 4) (const_int 5)])))]
+  ""
+  [(set_attr "type" "simd")
+   (set_attr "mode" "PV8QI")
+   (set_attr "length" "8")])
+
+(define_insn "*riscv_swap_halfwords_pv8qi"
+  [(set (match_operand:PV8QI 0 "register_operand" "=r")
+	(vec_select:PV8QI
+	  (match_operand:PV8QI 1 "register_operand" "r")
+	  (parallel [(const_int 2) (const_int 3)
+		     (const_int 0) (const_int 1)
+		     (const_int 6) (const_int 7)
+		     (const_int 4) (const_int 5)])))]
+  "TARGET_RVP"
+{
+  return TARGET_64BIT ? "ppairoe.h\t%0,%1,%1" : "ppairoe.dh\t%0,%1,%1";
+}
+  [(set_attr "type" "simd")
+   (set_attr "mode" "PV8QI")])
+
 ;; Pack operations for scalar mode
+;; Element reversal of PV2HI: ppairoe.h with rs1 == rs2 interleaves the odd
+;; and even halfwords of the source, which for one 32-bit register is the
+;; halfword reversal (__riscv_prev_i16x2/u16x2).
+(define_insn "*prev_pv2hi"
+  [(set (match_operand:PV2HI 0 "register_operand" "=r")
+	(vec_select:PV2HI
+	  (match_operand:PV2HI 1 "register_operand" "r")
+	  (parallel [(const_int 1) (const_int 0)])))]
+  "TARGET_RVP"
+  "ppairoe.h\t%0,%1,%1"
+  [(set_attr "type" "simd")
+   (set_attr "mode" "SI")])
+
 (define_insn "*ppairoe_h_1"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(ior:SI (ashift:SI (match_operand:SI 1 "register_operand" "r")
@@ -1565,9 +2463,11 @@
       (match_operand:PV2HI 2 "register_operand" "r, r")
       (match_operand:SI 3 "immediate_operand" "k01, k02")))]
   "TARGET_RVP"
-  "@
-   ppaireo.h\t%0, %1, %2
-   ppaire.h\t%0, %2, %1"
+{
+  if ((which_alternative == 0) != TARGET_BIG_ENDIAN)
+    return "ppaireo.h\t%0, %1, %2";
+  return "ppaire.h\t%0, %2, %1";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1594,9 +2494,387 @@
       (match_operand:PV2SI 2 "register_operand" "r, r")
       (match_operand:SI 3 "immediate_operand" "k01, k02")))]
   "TARGET_RVP && TARGET_64BIT"
-  "@
-   ppaireo.w\t%0, %1, %2
-   pack\t%0, %2, %1"
+{
+  if ((which_alternative == 0) != TARGET_BIG_ENDIAN)
+    return "ppaireo.w\t%0, %1, %2";
+  return "pack\t%0, %2, %1";
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+;; Only the low halfword is defined.  PPAIRE.B takes the low byte from each
+;; source, so neither source needs extending to XLEN first.
+(define_insn "riscv_p_pack_byteshi"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+        (ior:HI
+          (zero_extend:HI (match_operand:QI 1 "register_operand" "r"))
+          (ashift:HI
+            (zero_extend:HI (match_operand:QI 2 "register_operand" "r"))
+            (const_int 8))))]
+  "TARGET_RVP"
+  "ppaire.b\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "HI")])
+
+;; Only the low word is defined; PPAIRE.H does not sign-extend bit 31.
+(define_insn "riscv_p_pack_halfwordssi"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(ior:SI
+	  (ashift:SI (match_operand:SI 1 "register_operand" "r")
+		     (const_int 16))
+	  (zero_extend:SI (match_operand:HI 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaire.h\t%0, %2, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "SI")])
+
+;; Keep the promoted scalar form and expose the low-word result before
+;; allocation.  Unlike PACKW, this operation needs an explicit sign
+;; extension after PPAIRE.H.
+(define_insn_and_split "*riscv_p_pack_halfwordsdi_sext_hi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (ashift:DI
+	    (sign_extend:DI (match_operand:HI 1 "register_operand" "r"))
+	    (const_int 16))
+	  (zero_extend:DI (match_operand:HI 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_ZBKB"
+  "#"
+  "&& 1"
+  [(set (match_dup 3)
+	(ior:SI (ashift:SI (match_dup 4) (const_int 16))
+		(zero_extend:SI (match_dup 2))))
+   (set (match_dup 0) (sign_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_lowpart (SImode, operands[0]);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+}
+  [(set_attr "type" "arith")
+   (set_attr "length" "8")
+   (set_attr "mode" "DI")])
+
+(define_insn_and_split "*riscv_p_pack_halfwordsdi_sext_si"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (sign_extend:DI
+	    (ashift:SI (match_operand:SI 1 "register_operand" "r")
+		       (const_int 16)))
+	  (zero_extend:DI (match_operand:HI 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_ZBKB"
+  "#"
+  "&& 1"
+  [(set (match_dup 3)
+	(ior:SI (ashift:SI (match_dup 1) (const_int 16))
+		(zero_extend:SI (match_dup 2))))
+   (set (match_dup 0) (sign_extend:DI (match_dup 3)))]
+  "operands[3] = gen_lowpart (SImode, operands[0]);"
+  [(set_attr "type" "arith")
+   (set_attr "length" "8")
+   (set_attr "mode" "DI")])
+
+;; Narrow a masked insertion before extending its result.  The low field
+;; fits in a halfword within its low word, but may not yet have been
+;; substituted by combine.  Keeping its HI view lets a later combination
+;; absorb the field producer without assuming anything about the high
+;; input's upper word.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_extend:DI
+	  (match_operator:SI 3 "subreg_lowpart_operator"
+	    [(ior:DI
+	       (and:DI (match_operand:DI 1 "register_operand")
+		       (const_int -65536))
+	       (match_operand:DI 2 "register_operand"))])))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && (nonzero_bits (operands[2], DImode)
+       & HOST_WIDE_INT_UC (0xffff0000)) == 0"
+  [(set (match_dup 4)
+	(ior:SI (and:SI (match_dup 5) (const_int -65536))
+		(zero_extend:SI (match_dup 6))))
+   (set (match_dup 0) (any_extend:DI (match_dup 4)))]
+{
+  operands[4] = gen_reg_rtx (SImode);
+  operands[5] = gen_lowpart (SImode, operands[1]);
+  operands[6] = gen_lowpart (HImode, operands[2]);
+})
+
+;; Zero extension can instead be folded into the high field's mask.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand")
+		  (const_int 4294901760))
+	  (match_operand:DI 2 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && (nonzero_bits (operands[2], DImode) & ~HOST_WIDE_INT_UC (65535)) == 0"
+  [(set (match_dup 3)
+	(ior:SI (and:SI (match_dup 4) (const_int -65536))
+		(zero_extend:SI (match_dup 5))))
+   (set (match_dup 0) (zero_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+  operands[5] = gen_lowpart (HImode, operands[2]);
+})
+
+;; An explicitly extended SI field has the same low-halfword bound.  Its
+;; upper bits are defined by the extension, unlike a paradoxical subreg.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand")
+		  (const_int 4294901760))
+	  (zero_extend:DI (match_operand:SI 2 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && (nonzero_bits (operands[2], SImode) & ~HOST_WIDE_INT_UC (65535)) == 0"
+  [(set (match_dup 3)
+	(ior:SI (and:SI (match_dup 4) (const_int -65536))
+		(zero_extend:SI (match_dup 5))))
+   (set (match_dup 0) (zero_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+  operands[5] = gen_lowpart (HImode, operands[2]);
+})
+
+;; Substituting a halfword extraction into the narrowed insertion can
+;; leave a redundant AND.  Its low half is all ones, while its high half
+;; repeats the high field already selected by the inner AND.  Recognize
+;; this as an instruction too, since a two-insn combine does not try
+;; machine-description splits.
+(define_insn_and_split "*riscv_p_pair_odd_halfwordssi_mask"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(and:SI
+	  (ior:SI
+	    (and:SI (match_operand:SI 1 "register_operand" "r")
+		    (const_int -65536))
+	    (lshiftrt:SI (match_operand:SI 2 "register_operand" "r")
+			 (const_int 16)))
+	  (ior:SI (match_dup 1) (const_int 65535))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "#"
+  "&& 1"
+  [(set (match_dup 0)
+	(ior:SI (and:SI (match_dup 1) (const_int -65536))
+		(lshiftrt:SI (match_dup 2) (const_int 16))))]
+  ""
+  [(set_attr "type" "arith")
+   (set_attr "mode" "SI")])
+
+;; A promoted word insertion can lose its explicit sign extension during
+;; combine.  Only use the low-word pair when the preserved high part is
+;; already sign-extended.  Record that proof before allocation, since the
+;; pair instruction itself does not define a sign-extended DI result.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand")
+		  (const_int -65536))
+	  (zero_extend:DI (match_operand:HI 2 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && num_sign_bit_copies (operands[1], DImode) >= 33"
+  [(set (match_dup 3)
+	(ior:SI (and:SI (match_dup 4) (const_int -65536))
+		(zero_extend:SI (match_dup 2))))
+   (set (match_dup 0) (sign_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+})
+
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand")
+		  (const_int -65536))
+	  (zero_extract:DI (match_operand:DI 2 "register_operand")
+			   (const_int 16) (const_int 16))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && num_sign_bit_copies (operands[1], DImode) >= 33"
+  [(set (match_dup 3)
+	(ior:SI (and:SI (match_dup 4) (const_int -65536))
+		(lshiftrt:SI (match_dup 5) (const_int 16))))
+   (set (match_dup 0) (sign_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+  operands[5] = gen_lowpart (SImode, operands[2]);
+})
+
+;; Here the shifted signed halfword makes the extension explicit, while
+;; the extracted low field cannot affect the result sign bit.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(ior:DI
+	  (ashift:DI
+	    (sign_extend:DI (match_operand:HI 1 "register_operand"))
+	    (const_int 16))
+	  (zero_extract:DI (match_operand:DI 2 "register_operand")
+			   (const_int 16) (const_int 16))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  [(set (match_dup 3)
+	(ior:SI (ashift:SI (match_dup 4) (const_int 16))
+		(lshiftrt:SI (match_dup 5) (const_int 16))))
+   (set (match_dup 0) (sign_extend:DI (match_dup 3)))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+  operands[4] = gen_lowpart (SImode, operands[1]);
+  operands[5] = gen_lowpart (SImode, operands[2]);
+})
+
+;; Scalar views of the two halfword pairs in a 64-bit register.  Keep the
+;; masks recognizable on their own so that combine can first absorb their
+;; constant loads, then combine the two fields.  The masks are
+;; 0x0000ffff0000ffff and 0xffff0000ffff0000, respectively.
+(define_insn "*riscv_p_mask_even_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(and:DI (match_operand:DI 1 "register_operand" "r")
+		(const_int 281470681808895)))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaire.h\t%0, %1, zero"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_mask_odd_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(and:DI (match_operand:DI 1 "register_operand" "r")
+		(const_int -281470681808896)))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaireo.h\t%0, zero, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_shift_even_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(and:DI
+	  (ashift:DI (match_operand:DI 1 "register_operand" "r")
+		     (const_int 16))
+	  (const_int -281470681808896)))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaire.h\t%0, zero, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_shift_odd_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(and:DI
+	  (lshiftrt:DI (match_operand:DI 1 "register_operand" "r")
+		      (const_int 16))
+	  (const_int 281470681808895)))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppairo.h\t%0, %1, zero"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_even_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI
+	    (ashift:DI (match_operand:DI 1 "register_operand" "r")
+		       (const_int 16))
+	    (const_int -281470681808896))
+	  (and:DI (match_operand:DI 2 "register_operand" "r")
+		  (const_int 281470681808895))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaire.h\t%0, %2, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_even_halfwordsdi_commuted"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand" "r")
+		  (const_int 281470681808895))
+	  (and:DI
+	    (ashift:DI (match_operand:DI 2 "register_operand" "r")
+		       (const_int 16))
+	    (const_int -281470681808896))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaire.h\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_even_odd_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand" "r")
+		  (const_int 281470681808895))
+	  (and:DI (match_operand:DI 2 "register_operand" "r")
+		  (const_int -281470681808896))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaireo.h\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_even_odd_halfwordsdi_commuted"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand" "r")
+		  (const_int -281470681808896))
+	  (and:DI (match_operand:DI 2 "register_operand" "r")
+		  (const_int 281470681808895))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppaireo.h\t%0, %2, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_odd_even_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI
+	    (ashift:DI (match_operand:DI 1 "register_operand" "r")
+		       (const_int 16))
+	    (const_int -281470681808896))
+	  (and:DI
+	    (lshiftrt:DI (match_operand:DI 2 "register_operand" "r")
+			(const_int 16))
+	    (const_int 281470681808895))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppairoe.h\t%0, %2, %1"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_odd_even_halfwordsdi_commuted"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI
+	    (lshiftrt:DI (match_operand:DI 1 "register_operand" "r")
+			(const_int 16))
+	    (const_int 281470681808895))
+	  (and:DI
+	    (ashift:DI (match_operand:DI 2 "register_operand" "r")
+		       (const_int 16))
+	    (const_int -281470681808896))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppairoe.h\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_odd_halfwordsdi"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI
+	    (lshiftrt:DI (match_operand:DI 1 "register_operand" "r")
+			(const_int 16))
+	    (const_int 281470681808895))
+	  (and:DI (match_operand:DI 2 "register_operand" "r")
+		  (const_int -281470681808896))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppairo.h\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn "*riscv_p_pair_odd_halfwordsdi_commuted"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand" "r")
+		  (const_int -281470681808896))
+	  (and:DI
+	    (lshiftrt:DI (match_operand:DI 2 "register_operand" "r")
+			(const_int 16))
+	    (const_int 281470681808895))))]
+  "TARGET_RVP && TARGET_64BIT"
+  "ppairo.h\t%0, %2, %1"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -1604,24 +2882,31 @@
 ;; halfword of each operand into a 32-bit word, which is what is needed for
 ;; both RV32 and RV64; on RV64 a plain PACK would instead concatenate the
 ;; full 32-bit halves and produce a wrong result.  On RV32 PPAIRE.H is an
-;; alias of PACK, so this is also correct there.
+;; alias of PACK, so this is also correct there.  VEC_CONCAT names logical
+;; elements, whereas the instruction puts its first source in the low bits.
 (define_insn "ppaire_concatpv2hi"
   [(set (match_operand:PV2HI 0 "register_operand" "=r")
         (vec_concat:PV2HI
           (match_operand:HI 1 "register_operand" "r") 
           (match_operand:HI 2 "register_operand" "r")))]
   "TARGET_RVP"
-  "ppaire.h\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.h\t%0, %2, %1"
+			   : "ppaire.h\t%0, %1, %2";
+}
   [(set_attr "type"  "arith")
    (set_attr "mode"  "SI")])
 
-(define_insn "*pack_concatpv2si"
+(define_insn "pack_concatpv2si"
   [(set (match_operand:PV2SI 0 "register_operand" "=r")
         (vec_concat:PV2SI
           (match_operand:SI 1 "register_operand" "r") 
           (match_operand:SI 2 "register_operand" "r")))]
   "TARGET_RVP && TARGET_64BIT"
-  "pack\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "pack\t%0, %2, %1"
+			   : "pack\t%0, %1, %2";
+}
   [(set_attr "type"  "arith")
    (set_attr "mode"  "DI")])
 
@@ -1731,7 +3016,10 @@
                             (parallel [(const_int 0) (const_int 0)]))
           (const_int 2)))]
   "TARGET_RVP"
-  "ppaire.h\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairo.h\t%0, %2,%1"
+			   : "ppaire.h\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1744,7 +3032,10 @@
                             (parallel [(const_int 0) (const_int 0)]))
           (const_int 2)))]
   "TARGET_RVP"
-  "ppaireo.h\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaireo.h\t%0, %2,%1"
+			   : "ppaireo.h\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1757,7 +3048,10 @@
                             (parallel [(const_int 1) (const_int 1)]))
           (const_int 2)))]
   "TARGET_RVP"
-  "ppairoe.h\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairoe.h\t%0, %2,%1"
+			   : "ppairoe.h\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1770,7 +3064,10 @@
                             (parallel [(const_int 1) (const_int 1)]))
           (const_int 2)))]
   "TARGET_RVP"
-  "ppairo.h\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.h\t%0, %2,%1"
+			   : "ppairo.h\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1783,7 +3080,10 @@
                             (parallel [(const_int 0) (const_int 0)]))
           (const_int 2)))]
   "TARGET_RVP && TARGET_64BIT"
-  "pack\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairo.w\t%0,%2,%1"
+			   : "pack\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -1796,7 +3096,10 @@
                             (parallel [(const_int 0) (const_int 0)]))
           (const_int 2)))]
   "TARGET_RVP && TARGET_64BIT"
-  "ppaireo.w\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaireo.w\t%0, %2,%1"
+			   : "ppaireo.w\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -1809,7 +3112,10 @@
                             (parallel [(const_int 1) (const_int 1)]))
           (const_int 2)))]
   "TARGET_RVP && TARGET_64BIT"
-  "ppairoe.w\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairoe.w\t%0, %2,%1"
+			   : "ppairoe.w\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -1822,7 +3128,10 @@
                             (parallel [(const_int 1) (const_int 1)]))
           (const_int 2)))]
   "TARGET_RVP && TARGET_64BIT"
-  "ppairo.w\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.w\t%0, %2,%1"
+			   : "ppairo.w\t%0, %1, %2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -1845,7 +3154,10 @@
                                        (const_int 2) (const_int 2)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppaire.b\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairo.b\t%0,%2,%1"
+			   : "ppaire.b\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1864,7 +3176,10 @@
                                        (const_int 2) (const_int 2)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppaire.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairo.%d0\t%0,%2,%1"
+			   : "ppaire.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV4HI")])
 
@@ -1883,7 +3198,10 @@
                                        (const_int 2) (const_int 2)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppaireo.b\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaireo.b\t%0,%2,%1"
+			   : "ppaireo.b\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1902,7 +3220,10 @@
                                        (const_int 2) (const_int 2)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppaireo.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaireo.%d0\t%0,%2,%1"
+			   : "ppaireo.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV4HI")])
 
@@ -1921,7 +3242,10 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppairoe.b\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairoe.b\t%0,%2,%1"
+			   : "ppairoe.b\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1940,7 +3264,10 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppairoe.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairoe.%d0\t%0,%2,%1"
+			   : "ppairoe.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV4HI")])
 
@@ -1959,7 +3286,10 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppairo.b\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.b\t%0,%2,%1"
+			   : "ppairo.b\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -1978,7 +3308,10 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 10)))]
   "TARGET_RVP"
-  "ppairo.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.%d0\t%0,%2,%1"
+			   : "ppairo.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV4HI")])
 
@@ -2006,7 +3339,10 @@
                                        (const_int 6) (const_int 6)]))
           (const_int 170)))]
   "TARGET_RVP"
-  "ppaire.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairo.%d0\t%0,%2,%1"
+			   : "ppaire.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV8QI")])
 
@@ -2031,7 +3367,10 @@
                                        (const_int 6) (const_int 6)]))
           (const_int 170)))]
   "TARGET_RVP"
-  "ppaireo.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaireo.%d0\t%0,%2,%1"
+			   : "ppaireo.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV8QI")])
 
@@ -2056,7 +3395,10 @@
                                        (const_int 7) (const_int 7)]))
           (const_int 170)))]
   "TARGET_RVP"
-  "ppairoe.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppairoe.%d0\t%0,%2,%1"
+			   : "ppairoe.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV8QI")])
 
@@ -2081,7 +3423,10 @@
                                        (const_int 7) (const_int 7)]))
           (const_int 170)))]
   "TARGET_RVP"
-  "ppairo.%d0\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "ppaire.%d0\t%0,%2,%1"
+			   : "ppairo.%d0\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "PV8QI")])
 
@@ -2103,7 +3448,9 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 170)))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip8p\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "zip8hp\t%0,%2,%1" : "zip8p\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2122,7 +3469,9 @@
                                        (const_int 7) (const_int 7)]))
           (const_int 170)))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip8hp\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "zip8p\t%0,%2,%1" : "zip8hp\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2131,7 +3480,34 @@
 ;; source -- and differ only in whether the 64-bit result is one register or an
 ;; even-odd pair, which the PV8QI mode already expresses.  The PV4QI zip
 ;; permutes take the low or high half of this result.
-(define_insn "riscv_zip8p_pv4qi"
+(define_expand "riscv_zip8p_pv4qi"
+  [(set (match_operand:PV8QI 0 "register_operand")
+	(vec_select:PV8QI
+	  (vec_concat:PV8QI (match_operand:PV4QI 1 "register_operand")
+			    (match_operand:PV4QI 2 "register_operand"))
+	  (parallel [(const_int 0) (const_int 4)
+		     (const_int 1) (const_int 5)
+		     (const_int 2) (const_int 6)
+		     (const_int 3) (const_int 7)])))]
+  "TARGET_RVP"
+{
+  if (!TARGET_64BIT && TARGET_BIG_ENDIAN)
+    {
+      /* WZIP writes its low word to the even register.  Adapt that
+	 physical pair to GCC's big-endian vector word order.  */
+      rtx raw = gen_reg_rtx (PV8QImode);
+      rtx result = gen_reg_rtx (PV8QImode);
+      emit_insn (gen_riscv_pzip_i8x8_rv32 (raw, operands[2], operands[1]));
+      emit_move_insn (gen_highpart (PV4QImode, result),
+		     gen_lowpart (PV4QImode, raw));
+      emit_move_insn (gen_lowpart (PV4QImode, result),
+		     gen_highpart (PV4QImode, raw));
+      emit_move_insn (operands[0], result);
+      DONE;
+    }
+})
+
+(define_insn "*riscv_zip8p_pv4qi"
   [(set (match_operand:PV8QI 0 "register_operand" "=r")
 	(vec_select:PV8QI
 	  (vec_concat:PV8QI (match_operand:PV4QI 1 "register_operand" "r")
@@ -2140,10 +3516,10 @@
 		     (const_int 1) (const_int 5)
 		     (const_int 2) (const_int 6)
 		     (const_int 3) (const_int 7)])))]
-  "TARGET_RVP"
+  "TARGET_RVP && (TARGET_64BIT || !TARGET_BIG_ENDIAN)"
   {
     if (TARGET_64BIT)
-      return "zip8p\t%0, %1, %2";
+      return TARGET_BIG_ENDIAN ? "zip8p\t%0,%2,%1" : "zip8p\t%0,%1,%2";
     return "wzip8p\t%0, %1, %2";
   }
   [(set_attr "type" "arith")
@@ -2163,7 +3539,9 @@
                                        (const_int 1) (const_int 1)]))
           (const_int 10)))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip16p\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "zip16hp\t%0,%2,%1" : "zip16p\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2178,7 +3556,9 @@
                                        (const_int 3) (const_int 3)]))
           (const_int 10)))]
   "TARGET_RVP && TARGET_64BIT"
-  "zip16hp\t%0, %1, %2"
+{
+  return TARGET_BIG_ENDIAN ? "zip16p\t%0,%2,%1" : "zip16hp\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2194,8 +3574,10 @@
           (vec_select:PV4QI (match_operand:PV8QI 2 "register_operand" "r")
                             (parallel [(const_int 0) (const_int 2)
                                        (const_int 4) (const_int 6)]))))]
-  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN"
-  "unzip8p\t%0, %1, %2"
+  "TARGET_RVP && TARGET_64BIT"
+{
+  return TARGET_BIG_ENDIAN ? "unzip8hp\t%0,%2,%1" : "unzip8p\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2208,8 +3590,10 @@
           (vec_select:PV4QI (match_operand:PV8QI 2 "register_operand" "r")
                             (parallel [(const_int 1) (const_int 3)
                                        (const_int 5) (const_int 7)]))))]
-  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN"
-  "unzip8hp\t%0, %1, %2"
+  "TARGET_RVP && TARGET_64BIT"
+{
+  return TARGET_BIG_ENDIAN ? "unzip8p\t%0,%2,%1" : "unzip8hp\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2223,8 +3607,10 @@
                             (parallel [(const_int 0) (const_int 2)]))
           (vec_select:PV2HI (match_operand:PV4HI 2 "register_operand" "r")
                             (parallel [(const_int 0) (const_int 2)]))))]
-  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN"
-  "unzip16p\t%0, %1, %2"
+  "TARGET_RVP && TARGET_64BIT"
+{
+  return TARGET_BIG_ENDIAN ? "unzip16hp\t%0,%2,%1" : "unzip16p\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2235,8 +3621,10 @@
                             (parallel [(const_int 1) (const_int 3)]))
           (vec_select:PV2HI (match_operand:PV4HI 2 "register_operand" "r")
                             (parallel [(const_int 1) (const_int 3)]))))]
-  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN"
-  "unzip16hp\t%0, %1, %2"
+  "TARGET_RVP && TARGET_64BIT"
+{
+  return TARGET_BIG_ENDIAN ? "unzip16p\t%0,%2,%1" : "unzip16hp\t%0,%1,%2";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2336,7 +3724,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (plus:DI (sign_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wadd\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2347,7 +3735,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (minus:DI (sign_extend:DI (match_operand:SI 1 "register_operand" "r"))
                   (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wsub\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2358,7 +3746,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (plus:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (zero_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "waddu\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2369,7 +3757,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (minus:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
                   (zero_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wsubu\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2384,7 +3772,7 @@
         (plus:DI (plus:DI (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
                           (any_extend:DI (match_operand:SI 2 "reg_or_0_operand" "rJ")))
                        (match_operand:DI 3 "register_operand" "0")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wadda<u>\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2394,7 +3782,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (plus:DI (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (match_operand:DI 2 "register_operand" "0")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wadda<u>\t%0, %1, zero"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2410,7 +3798,7 @@
         (plus:DI (minus:DI (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
                           (any_extend:DI (match_operand:SI 2 "register_operand" "r")))
                        (match_operand:DI 3 "register_operand" "0")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wsuba<u>\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2421,7 +3809,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (plus:DI (match_operand:DI 1 "register_operand" "R")
                  (match_operand:DI 2 "register_operand" "R")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "addd\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2435,7 +3823,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (minus:DI (match_operand:DI 1 "reg_or_0_operand" "jR")
                   (match_operand:DI 2 "register_operand" "R")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "subd\t%0, %z1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2443,7 +3831,7 @@
 (define_insn "*negdi2_rvp32_neg"
   [(set (match_operand:DI 0 "register_operand" "=R")
         (neg:DI (match_operand:DI 1 "register_operand" "R")))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "negd\t%0, %1"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2474,7 +3862,7 @@
         (mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "r"))
                  (sign_extend:SI (match_operand:HI 2 "register_operand" "r"))))]
   "TARGET_RVP && !TARGET_64BIT"
-  "mulsu.h00\t%0, %1, %2"
+  "mulsu.h00\t%0, %2, %1"
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
@@ -2484,7 +3872,7 @@
         (mult:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
   "TARGET_RVP && TARGET_64BIT"
-  "mulsu.w00\t%0, %1, %2"
+  "mulsu.w00\t%0, %2, %1"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
@@ -2493,7 +3881,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (mult:DI (sign_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wmul\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2502,7 +3890,7 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (mult:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (zero_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wmulu\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -2511,10 +3899,548 @@
   [(set (match_operand:DI 0 "register_operand" "=R")
         (mult:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
                  (sign_extend:DI (match_operand:SI 2 "register_operand" "r"))))]
-  "!TARGET_64BIT && TARGET_RVP"
+  "!TARGET_64BIT && TARGET_RVP && !TARGET_BIG_ENDIAN"
   "wmulsu\t%0, %2, %1"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
+
+;; -------------------------------------------------------------------------
+;; Word products take bits 63:32, optionally after adding exactly 2^31.
+;; These are not scaled MULHRS optabs or saturating Q-format products.
+
+;; An unrounded full-register product can use packed word multiplication
+;; only when both operands are extended words.  Preserve the requested
+;; signed or unsigned interpretation of the extracted high word.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_shiftrt:DI
+	  (mult:DI (match_operand:DI 1 "rvp_word_product_operand")
+		   (match_operand:DI 2 "rvp_word_product_operand"))
+	  (const_int 32)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_mulhi_p (operands[1], operands[2], <CODE> == LSHIFTRT)"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi (operands[0], operands[1], operands[2],
+			<CODE> == LSHIFTRT);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(zero_extract:DI
+	  (mult:DI (match_operand:DI 1 "rvp_word_product_operand")
+		   (match_operand:DI 2 "rvp_word_product_operand"))
+	  (const_int 32) (const_int 32)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_mulhi_p (operands[1], operands[2], true)"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi (operands[0], operands[1], operands[2], true);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:SI 0 "nonimmediate_operand")
+	(subreg:SI
+	  (any_shiftrt:DI
+	    (mult:DI (match_operand:DI 1 "rvp_word_product_operand")
+		     (match_operand:DI 2 "rvp_word_product_operand"))
+	    (const_int 32)) 0))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_round_mulhi_p (operands[1], operands[2])"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi (operands[0], operands[1], operands[2], true);
+  DONE;
+})
+
+(define_insn "*rvp_round_mulh<u>_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (any_extend:DI (match_operand:SI 2 "register_operand" "r")))
+	    (const_int 2147483648)) 4))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mulhr<u>\t%0, %1, %2"
+  [(set_attr "type" "imul")
+   (set_attr "mode" "SI")])
+
+(define_insn "*rvp_round_mulh<su>mixed_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (<rvp_other_extend>:DI
+		(match_operand:SI 2 "register_operand" "r")))
+	    (const_int 2147483648)) 4))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mulhrsu\t%0, <rvp_mixed_operands>"
+  [(set_attr "type" "imul")
+   (set_attr "mode" "SI")])
+
+;; Combine can remove the explicit extensions of known word-valued DI
+;; registers.  Prove their range when splitting and freeze that choice in
+;; the packed operation.  Do not carry range-dependent recognition to IRA.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_shiftrt:DI
+	  (plus:DI (mult:DI (match_operand:DI 1 "register_operand")
+			   (match_operand:DI 2 "register_operand"))
+		   (const_int 2147483648))
+	  (const_int 32)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_round_mulhi_p (operands[1], operands[2])"
+  [(const_int 0)]
+{
+  riscv_p_expand_round_mulhi (operands[0], operands[1], operands[2],
+			    <CODE> == LSHIFTRT);
+  DONE;
+})
+
+;; Loop results commonly go directly to memory.  Keep the arithmetic and
+;; the store as separate instructions instead of requiring a register
+;; destination before combine can recognize the rounded product.
+(define_insn_and_split "*rvp_round_mulh<u>_store"
+  [(set (match_operand:SI 0 "memory_operand" "=m")
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (any_extend:DI (match_operand:SI 2 "register_operand" "r")))
+	    (const_int 2147483648)) 4))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(set (match_dup 3)
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI (any_extend:DI (match_dup 1))
+		     (any_extend:DI (match_dup 2)))
+	    (const_int 2147483648)) 4))
+   (set (match_dup 0) (match_dup 3))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+}
+  [(set_attr "type" "store")
+   (set_attr "mode" "SI")
+   (set_attr "length" "8")])
+
+(define_insn_and_split "*rvp_round_mulh<su>mixed_store"
+  [(set (match_operand:SI 0 "memory_operand" "=m")
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (<rvp_other_extend>:DI
+		(match_operand:SI 2 "register_operand" "r")))
+	    (const_int 2147483648)) 4))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(set (match_dup 3)
+	(subreg:SI
+	  (plus:DI
+	    (mult:DI (any_extend:DI (match_dup 1))
+		     (<rvp_other_extend>:DI (match_dup 2)))
+	    (const_int 2147483648)) 4))
+   (set (match_dup 0) (match_dup 3))]
+{
+  operands[3] = gen_reg_rtx (SImode);
+}
+  [(set_attr "type" "store")
+   (set_attr "mode" "SI")
+   (set_attr "length" "8")])
+
+;; Unsigned ABI inputs can retain their explicit word extensions instead
+;; of becoming known word-valued DI registers.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_shiftrt:DI
+	  (plus:DI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand"))
+	      (any_extend:DI (match_operand:SI 2 "register_operand")))
+	    (const_int 2147483648))
+	  (const_int 32)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  riscv_p_expand_round_mulhi (operands[0], operands[1], operands[2],
+			    <any_shiftrt:CODE> == LSHIFTRT,
+			    <any_extend:CODE> == ZERO_EXTEND ? 1 : 0);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:SI 0 "memory_operand")
+	(match_operator:SI 3 "subreg_lowpart_operator"
+	  [(any_shiftrt:DI
+	    (plus:DI (mult:DI (match_operand:DI 1 "register_operand")
+			     (match_operand:DI 2 "register_operand"))
+		     (const_int 2147483648))
+	    (const_int 32))]))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_round_mulhi_p (operands[1], operands[2])"
+  [(const_int 0)]
+{
+  riscv_p_expand_round_mulhi (operands[0], operands[1], operands[2], true);
+  DONE;
+})
+
+;; Multiply-high accumulation wraps in the destination word.  It must not
+;; be confused with Q-format saturation or a full-width accumulator.
+;; Identify the complete fused operation for instruction costing without
+;; changing its scheduling type or charging for the implicit rounding bias.
+(define_attr "rvp_mulhi_acc" "no,yes,word" (const_string "no"))
+
+(define_insn "*rvp_mulh<u>_acc_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	  (subreg:SI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (any_extend:DI (match_operand:SI 2 "register_operand" "r"))) 4)
+	  (match_operand:SI 3 "register_operand" "0")))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mhacc<u>\t%0,%1,%2"
+  [(set_attr "type" "simd")
+   (set_attr "rvp_mulhi_acc" "yes")
+   (set_attr "mode" "SI")])
+
+(define_insn "*rvp_mulh<su>mixed_acc_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	  (subreg:SI
+	    (mult:DI
+	      (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+	      (<rvp_other_extend>:DI
+		(match_operand:SI 2 "register_operand" "r"))) 4)
+	  (match_operand:SI 3 "register_operand" "0")))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mhaccsu\t%0,<rvp_mixed_operands>"
+  [(set_attr "type" "simd")
+   (set_attr "rvp_mulhi_acc" "yes")
+   (set_attr "mode" "SI")])
+
+(define_insn "*rvp_round_mulh<u>_acc_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	  (subreg:SI
+	    (plus:DI
+	      (mult:DI
+		(any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+		(any_extend:DI (match_operand:SI 2 "register_operand" "r")))
+	      (const_int 2147483648)) 4)
+	  (match_operand:SI 3 "register_operand" "0")))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mhracc<u>\t%0,%1,%2"
+  [(set_attr "type" "simd")
+   (set_attr "rvp_mulhi_acc" "yes")
+   (set_attr "mode" "SI")])
+
+(define_insn "*rvp_round_mulh<su>mixed_acc_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	  (subreg:SI
+	    (plus:DI
+	      (mult:DI
+		(any_extend:DI (match_operand:SI 1 "register_operand" "r"))
+		(<rvp_other_extend>:DI
+		  (match_operand:SI 2 "register_operand" "r")))
+	      (const_int 2147483648)) 4)
+	  (match_operand:SI 3 "register_operand" "0")))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "mhraccsu\t%0,<rvp_mixed_operands>"
+  [(set_attr "type" "simd")
+   (set_attr "rvp_mulhi_acc" "yes")
+   (set_attr "mode" "SI")])
+
+;; RV64 combines a word addition with a high-word extraction.  Freeze the
+;; input range classification while splitting, before IRA loses the facts.
+(define_int_iterator RVP_WORD_ACC
+  [UNSPEC_PMHACC UNSPEC_PMHACCU UNSPEC_PMHACCSU
+   UNSPEC_PMHRACC UNSPEC_PMHRACCU UNSPEC_PMHRACCSU])
+
+(define_int_attr rvp_word_acc
+  [(UNSPEC_PMHACC "mhacc") (UNSPEC_PMHACCU "mhaccu")
+   (UNSPEC_PMHACCSU "mhaccsu") (UNSPEC_PMHRACC "mhracc")
+   (UNSPEC_PMHRACCU "mhraccu") (UNSPEC_PMHRACCSU "mhraccsu")])
+
+;; Keep the accumulator as an input until allocation ties it to the output.
+;; This avoids an explicit copy in combine's replacement sequence.
+(define_insn "riscv_p_<rvp_word_acc>_pv2si"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(unspec:PV2SI
+	  [(match_operand:PV2SI 3 "register_operand" "0")
+	   (match_operand:PV2SI 1 "register_operand" "r")
+	   (match_operand:PV2SI 2 "register_operand" "r")]
+	  RVP_WORD_ACC))]
+  "TARGET_RVP && TARGET_64BIT"
+  "p<rvp_word_acc>.w\t%0,%1,%2"
+  [(set_attr "type" "simd")
+   (set_attr "mode" "DI")])
+
+;; Scalar consumers discard the upper packed result lane.  Remove explicit
+;; input word extensions only in this context, and keep the complete packed
+;; definition in the replacement so allocation accounts for both lanes.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_extend:DI
+	  (subreg:SI
+	    (unspec:PV2SI
+	      [(match_operand:PV2SI 3 "rvp_low_word_packed_operand")
+	       (match_operand:PV2SI 1 "rvp_low_word_packed_operand")
+	       (match_operand:PV2SI 2 "rvp_low_word_packed_operand")]
+	      RVP_WORD_ACC) 0)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && (!register_operand (operands[1], PV2SImode)
+       || !register_operand (operands[2], PV2SImode)
+       || !register_operand (operands[3], PV2SImode))"
+  [(const_int 0)]
+{
+  rtx result = gen_reg_rtx (PV2SImode);
+  for (int i = 1; i <= 3; ++i)
+    operands[i] = riscv_p_low_word_packed_operand (operands[i]);
+  emit_insn (gen_riscv_p_<rvp_word_acc>_pv2si (result, operands[1],
+					   operands[2], operands[3]));
+  convert_move (operands[0], gen_lowpart (SImode, result),
+		<CODE> == ZERO_EXTEND);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:SI 0 "register_operand")
+	(subreg:SI
+	  (unspec:PV2SI
+	    [(match_operand:PV2SI 3 "rvp_low_word_packed_operand")
+	     (match_operand:PV2SI 1 "rvp_low_word_packed_operand")
+	     (match_operand:PV2SI 2 "rvp_low_word_packed_operand")]
+	    RVP_WORD_ACC) 0))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && (!register_operand (operands[1], PV2SImode)
+       || !register_operand (operands[2], PV2SImode)
+       || !register_operand (operands[3], PV2SImode))"
+  [(const_int 0)]
+{
+  rtx result = gen_reg_rtx (PV2SImode);
+  for (int i = 1; i <= 3; ++i)
+    operands[i] = riscv_p_low_word_packed_operand (operands[i]);
+  emit_insn (gen_riscv_p_<rvp_word_acc>_pv2si (result, operands[1],
+					   operands[2], operands[3]));
+  emit_move_insn (operands[0], gen_lowpart (SImode, result));
+  DONE;
+})
+
+;; Keep the complete unsigned word sum at the addition until splitting.
+;; A direct combine split can place its first instruction before an
+;; intervening accumulator load.  Explicit extensions record signedness
+;; without relying on range information after combine.
+(define_insn_and_split "*rvp_umulhi_acc_word"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(sign_extend:DI
+	  (plus:SI
+	    (subreg:SI
+	      (zero_extract:DI
+		(mult:DI
+		  (zero_extend:DI (match_operand:SI 1 "register_operand" "r"))
+		  (zero_extend:DI (match_operand:SI 2 "register_operand" "r")))
+		(const_int 32) (const_int 32)) 0)
+	    (match_operand:SI 3 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], operands[1], operands[2],
+			    operands[3], false, 1);
+  DONE;
+}
+  [(set_attr "type" "simd")
+   (set_attr "rvp_mulhi_acc" "word")
+   (set_attr "mode" "DI")
+   (set_attr "length" "8")])
+
+(define_split
+  [(set (match_operand:SI 0 "nonimmediate_operand")
+	(plus:SI
+	  (subreg:SI
+	    (zero_extract:DI
+	      (mult:DI
+		(zero_extend:DI (match_operand:SI 1 "register_operand"))
+		(zero_extend:DI (match_operand:SI 2 "register_operand")))
+	      (const_int 32) (const_int 32)) 0)
+	  (match_operand:SI 3 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], operands[1], operands[2],
+			    operands[3], false, 1);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (subreg:SI
+	      (zero_extract:DI
+		(mult:DI
+		  (match_operand:DI 1 "rvp_word_product_operand")
+		  (match_operand:DI 2 "rvp_word_product_operand"))
+		(const_int 32) (const_int 32)) 0)
+	    (match_operand:SI 3 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_round_mulhi_p (operands[1], operands[2])"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], operands[1], operands[2],
+			    operands[3], false);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (subreg:SI
+	      (any_shiftrt:DI
+		(mult:DI
+		  (match_operand:DI 1 "rvp_word_product_operand")
+		  (match_operand:DI 2 "rvp_word_product_operand"))
+		(const_int 32)) 0)
+	    (match_operand:SI 3 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && riscv_p_round_mulhi_p (operands[1], operands[2])"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], operands[1], operands[2],
+			    operands[3], false);
+  DONE;
+})
+
+;; Also fold a packed multiply-high already selected by an earlier split.
+;; Only its low word is consumed; the complete packed result is still
+;; represented in the replacement instruction.
+(define_int_iterator RVP_MULHI_ACC
+  [UNSPEC_PMULH UNSPEC_PMULHU UNSPEC_PMULHSU
+   UNSPEC_PMULHR UNSPEC_PMULHRU UNSPEC_PMULHRSU])
+
+;; The same low-word proof applies without an accumulator.  Do not include
+;; saturating Q-format products, whose unused lanes may affect VXSAT.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(any_extend:DI
+	  (subreg:SI
+	    (unspec:PV2SI
+	      [(match_operand:PV2SI 1 "rvp_low_word_packed_operand")
+	       (match_operand:PV2SI 2 "rvp_low_word_packed_operand")]
+	      RVP_MULHI_ACC) 0)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && (!register_operand (operands[1], PV2SImode)
+       || !register_operand (operands[2], PV2SImode))"
+  [(const_int 0)]
+{
+  rtx result = gen_reg_rtx (PV2SImode);
+  operands[1] = riscv_p_low_word_packed_operand (operands[1]);
+  operands[2] = riscv_p_low_word_packed_operand (operands[2]);
+  emit_insn (gen_riscv_<rvp_scalar_mul_packed> (result, operands[1],
+					    operands[2]));
+  convert_move (operands[0], gen_lowpart (SImode, result),
+		<CODE> == ZERO_EXTEND);
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:SI 0 "register_operand")
+	(subreg:SI
+	  (unspec:PV2SI
+	    [(match_operand:PV2SI 1 "rvp_low_word_packed_operand")
+	     (match_operand:PV2SI 2 "rvp_low_word_packed_operand")]
+	    RVP_MULHI_ACC) 0))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && (!register_operand (operands[1], PV2SImode)
+       || !register_operand (operands[2], PV2SImode))"
+  [(const_int 0)]
+{
+  rtx result = gen_reg_rtx (PV2SImode);
+  operands[1] = riscv_p_low_word_packed_operand (operands[1]);
+  operands[2] = riscv_p_low_word_packed_operand (operands[2]);
+  emit_insn (gen_riscv_<rvp_scalar_mul_packed> (result, operands[1],
+					    operands[2]));
+  emit_move_insn (operands[0], gen_lowpart (SImode, result));
+  DONE;
+})
+
+(define_int_attr rvp_mulhi_acc_kind
+  [(UNSPEC_PMULH "0") (UNSPEC_PMULHU "1") (UNSPEC_PMULHSU "2")
+   (UNSPEC_PMULHR "0") (UNSPEC_PMULHRU "1") (UNSPEC_PMULHRSU "2")])
+
+(define_int_attr rvp_mulhi_acc_round
+  [(UNSPEC_PMULH "false") (UNSPEC_PMULHU "false")
+   (UNSPEC_PMULHSU "false") (UNSPEC_PMULHR "true")
+   (UNSPEC_PMULHRU "true") (UNSPEC_PMULHRSU "true")])
+
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (subreg:SI
+	      (unspec:PV2SI
+		[(match_operand:PV2SI 1 "register_operand")
+		 (match_operand:PV2SI 2 "register_operand")]
+		RVP_MULHI_ACC) 0)
+	    (match_operand:SI 3 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], gen_lowpart (DImode, operands[1]),
+			    gen_lowpart (DImode, operands[2]), operands[3],
+			    <rvp_mulhi_acc_round>, <rvp_mulhi_acc_kind>);
+  DONE;
+})
+
+;; A store consumes only the modular word sum.  Matching it together with
+;; the addition lets combine place the fused operation after an intervening
+;; accumulator load, rather than at the earlier multiply's position.
+(define_split
+  [(set (match_operand:SI 0 "nonimmediate_operand")
+	(plus:SI
+	  (subreg:SI
+	    (unspec:PV2SI
+	      [(match_operand:PV2SI 1 "register_operand")
+	       (match_operand:PV2SI 2 "register_operand")]
+	      RVP_MULHI_ACC) 0)
+	  (match_operand:SI 3 "register_operand")))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  riscv_p_expand_mulhi_acc (operands[0], gen_lowpart (DImode, operands[1]),
+			    gen_lowpart (DImode, operands[2]), operands[3],
+			    <rvp_mulhi_acc_round>, <rvp_mulhi_acc_kind>);
+  DONE;
+})
 
 ;; -------------------------------------------------------------------------
 ;; USATI - Unsigned Saturation Immediate
@@ -2580,6 +4506,57 @@
    (set (attr "mode") (if_then_else (match_test "TARGET_64BIT")
 				     (const_string "DI") (const_string "SI")))])
 
+;; Narrow and pack two signed vectors, with the first source in the low half.
+;; RV32 needs two clips, each reading an even-odd register pair.  Complete
+;; both clips before assembling the result, so overlapping inputs survive.
+(define_expand "vec_pack_ssat_<mode>"
+  [(match_operand:<rvp_pack_mode> 0 "register_operand")
+   (match_operand:RVP_DWIDTH_EXT 1 "register_operand")
+   (match_operand:RVP_DWIDTH_EXT 2 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+{
+  if (TARGET_64BIT)
+    emit_insn (gen_riscv_p_vec_pack_ssat_<mode> (operands[0], operands[1],
+					      operands[2]));
+  else
+    {
+      rtx lo = gen_reg_rtx (<rvp_narrow_mode>mode);
+      rtx hi = gen_reg_rtx (<rvp_narrow_mode>mode);
+      emit_insn (gen_sstrunc<mode><rvp_narrow>2 (lo, operands[1]));
+      emit_insn (gen_sstrunc<mode><rvp_narrow>2 (hi, operands[2]));
+      emit_move_insn (gen_lowpart (<rvp_narrow_mode>mode, operands[0]), lo);
+      emit_move_insn (gen_highpart (<rvp_narrow_mode>mode, operands[0]), hi);
+    }
+  DONE;
+})
+
+;; Two word-sized inputs form the source pair for a single byte clip.
+(define_expand "vec_pack_ssat_pv2hi"
+  [(match_operand:PV4QI 0 "register_operand")
+   (match_operand:PV2HI 1 "register_operand")
+   (match_operand:PV2HI 2 "register_operand")]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+{
+  rtx combined = gen_reg_rtx (PV4HImode);
+  emit_move_insn (gen_lowpart (PV2HImode, combined), operands[1]);
+  emit_move_insn (gen_highpart (PV2HImode, combined), operands[2]);
+  emit_insn (gen_sstruncpv4hipv4qi2 (operands[0], combined));
+  DONE;
+})
+
+;; Logical vector order matches PNCLIPP register order on little-endian RV64.
+(define_insn "riscv_p_vec_pack_ssat_<mode>"
+  [(set (match_operand:<rvp_pack_mode> 0 "register_operand" "=r")
+	(vec_concat:<rvp_pack_mode>
+	  (ss_truncate:<rvp_narrow_mode>
+	    (match_operand:RVP_DWIDTH_EXT 1 "register_operand" "r"))
+	  (ss_truncate:<rvp_narrow_mode>
+	    (match_operand:RVP_DWIDTH_EXT 2 "register_operand" "r"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN && !TARGET_VECTOR"
+  "pnclipp.<rvp_extend_width>\t%0,%1,%2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
 ;; Keeps the truncation visible to combine so the clip patterns below can
 ;; absorb it.  Unmatched instances stay as PNCVT, which packs the low half of
 ;; each lane and so preserves true truncation semantics, unlike the saturating
@@ -2590,10 +4567,35 @@
 	(truncate:<rvp_narrow_mode>
 	  (match_operand:RVP_DWIDTH_EXT 1 "register_operand" "r")))]
   "TARGET_RVP"
-  "pncvt.<rvp_extend_width>\t%0, %1"
+{
+  if (TARGET_64BIT)
+    return <MODE>mode == PV4HImode ? "unzip8p\t%0, %1, zero"
+				  : "unzip16p\t%0, %1, zero";
+  return "pncvt.<rvp_extend_width>\t%0, %1";
+}
   [(set_attr "type" "arith")
    (set (attr "mode") (if_then_else (match_test "TARGET_64BIT")
 				     (const_string "DI") (const_string "SI")))])
+
+;; Combine two truncated halves and their word concatenation into a single
+;; two-source unzip.  Keep the individual truncations during expansion so
+;; the saturating clip patterns can still match before this combination.
+(define_insn "*rvp_pack_trunc_<mode>"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(vec_concat:PV2SI
+	  (subreg:SI
+	    (truncate:<rvp_narrow_mode>
+	      (match_operand:RVP_DWIDTH_EXT 1 "register_operand" "r")) 0)
+	  (subreg:SI
+	    (truncate:<rvp_narrow_mode>
+	      (match_operand:RVP_DWIDTH_EXT 2 "register_operand" "r")) 0)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN"
+{
+  return <MODE>mode == PV4HImode ? "unzip8p\t%0,%1,%2"
+			       : "unzip16p\t%0,%1,%2";
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
 
 ;; The odd-byte counterpart of PNCVT.B: pnsrli.b rd, rs1_p, 8 on RV32 and
 ;; unzip8hp rd, rs1, x0 on RV64.  Used by the PV4QI odd unzip permute.
@@ -2603,19 +4605,89 @@
 	  (lshiftrt:PV4HI (match_operand:PV4HI 1 "register_operand" "r")
 			  (const_int 8))))]
   "TARGET_RVP"
-  "pncvth.b\t%0, %1"
+{
+  return TARGET_64BIT ? "unzip8hp\t%0, %1, zero" : "pncvth.b\t%0, %1";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
-;; Routes __builtin_convertvector (PV4HI->PV4QI) through truncpv4hipv4qi2 so
-;; combine can match the compound clip patterns before the fallback byte-pack
-;; split fires.
+;; Adjacent small loads can form the source pair without register copies.
+(define_insn_and_split "*riscv_p_pack_trunc_load_pv2hi"
+  [(set (match_operand:PV4QI 0 "register_operand" "=r")
+	(truncate:PV4QI
+	  (vec_concat:PV4HI
+	    (match_operand:PV2HI 1 "memory_operand" "m")
+	    (match_operand:PV2HI 2 "memory_operand" "m"))))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR
+   && can_create_pseudo_p ()
+   && riscv_p_small_pack_mems_p (operands[1], operands[2])"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  rtx mem = riscv_p_small_pack_mem (operands[1], operands[2]);
+  rtx combined = force_reg (PV4HImode, mem);
+  emit_insn (gen_truncpv4hipv4qi2 (operands[0], combined));
+  DONE;
+}
+  [(set_attr "type" "load")
+   (set_attr "mode" "DI")
+   (set (attr "length") (if_then_else (match_test "TARGET_64BIT")
+				       (const_int 8) (const_int 12)))])
+
+;; Keep the small pack as one operation, allowing combine to absorb both
+;; source clamps and their shared bound before splitting the fallback.
+(define_insn_and_split "riscv_p_pack_trunc_pv2hi"
+  [(set (match_operand:PV4QI 0 "register_operand" "=r")
+	(truncate:PV4QI
+	  (vec_concat:PV4HI
+	    (match_operand:PV2HI 1 "register_operand" "r")
+	    (match_operand:PV2HI 2 "register_operand" "r"))))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR
+   && can_create_pseudo_p ()"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  rtx combined;
+  if (TARGET_64BIT)
+    {
+      rtx pair = gen_reg_rtx (PV2SImode);
+      emit_insn (gen_pack_concatpv2si (pair, gen_lowpart (SImode, operands[1]),
+				     gen_lowpart (SImode, operands[2])));
+      combined = gen_lowpart (PV4HImode, pair);
+    }
+  else
+    {
+      combined = gen_reg_rtx (PV4HImode);
+      /* Define the full pseudo with an undefined upper half.  Other
+	 register operands cannot always be widened into a register pair.  */
+      if (REG_P (operands[1]) && !HARD_REGISTER_P (operands[1]))
+	emit_move_insn (combined, gen_rtx_SUBREG (PV4HImode, operands[1], 0));
+      else
+	emit_move_insn (gen_lowpart (PV2HImode, combined), operands[1]);
+      emit_move_insn (gen_highpart (PV2HImode, combined), operands[2]);
+    }
+  emit_insn (gen_truncpv4hipv4qi2 (operands[0], combined));
+  DONE;
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")
+   (set (attr "length") (if_then_else (match_test "TARGET_64BIT")
+				       (const_int 8) (const_int 12)))])
+
 (define_expand "vec_pack_trunc_pv2hi"
   [(match_operand:PV4QI 0 "register_operand" "")
    (match_operand:PV2HI 1 "register_operand" "")	; lo half
    (match_operand:PV2HI 2 "register_operand" "")]	; hi half
   "TARGET_RVP"
 {
+  if (!TARGET_BIG_ENDIAN && !TARGET_VECTOR)
+    {
+      emit_insn (gen_riscv_p_pack_trunc_pv2hi (operands[0], operands[1],
+					    operands[2]));
+      DONE;
+    }
   rtx combined;
   if (TARGET_64BIT)
     {
@@ -2681,6 +4753,101 @@
   [(set_attr "type" "arith")
    (set (attr "mode") (if_then_else (match_test "TARGET_64BIT")
 				     (const_string "DI") (const_string "SI")))])
+
+;; Pack two exact unsigned clamps directly.  The one-source clamp patterns
+;; above retain TRUNCATE (UMIN) until splitting, so match that representation
+;; as well as keeping the source lane order used by VEC_CONCAT.
+(define_insn "*rvp_pack_ustrunc_<mode>"
+  [(set (match_operand:PV2SI 0 "register_operand" "=r")
+	(vec_concat:PV2SI
+	  (subreg:SI
+	    (truncate:<rvp_narrow_mode>
+	      (umin:RVP_DWIDTH_EXT
+		(match_operand:RVP_DWIDTH_EXT 1 "register_operand" "r")
+		(match_operand:RVP_DWIDTH_EXT 3 "immediate_operand"))) 0)
+	  (subreg:SI
+	    (truncate:<rvp_narrow_mode>
+	      (umin:RVP_DWIDTH_EXT
+		(match_operand:RVP_DWIDTH_EXT 2 "register_operand" "r")
+		(match_operand:RVP_DWIDTH_EXT 4 "immediate_operand"))) 0)))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && riscv_const_vector_broadcast_val_p (operands[3], <rvp_narrow_umax>)
+   && riscv_const_vector_broadcast_val_p (operands[4], <rvp_narrow_umax>)"
+  "pnclipup.<rvp_extend_width>\t%0,%1,%2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")])
+
+(define_insn_and_split "*rvp_pack_ustrunc_small_load"
+  [(set (match_operand:PV4QI 0 "register_operand" "=r")
+	(truncate:PV4QI
+	  (vec_concat:PV4HI
+	    (umin:PV2HI (match_operand:PV2HI 1 "memory_operand" "m")
+		       (match_operand:PV2HI 3 "immediate_operand"))
+	    (umin:PV2HI (match_operand:PV2HI 2 "memory_operand" "m")
+		       (match_operand:PV2HI 4 "immediate_operand")))))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR
+   && can_create_pseudo_p ()
+   && riscv_p_small_pack_mems_p (operands[1], operands[2])
+   && riscv_const_vector_broadcast_val_p (operands[3], 255)
+   && riscv_const_vector_broadcast_val_p (operands[4], 255)"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  rtx mem = riscv_p_small_pack_mem (operands[1], operands[2]);
+  rtx combined = force_reg (PV4HImode, mem);
+  emit_insn (gen_ustruncpv4hipv4qi2 (operands[0], combined));
+  DONE;
+}
+  [(set_attr "type" "load")
+   (set_attr "mode" "DI")
+   (set (attr "length") (if_then_else (match_test "TARGET_64BIT")
+				       (const_int 8) (const_int 12)))])
+
+;; The small-vector pack has two halfword pairs as inputs.  Form the full
+;; source before clipping, so either source can overlap the final result.
+(define_insn_and_split "*rvp_pack_ustrunc_small"
+  [(set (match_operand:PV4QI 0 "register_operand" "=r")
+	(truncate:PV4QI
+	  (vec_concat:PV4HI
+	    (umin:PV2HI (match_operand:PV2HI 1 "register_operand" "r")
+		       (match_operand:PV2HI 3 "immediate_operand"))
+	    (umin:PV2HI (match_operand:PV2HI 2 "register_operand" "r")
+		       (match_operand:PV2HI 4 "immediate_operand")))))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && !TARGET_VECTOR
+   && can_create_pseudo_p ()
+   && riscv_const_vector_broadcast_val_p (operands[3], 255)
+   && riscv_const_vector_broadcast_val_p (operands[4], 255)"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  rtx combined;
+  if (TARGET_64BIT)
+    {
+      rtx pair = gen_reg_rtx (PV2SImode);
+      emit_insn (gen_pack_concatpv2si (pair, gen_lowpart (SImode, operands[1]),
+				     gen_lowpart (SImode, operands[2])));
+      combined = gen_lowpart (PV4HImode, pair);
+    }
+  else
+    {
+      combined = gen_reg_rtx (PV4HImode);
+      /* Define the full pseudo with an undefined upper half.  Other
+	 register operands cannot always be widened into a register pair.  */
+      if (REG_P (operands[1]) && !HARD_REGISTER_P (operands[1]))
+	emit_move_insn (combined, gen_rtx_SUBREG (PV4HImode, operands[1], 0));
+      else
+	emit_move_insn (gen_lowpart (PV2HImode, combined), operands[1]);
+      emit_move_insn (gen_highpart (PV2HImode, combined), operands[2]);
+    }
+  emit_insn (gen_ustruncpv4hipv4qi2 (operands[0], combined));
+  DONE;
+}
+  [(set_attr "type" "arith")
+   (set_attr "mode" "DI")
+   (set (attr "length") (if_then_else (match_test "TARGET_64BIT")
+				       (const_int 8) (const_int 12)))])
 
 ;; The RV32 clips hold the shift amount themselves.
 (define_insn "*pnclipi_<rvp_extend_width>_rv32"
@@ -2796,9 +4963,11 @@
 ;; PSATI.H / PSATI.DH / PSATI.W / PSATI.DW - Signed saturation clipping
 ;; PUSATI.H / PUSATI.DH / PUSATI.W / PUSATI.DW - Unsigned saturation clipping
 ;;
-;; psati.h rd, rs1, N  -- saturate each halfword to [-(1<<N), (1<<N)-1]
-;;   N is the immediate; the smin bound is max = 2^N - 1.
-;; pusati.h rd, rs1, N -- saturate each halfword to [0, (1<<N)-1]
+;; psati.h rd, rs1, W  -- saturate each halfword to [-2^(W-1), 2^(W-1)-1].
+;; For an smin bound of 2^N-1, the signed textual width W is N+1.
+;; pusati.h rd, rs1, N -- clamp each signed halfword to [0, (1<<N)-1].
+;; An unsigned UMIN must use PMINU instead: PUSATI maps negative signed
+;; inputs to zero, not to the upper bound.
 ;; =========================================================================
 
 ;; PSATI.H for PV2HI (4-byte, always single register)
@@ -2812,7 +4981,8 @@
    && riscv_psati_bounds_p (operands[2], operands[3], 15)"
   {
     static char buf[32];
-    snprintf (buf, sizeof (buf), "psati.h\t%%0, %%1, %d", riscv_psati_imm (operands[2]));
+    snprintf (buf, sizeof (buf), "psati.h\t%%0, %%1, %d",
+	      riscv_psati_imm (operands[2]) + 1);
     return buf;
   }
   [(set_attr "type" "arith")
@@ -2830,7 +5000,8 @@
   {
     static char buf[32];
     const char *insn = TARGET_64BIT ? "psati.h" : "psati.dh";
-    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn, riscv_psati_imm (operands[2]));
+    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn,
+	      riscv_psati_imm (operands[2]) + 1);
     return buf;
   }
   [(set_attr "type" "arith")
@@ -2848,54 +5019,8 @@
   {
     static char buf[32];
     const char *insn = TARGET_64BIT ? "psati.w" : "psati.dw";
-    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn, riscv_psati_imm (operands[2]));
-    return buf;
-  }
-  [(set_attr "type" "arith")
-   (set_attr "mode" "DI")])
-
-;; PUSATI.H for PV2HI -- unsigned umin form (uint16 input)
-(define_insn "*pusati_h_umin_pv2hi"
-  [(set (match_operand:PV2HI 0 "register_operand" "=r")
-	(umin:PV2HI (match_operand:PV2HI 1 "register_operand" "r")
-		    (match_operand:PV2HI 2 "immediate_operand")))]
-  "TARGET_RVP
-   && riscv_pusati_bounds_p (operands[2], 16)"
-  {
-    static char buf[32];
-    snprintf (buf, sizeof (buf), "pusati.h\t%%0, %%1, %d", riscv_psati_imm (operands[2]));
-    return buf;
-  }
-  [(set_attr "type" "arith")
-   (set_attr "mode" "SI")])
-
-;; PUSATI.H for PV4HI -- unsigned umin form (uint16 input)
-(define_insn "*pusati_h_umin_pv4hi"
-  [(set (match_operand:PV4HI 0 "register_operand" "=r")
-	(umin:PV4HI (match_operand:PV4HI 1 "register_operand" "r")
-		    (match_operand:PV4HI 2 "immediate_operand")))]
-  "TARGET_RVP
-   && riscv_pusati_bounds_p (operands[2], 16)"
-  {
-    static char buf[32];
-    const char *insn = TARGET_64BIT ? "pusati.h" : "pusati.dh";
-    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn, riscv_psati_imm (operands[2]));
-    return buf;
-  }
-  [(set_attr "type" "arith")
-   (set_attr "mode" "DI")])
-
-;; PUSATI.W for PV2SI -- unsigned umin form (uint32 input)
-(define_insn "*pusati_w_umin_pv2si"
-  [(set (match_operand:PV2SI 0 "register_operand" "=r")
-	(umin:PV2SI (match_operand:PV2SI 1 "register_operand" "r")
-		    (match_operand:PV2SI 2 "immediate_operand")))]
-  "TARGET_RVP
-   && riscv_pusati_bounds_p (operands[2], 32)"
-  {
-    static char buf[32];
-    const char *insn = TARGET_64BIT ? "pusati.w" : "pusati.dw";
-    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn, riscv_psati_imm (operands[2]));
+    snprintf (buf, sizeof (buf), "%s\t%%0, %%1, %d", insn,
+	      riscv_psati_imm (operands[2]) + 1);
     return buf;
   }
   [(set_attr "type" "arith")
@@ -2960,18 +5085,85 @@
 ;; MVM/MVMN: Move under Mask / Move under Mask Negated
 ;; MVM:  rd = (~rs2 & rd) | (rs2 & rs1) - select rs1 where mask=1
 ;; MVMN: rd = (~rs2 & rs1) | (rs2 & rd) - select rs1 where mask=0
-(define_insn "*mvm<X:mode>"
-  [(set (match_operand:X 0 "register_operand" "=r,r")
-	(ior:X (and:X (not:X (match_operand:X 2 "register_operand" "r,r"))
-		      (match_operand:X 1 "register_operand" "0,r"))
-	       (and:X (match_dup 2)
-		      (match_operand:X 3 "register_operand" "r,0"))))]
+(define_insn_and_split "*mvm<mode>"
+  [(set (match_operand:PVMVM 0 "register_operand" "=r,r")
+	(ior:PVMVM
+	  (and:PVMVM (not:PVMVM
+		       (match_operand:PVMVM 2 "register_operand" "r,r"))
+		     (match_operand:PVMVM 1 "register_operand" "0,r"))
+	  (and:PVMVM (match_dup 2)
+		     (match_operand:PVMVM 3 "register_operand" "r,0"))))]
   "TARGET_RVP"
-  "@
-   mvm\t%0,%3,%2
-   mvmn\t%0,%1,%2"
+{
+  if (!TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8))
+    return "#";
+  return which_alternative == 0 ? "mvm\t%0,%3,%2" : "mvmn\t%0,%1,%2";
+}
+  "&& !TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+   && reload_completed"
+  [(set (match_dup 4)
+	(ior:SI (and:SI (not:SI (match_dup 6)) (match_dup 5))
+		(and:SI (match_dup 6) (match_dup 7))))
+   (set (match_dup 8)
+	(ior:SI (and:SI (not:SI (match_dup 10)) (match_dup 9))
+		(and:SI (match_dup 10) (match_dup 11))))]
+{
+  /* Packed pairs start at even registers, so complete pairs can overlap
+     but their low and high halves cannot cross.  */
+  for (unsigned int i = 0; i < 4; ++i)
+    {
+      operands[i + 4] = gen_lowpart (SImode, operands[i]);
+      operands[i + 8] = gen_highpart (SImode, operands[i]);
+    }
+}
   [(set_attr "type" "arith")
-   (set_attr "mode" "<X:MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
+
+;; Normalize commuted OR-of-ANDs forms to the MVM pattern above.  Combine
+;; can use these single-insn splits when a three-insn combination does not
+;; match directly.  Keep the destination ties and register-pair splitting
+;; in that one pattern.  The first split must not reproduce its own input
+;; when the positive-mask value is also the mask.
+(define_split
+  [(set (match_operand:PVMVM 0 "register_operand")
+	(ior:PVMVM
+	  (and:PVMVM (not:PVMVM (match_operand:PVMVM 2 "register_operand"))
+		     (match_operand:PVMVM 1 "register_operand"))
+	  (and:PVMVM (match_operand:PVMVM 3 "register_operand")
+		     (match_dup 2))))]
+  "TARGET_RVP && can_create_pseudo_p ()
+   && !rtx_equal_p (operands[2], operands[3])"
+  [(set (match_dup 0)
+	(ior:PVMVM (and:PVMVM (not:PVMVM (match_dup 2)) (match_dup 1))
+		   (and:PVMVM (match_dup 2) (match_dup 3))))])
+
+(define_split
+  [(set (match_operand:PVMVM 0 "register_operand")
+	(ior:PVMVM
+	  (and:PVMVM (match_operand:PVMVM 2 "register_operand")
+		     (match_operand:PVMVM 3 "register_operand"))
+	  (and:PVMVM (not:PVMVM (match_dup 2))
+		     (match_operand:PVMVM 1 "register_operand"))))]
+  "TARGET_RVP && can_create_pseudo_p ()"
+  [(set (match_dup 0)
+	(ior:PVMVM (and:PVMVM (not:PVMVM (match_dup 2)) (match_dup 1))
+		   (and:PVMVM (match_dup 2) (match_dup 3))))])
+
+(define_split
+  [(set (match_operand:PVMVM 0 "register_operand")
+	(ior:PVMVM
+	  (and:PVMVM (match_operand:PVMVM 3 "register_operand")
+		     (match_operand:PVMVM 2 "register_operand"))
+	  (and:PVMVM (not:PVMVM (match_dup 2))
+		     (match_operand:PVMVM 1 "register_operand"))))]
+  "TARGET_RVP && can_create_pseudo_p ()"
+  [(set (match_dup 0)
+	(ior:PVMVM (and:PVMVM (not:PVMVM (match_dup 2)) (match_dup 1))
+		   (and:PVMVM (match_dup 2) (match_dup 3))))])
 
 ;; MVM/MVMN XOR forms: ((a ^ b) & mask) ^ c
 ;; This pattern is similar to AArch64's BSL (Bitwise Select) pattern.
@@ -2981,34 +5173,80 @@
 ;;
 ;; The pattern ((a ^ b) & mask) ^ a is equivalent to (~mask & a) | (mask & b)
 ;; The pattern ((a ^ b) & mask) ^ b is equivalent to (~mask & b) | (mask & a)
-(define_insn "*mvm<X:mode>_xor"
-  [(set (match_operand:X 0 "register_operand" "=r,r")
-	(xor:X (and:X (xor:X (match_operand:X 1 "register_operand" "0,r")
-			     (match_operand:X 3 "register_operand" "r,0"))
-		      (match_operand:X 2 "register_operand" "r,r"))
-	       (match_dup 1)))]
+(define_insn_and_split "*mvm<mode>_xor"
+  [(set (match_operand:PVMVM 0 "register_operand" "=r,r")
+	(xor:PVMVM
+	  (and:PVMVM
+	    (xor:PVMVM (match_operand:PVMVM 1 "register_operand" "0,r")
+		       (match_operand:PVMVM 3 "register_operand" "r,0"))
+	    (match_operand:PVMVM 2 "register_operand" "r,r"))
+	  (match_dup 1)))]
   "TARGET_RVP"
-  "@
-   mvm\t%0,%3,%2
-   mvmn\t%0,%1,%2"
+{
+  if (!TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8))
+    return "#";
+  return which_alternative == 0 ? "mvm\t%0,%3,%2" : "mvmn\t%0,%1,%2";
+}
+  "&& !TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+   && reload_completed"
+  [(set (match_dup 4)
+	(xor:SI (and:SI (xor:SI (match_dup 5) (match_dup 7)) (match_dup 6))
+		(match_dup 5)))
+   (set (match_dup 8)
+	(xor:SI (and:SI (xor:SI (match_dup 9) (match_dup 11)) (match_dup 10))
+		(match_dup 9)))]
+{
+  for (unsigned int i = 0; i < 4; ++i)
+    {
+      operands[i + 4] = gen_lowpart (SImode, operands[i]);
+      operands[i + 8] = gen_highpart (SImode, operands[i]);
+    }
+}
   [(set_attr "type" "arith")
-   (set_attr "mode" "<X:MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
 
 ;; Alternative form where the outer XOR operand is operands[3] instead
 ;; of operands[1].  This is needed because combine may produce either form
 ;; depending on which operand of the inner XOR it chooses to commute.
-(define_insn "*mvm<X:mode>_xor_alt"
-  [(set (match_operand:X 0 "register_operand" "=r,r")
-	(xor:X (and:X (xor:X (match_operand:X 1 "register_operand" "r,0")
-			     (match_operand:X 3 "register_operand" "0,r"))
-		      (match_operand:X 2 "register_operand" "r,r"))
-	       (match_dup 3)))]
+(define_insn_and_split "*mvm<mode>_xor_alt"
+  [(set (match_operand:PVMVM 0 "register_operand" "=r,r")
+	(xor:PVMVM
+	  (and:PVMVM
+	    (xor:PVMVM (match_operand:PVMVM 1 "register_operand" "r,0")
+		       (match_operand:PVMVM 3 "register_operand" "0,r"))
+	    (match_operand:PVMVM 2 "register_operand" "r,r"))
+	  (match_dup 3)))]
   "TARGET_RVP"
-  "@
-   mvm\t%0,%1,%2
-   mvmn\t%0,%3,%2"
+{
+  if (!TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8))
+    return "#";
+  return which_alternative == 0 ? "mvm\t%0,%1,%2" : "mvmn\t%0,%3,%2";
+}
+  "&& !TARGET_64BIT && known_eq (GET_MODE_SIZE (<MODE>mode), 8)
+   && reload_completed"
+  [(set (match_dup 4)
+	(xor:SI (and:SI (xor:SI (match_dup 5) (match_dup 7)) (match_dup 6))
+		(match_dup 7)))
+   (set (match_dup 8)
+	(xor:SI (and:SI (xor:SI (match_dup 9) (match_dup 11)) (match_dup 10))
+		(match_dup 11)))]
+{
+  for (unsigned int i = 0; i < 4; ++i)
+    {
+      operands[i + 4] = gen_lowpart (SImode, operands[i]);
+      operands[i + 8] = gen_highpart (SImode, operands[i]);
+    }
+}
   [(set_attr "type" "arith")
-   (set_attr "mode" "<X:MODE>")])
+   (set_attr "mode" "<MODE>")
+   (set (attr "length")
+	(if_then_else (match_test "!TARGET_64BIT
+				  && known_eq (GET_MODE_SIZE (<MODE>mode), 8)")
+		      (const_int 8) (const_int 4)))])
 
 ;; PSABS: Saturating absolute value for scalar and packed QI/HI modes
 (define_insn "ssabs<mode>2"
@@ -3019,186 +5257,254 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
+;; Packed absolute value with wrapping semantics (pabs is the pseudo
+;; pabd.<w> rs1, x0).  ABS_EXPR on the packed modes must not map to the
+;; saturating psabs.  Also covers the scalar QI/HI modes, where a single
+;; pabd.<w> rs1, x0 computes the absolute value.  The 8-byte modes are
+;; register pairs on RV32.
 (define_insn "abs<mode>2"
-  [(set (match_operand:QIHI 0 "register_operand" "=r")
-	(abs:QIHI (match_operand:QIHI 1 "register_operand" "r")))]
+  [(set (match_operand:QIH_PABD 0 "register_operand" "=r")
+	(abs:QIH_PABD (match_operand:QIH_PABD 1 "register_operand" "r")))]
   "TARGET_RVP"
-  "psabs.<rvp_width>\t%0,%1"
+{
+  if (!TARGET_64BIT
+      && (<MODE>mode == PV8QImode || <MODE>mode == PV4HImode))
+    return "pabd.d<rvp_width>\t%0,%1,x0";
+  return "pabd.<rvp_width>\t%0,%1,x0";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
-;; PAS/PSA - Packed Add-Subtract (alternating operations)
-;; pas.hx: rd[even] = rs1[even] + rs2[even], rd[odd] = rs1[odd] - rs2[odd]
-;; psa.hx: rd[even] = rs1[even] - rs2[even], rd[odd] = rs1[odd] + rs2[odd]
-;;
-;; GCC vectorizes and combines this as:
-;;   (vec_merge (vec_select (op1 a b) [even indices])
-;;              (vec_select (op2 a b) [odd indices]) mask)
-;; Uses iterators: pas_even_op, pas_odd_op, pas_insn
+;; Complex addition with the second input rotated by 90 or 270 degrees.
+;; PAS subtracts the odd second-input lane from the even first-input lane
+;; and adds the even second-input lane to the odd first-input lane.  PSA
+;; reverses the add/subtract operations.  Reuse the intrinsic patterns,
+;; including their register-pair constraints on RV32.
+(define_expand "cadd<rvp_cadd_rot><mode>3"
+  [(set (match_operand:RVP_CADD 0 "register_operand")
+	(unspec:RVP_CADD
+	  [(match_operand:RVP_CADD 1 "register_operand")
+	   (match_operand:RVP_CADD 2 "register_operand")]
+	  RVP_CADD_OP))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN")
 
-;; pas/psa.hx for PV2HI (RV32/RV64)
-;; Even: pas_even_op(rs1, rs2), Odd: pas_odd_op(rs1, rs2) - canonical form.
-(define_insn "*rvp_<pas_insn>_hx_v2hi"
-  [(set (match_operand:PV2HI 0 "register_operand" "=r")
-	(vec_merge:PV2HI
-	  (vec_select:PV2HI
-	    (pas_even_op:PV2HI
-	      (match_operand:PV2HI 1 "register_operand" "r")
-	      (match_operand:PV2HI 2 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0)]))
-	  (vec_select:PV2HI
-	    (<pas_odd_op>:PV2HI (match_dup 1) (match_dup 2))
-	    (parallel [(const_int 1) (const_int 1)]))
-	  (const_int 1)))]
-  "TARGET_RVP"
-  "<pas_insn>.hx\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV2HI")])
+;; SRARI rounds without wrapping the intermediate biased sum.  Do not
+;; match an arbitrary PLUS followed by ASHIFTRT: the RTL addition can wrap.
+;; Shifting at least once before adding one provides headroom, including
+;; at the signed endpoints, so the complete expression below is safe.
 
-;; Commuted-plus variant: GCC's SLP may canonicalize plus(rs2, rs1) when the
-;; non-commutative odd op remains minus(rs1, rs2).  This matches pas.hx only
-;; (pas_even_op == plus swapped; psa already has minus in even which is fine).
-(define_insn "*rvp_pas_hx_v2hi_comm"
-  [(set (match_operand:PV2HI 0 "register_operand" "=r")
-	(vec_merge:PV2HI
-	  (vec_select:PV2HI
-	    (plus:PV2HI
-	      (match_operand:PV2HI 2 "register_operand" "r")
-	      (match_operand:PV2HI 1 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0)]))
-	  (vec_select:PV2HI
-	    (minus:PV2HI (match_dup 1) (match_dup 2))
-	    (parallel [(const_int 1) (const_int 1)]))
-	  (const_int 1)))]
-  "TARGET_RVP"
-  "pas.hx\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV2HI")])
+;; Preserve bounded-input cases when combine can prove headroom.  Use a
+;; split to record that proof in the intrinsic's UNSPEC: register range
+;; information is not available to ordinary insn conditions after reload.
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(ashiftrt:X
+	  (plus:X (match_operand:X 1 "register_operand")
+		  (match_operand 2 "const_int_operand"))
+	  (match_operand 3 "const_int_operand")))]
+  "TARGET_RVP && can_create_pseudo_p ()
+   && IN_RANGE (INTVAL (operands[3]), 1, GET_MODE_BITSIZE (<MODE>mode) - 1)
+   && INTVAL (operands[2]) == (HOST_WIDE_INT_1 << (INTVAL (operands[3]) - 1))
+   && num_sign_bit_copies (operands[1], <MODE>mode) > 1"
+  [(const_int 0)]
+{
+  rtx shift = GEN_INT (-INTVAL (operands[3]));
+  emit_insn (TARGET_64BIT
+	     ? gen_riscv_shar_i64_insn (operands[0], operands[1], shift)
+	     : gen_riscv_sshar_i32_insn (operands[0], operands[1], shift));
+  DONE;
+})
 
-;; Commuted-plus variant for psa.hx: GCC may canonicalize plus(rs2, rs1) in
-;; the odd position while minus(rs1, rs2) remains in the even position.
-(define_insn "*rvp_psa_hx_v2hi_comm"
-  [(set (match_operand:PV2HI 0 "register_operand" "=r")
-	(vec_merge:PV2HI
-	  (vec_select:PV2HI
-	    (minus:PV2HI
-	      (match_operand:PV2HI 1 "register_operand" "r")
-	      (match_operand:PV2HI 2 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0)]))
-	  (vec_select:PV2HI
-	    (plus:PV2HI (match_dup 2) (match_dup 1))
-	    (parallel [(const_int 1) (const_int 1)]))
-	  (const_int 1)))]
-  "TARGET_RVP"
-  "psa.hx\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV2HI")])
-
-;; pas/psa.hx for PV4HI (RV32: pas.dhx, RV64: pas.hx)
-(define_insn "*rvp_<pas_insn>_hx_v4hi"
-  [(set (match_operand:PV4HI 0 "register_operand" "=r")
-	(vec_merge:PV4HI
-	  (vec_select:PV4HI
-	    (pas_even_op:PV4HI
-	      (match_operand:PV4HI 1 "register_operand" "r")
-	      (match_operand:PV4HI 2 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0) (const_int 2) (const_int 2)]))
-	  (vec_select:PV4HI
-	    (<pas_odd_op>:PV4HI (match_dup 1) (match_dup 2))
-	    (parallel [(const_int 1) (const_int 1) (const_int 3) (const_int 3)]))
-	  (const_int 5)))]
-  "TARGET_RVP"
-  "<pas_insn>.%d0x\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV4HI")])
-
-;; Commuted-plus variant for pas.hx on PV4HI.
-(define_insn "*rvp_pas_hx_v4hi_comm"
-  [(set (match_operand:PV4HI 0 "register_operand" "=r")
-	(vec_merge:PV4HI
-	  (vec_select:PV4HI
-	    (plus:PV4HI
-	      (match_operand:PV4HI 2 "register_operand" "r")
-	      (match_operand:PV4HI 1 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0) (const_int 2) (const_int 2)]))
-	  (vec_select:PV4HI
-	    (minus:PV4HI (match_dup 1) (match_dup 2))
-	    (parallel [(const_int 1) (const_int 1) (const_int 3) (const_int 3)]))
-	  (const_int 5)))]
-  "TARGET_RVP"
-  "pas.%d0x\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV4HI")])
-
-;; Commuted-plus variant for psa.hx on PV4HI.
-(define_insn "*rvp_psa_hx_v4hi_comm"
-  [(set (match_operand:PV4HI 0 "register_operand" "=r")
-	(vec_merge:PV4HI
-	  (vec_select:PV4HI
-	    (minus:PV4HI
-	      (match_operand:PV4HI 1 "register_operand" "r")
-	      (match_operand:PV4HI 2 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0) (const_int 2) (const_int 2)]))
-	  (vec_select:PV4HI
-	    (plus:PV4HI (match_dup 2) (match_dup 1))
-	    (parallel [(const_int 1) (const_int 1) (const_int 3) (const_int 3)]))
-	  (const_int 5)))]
-  "TARGET_RVP"
-  "psa.%d0x\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV4HI")])
-
-;; pas/psa.wx for PV2SI (RV64 only)
-(define_insn "*rvp_<pas_insn>_wx_v2si"
-  [(set (match_operand:PV2SI 0 "register_operand" "=r")
-	(vec_merge:PV2SI
-	  (vec_select:PV2SI
-	    (pas_even_op:PV2SI
-	      (match_operand:PV2SI 1 "register_operand" "r")
-	      (match_operand:PV2SI 2 "register_operand" "r"))
-	    (parallel [(const_int 0) (const_int 0)]))
-	  (vec_select:PV2SI
-	    (<pas_odd_op>:PV2SI (match_dup 1) (match_dup 2))
-	    (parallel [(const_int 1) (const_int 1)]))
-	  (const_int 1)))]
-  "TARGET_RVP && TARGET_64BIT"
-  "<pas_insn>.wx\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "PV2SI")])
-
-;; Rounding arithmetic shift right immediate - scalar
-;; SRARI: rd = (rs1 + (1 << (shamt-1))) >> shamt (with rounding)
-;; Pattern matches: (a + (1 << (n-1))) >> n
-;; Shift amount must be in range [1, mode_bitsize-1] to avoid UB.
-(define_insn "*srari<X:mode>"
+(define_insn "*rvp_round_ashr<mode>"
   [(set (match_operand:X 0 "register_operand" "=r")
 	(ashiftrt:X
-	  (plus:X (match_operand:X 1 "register_operand" "r")
-		  (match_operand:X 2 "const_int_operand" "n"))
-	  (match_operand:X 3 "const_int_operand" "n")))]
+	  (plus:X
+	    (ashiftrt:X (match_operand:X 1 "register_operand" "r")
+		       (match_operand 2 "const_int_operand" "n"))
+	    (const_int 1))
+	  (const_int 1)))]
   "TARGET_RVP
-   && IN_RANGE (INTVAL (operands[3]), 1, GET_MODE_BITSIZE (<X:MODE>mode) - 1)
-   && INTVAL (operands[2]) == ((HOST_WIDE_INT)1 << (INTVAL (operands[3]) - 1))"
-  "srari\t%0,%1,%3"
+   && IN_RANGE (INTVAL (operands[2]), 1, GET_MODE_BITSIZE (<MODE>mode) - 2)"
+{
+  operands[2] = GEN_INT (INTVAL (operands[2]) + 1);
+  return "srari\t%0,%1,%2";
+}
   [(set_attr "type" "shift")
-   (set_attr "mode" "<X:MODE>")])
+   (set_attr "mode" "<MODE>")])
 
-;; SRARI for SI mode on RV64: matches (ashiftrt:DI (sign_extend:DI (plus:SI ...)) shamt)
-;; This is the RTL form GCC generates when combining: addiw + srai -> srari
-;; Shift amount must be in range [1, 31] for SI mode.
-(define_insn "*srari_sidi"
-  [(set (match_operand:DI 0 "register_operand" "=r")
+;; On RV64, combine can represent a rounded SI shift using the high word
+;; of a shifted DI value.  Only a proven sign-extended SI input allows the
+;; word addition to be replaced by XLEN-wide rounding without overflow.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
 	(ashiftrt:DI
-	  (sign_extend:DI
-	    (plus:SI (match_operand:SI 1 "register_operand" "r")
-		     (match_operand:SI 2 "const_int_operand" "n")))
-	  (match_operand:DI 3 "const_int_operand" "n")))]
-  "TARGET_64BIT && TARGET_RVP
-   && IN_RANGE (INTVAL (operands[3]), 1, 31)
-   && INTVAL (operands[2]) == ((HOST_WIDE_INT)1 << (INTVAL (operands[3]) - 1))"
-  "srari\t%0,%1,%3"
+	  (plus:DI
+	    (and:DI
+	      (ashift:DI (match_operand:DI 1 "register_operand")
+			 (match_operand 2 "const_int_operand"))
+	      (const_int -4294967296))
+	    (const_int 4294967296))
+	  (const_int 33)))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && IN_RANGE (INTVAL (operands[2]), 2, 31)
+   && num_sign_bit_copies (operands[1], DImode) >= 33"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_shar_i64_insn
+	     (operands[0], operands[1], GEN_INT (INTVAL (operands[2]) - 33)));
+  DONE;
+})
+
+;; A one-bit rounded shift uses the low bit directly.  Adding it after
+;; the shift is safe even when the original value is the largest integer.
+;; RV64 word arithmetic can use an extracted word for the quotient.  It
+;; agrees with an arithmetic shift only when the DI input is sign-extended
+;; from SI.  Record that proof before register allocation loses the range.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (match_operator:SI 4 "subreg_lowpart_operator"
+	      [(and:DI (match_operand:DI 1 "register_operand") (const_int 1))])
+	    (match_operator:SI 5 "subreg_lowpart_operator"
+	      [(zero_extract:DI (match_dup 1)
+				(const_int 32) (const_int 1))]))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && num_sign_bit_copies (operands[1], DImode) >= 33"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_shar_i64_insn (operands[0], operands[1], constm1_rtx));
+  DONE;
+})
+
+;; The commuted word form occurs in scalar loop fallbacks.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (match_operator:SI 4 "subreg_lowpart_operator"
+	      [(zero_extract:DI (match_operand:DI 1 "register_operand")
+				(const_int 32) (const_int 1))])
+	    (match_operator:SI 5 "subreg_lowpart_operator"
+	      [(and:DI (match_dup 1) (const_int 1))]))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && num_sign_bit_copies (operands[1], DImode) >= 33"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_shar_i64_insn (operands[0], operands[1], constm1_rtx));
+  DONE;
+})
+
+;; A genuine SI arithmetic shift also permits unknown upper input bits.
+;; Sign-extend the low word before the XLEN-wide rounding operation.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (ashiftrt:SI
+	      (match_operator:SI 4 "subreg_lowpart_operator"
+		[(match_operand:DI 1 "register_operand")])
+	      (const_int 1))
+	    (match_operator:SI 5 "subreg_lowpart_operator"
+	      [(and:DI (match_dup 1) (const_int 1))]))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  rtx input = gen_reg_rtx (DImode);
+  emit_insn (gen_extendsidi2 (input, gen_lowpart (SImode, operands[1])));
+  emit_insn (gen_riscv_shar_i64_insn (operands[0], input, constm1_rtx));
+  DONE;
+})
+
+;; After shifting by at least 33, adding the extracted rounding bit still
+;; fits in SI.  A 32-bit shift is not enough: rounding INT64_MAX would
+;; produce 2^31, whose word truncation must retain its negative SI value.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (match_operator:SI 4 "subreg_lowpart_operator"
+	      [(zero_extract:DI (match_operand:DI 1 "register_operand")
+				(const_int 1)
+				(match_operand 2 "const_int_operand"))])
+	    (match_operator:SI 5 "subreg_lowpart_operator"
+	      [(ashiftrt:DI (match_dup 1)
+			    (match_operand 3 "const_int_operand"))]))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && IN_RANGE (INTVAL (operands[3]), 33, 63)
+   && INTVAL (operands[2]) == INTVAL (operands[3]) - 1"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_shar_i64_insn
+	     (operands[0], operands[1], GEN_INT (-INTVAL (operands[3]))));
+  DONE;
+})
+
+;; Combine can put the quotient first when it schedules the two shifts
+;; in the opposite order.  Preserve the same word-range restriction.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (match_operator:SI 4 "subreg_lowpart_operator"
+	      [(ashiftrt:DI (match_operand:DI 1 "register_operand")
+			    (match_operand 3 "const_int_operand"))])
+	    (match_operator:SI 5 "subreg_lowpart_operator"
+	      [(zero_extract:DI (match_dup 1) (const_int 1)
+				(match_operand 2 "const_int_operand"))]))))]
+  "TARGET_RVP && TARGET_64BIT && can_create_pseudo_p ()
+   && IN_RANGE (INTVAL (operands[3]), 33, 63)
+   && INTVAL (operands[2]) == INTVAL (operands[3]) - 1"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_shar_i64_insn
+	     (operands[0], operands[1], GEN_INT (-INTVAL (operands[3]))));
+  DONE;
+})
+
+(define_insn "*rvp_round_ashr<mode>_one"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(plus:X
+	  (and:X (match_operand:X 1 "register_operand" "r") (const_int 1))
+	  (ashiftrt:X (match_dup 1) (const_int 1))))]
+  "TARGET_RVP"
+  "srari\t%0,%1,1"
   [(set_attr "type" "shift")
-   (set_attr "mode" "SI")])
+   (set_attr "mode" "<MODE>")])
+
+;; Packed forms of the same overflow-free identities.  Reuse the intrinsic
+;; expanders so that RV32 register-pair constraints remain in one place.
+(define_split
+  [(set (match_operand:RVP_ROUND 0 "register_operand")
+	(ashiftrt:RVP_ROUND
+	  (plus:RVP_ROUND
+	    (ashiftrt:RVP_ROUND
+	      (match_operand:RVP_ROUND 1 "register_operand")
+	      (match_operand 2 "const_int_operand"))
+	    (match_operand:RVP_ROUND 3 "const_1_operand"))
+	  (const_int 1)))]
+  "TARGET_RVP && can_create_pseudo_p ()
+   && IN_RANGE (INTVAL (operands[2]), 1,
+		GET_MODE_UNIT_BITSIZE (<MODE>mode) - 2)"
+  [(const_int 0)]
+{
+  emit_insn (gen_<rvp_round_insn>
+	     (operands[0], operands[1], GEN_INT (-INTVAL (operands[2]) - 1)));
+  DONE;
+})
+
+(define_split
+  [(set (match_operand:RVP_ROUND 0 "register_operand")
+	(plus:RVP_ROUND
+	  (and:RVP_ROUND (match_operand:RVP_ROUND 1 "register_operand")
+			(match_operand:RVP_ROUND 2 "const_1_operand"))
+	  (ashiftrt:RVP_ROUND (match_dup 1) (const_int 1))))]
+  "TARGET_RVP && can_create_pseudo_p ()"
+  [(const_int 0)]
+{
+  emit_insn (gen_<rvp_round_insn> (operands[0], operands[1], constm1_rtx));
+  DONE;
+})
 
 ;; PABD - Packed Absolute Difference
 ;; pabd.b/h rd, rs1, rs2: rd[i] = |rs1[i] - rs2[i]| (signed)
@@ -3227,9 +5533,9 @@
   "TARGET_RVP"
   {
     if (TARGET_64BIT)
-      return "<abd_insn>.<rvp_width>\t%0, %1, %2";
+      return "<abd_insn>.<rvp_width>\t%0,%1,%2";
     else
-      return "<abd_insn>.<rvp_dwidth>\t%0, %1, %2";
+      return "<abd_insn>.<rvp_dwidth>\t%0,%1,%2";
   }
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
@@ -3245,7 +5551,7 @@
           (mult:DI (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
                    (any_extend:DI (match_operand:SI 2 "register_operand" "r")))
           (match_operand:DI 3 "register_operand" "0")))]
-  "TARGET_RVP"
+  "TARGET_RVP && (TARGET_64BIT || !TARGET_BIG_ENDIAN)"
 )
 
 (define_insn "*rvp_widen_<u>maddsidi4"
@@ -3254,7 +5560,7 @@
           (mult:DI (any_extend:DI (match_operand:SI 1 "register_operand" "r"))
                    (any_extend:DI (match_operand:SI 2 "register_operand" "r")))
           (match_operand:DI 3 "register_operand" "0")))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "wmacc<u>\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -3265,7 +5571,7 @@
           (mult:DI (zero_extend:DI (match_operand:SI 2 "register_operand" "r"))
                    (sign_extend:DI (match_operand:SI 1 "register_operand" "r")))
           (match_operand:DI 3 "register_operand" "0")))]
-  "TARGET_RVP && !TARGET_64BIT"
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
   "wmaccsu\t%0, %1, %2"
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
@@ -3282,9 +5588,96 @@
   [(set (match_operand:GPR 0 "register_operand" "=r")
 	(abs:GPR (match_operand:GPR 1 "register_operand" "r")))]
   "TARGET_RVP"
-  "abs\t%0,%1"
+{
+  return TARGET_64BIT && <GPR:MODE>mode == SImode
+    ? "absw\t%0,%1" : "abs\t%0,%1";
+}
   [(set_attr "type" "arith")
    (set_attr "mode" "<GPR:MODE>")])
+
+;; Inputs have been proven unsigned halfwords.  Keep full-word operands
+;; in the UNSPEC so later passes retain the required zero extensions.
+;; The scalar result remains visibly zero-extended from a halfword.
+(define_insn "riscv_p_scalar_uabdhi<mode>"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(zero_extend:X
+	  (unspec:HI [(match_operand:X 1 "register_operand" "r")
+		      (match_operand:X 2 "register_operand" "r")]
+		     UNSPEC_RVP_SCALAR_UABDHI)))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+  "pabdu.h\t%0,%1,%2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "<MODE>")])
+
+;; If both native inputs are unsigned bytes, only the low byte contributes
+;; to PABDSUMAU.B.  Its XLEN-wide accumulation then implements the scalar
+;; addition, including wrapping at the native word width.  Record the
+;; range proof before it is lost, and leave the accumulator tie to register
+;; allocation rather than requiring identical pseudos here.
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(plus:X
+	  (zero_extend:X
+	    (unspec:HI [(match_operand:X 1 "register_operand")
+			(match_operand:X 2 "register_operand")]
+		       UNSPEC_RVP_SCALAR_UABDHI))
+	  (match_operand:X 3 "register_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && (nonzero_bits (operands[1], <MODE>mode) & ~HOST_WIDE_INT_UC (255)) == 0
+   && (nonzero_bits (operands[2], <MODE>mode) & ~HOST_WIDE_INT_UC (255)) == 0"
+  [(const_int 0)]
+{
+  emit_insn (gen_riscv_p_scalar_uabdaqi<mode> (operands[0], operands[1],
+					    operands[2], operands[3]));
+  DONE;
+})
+
+;; The complete input registers have been proven to contain unsigned bytes.
+;; Retain their native modes so later passes preserve the zero upper lanes.
+(define_insn "riscv_p_scalar_uabdaqi<mode>"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(unspec:X [(match_operand:X 1 "register_operand" "r")
+		   (match_operand:X 2 "register_operand" "r")
+		   (match_operand:X 3 "register_operand" "0")]
+		  UNSPEC_RVP_SCALAR_UABDAQI))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+  "pabdsumau.b\t%0,%1,%2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "<MODE>")])
+
+;; A scalar difference of two unsigned halfwords fits in a signed word.
+;; Record the range proof in a packed operation while combine still has
+;; register bit information.  The other halfword lanes are explicitly zero.
+(define_split
+  [(set (match_operand:GPR 0 "register_operand")
+	(abs:GPR
+	  (minus:GPR (match_operand:GPR 1 "register_operand")
+		     (match_operand:GPR 2 "register_operand"))))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && (nonzero_bits (operands[1], <MODE>mode) & ~HOST_WIDE_INT_UC (65535)) == 0
+   && (nonzero_bits (operands[2], <MODE>mode) & ~HOST_WIDE_INT_UC (65535)) == 0"
+  [(const_int 0)]
+{
+  riscv_p_expand_scalar_uabd (operands[0], operands[1], operands[2]);
+  DONE;
+})
+
+;; Include the RV64 word-result extension in the replacement.  A separate
+;; word result would hide its range and retain an unnecessary SEXT.W.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (abs:SI
+	    (minus:SI (match_operand:SI 1 "register_operand")
+		      (match_operand:SI 2 "register_operand")))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN && can_create_pseudo_p ()
+   && (nonzero_bits (operands[1], SImode) & ~HOST_WIDE_INT_UC (65535)) == 0
+   && (nonzero_bits (operands[2], SImode) & ~HOST_WIDE_INT_UC (65535)) == 0"
+  [(const_int 0)]
+{
+  riscv_p_expand_scalar_uabd (operands[0], operands[1], operands[2]);
+  DONE;
+})
 
 ;; ABSW - Absolute Value Word (RV64 only)
 ;; absw rd, rs1: rd = sext.w(abs(rs1[31:0]))
@@ -3300,27 +5693,210 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])
 
-;; Match sign_extend(subreg(abs(di))) pattern from GCC RTL expansion,
-;; e.g. an ABS followed by SEXT.W on RV64.
-(define_insn "*absw_di_subreg"
-  [(set (match_operand:DI 0 "register_operand" "=r")
-	(sign_extend:DI
-	  (subreg:SI (abs:DI (match_operand:DI 1 "register_operand" "r")) 0)))]
-  "TARGET_RVP && TARGET_64BIT"
-  "absw\t%0,%1"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "SI")])
-
 ;; Packed sign-extension
 
-;; Pattern for RV32 register-pair sign extendtions (ps/zext.dh/dw.b/h)
-(define_insn "<extension><rvp_narrow><rvp_ext_mode>2"
-  [(set (match_operand:RVP_DWIDTH_EXT 0 "register_operand" "=R")
-        (any_extend:RVP_DWIDTH_EXT (match_operand:<HALFMODE> 1 "register_operand" "r")))]
-  "TARGET_RVP && !TARGET_64BIT"
-  "<rvp_extend_insn>.<rvp_dwidth>.<rvp_extend_width>\t%0, %1"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "<MODE>")])
+;; Widen all consecutive lanes, not just the low part of each wide lane.
+(define_expand "<extension><rvp_narrow><rvp_ext_mode>2"
+  [(set (match_operand:RVP_DWIDTH_EXT 0 "register_operand")
+	(any_extend:RVP_DWIDTH_EXT
+	  (match_operand:<HALFMODE> 1 "register_operand")))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_extend (operands[0], operands[1], <CODE> == ZERO_EXTEND);
+  DONE;
+})
+
+(define_expand "vec_unpack<su>_lo_<mode>"
+  [(match_operand:<rvp_unpack_mode> 0 "register_operand")
+   (match_operand:RVP_UNPACK 1 "register_operand")
+   (any_extend (const_int 0))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_unpack (operands[0], operands[1], <CODE> == ZERO_EXTEND,
+			 false);
+  DONE;
+})
+
+(define_expand "vec_unpack<su>_hi_<mode>"
+  [(match_operand:<rvp_unpack_mode> 0 "register_operand")
+   (match_operand:RVP_UNPACK 1 "register_operand")
+   (any_extend (const_int 0))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_unpack (operands[0], operands[1], <CODE> == ZERO_EXTEND,
+			 true);
+  DONE;
+})
+
+(define_expand "vec_pack_trunc_<mode>"
+  [(match_operand:<rvp_pack_mode> 0 "register_operand")
+   (match_operand:RVP_DWIDTH_EXT 1 "register_operand")
+   (match_operand:RVP_DWIDTH_EXT 2 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_pack (operands[0], operands[1], operands[2]);
+  DONE;
+})
+
+(define_expand "vec_widen_<su>mult_lo_<mode>"
+  [(match_operand:<rvp_unpack_mode> 0 "register_operand")
+   (match_operand:RVP_UNPACK 1 "register_operand")
+   (match_operand:RVP_UNPACK 2 "register_operand")
+   (any_extend (const_int 0))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_widen_mult (operands[0], operands[1], operands[2],
+			     <CODE> == ZERO_EXTEND, false);
+  DONE;
+})
+
+(define_expand "vec_widen_<su>mult_hi_<mode>"
+  [(match_operand:<rvp_unpack_mode> 0 "register_operand")
+   (match_operand:RVP_UNPACK 1 "register_operand")
+   (match_operand:RVP_UNPACK 2 "register_operand")
+   (any_extend (const_int 0))]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_widen_mult (operands[0], operands[1], operands[2],
+			     <CODE> == ZERO_EXTEND, true);
+  DONE;
+})
+
+(define_expand "reduc_plus_scal_<mode>"
+  [(match_operand:<PVALL_ELT> 0 "register_operand")
+   (match_operand:PVMOVE 1 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_reduc_plus (operands[0], operands[1]);
+  DONE;
+})
+
+;; A dot product with ones sums each group of four bytes or two halfwords
+;; into a word accumulator.  Keep the modulo-2^32 accumulator semantics.
+(define_expand "widen_ssumpv2si<mode>3"
+  [(match_operand:PV2SI 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:PV2SI 2 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  rtx ones = force_reg (<MODE>mode, CONST1_RTX (<MODE>mode));
+  emit_insn (gen_sdot_prodpv2si<mode> (operands[0], operands[1], ones,
+				    operands[2]));
+  DONE;
+})
+
+(define_expand "widen_usumpv2si<mode>3"
+  [(match_operand:PV2SI 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:PV2SI 2 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  rtx ones = force_reg (<MODE>mode, CONST1_RTX (<MODE>mode));
+  emit_insn (gen_udot_prodpv2si<mode> (operands[0], operands[1], ones,
+				    operands[2]));
+  DONE;
+})
+
+;; Each word accumulator receives four byte products or two halfword
+;; products, modulo 2^32.  RV32 uses two single-register instructions.
+(define_expand "sdot_prodpv2si<mode>"
+  [(match_operand:PV2SI 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:RVP_DOT 2 "register_operand")
+   (match_operand:PV2SI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_insn (gen_riscv_<rvp_dot_signed> (operands[0], operands[3],
+				       operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "udot_prodpv2si<mode>"
+  [(match_operand:PV2SI 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:RVP_DOT 2 "register_operand")
+   (match_operand:PV2SI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  emit_insn (gen_riscv_<rvp_dot_unsigned> (operands[0], operands[3],
+					 operands[1], operands[2]));
+  DONE;
+})
+
+(define_expand "usdot_prodpv2si<mode>"
+  [(match_operand:PV2SI 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:RVP_DOT 2 "register_operand")
+   (match_operand:PV2SI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  /* The optab takes the unsigned source first; the instruction takes
+     it last.  */
+  emit_insn (gen_riscv_<rvp_dot_mixed> (operands[0], operands[3],
+				      operands[2], operands[1]));
+  DONE;
+})
+
+;; Byte and halfword differences feed independent word sums or one
+;; doubleword sum.  The absolute differences are unsigned in both cases.
+(define_expand "usad<RVP_SAD_ACC:mode><RVP_DOT:mode>"
+  [(match_operand:RVP_SAD_ACC 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:RVP_DOT 2 "register_operand")
+   (match_operand:RVP_SAD_ACC 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_sad (operands[0], operands[1], operands[2], operands[3], true);
+  DONE;
+})
+
+(define_expand "ssad<RVP_SAD_ACC:mode><RVP_DOT:mode>"
+  [(match_operand:RVP_SAD_ACC 0 "register_operand")
+   (match_operand:RVP_DOT 1 "register_operand")
+   (match_operand:RVP_DOT 2 "register_operand")
+   (match_operand:RVP_SAD_ACC 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_sad (operands[0], operands[1], operands[2], operands[3], false);
+  DONE;
+})
+
+;; Four full halfword products contribute to a doubleword accumulator.
+(define_expand "sdot_prodpv1dipv4hi"
+  [(match_operand:PV1DI 0 "register_operand")
+   (match_operand:PV4HI 1 "register_operand")
+   (match_operand:PV4HI 2 "register_operand")
+   (match_operand:PV1DI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_dot_product_64 (operands[0], operands[1], operands[2],
+				operands[3], false, false);
+  DONE;
+})
+
+(define_expand "udot_prodpv1dipv4hi"
+  [(match_operand:PV1DI 0 "register_operand")
+   (match_operand:PV4HI 1 "register_operand")
+   (match_operand:PV4HI 2 "register_operand")
+   (match_operand:PV1DI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_dot_product_64 (operands[0], operands[1], operands[2],
+				operands[3], true, false);
+  DONE;
+})
+
+(define_expand "usdot_prodpv1dipv4hi"
+  [(match_operand:PV1DI 0 "register_operand")
+   (match_operand:PV4HI 1 "register_operand")
+   (match_operand:PV4HI 2 "register_operand")
+   (match_operand:PV1DI 3 "register_operand")]
+  "TARGET_RVP && !TARGET_BIG_ENDIAN"
+{
+  riscv_p_expand_dot_product_64 (operands[0], operands[1], operands[2],
+				operands[3], false, true);
+  DONE;
+})
 
 ;; Intermediate rtl pattern for psext.h.b
 (define_insn "*psextqihi_1"
@@ -3535,6 +6111,49 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "<MODE>")])
 
+;; Fold a seeded word reduction modulo 2^32.
+;; PREDSUM computes a native sum; truncate only after adding the seed.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(sign_extend:DI
+	  (plus:SI
+	    (plus:SI
+	      (subreg:SI
+		(any_extract:DI (match_operand:DI 1 "register_operand")
+				(const_int 32) (const_int 32)) 0)
+	      (match_operand:SI 2 "register_operand"))
+	    (match_operand:SI 3 "register_operand"))))]
+  "TARGET_RVP && TARGET_64BIT && !TARGET_BIG_ENDIAN
+   && can_create_pseudo_p ()
+   && (rtx_equal_p (gen_lowpart (SImode, operands[1]), operands[2])
+       || rtx_equal_p (gen_lowpart (SImode, operands[1]), operands[3]))"
+  [(set (match_dup 4)
+	(unspec:DI [(match_dup 5) (match_dup 6)] UNSPEC_PREDSUM))
+   (set (match_dup 0) (sign_extend:DI (subreg:SI (match_dup 4) 0)))]
+{
+  operands[4] = gen_reg_rtx (DImode);
+  operands[5] = gen_lowpart (PV2SImode, operands[1]);
+  /* Only the low seed word contributes to the truncated result.  */
+  rtx seed = rtx_equal_p (gen_lowpart (SImode, operands[1]), operands[2])
+	     ? operands[3] : operands[2];
+  operands[6] = gen_lowpart (DImode, seed);
+})
+
+;; Combine a widening conversion followed by a horizontal sum.  SLP can
+;; introduce this form instead of the scalar lane extractions below.
+(define_insn "*rvp_reduc_widen_pv2hi<u>"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI
+	  (subreg:SI
+	    (any_extend:PV2SI
+	      (match_operand:PV2HI 1 "register_operand" "r")) 0)
+	  (subreg:SI
+	    (any_extend:PV2SI (match_dup 1)) 4)))]
+  "TARGET_RVP && !TARGET_64BIT && !TARGET_BIG_ENDIAN"
+  "predsum<u>.hs\t%0,%1,zero"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "SI")])
+
 ;; Reduction sum
 (define_insn_and_split "*reduc_sum_inter_rtl"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -3593,5 +6212,19 @@
        (match_operand:SI 2 "register_operand" "r")))]
   "TARGET_RVP && !TARGET_64BIT"
   "predsumu.hs\t%0, %1, %2"
+  [(set_attr "type" "arith")
+   (set_attr "mode" "SI")])
+
+;; RV32 narrowing shifts pack the low half of each shifted lane without
+;; rounding or saturation.  RV64 has no corresponding immediate form.
+(define_insn "*rvp_narrow_<optab>_<mode>"
+  [(set (match_operand:<rvp_narrow_mode> 0 "register_operand" "=r")
+	(truncate:<rvp_narrow_mode>
+	  (any_shiftrt:RVP_DWIDTH_EXT
+	    (match_operand:RVP_DWIDTH_EXT 1 "register_operand" "r")
+	    (match_operand 2 "const_int_operand" "n"))))]
+  "TARGET_RVP && !TARGET_64BIT
+   && IN_RANGE (INTVAL (operands[2]), 1, <rvp_narrow_shmax>)"
+  "pn<insn>i.<rvp_extend_width>\t%0,%1,%2"
   [(set_attr "type" "arith")
    (set_attr "mode" "SI")])

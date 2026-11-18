@@ -1219,6 +1219,88 @@ try_vectorize_loop (hash_table<simduid_to_vf> *&simduid_to_vf_htab,
 }
 
 
+/* Merge identical pointer recurrences in LOOP after local CSE has made
+   their increments identical.  In a SELECT_VL loop the increment can vary
+   on each iteration, so ordinary IV analysis cannot identify these copies.
+
+   Equal initial values and equal increments imply equal pointer values on
+   every iteration.  Only replace the header PHI: the increment definitions
+   need not dominate each other's uses.  Requiring each increment to feed
+   only its PHI leaves the redundant increment for the following DCE pass.  */
+
+static bool
+vect_merge_pointer_ivs (class loop *loop)
+{
+  if (loop->inner || EDGE_COUNT (loop->header->preds) != 2)
+    return false;
+
+  edge entry = loop_preheader_edge (loop);
+  edge back = loop_latch_edge (loop);
+  if ((entry->flags | back->flags) & (EDGE_ABNORMAL | EDGE_EH))
+    return false;
+
+  typedef pair_hash <nofree_ptr_hash <tree_node>,
+		     nofree_ptr_hash <tree_node>> tree_pair_hash;
+  typedef pair_hash <tree_pair_hash,
+		     pair_hash <nofree_ptr_hash <tree_node>,
+				nofree_ptr_hash <basic_block_def>>> iv_hash;
+  hash_map<iv_hash, tree> ivs;
+  auto_vec<gphi *> redundant;
+
+  for (gphi_iterator gsi = gsi_start_phis (loop->header);
+       !gsi_end_p (gsi); gsi_next (&gsi))
+    {
+      gphi *phi = gsi.phi ();
+      tree result = gimple_phi_result (phi);
+      if (!POINTER_TYPE_P (TREE_TYPE (result))
+	  || SSA_NAME_OCCURS_IN_ABNORMAL_PHI (result))
+	continue;
+
+      tree next = PHI_ARG_DEF_FROM_EDGE (phi, back);
+      if (TREE_CODE (next) != SSA_NAME
+	  || SSA_NAME_OCCURS_IN_ABNORMAL_PHI (next))
+	continue;
+      gimple *incr = SSA_NAME_DEF_STMT (next);
+      use_operand_p use;
+      gimple *use_stmt;
+      if (!is_gimple_assign (incr)
+	  || gimple_assign_rhs_code (incr) != POINTER_PLUS_EXPR
+	  || gimple_assign_rhs1 (incr) != result
+	  || gimple_has_volatile_ops (incr)
+	  || gimple_bb (incr)->loop_father != loop
+	  || !dominated_by_p (CDI_DOMINATORS, loop->latch,
+			      gimple_bb (incr))
+	  || !single_imm_use (next, &use, &use_stmt)
+	  || use_stmt != phi)
+	continue;
+
+      tree initial = PHI_ARG_DEF_FROM_EDGE (phi, entry);
+      tree step = gimple_assign_rhs2 (incr);
+      auto key = std::make_pair (std::make_pair (initial, step),
+				 std::make_pair (TREE_TYPE (result),
+						 gimple_bb (incr)));
+      bool existed;
+      tree &leader = ivs.get_or_insert (key, &existed);
+      if (!existed)
+	leader = result;
+      else if (may_propagate_copy (result, leader))
+	{
+	  if (dump_enabled_p ())
+	    dump_printf (MSG_NOTE, "Reusing vector pointer IV %T for %T\n",
+			 leader, result);
+	  replace_uses_by (result, leader);
+	  redundant.safe_push (phi);
+	}
+    }
+
+  for (gphi *phi : redundant)
+    {
+      gphi_iterator gsi = gsi_for_phi (phi);
+      remove_phi_node (&gsi, true);
+    }
+  return !redundant.is_empty ();
+}
+
 /* Loop autovectorization.  */
 
 namespace {
@@ -1409,6 +1491,7 @@ pass_vectorize::execute (function *fun)
 	continue;
       loop_vinfo = (loop_vec_info) loop->aux;
       has_mask_store = LOOP_VINFO_HAS_MASK_STORE (loop_vinfo);
+      bool uses_select_vl = LOOP_VINFO_USING_SELECT_VL_P (loop_vinfo);
       delete loop_vinfo;
       if (has_mask_store
 	  && targetm.vectorize.empty_mask_is_expensive (IFN_MASK_STORE))
@@ -1425,6 +1508,9 @@ pass_vectorize::execute (function *fun)
 
       edge entry = EDGE_PRED (loop_preheader_edge (loop)->src, 0);
       do_rpo_vn (fun, entry, exit_bbs);
+
+      if (uses_select_vl && vect_merge_pointer_ivs (loop))
+	scev_reset ();
 
       loop->aux = NULL;
     }
