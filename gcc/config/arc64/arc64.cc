@@ -3667,6 +3667,7 @@ arc64_builtin_vectorization_cost (enum vect_cost_for_stmt type_of_cost,
       return 1;
 
     case vec_construct:
+    case vec_deconstruct:
       elements = estimated_poly_value (TYPE_VECTOR_SUBPARTS (vectype));
       return elements / 2;
 
