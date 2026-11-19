@@ -7,8 +7,8 @@ MULTILIB_REQUIRED =
 MULTILIB_REUSE =
 
 # ABI multilib for a single s8200 Linux toolchain (tune via --with-tune=).
-arcv_march_variants = rv64imacb_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_zaamo_zalrsc_zawrs_zca_zcb_zcmop_zkt_zicond
-arcv_march_variants += rv64imafdcb_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_zaamo_zalrsc_zawrs_zfa_zfhmin_zca_zcb_zcd_zcmop_zkt_zicond
+arcv_march_variants = rv64imacbh_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zawrs_zcb_zcmop_zkt_zicond
+arcv_march_variants += rv64imafdcbh_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zawrs_zfa_zfhmin_zcb_zcmop_zkt_zicond_zfh
 
 MULTILIB_OPTIONS    += $(subst $(space),/,$(patsubst %,march=%,$(arcv_march_variants)))
 MULTILIB_DIRNAMES   += $(arcv_march_variants)
@@ -16,5 +16,5 @@ MULTILIB_DIRNAMES   += $(arcv_march_variants)
 MULTILIB_OPTIONS    += mabi=lp64/mabi=lp64d
 MULTILIB_DIRNAMES   += lp64      lp64d
 
-MULTILIB_REQUIRED   += march=rv64imacb_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_zaamo_zalrsc_zawrs_zca_zcb_zcmop_zkt_zicond/mabi=lp64
-MULTILIB_REQUIRED   += march=rv64imafdcb_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_zaamo_zalrsc_zawrs_zfa_zfhmin_zca_zcb_zcd_zcmop_zkt_zicond/mabi=lp64d
+MULTILIB_REQUIRED   += march=rv64imacbh_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zawrs_zcb_zcmop_zkt_zicond/mabi=lp64
+MULTILIB_REQUIRED   += march=rv64imafdcbh_zicbom_zicbop_zicboz_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zimop_zawrs_zfa_zfhmin_zcb_zcmop_zkt_zicond_zfh/mabi=lp64d
