@@ -980,16 +980,6 @@ riscv_fuse_mem_p (rtx_insn *insn, struct riscv_fusion_mem_info *info)
   return true;
 }
 
-/* Address orders supported by a memory-pair rule.  ANY permits either order;
-   it does not establish that both orders are legal for a particular pair.  */
-enum riscv_fusion_direction
-{
-  RISCV_FUSION_NONE,
-  RISCV_FUSION_INC,
-  RISCV_FUSION_DEC,
-  RISCV_FUSION_ANY
-};
-
 /* Hardware constraints shared by candidate selection and final matching.
    Scheduling preferences and the legality of moving accesses are separate
    from these rules.  */
@@ -1052,6 +1042,46 @@ riscv_fuse_mem_candidate_p (const struct riscv_fusion_mem_info *mem,
   unsigned int access_size = GET_MODE_SIZE (mem->mode).to_constant ();
   return (access_size < HOST_BITS_PER_WIDE_INT
 	  && (rule.access_sizes & (HOST_WIDE_INT_1U << access_size)));
+}
+
+/* Return a memory-pair scheduling direction for INSN under the current tune.
+   A null INSN queries support without checking a specific instruction.  */
+
+enum riscv_fusion_direction
+riscv_fuse_mem_direction (rtx_insn *insn)
+{
+  struct riscv_fusion_mem_info mem;
+  if (insn && !riscv_fuse_mem_p (insn, &mem))
+    return RISCV_FUSION_NONE;
+
+  unsigned HOST_WIDE_INT fusible_ops = riscv_get_fusible_ops ();
+  bool inc_p = false, dec_p = false, any_p = false;
+  unsigned int access_size = 0;
+  if (insn)
+    access_size = GET_MODE_SIZE (mem.mode).to_constant ();
+
+  /* Collect directions from all enabled rules that accept this access.  */
+  for (const riscv_fusion_mem_rule &rule : riscv_fusion_mem_rules)
+    {
+      if (!(fusible_ops & rule.op)
+	  || (insn && (!riscv_fuse_mem_candidate_p (&mem, rule)
+		       || INTVAL (mem.addr.offset) % access_size != 0)))
+	continue;
+
+      inc_p |= rule.direction == RISCV_FUSION_INC;
+      dec_p |= rule.direction == RISCV_FUSION_DEC;
+      any_p |= rule.direction == RISCV_FUSION_ANY;
+    }
+
+  /* Prefer directional rules over bidirectional rules to preserve their
+     scheduling order when both are eligible.  */
+  if (inc_p && dec_p)
+    return RISCV_FUSION_ANY;
+  if (inc_p)
+    return RISCV_FUSION_INC;
+  if (dec_p)
+    return RISCV_FUSION_DEC;
+  return any_p ? RISCV_FUSION_ANY : RISCV_FUSION_NONE;
 }
 
 /* Extract an add-type instruction followed by an integer load or store that
@@ -1187,6 +1217,63 @@ riscv_fuse_mem_pair_p (rtx_insn *prev, rtx_insn *curr,
     if (rule.op == op)
       return riscv_fuse_mem_pair_p (prev_mem, curr_mem, rule);
   gcc_unreachable ();
+}
+
+/* Implement TARGET_SCHED_FUSION_PRIORITY.  Group load/store pair candidates
+   by register file, access kind, mode and base register, then by offset.  */
+
+void
+riscv_sched_fusion_priority (rtx_insn *insn, int max_pri,
+			     int *fusion_pri, int *pri)
+{
+  struct riscv_fusion_mem_info mem;
+  unsigned int base_regno;
+  bool isload_p, fp_p, inc_p;
+  int fusion_type, tmp;
+
+  gcc_assert (INSN_P (insn));
+
+  /* Keep default priorities unless this instruction is a pair candidate.  */
+  tmp = max_pri - 1;
+  *fusion_pri = tmp;
+  *pri = tmp;
+
+  enum riscv_fusion_direction direction
+    = riscv_fuse_mem_direction (insn);
+  if (direction == RISCV_FUSION_NONE || !riscv_fuse_mem_p (insn, &mem))
+    return;
+
+  base_regno = riscv_regno (mem.addr.reg);
+  if (base_regno >= FIRST_PSEUDO_REGISTER)
+    return;
+
+  isload_p = mem.type != SCHED_FUSION_ST;
+  fp_p = mem.fp_p;
+  /* Prefer decreasing offsets by default when either direction is possible,
+     matching frame save/restore order.  */
+  inc_p = direction == RISCV_FUSION_INC;
+
+  /* Give each load/store class and base register a distinct priority below
+     that of unrelated instructions.  */
+  fusion_type = (fp_p ? 2 : 0) + (isload_p ? 0 : 1);
+  fusion_type *= NUM_MACHINE_MODES;
+  fusion_type += (int) mem.mode + 1;
+  *fusion_pri -= (fusion_type * FIRST_PSEUDO_REGISTER
+		  + (int) base_regno);
+
+  tmp /= 2;
+  HOST_WIDE_INT off_val = INTVAL (mem.addr.offset);
+  /* Use unsigned arithmetic to handle the most negative offset.  */
+  unsigned HOST_WIDE_INT magnitude = off_val < 0
+				      ? -(unsigned HOST_WIDE_INT) off_val
+				      : off_val;
+  int offset_pri = magnitude & 0xfffff;
+
+  /* Order offsets in the preferred pair direction.  */
+  if (inc_p == (off_val >= 0))
+    *pri = tmp - offset_pri;
+  else
+    *pri = tmp + offset_pri;
 }
 
 /* Fusion recognizers.  */
