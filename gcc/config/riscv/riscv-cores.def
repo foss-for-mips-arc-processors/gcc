@@ -195,12 +195,11 @@ RISCV_CORE("mips-m8500",      "rv32imafdb_zce_zbc_zicbop_zimop_zcmop_"
                               "xmipscmov_xmipsexectl_xmipslsp_xmipstrig",
                               "mips-m8500")
 
-RISCV_CORE("mips-s8200",      "rv64imafdcbv_zicbom_zicbop_zicboz_zicntr_zicsr_"
-      "zifencei_zihintntl_zihintpause_zihpm_zimop_zmmul_"
-      "zaamo_zalrsc_zawrs_zfa_zfhmin_"
-      "zca_zcb_zcd_zcmop_zkt_zvbb_zve32f_zve32x_"
-      "zve64d_zve64f_zvkt_zvl1024b_zicond_zvfhmin",
-      "mips-s8200")
+RISCV_CORE("mips-s8200",      "rv64imafdcbvh_zicbom_zicbop_zicboz_zicntr_zicsr_"
+			      "zifencei_zihintntl_zihintpause_zihpm_zimop_"
+			      "zawrs_zfa_zfhmin_zcb_zcmop_zkt_zvbb_zvkt_"
+			      "zvl512b_zicond_zvfhmin_zfh_zvfh_xmipsvme",
+			      "mips-s8200")
 
 RISCV_CORE("andes-n22",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
 RISCV_CORE("andes-n25",       "rv32imc_zicsr_zifencei_xandesperf",    "andes-25-series")
