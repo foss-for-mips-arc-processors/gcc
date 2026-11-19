@@ -813,7 +813,7 @@ riscv_set_is_shift_type_p (rtx set, rtx_code code, bool *word_p,
 
 static bool
 riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
-			   bool allow_word_p, bool allow_arithmetic_p)
+			   bool allow_word_p, bool arithmetic_p)
 {
   rtx prev_set, curr_set;
   if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
