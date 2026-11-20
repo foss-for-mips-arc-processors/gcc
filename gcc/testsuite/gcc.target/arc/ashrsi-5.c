@@ -1,5 +1,4 @@
 /* { dg-do compile } */
-/* { dg-skip-if "avoid conflicts with -mcpu options" { *-*-* } { "-mcpu=*" } { "-mcpu=em" } } */
 /* { dg-options "-O2 -mcpu=em" } */
 
 int foo(int x, int y) { return y >> 2; }
