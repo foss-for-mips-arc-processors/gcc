@@ -415,6 +415,9 @@ riscv_cpu_cpp_builtins (cpp_reader *pfile)
       sprintf (buf, "__riscv_%s", subset.name.c_str ());
       builtin_define_with_int_value (buf, version_value);
     }
+
+  if (riscv_microarchitecture == mips_i8500)
+    builtin_define ("__riscv_mips_i8500");
 }
 
 /* Implement "#pragma riscv intrinsic".  */
