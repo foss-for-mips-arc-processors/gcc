@@ -410,10 +410,7 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 
 	rtx p_mem = SET_SRC (prev_set);
 
-	if (GET_CODE (p_mem) == SIGN_EXTEND || GET_CODE (p_mem) == ZERO_EXTEND)
-	  p_mem = XEXP (p_mem, 0);
-
-	if (!p_mem || !MEM_P (p_mem))
+	if (!MEM_P (p_mem))
 	  return false;
 
 	rtx p_dest = SET_DEST (prev_set);
@@ -451,8 +448,6 @@ arcv_ls_update (rtx_insn *prev, rtx_insn *curr)
 	  return true;
 
 	rtx data = SET_SRC (prev_set);
-	if (SUBREG_P (data))
-	  data = SUBREG_REG (data);
 	if (!REG_P (data))
 	  return false;
 
