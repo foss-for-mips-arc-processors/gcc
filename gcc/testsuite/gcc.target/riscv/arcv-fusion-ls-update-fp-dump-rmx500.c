@@ -30,4 +30,6 @@ fuse_ls_update_d (double *p, int n)
   return sum;
 }
 
-/* { dg-final { scan-rtl-dump-times "ARCV_FUSE_LS_UPDATE" 3 "sched2" } } */
+/* { dg-final { scan-rtl-dump {;; Function fuse_ls_update_h \((?:(?!;; Function).)*RISCV_FUSE_FP_LS_UPDATE} "sched2" } } */
+/* { dg-final { scan-rtl-dump {;; Function fuse_ls_update_f \((?:(?!;; Function).)*RISCV_FUSE_FP_LS_UPDATE} "sched2" } } */
+/* { dg-final { scan-rtl-dump {;; Function fuse_ls_update_d \((?:(?!;; Function).)*RISCV_FUSE_FP_LS_UPDATE} "sched2" } } */

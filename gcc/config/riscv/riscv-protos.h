@@ -202,6 +202,8 @@ extern std::string riscv_arch_str (bool version_p = true);
 extern void riscv_parse_arch_string (const char *, struct gcc_options *, location_t);
 
 extern bool riscv_hard_regno_rename_ok (unsigned, unsigned);
+extern bool riscv_vector_mode_p (machine_mode);
+extern unsigned int riscv_hard_regno_nregs (unsigned int, machine_mode);
 
 rtl_opt_pass * make_pass_shorten_memrefs (gcc::context *ctxt);
 rtl_opt_pass * make_pass_avlprop (gcc::context *ctxt);
@@ -281,6 +283,21 @@ struct common_vector_cost
 
   /* Cost of an unaligned vector store.  */
   const int unalign_store_cost;
+
+  /* Cost of vector reduction operations (unordered / tree reduction).
+     Indexed by element type.  */
+  const int reduc_i8_cost;
+  const int reduc_i16_cost;
+  const int reduc_i32_cost;
+  const int reduc_i64_cost;
+  const int reduc_f16_cost;
+  const int reduc_f32_cost;
+  const int reduc_f64_cost;
+
+  /* Cost of ordered (fold-left) floating-point reductions.  */
+  const int reduc_f16_ordered_cost;
+  const int reduc_f32_ordered_cost;
+  const int reduc_f64_ordered_cost;
 };
 
 /* scalable vectorization (VLA) specific cost.  */
@@ -290,8 +307,6 @@ struct scalable_vector_cost : common_vector_cost
     : common_vector_cost (base)
   {}
 
-  /* TODO: We will need more other kinds of vector cost for VLA.
-     E.g. fold_left reduction cost, lanes load/store cost, ..., etc.  */
 };
 
 /* Additional costs for register copies.  Cost is for one register.  */
@@ -795,6 +810,8 @@ HOST_WIDE_INT estimated_poly_value (poly_int64, unsigned int);
 bool whole_reg_to_reg_move_p (rtx *, machine_mode, int);
 bool splat_to_scalar_move_p (rtx *);
 rtx get_fp_rounding_coefficient (machine_mode);
+bool riscv_v_widen_constraint_ok (unsigned int, machine_mode, unsigned int,
+				  machine_mode);
 }
 
 /* We classify builtin types into two classes:
@@ -818,6 +835,60 @@ const unsigned int RISCV_BUILTIN_CLASS = (1 << RISCV_BUILTIN_SHIFT) - 1;
 /* Routines implemented in riscv-string.cc.  */
 extern bool riscv_expand_strcmp (rtx, rtx, rtx, rtx, rtx);
 extern bool riscv_expand_strlen (rtx, rtx, rtx, rtx);
+
+/* Routines implemented in riscv-fusion.cc.  */
+enum riscv_fusion_pairs
+{
+  RISCV_FUSE_NOTHING = 0,
+  RISCV_FUSE_ZEXTW = HOST_WIDE_INT_1U << 0,
+  RISCV_FUSE_ZEXTH = HOST_WIDE_INT_1U << 1,
+  RISCV_FUSE_ZEXTWS = HOST_WIDE_INT_1U << 2,
+  RISCV_FUSE_LDINDEXED = HOST_WIDE_INT_1U << 3,
+  RISCV_FUSE_LUI_ADDI = HOST_WIDE_INT_1U << 4,
+  RISCV_FUSE_AUIPC_ADDI = HOST_WIDE_INT_1U << 5,
+  RISCV_FUSE_LUI_LD = HOST_WIDE_INT_1U << 6,
+  RISCV_FUSE_AUIPC_LD = HOST_WIDE_INT_1U << 7,
+  RISCV_FUSE_LDPREINCREMENT = HOST_WIDE_INT_1U << 8,
+  RISCV_FUSE_ALIGNED_STD = HOST_WIDE_INT_1U << 9,
+  RISCV_FUSE_BFEXT_SRLI = HOST_WIDE_INT_1U << 10,
+  RISCV_FUSE_EXPANDED_LD = HOST_WIDE_INT_1U << 11,
+  RISCV_FUSE_B_ALUI = HOST_WIDE_INT_1U << 12,
+  RISCV_FUSE_SUB_SEQZ = HOST_WIDE_INT_1U << 13,
+  RISCV_FUSE_ADD_ST = HOST_WIDE_INT_1U << 14,
+  RISCV_FUSE_ADD_ANDI = HOST_WIDE_INT_1U << 15,
+  RISCV_FUSE_ANDI_ADD = HOST_WIDE_INT_1U << 16,
+  RISCV_FUSE_LOGIC_LOGIC = HOST_WIDE_INT_1U << 17,
+  RISCV_FUSE_SLLI_SRLI = HOST_WIDE_INT_1U << 18,
+  RISCV_FUSE_SRLI_ADD = HOST_WIDE_INT_1U << 19,
+  RISCV_FUSE_PREINDEX_ST = HOST_WIDE_INT_1U << 20,
+  RISCV_FUSE_POSTINDEX_LD = HOST_WIDE_INT_1U << 21,
+  RISCV_FUSE_POSTINDEX_ST = HOST_WIDE_INT_1U << 22,
+  RISCV_FUSE_LDST_PAIR_INC = HOST_WIDE_INT_1U << 23,
+  RISCV_FUSE_LDST_PAIR_DEC = HOST_WIDE_INT_1U << 24,
+  RISCV_FUSE_FLDFST_PAIR_INC = HOST_WIDE_INT_1U << 25,
+  RISCV_FUSE_FLDFST_PAIR_DEC = HOST_WIDE_INT_1U << 26,
+  RISCV_FUSE_MULT_ADD = HOST_WIDE_INT_1U << 27,
+  RISCV_FUSE_LI_BRANCH = HOST_WIDE_INT_1U << 28,
+  RISCV_FUSE_ADJACENT_LOAD = HOST_WIDE_INT_1U << 29,
+  RISCV_FUSE_ADJACENT_STORE = HOST_WIDE_INT_1U << 30,
+  RISCV_FUSE_LS_UPDATE = HOST_WIDE_INT_1U << 31,
+  RISCV_FUSE_LUI_ST = HOST_WIDE_INT_1U << 32,
+  RISCV_FUSE_LI_STORE = HOST_WIDE_INT_1U << 33,
+  RISCV_FUSE_LUI_LD_REV = HOST_WIDE_INT_1U << 34,
+  RISCV_FUSE_BFEXT_SRAI = HOST_WIDE_INT_1U << 35,
+  RISCV_FUSE_MULH_MUL = HOST_WIDE_INT_1U << 36,
+  RISCV_FUSE_ADJACENT_FP_LOAD = HOST_WIDE_INT_1U << 37,
+  RISCV_FUSE_ADJACENT_FP_STORE = HOST_WIDE_INT_1U << 38,
+  RISCV_FUSE_FP_LS_UPDATE = HOST_WIDE_INT_1U << 39,
+};
+
+extern bool riscv_macro_fusion_p (void);
+extern bool riscv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
+extern bool riscv_fusion_enabled_p (enum riscv_fusion_pairs);
+extern enum riscv_fusion_pairs riscv_get_fusion_pair_type (rtx_insn *,
+						    rtx_insn *);
+extern void riscv_sched_fusion_priority (rtx_insn *, int, int *, int *);
+extern unsigned HOST_WIDE_INT riscv_get_fusible_ops (void);
 
 /* Routines implemented in thead.cc.  */
 extern bool extract_base_offset_in_addr (rtx, rtx *, rtx *);
@@ -858,16 +929,9 @@ extern const char *th_output_move (rtx, rtx);
 extern bool th_print_operand_address (FILE *, machine_mode, rtx);
 #endif
 
-/* Routines implemented in arcv.cc.  */
-extern bool arcv_macro_fusion_pair_p (rtx_insn *, rtx_insn *);
-extern bool arcv_macro_bonded_mul_pair_p (rtx_insn *, rtx_insn *);
-extern void arcv_sched_fusion_priority (rtx_insn *, int, int *, int *);
-extern void arcv_sched_init (void);
-extern int arcv_sched_reorder2 (rtx_insn **, int *);
-extern int arcv_sched_adjust_priority (rtx_insn *, int);
-extern int arcv_sched_adjust_cost (rtx_insn *, int, rtx_insn *,int);
-extern bool arcv_can_issue_more_p (int, int);
-extern int arcv_sched_variable_issue (rtx_insn *, int);
+extern int riscv_cached_can_issue_more;
+extern rtx_insn *riscv_last_scheduled_insn;
+
 extern bool arcv_mpy_1c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_2c_bypass_p (rtx_insn *, rtx_insn *);
 extern bool arcv_mpy_10c_bypass_p (rtx_insn *, rtx_insn *);
@@ -877,6 +941,13 @@ extern bool arcv_fmadd_acc_bypass_p (rtx_insn *, rtx_insn *);
 extern rtx riscv_get_trig_scale_value (int flti_const_index);
 extern rtx riscv_get_trig_const (int index);
 extern rtx riscv_output_asinf_hz (rtx dest, rtx src);
+
+/* Routines implemented in arcv.cc.  */
+extern int arcv_sched_reorder2 (rtx_insn **, int *);
+extern int arcv_sched_adjust_priority (rtx_insn *, int);
+extern int arcv_sched_adjust_cost (rtx_insn *, int, rtx_insn *, int);
+extern bool arcv_can_issue_more_p (int, int, rtx_insn *);
+extern int arcv_sched_variable_issue (rtx_insn *, int);
 
 extern bool strided_load_broadcast_p (void);
 extern bool riscv_prefer_agnostic_p (void);

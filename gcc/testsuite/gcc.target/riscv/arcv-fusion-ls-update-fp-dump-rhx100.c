@@ -30,4 +30,4 @@ fuse_ls_update_d (double *p, int n)
   return sum;
 }
 
-/* { dg-final { scan-rtl-dump-not "ARCV_FUSE_LS_UPDATE \\(prev, curr\\)" "sched2" } } */
+/* { dg-final { scan-rtl-dump-not "RISCV_FUSE_(FP_)?LS_UPDATE" "sched2" } } */

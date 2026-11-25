@@ -30,5 +30,5 @@ void store_pair_h(struct two_h *p, _Float16 a, _Float16 b) {
   p->b = b;
 }
 
-/* { dg-final { scan-rtl-dump-not "ARCV_FUSE_ADJACENT_LOAD" "sched2" } } */
-/* { dg-final { scan-rtl-dump-not "ARCV_FUSE_ADJACENT_STORE" "sched2" } } */
+/* { dg-final { scan-rtl-dump-not "RISCV_FUSE_ADJACENT_(FP_)?LOAD" "sched2" } } */
+/* { dg-final { scan-rtl-dump-not "RISCV_FUSE_ADJACENT_(FP_)?STORE" "sched2" } } */
