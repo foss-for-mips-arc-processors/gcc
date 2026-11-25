@@ -66,15 +66,15 @@ long baz_high(long *a) {
 /* { dg-final { scan-rtl-dump "(?s);; Function baz.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+8-->.*=.*\\\[.*\\\]" "sched2" } } */
 
 /* Verify MUL to STORE data delay is 1 cycle. */
-/* { dg-final { scan-rtl-dump "(?s);; Function foo_low.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+2-->.*\\\[.*0x10\\\]=" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function foo_low.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+3-->.*\\\[.*0x10\\\]=" "sched2" } } */
 /* Verify MUL to STORE address delay is 9 cycles. */
-/* { dg-final { scan-rtl-dump "(?s);; Function bar_low.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+10-->.*\\\[.*\\\]=0" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function bar_low.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+11-->.*\\\[.*\\\]=0" "sched2" } } */
 /* Verify MUL to LOAD address delay is 9 cycles. */
-/* { dg-final { scan-rtl-dump "(?s);; Function baz_low.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+10-->.*=.*\\\[.*\\\]" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function baz_low.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+11-->.*=.*\\\[.*\\\]" "sched2" } } */
 
 /* Verify MULH to STORE data delay is 1 cycle. */
-/* { dg-final { scan-rtl-dump "(?s);; Function foo_high.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+2-->.*\\\[.*0x10\\\]=" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function foo_high.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+3-->.*\\\[.*0x10\\\]=" "sched2" } } */
 /* Verify MULH to STORE address delay is 10 cycles. */
-/* { dg-final { scan-rtl-dump "(?s);; Function bar_high.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+11-->.*\\\[.*\\\]=0" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function bar_high.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+12-->.*\\\[.*\\\]=0" "sched2" } } */
 /* Verify MULH to LOAD address delay is 10 cycles. */
-/* { dg-final { scan-rtl-dump "(?s);; Function baz_high.*?;;\\s+1-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+11-->.*=.*\\\[.*\\\]" "sched2" } } */
+/* { dg-final { scan-rtl-dump "(?s);; Function baz_high.*?;;\\s+2-->.*i\\s+\\d+\\s+.*\\*.*:\\(arcv.*?;;\\s+12-->.*=.*\\\[.*\\\]" "sched2" } } */

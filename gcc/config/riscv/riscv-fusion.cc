@@ -1075,11 +1075,11 @@ static const struct riscv_fusion_mem_rule riscv_fusion_mem_rules[] =
   /* Allow 1-, 2-, 4- and 8-byte stores.  */
   { RISCV_FUSE_ALIGNED_STD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
     SCHED_FUSION_ST, false, true, RISCV_FUSION_ANY, 2 },
-  { RISCV_FUSE_ADJACENT_LOAD, (1U << 1) | (1U << 2) | (1U << 4) | (1U << 8),
+  { RISCV_FUSE_ADJACENT_LOAD, (1U << 1) | (1U << 2) | (1U << 4),
     SCHED_FUSION_LD | SCHED_FUSION_LD_SIGN_EXTEND
     | SCHED_FUSION_LD_ZERO_EXTEND,
     false, false, RISCV_FUSION_ANY, 1 },
-  { RISCV_FUSE_ADJACENT_STORE, (1U << 4) | (1U << 8),
+  { RISCV_FUSE_ADJACENT_STORE, (1U << 4),
     SCHED_FUSION_ST, false, false, RISCV_FUSION_ANY, 1 },
   /* Allow 2-, 4- and 8-byte FP loads and stores.  */
   { RISCV_FUSE_ADJACENT_FP_LOAD, (1U << 2) | (1U << 4) | (1U << 8),
