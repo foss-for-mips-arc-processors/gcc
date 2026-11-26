@@ -481,3 +481,7 @@ Ensure double alignment for load/store pair instructions.
 mprefer-lrsc
 Target Var(TARGET_PREFER_LRSC) Init(0)
 Prefer to emit LR/SC instead of AMO for atomic builtin functions.
+
+mrv32-dword-ld
+Target Var(riscv_rv32_dword_ld) Init(1)
+Enable 8-byte integer loads (default) and -mno-rv32-dword-ld splits them into lw.

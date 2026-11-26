@@ -1,0 +1,15 @@
+/* { dg-do compile { target rv32 } } */
+/* { dg-options "-march=rv32gc_xmipslsp -mtune=mips-m8500 -mabi=ilp32d -mno-double-align -mno-rv32-dword-ld" { target { rv32 } } } */
+/* { dg-skip-if "" { *-*-* } { "-O0" "-Os" "-O1" "-Og" "-g" "-Oz" } } */
+
+void test_load_store_64bit(long long *src, long long *dst) {
+    /* Should generate ld instruction */
+    long long value = *src;
+
+    /* Should generate sd instruction */
+    *dst = value;
+}
+
+/* { dg-final { scan-assembler-times "lw" 2 } } */
+/* { dg-final { scan-assembler-times "mips.swp" 1 } } */
+/* { dg-final { scan-assembler-not "mips.lwp" } } */
