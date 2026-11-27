@@ -5171,7 +5171,7 @@ riscv_split_64bit_move_p (rtx dest, rtx src)
 
   /* Zilsd provides load/store with even-odd register pair. */
   if (TARGET_ZILSD
-      && (((REG_P (dest) && MEM_P (src))
+      && (((REG_P (dest) && MEM_P (src) && riscv_rv32_dword_ld)
 	  || (MEM_P (dest) && REG_P (src)))))
     {
       rtx reg = REG_P (dest) ? dest : src;
@@ -14056,6 +14056,7 @@ riscv_output_join2_insns (rtx *operands, machine_mode mode, bool load_p,
 
   /* Check if we want to output ldp/sdp/lwp/swp.  */
   if (TARGET_XMIPSLSP
+			&& !(load_p && !TARGET_64BIT && !riscv_rv32_dword_ld)
       && abs (offset1 - offset2) == GET_MODE_SIZE (mode).to_constant()
       && offset1 >= 0 && offset2 >= 0
       && (offset1 < (1 << 7) || offset2 < (1 << 7))
