@@ -800,42 +800,6 @@ riscv_fuse_shift_pair_p (rtx_insn *prev, rtx_insn *curr,
   return true;
 }
 
-/* Check if RTX matches multiply-high pattern, where X is the word mode:
-   (set (reg:X DEST)
-    (truncate:X (lshiftrt:2X (mult:2X (extend:2X (OP0))
-				      (extend:2X (OP1)))
-			     (const_int BITS_PER_WORD)))  */
-
-static bool
-riscv_set_is_multiply_high_pattern_p (rtx src)
-{
-  if (GET_CODE (src) != SET)
-    return false;
-  rtx truncate = SET_SRC (src);
-
-  if (GET_CODE (truncate) != TRUNCATE || GET_MODE (truncate) != word_mode)
-    return false;
-
-  rtx lshiftrt = XEXP (truncate, 0);
-  if (GET_CODE (lshiftrt) != LSHIFTRT)
-    return false;
-
-  machine_mode wide_mode = GET_MODE_2XWIDER_MODE (word_mode).require ();
-  if (GET_MODE (lshiftrt) != wide_mode)
-    return false;
-
-  rtx shift_amount = XEXP (lshiftrt, 1);
-  rtx mult = XEXP (lshiftrt, 0);
-
-  if (!CONST_INT_P (shift_amount) || INTVAL (shift_amount) != BITS_PER_WORD)
-    return false;
-
-  if (GET_CODE (mult) != MULT || GET_MODE (mult) != wide_mode)
-    return false;
-
-  return true;
-}
-
 /* Check the common RTL for ZEXTW, ZEXTWS and ZEXTH fusion.  */
 
 static bool
@@ -2006,21 +1970,39 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
-/* Extract register operands and destination from multiply high-part pattern.
-   Operands are returned in the order of the assembly instruction.  The usmul
-   pattern emits the operands in the reverse order.
-   Returns true if successful.  */
-
+/* Check if RTX matches multiply-high pattern, where X is the word mode:
+   (set (reg:X DEST)
+    (truncate:X (lshiftrt:2X (mult:2X (extend:2X (OP0))
+				      (extend:2X (OP1)))
+			     (const_int BITS_PER_WORD)))
+   If the pattern matches, the operands are returned.  */
 static bool
-riscv_get_mulh_operands (rtx set_rtx, rtx *op0, rtx *op1, rtx *dest)
+riscv_set_is_multiply_high_pattern_p (rtx set_rtx, rtx *op0, rtx *op1,
+				      rtx *dest)
 {
-  if (!riscv_set_is_multiply_high_pattern_p (set_rtx))
+  if (GET_CODE (set_rtx) != SET)
+    return false;
+  rtx truncate = SET_SRC (set_rtx);
+
+  if (GET_CODE (truncate) != TRUNCATE || GET_MODE (truncate) != word_mode)
     return false;
 
-  rtx mulh_pattern = SET_SRC (set_rtx);
+  rtx lshiftrt = XEXP (truncate, 0);
+  if (GET_CODE (lshiftrt) != LSHIFTRT)
+    return false;
 
-  rtx lshiftrt = XEXP (mulh_pattern, 0);
+  machine_mode wide_mode = GET_MODE_2XWIDER_MODE (word_mode).require ();
+  if (GET_MODE (lshiftrt) != wide_mode)
+    return false;
+
+  rtx shift_amount = XEXP (lshiftrt, 1);
   rtx mult = XEXP (lshiftrt, 0);
+
+  if (!CONST_INT_P (shift_amount) || INTVAL (shift_amount) != BITS_PER_WORD)
+    return false;
+
+  if (GET_CODE (mult) != MULT || GET_MODE (mult) != wide_mode)
+    return false;
 
   rtx operand0 = XEXP (mult, 0);
   rtx operand1 = XEXP (mult, 1);
@@ -2036,7 +2018,7 @@ riscv_get_mulh_operands (rtx set_rtx, rtx *op0, rtx *op1, rtx *dest)
   if (GET_CODE (operand1) == ZERO_EXTEND || GET_CODE (operand1) == SIGN_EXTEND)
     operand1 = XEXP (operand1, 0);
 
-  /* Operands must be low part of reg:TI.  */
+  /* Operands must be low part of reg:2X.  */
   if (!subreg_lowpart_p (operand0) || !subreg_lowpart_p (operand1))
     return false;
 
@@ -2080,7 +2062,8 @@ riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
      curr: (set rd_lo (mul rs1 rs2))
      where rd_hi != rs1 && rd_hi != rs2.  */
   rtx prev_op0, prev_op1, prev_dest;
-  if (!riscv_get_mulh_operands (prev_set, &prev_op0, &prev_op1, &prev_dest))
+  if (!riscv_set_is_multiply_high_pattern_p (prev_set, &prev_op0, &prev_op1,
+					     &prev_dest))
     return false;
 
   rtx curr_src = SET_SRC (curr_set);
