@@ -1970,6 +1970,133 @@ riscv_fuse_logic_logic (rtx_insn *prev, rtx_insn *curr)
   return false;
 }
 
+/* Check if RTX matches multiply-high pattern, where X is the word mode:
+   (set (reg:X DEST)
+    (truncate:X (lshiftrt:2X (mult:2X (extend:2X (OP0))
+				      (extend:2X (OP1)))
+			     (const_int BITS_PER_WORD)))
+   If the pattern matches, the operands are returned.  */
+static bool
+riscv_set_is_multiply_high_pattern_p (rtx set_rtx, rtx *op0, rtx *op1,
+				      rtx *dest)
+{
+  if (GET_CODE (set_rtx) != SET)
+    return false;
+  rtx truncate = SET_SRC (set_rtx);
+
+  if (GET_CODE (truncate) != TRUNCATE || GET_MODE (truncate) != word_mode)
+    return false;
+
+  rtx lshiftrt = XEXP (truncate, 0);
+  if (GET_CODE (lshiftrt) != LSHIFTRT)
+    return false;
+
+  machine_mode wide_mode = GET_MODE_2XWIDER_MODE (word_mode).require ();
+  if (GET_MODE (lshiftrt) != wide_mode)
+    return false;
+
+  rtx shift_amount = XEXP (lshiftrt, 1);
+  rtx mult = XEXP (lshiftrt, 0);
+
+  if (!CONST_INT_P (shift_amount) || INTVAL (shift_amount) != BITS_PER_WORD)
+    return false;
+
+  if (GET_CODE (mult) != MULT || GET_MODE (mult) != wide_mode)
+    return false;
+
+  rtx operand0 = XEXP (mult, 0);
+  rtx operand1 = XEXP (mult, 1);
+
+  /* Swap operands for usmul pattern.  */
+  if (GET_CODE (operand0) == ZERO_EXTEND
+      && GET_CODE (operand1) == SIGN_EXTEND)
+    std::swap (operand0, operand1);
+
+  /* Strip zero_extend/sign_extend.  */
+  if (GET_CODE (operand0) == ZERO_EXTEND || GET_CODE (operand0) == SIGN_EXTEND)
+    operand0 = XEXP (operand0, 0);
+  if (GET_CODE (operand1) == ZERO_EXTEND || GET_CODE (operand1) == SIGN_EXTEND)
+    operand1 = XEXP (operand1, 0);
+
+  /* Operands must be low part of reg:2X.  */
+  if (!subreg_lowpart_p (operand0) || !subreg_lowpart_p (operand1))
+    return false;
+
+  /* Strip subreg.  */
+  if (SUBREG_P (operand0))
+    operand0 = SUBREG_REG (operand0);
+  if (SUBREG_P (operand1))
+    operand1 = SUBREG_REG (operand1);
+
+  if (!REG_P (operand0) || !REG_P (operand1))
+    return false;
+
+  rtx dest_reg = SET_DEST (set_rtx);
+  if (!REG_P (dest_reg))
+    return false;
+
+  *op0 = operand0;
+  *op1 = operand1;
+  *dest = dest_reg;
+  return true;
+}
+
+/* Check for RISCV_FUSE_BONDED_MUL fusion.
+   prev (mulh/mulhu/mulhsu) and curr (mul) of the same inputs, with the
+   high-part destination distinct from both inputs.  */
+
+static bool
+riscv_fuse_bonded_mul (rtx_insn *prev, rtx_insn *curr)
+{
+  if (SCHED_GROUP_P (prev))
+    return false;
+
+  rtx prev_set, curr_set;
+  if (!riscv_fuse_sets_p (prev, curr, &prev_set, &curr_set)
+      || GET_CODE (SET_SRC (curr_set)) != MULT
+      || GET_MODE (SET_SRC (curr_set)) != word_mode)
+    return false;
+
+  /* Bond mul hi part and mul low part pair:
+     prev: (set rd_hi (mulh(u/s) rs1 rs2))
+     curr: (set rd_lo (mul rs1 rs2))
+     where rd_hi != rs1 && rd_hi != rs2.  */
+  rtx prev_op0, prev_op1, prev_dest;
+  if (!riscv_set_is_multiply_high_pattern_p (prev_set, &prev_op0, &prev_op1,
+					     &prev_dest))
+    return false;
+
+  rtx curr_src = SET_SRC (curr_set);
+  rtx curr_op0 = XEXP (curr_src, 0);
+  rtx curr_op1 = XEXP (curr_src, 1);
+
+  /* Check that the operands are the same and in the same order
+     and check the prev destination is distinct from the operands.  */
+  if (!riscv_fuse_same_reg_p (prev_op0, curr_op0)
+      || !riscv_fuse_same_reg_p (prev_op1, curr_op1)
+      || riscv_fuse_same_reg_p (prev_dest, prev_op0)
+      || riscv_fuse_same_reg_p (prev_dest, prev_op1))
+    return false;
+
+  return true;
+}
+
+bool
+riscv_depends_on_lowpart_bonded_mul_p (int dep_type, rtx_insn *dep_insn)
+{
+  if (dep_type != REG_DEP_TRUE)
+    return false;
+
+  rtx_insn *prev_insn = prev_nonnote_nondebug_insn (dep_insn);
+  if (!prev_insn || !INSN_P (prev_insn) || SCHED_GROUP_P (prev_insn))
+    return false;
+
+  if (!riscv_fuse_bonded_mul (prev_insn, dep_insn))
+    return false;
+
+  return true;
+}
+
 /* Type for a fusion checker function.  Takes the two candidate insns
    and returns true if they should be fused.  */
 
@@ -2047,6 +2174,8 @@ static const struct riscv_fusion_entry riscv_fusion_table[] =
     riscv_fuse_andi_add, "RISCV_FUSE_ANDI_ADD" },
   { RISCV_FUSE_LOGIC_LOGIC,
     riscv_fuse_logic_logic, "RISCV_FUSE_LOGIC_LOGIC" },
+  { RISCV_FUSE_BONDED_MUL,
+    riscv_fuse_bonded_mul, "RISCV_FUSE_BONDED_MUL" },
 };
 
 /* Return the name of fusion operation OP.  */
